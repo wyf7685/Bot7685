@@ -1,6 +1,6 @@
 import nonebot
 from nonebot.adapters.onebot.v11 import Adapter as ONEBOT_V11Adapter
-from nonebot.log import logger, default_format, default_filter
+from nonebot.log import default_filter, default_format, logger
 
 logger.add(
     "./logs/{time:YYYY-MM-DD}.log",
@@ -15,8 +15,6 @@ nonebot.init()
 
 driver = nonebot.get_driver()
 driver.register_adapter(ONEBOT_V11Adapter)
-
-nonebot.load_builtin_plugins("echo")
 
 
 nonebot.load_from_toml("pyproject.toml")

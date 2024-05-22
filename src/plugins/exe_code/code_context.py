@@ -6,6 +6,7 @@ from typing import Callable, Coroutine, Dict, List
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
+from nonebot_plugin_alconna.uniseg import UniMessage, Image
 
 from .const import T_Context
 from .interface import API
@@ -81,12 +82,14 @@ class ContextManager:
             raise exc[0]  # type: ignore
 
     def set_gev(self, event: Event) -> None:
-        ctx = self.get_context(event.get_user_id())
-        ctx["gev"] = event
+        self.get_context(event.get_user_id())["gev"] = event
 
     def set_gem(self, event: Event, msg: Message) -> None:
-        ctx = self.get_context(event.get_user_id())
-        ctx["gem"] = msg
+        self.get_context(event.get_user_id())["gem"] = msg
+
+    def set_gurl(self, event: Event, msg: UniMessage) -> None:
+        if msg.has(Image):
+            self.get_context(event.get_user_id())["gurl"] = msg[Image, 0].url
 
     @contextlib.asynccontextmanager
     async def lock_context(self, uin: str):
