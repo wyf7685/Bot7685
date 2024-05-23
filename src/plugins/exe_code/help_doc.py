@@ -42,7 +42,7 @@ def _type_string(t: Type[type] | str) -> str:
         return t
     elif t in type_alia:
         return type_alia[t]
-    return inspect.formatannotation(t, t.__module__)
+    return inspect.formatannotation(t)
 
 
 def func_declaration(func: Callable) -> str:
