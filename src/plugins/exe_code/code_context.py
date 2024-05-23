@@ -72,7 +72,7 @@ class ContextManager:
             ctx.update(load_const(uin))
 
             # 执行代码
-            api = API(event, bot, ctx)
+            api = API(bot, event, ctx)
             await self._solve_code(uin, code)()
             if buf := Buffer(uin).getvalue().rstrip("\n"):
                 await api.feedback(buf)

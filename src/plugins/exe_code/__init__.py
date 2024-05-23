@@ -17,7 +17,6 @@ from nonebot_plugin_alconna.uniseg import (
     Reply,
     UniMessage,
     UniMsg,
-    get_builder,
     image_fetch,
 )
 from nonebot_plugin_saa import extract_target

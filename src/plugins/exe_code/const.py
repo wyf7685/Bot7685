@@ -5,9 +5,6 @@ from nonebot.adapters import Message, MessageSegment
 from nonebot_plugin_alconna.uniseg import Segment as UniSegment
 from nonebot_plugin_alconna.uniseg import UniMessage
 
-# context
-CONTEXT_PY_PRINT_NAME = "py_print"
-
 # description
 DESCRIPTION_MODEL = "{decl}\n* 描述: {desc}\n* 参数:\n{params}\n* 返回值:\n  {res}\n"
 DESCRIPTION_PROPERTY_MODEL = ("{decl}\n* 描述: {desc}",)

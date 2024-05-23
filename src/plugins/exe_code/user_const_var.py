@@ -1,28 +1,21 @@
 import json
 from pathlib import Path
-from typing import Dict, Optional, TypeVar
+from typing import Any, Dict, Optional
 
 from nonebot_plugin_alconna.uniseg import At, Image, Reply, Text, UniMessage
 
-from .const import CONTEXT_PY_PRINT_NAME, DATA_PATH
-from .const import T_ConstVar, T_Context
+from .const import DATA_PATH, T_ConstVar, T_Context
 
 default_context: T_Context = {}
 
-T = TypeVar("T")
 
-
-def context_var(item: T, name: Optional[str] = None) -> T:
+def context_var(item: Any, name: Optional[str] = None) -> None:
     key = name or getattr(item, "__name__", None)
     assert key is not None, f"Name for {item!r} cannot be empty"
-
     default_context[key] = item
-    return item
 
 
-context_var(print, CONTEXT_PY_PRINT_NAME)
 context_var((None, None), "__exception__")
-
 context_var(lambda x: At(flag="user", target=str(x)), "At")
 context_var(lambda x: Reply(id=str(x)), "Reply")
 [context_var(i) for i in {Image, Text, UniMessage}]

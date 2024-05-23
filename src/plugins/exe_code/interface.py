@@ -119,8 +119,9 @@ class Interface(metaclass=InterfaceMeta):
     _buffer: str
     __inst_name__: ClassVar[str] = "interface"
 
-    def get_export_method(self) -> List[str]:
-        return getattr(self, INTERFACE_EXPORT_METHOD)
+    @classmethod
+    def get_export_method(cls) -> List[str]:
+        return cls.__export_method__
 
     def export_to(self, context: T_Context):
         for name in self.get_export_method():
@@ -136,22 +137,22 @@ class Interface(metaclass=InterfaceMeta):
 
         return [
             (f"{name}.{k}", f"{name}.{v}")
-            for k, v in getattr(cls, INTERFACE_METHOD_DESCRIPTION, {}).items()
+            for k, v in cls.__method_description__.items()
         ]
 
 
 class API(Interface):
     __inst_name__: ClassVar[str] = "api"
 
+    bot: Bot
     event: Event
     context: T_Context
-    bot: Bot
 
-    def __init__(self, event: Event, bot: Bot, context: T_Context):
+    def __init__(self, bot: Bot, event: Event, context: T_Context):
         super(API, self).__init__()
+        self.bot = bot
         self.event = event
         self.context = context
-        self.bot = bot
         self.export_to(context)
 
     @descript(
