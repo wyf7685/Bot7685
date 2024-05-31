@@ -1,8 +1,7 @@
 import contextlib
 from asyncio import Future
-from collections import defaultdict
 from copy import deepcopy
-from typing import Callable, Coroutine, Dict, List
+from typing import Any, Awaitable, Callable, Dict, List, ClassVar
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
@@ -33,75 +32,90 @@ async def %s():
 EXECUTOR_FUNCTION_INDENT = " " * 8
 
 
-class ContextManager:
-    contexts: Dict[str, T_Context]
-    locked: Dict[str, bool]
-    waitlist: Dict[str, List[Future[None]]]
+class Context:
+    uin: str
+    ctx: T_Context
+    locked: bool
+    waitlist: List[Future[None]]
 
-    def __init__(self):
-        self.contexts = defaultdict(lambda: deepcopy(default_context))
-        self.locked = defaultdict(lambda: False)
-        self.waitlist = defaultdict(list)
-
-    def get_context(self, uin: str) -> T_Context:
-        return self.contexts[uin]
-
-    def _solve_code(
-        self, uin: str, code: str
-    ) -> Callable[[], Coroutine[None, None, None]]:
-        ctx = self.get_context(uin)
-
-        # 预处理代码
-        func_name = "__executor__"
-        global_prefix = ("global " + ",".join(list(ctx)) + "\n    ") if ctx else ""
-        lines = [global_prefix] + code.split("\n")
-        func_code = ("\n" + EXECUTOR_FUNCTION_INDENT).join(lines)
-
-        # 包装为异步函数
-        exec(EXECUTOR_FUNCTION % (func_name, func_code), ctx)
-
-        return ctx.pop(func_name)
-
-    async def execute(self, event: Event, bot: Bot, code: str):
-        # 根据user_id获取ctx
-        uin = event.get_user_id()
-        ctx = self.get_context(uin)
-
-        async with self.lock_context(uin):
-            # 预处理ctx
-            ctx.update(load_const(uin))
-
-            # 执行代码
-            api = API(bot, event, ctx)
-            await self._solve_code(uin, code)()
-            if buf := Buffer(uin).getvalue().rstrip("\n"):
-                await api.feedback(buf)
-
-        # 处理异常
-        if (exc := ctx.get("__exception__", (None, None)))[0]:
-            raise exc[0]  # type: ignore
-
-    def set_gev(self, event: Event) -> None:
-        self.get_context(event.get_user_id())["gev"] = event
-
-    def set_gem(self, event: Event, msg: Message) -> None:
-        self.get_context(event.get_user_id())["gem"] = msg
-
-    def set_gurl(self, event: Event, msg: UniMessage) -> None:
-        if msg.has(Image):
-            self.get_context(event.get_user_id())["gurl"] = msg[Image, 0].url
+    def __init__(self, uin: str) -> None:
+        self.uin = uin
+        self.ctx = deepcopy(default_context)
+        self.locked = False
+        self.waitlist = []
 
     @contextlib.asynccontextmanager
-    async def lock_context(self, uin: str):
-        if self.locked[uin]:
+    async def _lock(self):
+        if self.locked:
             fut = Future()
-            self.waitlist[uin].append(fut)
+            self.waitlist.append(fut)
             await fut
-        self.locked[uin] = True
+        self.locked = True
 
         try:
             yield
         finally:
-            if self.waitlist[uin]:
-                self.waitlist[uin].pop(0).set_result(None)
-            self.locked[uin] = False
+            if self.waitlist:
+                self.waitlist.pop(0).set_result(None)
+            self.locked = False
+
+    def solve_code(self, code: str) -> Callable[[], Awaitable[None]]:
+        # 预处理代码
+        func_name = "__executor__"
+        lines = []
+        if self.ctx:
+            lines.append("global " + ",".join(list(self.ctx)) + "\n    ")
+        lines.extend(code.split("\n"))
+        func_code = ("\n" + EXECUTOR_FUNCTION_INDENT).join(lines)
+
+        # 包装为异步函数
+        exec(EXECUTOR_FUNCTION % (func_name, func_code), self.ctx)
+        return self.ctx.pop(func_name)
+
+    async def execute(self, bot: Bot, event: Event, code: str) -> None:
+        async with self._lock():
+            # 预处理ctx
+            self.ctx.update(load_const(self.uin))
+
+            # 执行代码
+            api = API(bot, event, self.ctx)
+            await self.solve_code(code)()
+            if buf := Buffer(self.uin).getvalue().rstrip("\n"):
+                await api.feedback(buf)
+
+        # 处理异常
+        if (exc := self.ctx.get("__exception__", (None, None)))[0]:
+            raise exc[0]  # type: ignore
+
+    def set_value(self, varname: str, value: Any) -> None:
+        self.ctx[varname] = value
+
+    def set_gev(self, event: Event) -> None:
+        self.set_value("gev", event)
+
+    def set_gem(self, msg: Message) -> None:
+        self.set_value("gem", msg)
+
+    def set_gurl(self, msg: UniMessage) -> None:
+        if msg.has(Image):
+            self.set_value("gurl", msg[Image, 0].url)
+
+    def __getitem__(self, key: str) -> Any:
+        return self.ctx[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.ctx[key] = value
+
+
+class ContextManager:
+    contexts: ClassVar[Dict[str, Context]] = {}
+
+    @classmethod
+    def get_context(cls, uin: str | Event) -> Context:
+        if isinstance(uin, Event):
+            uin = uin.get_user_id()
+
+        if uin not in cls.contexts:
+            cls.contexts[uin] = Context(uin)
+
+        return cls.contexts[uin]
