@@ -4,7 +4,7 @@ from typing import Union
 
 
 def get_lots_msg(qid: Union[str, int]) -> str:
-    seed = str(date.today()) + str(qid)
+    seed = f"#{date.today()}#{qid}#"
     return lots_data[Random(seed).randint(0, 15)]
 
 
