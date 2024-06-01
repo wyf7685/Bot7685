@@ -257,6 +257,10 @@ class API(Interface):
             export_manager(context)
 
     def __getattr__(self, name: str):
+        if name.startswith("__") and name.endswith("__"):
+            raise AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute '{name}'"
+            )
         return functools.partial(self.call_api, name)
 
     def __repr__(self) -> str:
