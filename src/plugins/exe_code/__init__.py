@@ -21,7 +21,7 @@ from .config import cfg
 __plugin_meta__ = PluginMetadata(
     name="exe_code",
     description="在对话中执行 Python 代码",
-    usage="code",
+    usage="code {Your code here...}",
     supported_adapters={
         "~onebot.v11",
         # "~satori",
@@ -30,16 +30,36 @@ __plugin_meta__ = PluginMetadata(
 
 
 def ExeCodeEnabled():
+    from nonebot_plugin_saa import (
+        TargetQQGroup,
+        TargetQQGroupOpenId,
+        TargetQQGuildChannel,
+    )
+
+    GROUP = (
+        TargetQQGroup,
+        TargetQQGroupOpenId,
+        TargetQQGuildChannel,
+    )
+
     async def check(bot: Bot, event: Event):
         user_id = event.get_user_id()
         if user_id in cfg.user:
             return True
 
-        arg_dict = extract_target(event, bot).arg_dict(bot)
-        if arg_dict.get("message_type", None) == "group":
-            return str(arg_dict.get("group_id", 0)) in cfg.group
+        target = extract_target(event,bot)
+        if not isinstance(target, GROUP):
+            return False
 
-        return False
+        gid = None
+        if isinstance(target, TargetQQGroup):
+            gid = target.group_id
+        elif isinstance(target, TargetQQGroupOpenId):
+            gid = target.group_openid
+        elif isinstance(target, TargetQQGuildChannel):
+            gid = target.channel_id
+
+        return gid is not None and (str(gid) in cfg.group)
 
     return Rule(check)
 
@@ -101,8 +121,6 @@ async def _(event: Event, msg: UniMsg):
 
 @code_getimg.handle()
 async def _(matcher: Matcher, bot: Bot, event: Event, msg: UniMsg, state: T_State):
-    ctx = ContextManager.get_context(event)
-    ctx.set_gev(event)
     if not msg.has(Reply):
         await matcher.finish("未引用消息")
 
@@ -113,7 +131,6 @@ async def _(matcher: Matcher, bot: Bot, event: Event, msg: UniMsg, state: T_Stat
     reply = await UniMessage.generate(message=reply_msg)
     if not reply.has(Image):
         await matcher.finish("引用消息中没有图片")
-    ctx.set_gurl(reply)
 
     varname = msg.extract_plain_text().removeprefix("getimg").strip() or "img"
     if not varname.isidentifier():
@@ -126,7 +143,9 @@ async def _(matcher: Matcher, bot: Bot, event: Event, msg: UniMsg, state: T_Stat
     except Exception as err:
         await matcher.finish(f"保存图片时出错: {err}")
 
-    ctx = ContextManager.get_context(event.get_user_id())
-    ctx[varname] = Image_open(BytesIO(img))
+    ctx = ContextManager.get_context(event)
+    ctx.set_value(varname, Image_open(BytesIO(img)))
+    ctx.set_gev(event)
+    ctx.set_gurl(reply)
     ctx.set_gem(reply_msg)
     await matcher.finish(f"图片已保存至变量 {varname}")

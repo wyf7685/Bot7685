@@ -34,8 +34,8 @@ def export_manager(ctx: T_Context) -> None:
 
     ctx["ctx_mgr"] = ContextManager
     ctx["get_ctx"] = lambda key: ContextManager.get_context(str(key))
-    ctx["set_usr"] = lambda g: (
-        s.remove(g) if (g := str(g)) in (s := cfg.user) else s.add(g)
+    ctx["set_usr"] = lambda u: (
+        s.remove(u) if (u := str(u)) in (s := cfg.user) else s.add(u)
     )
     ctx["set_grp"] = lambda g: (
         s.remove(g) if (g := str(g)) in (s := cfg.group) else s.add(g)
