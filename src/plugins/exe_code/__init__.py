@@ -36,28 +36,21 @@ def ExeCodeEnabled():
         TargetQQGuildChannel,
     )
 
-    GROUP = (
-        TargetQQGroup,
-        TargetQQGroupOpenId,
-        TargetQQGuildChannel,
-    )
-
-    async def check(bot: Bot, event: Event):
+    def check(bot: Bot, event: Event):
         user_id = event.get_user_id()
         if user_id in cfg.user:
             return True
 
-        target = extract_target(event,bot)
-        if not isinstance(target, GROUP):
-            return False
-
         gid = None
+        target = extract_target(event,bot)
         if isinstance(target, TargetQQGroup):
             gid = target.group_id
         elif isinstance(target, TargetQQGroupOpenId):
             gid = target.group_openid
         elif isinstance(target, TargetQQGuildChannel):
             gid = target.channel_id
+        else:
+            return False
 
         return gid is not None and (str(gid) in cfg.group)
 
