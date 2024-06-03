@@ -6,7 +6,6 @@ from .const import DESCRIPTION_MODEL, INTERFACE_METHOD_DESCRIPTION, T_Message
 
 P = ParamSpec("P")
 R = TypeVar("R")
-api_description: Dict[str, str] = {}
 type_alia: Dict[Type[type], str] = {}
 
 

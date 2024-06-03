@@ -12,12 +12,11 @@ from nonebot_plugin_saa import TargetQQGroup, TargetQQPrivate, extract_target
 from ..const import DESCRIPTION_RESULT_TYPE, T_Context, T_Message
 from ..help_doc import descript
 from ..user_const_var import T_ConstVar, default_context, load_const, set_const
-from ..utils import (Buffer, Result, check_message_t, send_forward_message,
-                     send_message)
+from ..utils import Buffer, Result, check_message_t, send_forward_message, send_message
 from .group import Group
 from .interface import Interface
 from .user import User
-from .utils import export, export_manager, is_super_user
+from .utils import export, export_manager, is_super_user, export_adapter_message
 
 logger = logger.opt(colors=True)
 
@@ -252,6 +251,7 @@ class API(Interface):
         context["usr"] = self.user(context["qid"])
         context["gid"] = getattr(self.event, "group_id", None)
         context["grp"] = self.group(context["gid"]) if context["gid"] else None
+        export_adapter_message(context, self.event)
 
         if is_super_user(self.bot, self.event):
             export_manager(context)

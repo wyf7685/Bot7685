@@ -107,15 +107,15 @@ class Context:
         self.ctx[key] = value
 
 
-class ContextManager:
-    contexts: ClassVar[Dict[str, Context]] = {}
+contexts: Dict[str, Context] = {}
 
-    @classmethod
-    def get_context(cls, uin: str | Event) -> Context:
-        if isinstance(uin, Event):
-            uin = uin.get_user_id()
 
-        if uin not in cls.contexts:
-            cls.contexts[uin] = Context(uin)
+def get_context(uin: str | int | Event) -> Context:
+    if isinstance(uin, Event):
+        uin = uin.get_user_id()
+    uin = str(uin)
 
-        return cls.contexts[uin]
+    if uin not in contexts:
+        contexts[uin] = Context(uin)
+
+    return contexts[uin]

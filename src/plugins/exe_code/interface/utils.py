@@ -1,7 +1,6 @@
-from importlib import import_module
-from typing import Callable, ParamSpec, TypeVar
+from typing import Any, Callable, ParamSpec, Type, TypeVar
 
-from nonebot.adapters import Bot, Event
+from nonebot.adapters import Bot, Event, Message, MessageSegment
 
 from ..const import INTERFACE_EXPORT_METHOD, T_Context
 
@@ -28,15 +27,38 @@ def is_super_user(bot: Bot, event: Event) -> bool:
     )
 
 
-def export_manager(ctx: T_Context) -> None:
-    from ..config import cfg
-    from ..code_context import ContextManager
+def _export_manager():
+    def set_usr(u: Any) -> None:
+        from ..config import cfg
 
-    ctx["ctx_mgr"] = ContextManager
-    ctx["get_ctx"] = lambda key: ContextManager.get_context(str(key))
-    ctx["set_usr"] = lambda u: (
-        s.remove(u) if (u := str(u)) in (s := cfg.user) else s.add(u)
-    )
-    ctx["set_grp"] = lambda g: (
-        s.remove(g) if (g := str(g)) in (s := cfg.group) else s.add(g)
-    )
+        if (u := str(u)) in cfg.user:
+            cfg.user.remove(u)
+        else:
+            cfg.user.add(u)
+
+    def set_grp(g: Any) -> None:
+        from ..config import cfg
+
+        if (g := str(g)) in cfg.group:
+            cfg.user.remove(g)
+        else:
+            cfg.user.add(g)
+
+    def export_manager(ctx: T_Context) -> None:
+        from ..code_context import get_context
+
+        ctx["get_ctx"] = get_context
+        ctx["set_usr"] = set_usr
+        ctx["set_grp"] = set_grp
+
+    return export_manager
+
+
+export_manager = _export_manager()
+
+
+def export_adapter_message(ctx: T_Context, event: Event):
+    MessageClass: Type[Message] = event.get_message().__class__
+    MessageSegmentClass: Type[MessageSegment] = MessageClass.get_segment_class()
+    ctx["Message"] = MessageClass
+    ctx["MessageSegment"] = MessageSegmentClass

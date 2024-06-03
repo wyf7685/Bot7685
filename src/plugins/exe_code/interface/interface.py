@@ -1,7 +1,6 @@
 from typing import ClassVar, Dict, List, Tuple
 
 from ..const import (
-    INTERFACE_EXPORT_METHOD,
     INTERFACE_INST_NAME,
     INTERFACE_METHOD_DESCRIPTION,
     T_Context,
@@ -25,7 +24,7 @@ class InterfaceMeta(type):
 
         # export
         interface_cls.__export_method__ = [
-            k for k, v in attr.items() if getattr(v, INTERFACE_EXPORT_METHOD, False)
+            k for k, v in attr.items() if is_export_method(v)
         ]
 
         # description
@@ -49,6 +48,7 @@ class InterfaceMeta(type):
         content: List[str] = []
         result: List[str] = []
 
+        # (is_export, inst_name, func_name, desc)
         methods: List[Tuple[bool, str, str, FuncDescription]] = []
         for _, cls_obj in cls.__interface_map__.items():
             inst_name: str = getattr(cls_obj, INTERFACE_INST_NAME)
@@ -69,8 +69,9 @@ class InterfaceMeta(type):
 
 
 class Interface(metaclass=InterfaceMeta):
-    _buffer: str
     __inst_name__: ClassVar[str] = "interface"
+    __export_method__: ClassVar[List[str]]
+    __method_description__: ClassVar[Dict[str, str]]
 
     @classmethod
     def get_export_method(cls) -> List[str]:

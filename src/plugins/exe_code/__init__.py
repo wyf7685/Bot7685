@@ -15,7 +15,7 @@ require("nonebot_plugin_saa")
 from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_saa import extract_target
 
-from .code_context import ContextManager
+from .code_context import get_context
 from .config import cfg
 
 __plugin_meta__ = PluginMetadata(
@@ -73,7 +73,7 @@ async def _(
     args: Message = CommandArg(),
 ):
     code = args.extract_plain_text().strip()
-    ctx = ContextManager.get_context(event)
+    ctx = get_context(event)
 
     try:
         await ctx.execute(bot, event, code)
@@ -87,7 +87,7 @@ async def _(
 
 @code_getcode.handle()
 async def _(event: Event, msg: UniMsg):
-    ctx = ContextManager.get_context(event)
+    ctx = get_context(event)
     ctx.set_gev(event)
 
     message = await msg.export()
@@ -102,7 +102,7 @@ async def _(event: Event, msg: UniMsg):
 
 @code_getmid.handle()
 async def _(event: Event, msg: UniMsg):
-    ctx = ContextManager.get_context(event)
+    ctx = get_context(event)
     ctx.set_gev(event)
     if msg.has(Reply):
         reply = msg[Reply][0]
@@ -136,7 +136,7 @@ async def _(matcher: Matcher, bot: Bot, event: Event, msg: UniMsg, state: T_Stat
     except Exception as err:
         await matcher.finish(f"保存图片时出错: {err}")
 
-    ctx = ContextManager.get_context(event)
+    ctx = get_context(event)
     ctx.set_value(varname, Image_open(BytesIO(img)))
     ctx.set_gev(event)
     ctx.set_gurl(reply)
