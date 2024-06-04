@@ -1,7 +1,5 @@
 from nonebot import get_driver, on_notice, require
-from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11.event import FriendAddNoticeEvent
-from nonebot.matcher import Matcher
 from nonebot.params import Depends
 
 require("nonebot_plugin_alconna")
@@ -11,9 +9,9 @@ from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 
 def IsFriendAdd():
-    def checker(event: Event):
-        if not isinstance(event, FriendAddNoticeEvent):
-            Matcher.skip()
+
+    def checker(event: FriendAddNoticeEvent):
+        return
 
     return Depends(checker)
 
