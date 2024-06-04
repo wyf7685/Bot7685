@@ -1,6 +1,8 @@
 from nonebot import get_driver, on_notice, require
 from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11.event import FriendAddNoticeEvent
+from nonebot.matcher import Matcher
+from nonebot.params import Depends
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_userinfo")
@@ -8,11 +10,15 @@ from nonebot_plugin_alconna.uniseg import Target, UniMessage
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 
-def is_friend_add(event: Event):
-    return isinstance(event, FriendAddNoticeEvent)
+def IsFriendAdd():
+    def checker(event: Event):
+        if not isinstance(event, FriendAddNoticeEvent):
+            Matcher.skip()
+
+    return Depends(checker)
 
 
-@on_notice(rule=is_friend_add).handle()
+@on_notice().handle(parameterless=[IsFriendAdd()])
 async def _(info: UserInfo = EventUserInfo()):
     message = UniMessage.text(f"收到好友申请: {info.user_name}({info.user_id})\n")
     if avatar := info.user_avatar:
