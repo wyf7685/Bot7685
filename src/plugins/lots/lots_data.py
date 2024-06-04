@@ -1,11 +1,14 @@
 from datetime import date
 from random import Random
-from typing import Union
+from typing import Tuple
 
 
-def get_lots_msg(qid: Union[str, int]) -> str:
-    seed = f"#{date.today()}#{qid}#"
-    return lots_data[Random(seed).randint(0, 15)]
+def get_lots_msg(qid: str | int) -> Tuple[str, str]:
+    r = Random(f"#{date.today()}#{qid}#")
+    msg = r.choice(lots_data)
+    lot = msg.splitlines()[0].strip("—")
+    emoji = r.choice(lots_emoji.get(lot, ["277"]))  # 出错时默认 doge
+    return msg, emoji
 
 
 lots_data = [
@@ -128,3 +131,13 @@ lots_data = [
         "若能撑过一时困境，他日必另有一番作为。"
     ),
 ]
+
+
+lots_emoji = {
+    "大吉": ["66"],  # 爱心
+    "中吉": ["139"],  # 比心
+    "吉": ["124"],  # OK
+    "末吉": ["124"],  # 大拇指
+    "凶": ["307", "277"],  # 猫/doge
+    "大凶": ["265"],  # 老人手机
+}
