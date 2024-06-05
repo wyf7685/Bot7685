@@ -1,14 +1,13 @@
 from typing import Annotated
 
 from nonebot import require
-from nonebot.adapters import Event
-from nonebot.params import Depends
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Event
 from nonebot.log import logger
+from nonebot.params import Depends
 
 require("nonebot_plugin_alconna")
-from arclet.alconna import Alconna, Args, Arparma
-from nonebot_plugin_alconna import AlconnaMatches, on_alconna
+from arclet.alconna import Alconna, Args
+from nonebot_plugin_alconna import AlcMatches, on_alconna
 from nonebot_plugin_alconna.uniseg import At, UniMessage
 
 from .lots_data import get_lots_msg
@@ -17,7 +16,8 @@ lots = on_alconna(Alconna("御神签", Args["target?", At]))
 
 
 def LotsTarget():
-    def lots_target(event: Event, result: Arparma = AlconnaMatches()) -> str:
+
+    def lots_target(event: Event, result: AlcMatches) -> str:
         uin = event.get_user_id()
         if target := result.query[At]("target"):
             uin = target.target
@@ -29,19 +29,14 @@ def LotsTarget():
 def MsgId():
     try:
         from nonebot.adapters.onebot.v11 import MessageEvent
-
-        def msg_id(event: Event) -> int | None:
-            if isinstance(event, MessageEvent):
-                return int(event.message_id)
-
-        return Depends(msg_id)
-
     except ImportError:
+        MessageEvent = None
 
-        def _():
-            return None
+    def msg_id(event: Event) -> int | None:
+        if MessageEvent is not None and isinstance(event, MessageEvent):
+            return event.message_id
 
-        return Depends(_)
+    return Depends(msg_id)
 
 
 @lots.handle()
