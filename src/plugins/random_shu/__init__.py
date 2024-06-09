@@ -7,6 +7,7 @@ require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna.uniseg import UniMessage
 
 random = Random()
+# 图源: Bilibili@鱼烤箱
 image_fps = list((Path(__file__).parent.resolve() / "images").iterdir())
 
 
