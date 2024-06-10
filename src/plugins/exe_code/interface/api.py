@@ -33,7 +33,6 @@ class API(Interface):
         self.bot = bot
         self.event = event
         self.context = context
-        self.export_to(context)
 
     @descript(
         description="调用 OneBot V11 接口",
@@ -44,8 +43,9 @@ class API(Interface):
         result=DESCRIPTION_RESULT_TYPE,
     )
     async def call_api(self, api: str, **data: object) -> Result:
+        res: Dict[str, Any] | List[Any]
         try:
-            res: Dict[str, Any] = await self.bot.call_api(api, **data) or {}
+            res = await self.bot.call_api(api, **data) or {}
         except ActionFailed as e:
             res = {"error": e}
         except BaseException as e:
@@ -57,6 +57,8 @@ class API(Interface):
                     err=e,
                 )
             )
+        if isinstance(res, dict):
+            res.setdefault("error", None)
         return Result(res)
 
     @export

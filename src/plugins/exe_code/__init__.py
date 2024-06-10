@@ -1,10 +1,9 @@
 from io import BytesIO
 
-from nonebot import on_command, on_startswith, require
+from nonebot import on_startswith, require
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
 from nonebot.matcher import Matcher
-from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 from nonebot.typing import T_State
@@ -15,7 +14,7 @@ require("nonebot_plugin_saa")
 from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_saa import extract_target
 
-from .code_context import get_context
+from .code_context import Context
 from .config import cfg
 
 __plugin_meta__ = PluginMetadata(
@@ -42,7 +41,7 @@ def ExeCodeEnabled():
             return True
 
         gid = None
-        target = extract_target(event,bot)
+        target = extract_target(event, bot)
         if isinstance(target, TargetQQGroup):
             gid = target.group_id
         elif isinstance(target, TargetQQGroupOpenId):
@@ -52,14 +51,14 @@ def ExeCodeEnabled():
         else:
             return False
 
-        return gid is not None and (str(gid) in cfg.group)
+        return str(gid) in cfg.group
 
     return Rule(check)
 
 
 EXECODE_ENABLED = ExeCodeEnabled()
 
-code_exec = on_command("code", rule=EXECODE_ENABLED, aliases={"exec"}, priority=1)
+code_exec = on_startswith(("code", "exec"), rule=EXECODE_ENABLED)
 code_getcode = on_startswith("getcqcode", rule=EXECODE_ENABLED)
 code_getmid = on_startswith("getmid", rule=EXECODE_ENABLED)
 code_getimg = on_startswith("getimg", rule=EXECODE_ENABLED)
@@ -70,10 +69,9 @@ async def _(
     matcher: Matcher,
     bot: Bot,
     event: Event,
-    args: Message = CommandArg(),
 ):
-    code = args.extract_plain_text().strip()
-    ctx = get_context(event)
+    code = event.get_message().extract_plain_text()[4:].strip()
+    ctx = Context.get_context(event)
 
     try:
         await ctx.execute(bot, event, code)
@@ -87,7 +85,7 @@ async def _(
 
 @code_getcode.handle()
 async def _(event: Event, msg: UniMsg):
-    ctx = get_context(event)
+    ctx = Context.get_context(event)
     ctx.set_gev(event)
 
     message = await msg.export()
@@ -102,7 +100,7 @@ async def _(event: Event, msg: UniMsg):
 
 @code_getmid.handle()
 async def _(event: Event, msg: UniMsg):
-    ctx = get_context(event)
+    ctx = Context.get_context(event)
     ctx.set_gev(event)
     if msg.has(Reply):
         reply = msg[Reply][0]
@@ -136,7 +134,7 @@ async def _(matcher: Matcher, bot: Bot, event: Event, msg: UniMsg, state: T_Stat
     except Exception as err:
         await matcher.finish(f"保存图片时出错: {err}")
 
-    ctx = get_context(event)
+    ctx = Context.get_context(event)
     ctx.set_value(varname, Image_open(BytesIO(img)))
     ctx.set_gev(event)
     ctx.set_gurl(reply)

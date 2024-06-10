@@ -28,26 +28,26 @@ def is_super_user(bot: Bot, event: Event) -> bool:
 
 
 def _export_manager():
-    def set_usr(u: Any) -> None:
+    def set_usr(x: Any) -> None:
         from ..config import cfg
 
-        if (u := str(u)) in cfg.user:
+        if (u := str(x)) in cfg.user:
             cfg.user.remove(u)
         else:
             cfg.user.add(u)
 
-    def set_grp(g: Any) -> None:
+    def set_grp(x: Any) -> None:
         from ..config import cfg
 
-        if (g := str(g)) in cfg.group:
+        if (g := str(x)) in cfg.group:
             cfg.user.remove(g)
         else:
             cfg.user.add(g)
 
     def export_manager(ctx: T_Context) -> None:
-        from ..code_context import get_context
+        from ..code_context import Context
 
-        ctx["get_ctx"] = get_context
+        ctx["get_ctx"] = Context.get_context
         ctx["set_usr"] = set_usr
         ctx["set_grp"] = set_grp
 
@@ -58,7 +58,7 @@ export_manager = _export_manager()
 
 
 def export_adapter_message(ctx: T_Context, event: Event):
-    MessageClass: Type[Message] = event.get_message().__class__
-    MessageSegmentClass: Type[MessageSegment] = MessageClass.get_segment_class()
+    MessageClass: Type[Message[MessageSegment]] = event.get_message().__class__
+    MessageSegmentClass = MessageClass.get_segment_class()
     ctx["Message"] = MessageClass
     ctx["MessageSegment"] = MessageSegmentClass

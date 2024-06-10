@@ -1,11 +1,11 @@
 import contextlib
 from asyncio import Future
 from copy import deepcopy
-from typing import Any, Awaitable, Callable, Dict, List, ClassVar
+from typing import Any, Awaitable, Callable, ClassVar, Dict, List, Self
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
-from nonebot_plugin_alconna.uniseg import UniMessage, Image
+from nonebot_plugin_alconna.uniseg import Image, UniMessage
 
 from .const import T_Context
 from .interface import API
@@ -26,13 +26,15 @@ async def %s():
     finally:
         globals().update({
             k: v for k, v in dict(locals()).items()
-            if not k.startswith("__")
+            if not k.startswith("__") and not k.endswith("__")
         })
 """
 EXECUTOR_FUNCTION_INDENT = " " * 8
 
 
 class Context:
+    _contexts: ClassVar[Dict[str, Self]] = {}
+
     uin: str
     ctx: T_Context
     locked: bool
@@ -43,6 +45,17 @@ class Context:
         self.ctx = deepcopy(default_context)
         self.locked = False
         self.waitlist = []
+
+    @classmethod
+    def get_context(cls, uin: str | int | Event) -> Self:
+        if isinstance(uin, Event):
+            uin = uin.get_user_id()
+        uin = str(uin)
+
+        if uin not in cls._contexts:
+            cls._contexts[uin] = cls(uin)
+
+        return cls._contexts[uin]
 
     @contextlib.asynccontextmanager
     async def _lock(self):
@@ -78,10 +91,10 @@ class Context:
             self.ctx.update(load_const(self.uin))
 
             # 执行代码
-            api = API(bot, event, self.ctx)
+            API(bot, event, self.ctx).export_to(self.ctx)
             await self.solve_code(code)()
             if buf := Buffer(self.uin).getvalue().rstrip("\n"):
-                await api.feedback(buf)
+                await UniMessage(buf).send()
 
         # 处理异常
         if (exc := self.ctx.get("__exception__", (None, None)))[0]:
@@ -105,17 +118,3 @@ class Context:
 
     def __setitem__(self, key: str, value: Any) -> None:
         self.ctx[key] = value
-
-
-contexts: Dict[str, Context] = {}
-
-
-def get_context(uin: str | int | Event) -> Context:
-    if isinstance(uin, Event):
-        uin = uin.get_user_id()
-    uin = str(uin)
-
-    if uin not in contexts:
-        contexts[uin] = Context(uin)
-
-    return contexts[uin]

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Optional, ClassVar
+from typing import Any, ClassVar, Dict, Iterable, Optional, Self
 
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot_plugin_alconna.uniseg import Receipt
@@ -40,10 +40,10 @@ class Result:
 
 
 class Buffer:
-    _user_buf: ClassVar[Dict[str, "Buffer"]] = {}
+    _user_buf: ClassVar[Dict[str, Self]] = {}
     _buffer: str
 
-    def __new__(cls, uin: str) -> "Buffer":
+    def __new__(cls, uin: str) -> Self:
         if uin not in cls._user_buf:
             buf = super(Buffer, cls).__new__(cls)
             buf._buffer = ""
