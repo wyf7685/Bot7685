@@ -90,7 +90,7 @@ async def _(event: Event, msg: UniMsg):
 
     message = await msg.export()
     if msg.has(Reply):
-        reply = type(message)(msg[Reply][0].msg)
+        reply = type(message)(msg[Reply, 0].msg)
         ctx.set_gem(reply)
         message = reply or ""
         ctx.set_gurl(await UniMessage.generate(message=reply))

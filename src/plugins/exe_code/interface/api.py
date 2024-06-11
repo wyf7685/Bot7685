@@ -68,7 +68,7 @@ class API(Interface):
             qid="需要发送私聊的QQ号",
             msg="发送的内容",
         ),
-        result=DESCRIPTION_RESULT_TYPE,
+        result="Receipt",
     )
     async def send_prv(self, qid: int | str, msg: T_Message) -> Receipt:
         return await send_message(
@@ -85,7 +85,7 @@ class API(Interface):
             gid="需要发送消息的群号",
             msg="发送的内容",
         ),
-        result=DESCRIPTION_RESULT_TYPE,
+        result="Receipt",
     )
     async def send_grp(self, gid: int, msg: T_Message) -> Receipt:
         return await send_message(
@@ -101,7 +101,7 @@ class API(Interface):
             qid="需要发送消息的QQ号",
             msg="发送的消息列表",
         ),
-        result=DESCRIPTION_RESULT_TYPE,
+        result="无",
     )
     async def send_prv_fwd(self, qid: int | str, msgs: List[T_Message]) -> None:
         await send_forward_message(
@@ -117,7 +117,7 @@ class API(Interface):
             gid="需要发送消息的群号",
             msg="发送的消息列表",
         ),
-        result=DESCRIPTION_RESULT_TYPE,
+        result="无",
     )
     async def send_grp_fwd(self, gid: int, msgs: List[T_Message]) -> None:
         await send_forward_message(
@@ -151,7 +151,7 @@ class API(Interface):
         parameters=dict(
             msg="需要发送的消息",
         ),
-        result=DESCRIPTION_RESULT_TYPE,
+        result="Receipt",
     )
     async def feedback(self, msg: T_Message) -> Receipt:
         if not check_message_t(msg):
