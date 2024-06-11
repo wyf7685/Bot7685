@@ -1,17 +1,31 @@
-from random import Random
+import json
 from pathlib import Path
+from random import Random
+from base64 import b64encode
+from nonebot import on_startswith
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent
 
-from nonebot import on_startswith, require
-
-require("nonebot_plugin_alconna")
-from nonebot_plugin_alconna.uniseg import UniMessage
 
 random = Random()
 # 图源: Bilibili@鱼烤箱
-image_fps = list((Path(__file__).parent.resolve() / "images").iterdir())
+root = Path(__file__).parent.resolve()
+image_fps = list((root / "images").iterdir())
+image_text = json.loads((root / "text.json").read_text(encoding="utf-8"))
 
 
 @on_startswith(("抽黍泡泡", "黍泡泡")).handle()
-async def _():
+async def _(bot: Bot, event: GroupMessageEvent):
     fp = random.choice(image_fps)
-    await UniMessage.image(raw=fp.read_bytes(), name=fp.name).send()
+    await bot.call_api(
+        "send_group_msg",
+        group_id=event.group_id,
+        message=[
+            {
+                "type": "image",
+                "data": {
+                    "file": "base64://" + b64encode(fp.read_bytes()).decode(),
+                    "summary": image_text[fp.name.split(".")[0]],
+                },
+            }
+        ],
+    )
