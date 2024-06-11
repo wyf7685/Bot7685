@@ -12,10 +12,8 @@ dependencies = [
 
 [tool.nonebot]
 adapters = [
-    { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" },
-    {name = "Satori", module_name = "nonebot.adapters.satori"},
-    {name = "QQ", module_name = "nonebot.adapters.qq"}
+    { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" }
 ]
 plugins = []
 plugin_dirs = ["src/plugins"]
-builtin_plugins = ["echo"]
+builtin_plugins = [""]
