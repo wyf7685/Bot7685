@@ -1,4 +1,5 @@
 from io import BytesIO
+from typing import Annotated
 
 from nonebot import on_startswith, require
 from nonebot.adapters import Bot, Event, Message
@@ -11,11 +12,14 @@ from PIL.Image import open as Image_open
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_saa")
+require("nonebot_plugin_userinfo")
 from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_saa import extract_target
+from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from .code_context import Context
 from .config import cfg
+from .utils import ExtractCode
 
 __plugin_meta__ = PluginMetadata(
     name="exe_code",
@@ -66,21 +70,17 @@ code_getimg = on_startswith("getimg", rule=EXECODE_ENABLED)
 
 @code_exec.handle()
 async def _(
-    matcher: Matcher,
     bot: Bot,
     event: Event,
+    code: Annotated[str, ExtractCode()],
+    uinfo: Annotated[UserInfo, EventUserInfo()],
 ):
-    code = event.get_message().extract_plain_text()[4:].strip()
-    ctx = Context.get_context(event)
-
     try:
-        await ctx.execute(bot, event, code)
+        await Context.get_context(event).execute(bot, event, code)
     except Exception as e:
-        uinfo = await bot.call_api("get_stranger_info", user_id=event.get_user_id())
-        logger.opt(exception=True).warning(
-            f"用户{uinfo['nickname']}({event.get_user_id()}) 执行代码时发生错误: {e}"
-        )
-        await matcher.finish(f"执行失败: {e!r}")
+        text = f"用户{uinfo.user_name}({uinfo.user_id}) 执行代码时发生错误: {e}"
+        logger.opt(exception=True).warning(text)
+        await UniMessage.text(f"执行失败: {e!r}").send()
 
 
 @code_getcode.handle()
@@ -90,7 +90,7 @@ async def _(event: Event, msg: UniMsg):
 
     message = await msg.export()
     if msg.has(Reply):
-        reply = type(message)(msg[Reply, 0].msg)
+        reply = type(message)(msg[Reply, 0].msg or "")
         ctx.set_gem(reply)
         message = reply or ""
         ctx.set_gurl(await UniMessage.generate(message=reply))
@@ -117,7 +117,7 @@ async def _(matcher: Matcher, bot: Bot, event: Event, msg: UniMsg, state: T_Stat
 
     reply_msg = msg[Reply][0].msg
     if not isinstance(reply_msg, Message):
-        await matcher.finish("无法获取引用图片")
+        await matcher.finish("无法获取引用消息")
 
     reply = await UniMessage.generate(message=reply_msg)
     if not reply.has(Image):

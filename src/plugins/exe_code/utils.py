@@ -1,9 +1,10 @@
-from typing import Any, ClassVar, Dict, Iterable, Optional, Self
+from typing import Any, ClassVar, Dict, Iterable, Optional, Self, cast
 
 from nonebot.adapters import Bot, Event, Message, MessageSegment
+from nonebot.params import Depends
 from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_alconna.uniseg import Segment as UniSegment
-from nonebot_plugin_alconna.uniseg import Target, UniMessage
+from nonebot_plugin_alconna.uniseg import Target, UniMessage, UniMsg
 from nonebot_plugin_alconna.uniseg.segment import At as UniAt
 from nonebot_plugin_alconna.uniseg.segment import Image as UniImage
 from nonebot_plugin_alconna.uniseg.segment import Text as UniText
@@ -131,3 +132,18 @@ async def send_forward_message(
         await amf.send()
     else:
         await amf.send_to(target, bot)
+
+
+def ExtractCode():
+    def extract_code(msg: UniMsg):
+        code = ""
+        for seg in msg:
+            if isinstance(seg, UniText):
+                code += seg.text
+            elif isinstance(seg, UniAt):
+                code += f'"{seg.target}"'
+            elif isinstance(seg, UniImage) and seg.url:
+                code += f'"{seg.url}"'
+        return code.removeprefix("code").strip()
+
+    return Depends(extract_code)
