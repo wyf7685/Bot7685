@@ -1,21 +1,17 @@
-from typing import ClassVar, Dict, List, Tuple
+from typing import ClassVar, Tuple
 
-from ..const import (
-    INTERFACE_INST_NAME,
-    INTERFACE_METHOD_DESCRIPTION,
-    T_Context,
-)
+from ..const import INTERFACE_INST_NAME, INTERFACE_METHOD_DESCRIPTION, T_Context
 from ..help_doc import FuncDescription
 from .utils import is_export_method
 
 
 class InterfaceMeta(type):
-    __interface_map__: ClassVar[Dict[str, "InterfaceMeta"]] = {}
+    __interface_map__: ClassVar[dict[str, "InterfaceMeta"]] = {}
 
-    __export_method__: List[str]
-    __method_description__: Dict[str, str]
+    __export_method__: list[str]
+    __method_description__: dict[str, str]
 
-    def __new__(cls, name: str, bases: tuple, attrs: Dict[str, object]):
+    def __new__(cls, name: str, bases: tuple, attrs: dict[str, object]):
         if name in cls.__interface_map__:
             raise TypeError(f"Interface {name} already exists")
 
@@ -44,15 +40,15 @@ class InterfaceMeta(type):
         return interface_cls
 
     @classmethod
-    def get_all_description(cls) -> Tuple[List[str], List[str]]:
-        content: List[str] = []
-        result: List[str] = []
+    def get_all_description(cls) -> Tuple[list[str], list[str]]:
+        content: list[str] = []
+        result: list[str] = []
 
         # (is_export, inst_name, func_name, desc)
-        methods: List[Tuple[bool, str, str, FuncDescription]] = []
+        methods: list[Tuple[bool, str, str, FuncDescription]] = []
         for _, cls_obj in cls.__interface_map__.items():
             inst_name: str = getattr(cls_obj, INTERFACE_INST_NAME)
-            description: Dict[str, FuncDescription] = getattr(
+            description: dict[str, FuncDescription] = getattr(
                 cls_obj, INTERFACE_METHOD_DESCRIPTION
             )
             for func_name, desc in description.items():
@@ -70,11 +66,11 @@ class InterfaceMeta(type):
 
 class Interface(metaclass=InterfaceMeta):
     __inst_name__: ClassVar[str] = "interface"
-    __export_method__: ClassVar[List[str]]
-    __method_description__: ClassVar[Dict[str, str]]
+    __export_method__: ClassVar[list[str]]
+    __method_description__: ClassVar[dict[str, str]]
 
     @classmethod
-    def get_export_method(cls) -> List[str]:
+    def get_export_method(cls) -> list[str]:
         return cls.__export_method__
 
     def export_to(self, context: T_Context):
@@ -83,7 +79,7 @@ class Interface(metaclass=InterfaceMeta):
         context[self.__inst_name__] = self
 
     @classmethod
-    def get_method_description(cls) -> List[Tuple[str, str]]:
+    def get_method_description(cls) -> list[Tuple[str, str]]:
         name = cls.__inst_name__
         assert (cls is not Interface) and (
             name != Interface.__inst_name__

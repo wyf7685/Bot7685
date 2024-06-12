@@ -1,17 +1,48 @@
+import functools
+import inspect
 from typing import Any, Callable, ParamSpec, Type, TypeVar
 
 from nonebot.adapters import Bot, Event, Message, MessageSegment
+from nonebot.log import logger
 
-from ..const import INTERFACE_EXPORT_METHOD, T_Context
+from ..const import INTERFACE_EXPORT_METHOD, INTERFACE_METHOD_DESCRIPTION, T_Context
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+WRAPPER_ASSIGNMENTS = (
+    *functools.WRAPPER_ASSIGNMENTS,
+    INTERFACE_EXPORT_METHOD,
+    INTERFACE_METHOD_DESCRIPTION,
+)
 
 
 def export(call: Callable[P, R]) -> Callable[P, R]:
     """将一个方法标记为导出函数"""
     setattr(call, INTERFACE_EXPORT_METHOD, True)
     return call
+
+
+def debug_log(call: Callable[P, R]) -> Callable[P, R]:
+    def log(*args: P.args, **kwargs: P.kwargs):
+        logger.debug(f"{call.__name__}: args={args}, kwargs={kwargs}")
+
+    if inspect.iscoroutinefunction(call):
+
+        @functools.wraps(call, assigned=WRAPPER_ASSIGNMENTS)
+        async def wrapper_async(*args: P.args, **kwargs: P.kwargs) -> R:
+            log(*args, **kwargs)
+            return await call(*args, **kwargs)
+
+        return wrapper_async  # type: ignore
+    else:
+
+        @functools.wraps(call, assigned=WRAPPER_ASSIGNMENTS)
+        def wrapper_sync(*args: P.args, **kwargs: P.kwargs):
+            log(*args, **kwargs)
+            return call(*args, **kwargs)
+
+        return wrapper_sync
 
 
 def is_export_method(call: Callable) -> bool:

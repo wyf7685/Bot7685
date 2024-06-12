@@ -16,7 +16,13 @@ from ..utils import Buffer, Result, check_message_t, send_forward_message, send_
 from .group import Group
 from .interface import Interface
 from .user import User
-from .utils import export, export_manager, is_super_user, export_adapter_message
+from .utils import (
+    debug_log,
+    export,
+    export_adapter_message,
+    export_manager,
+    is_super_user,
+)
 
 logger = logger.opt(colors=True)
 
@@ -42,6 +48,7 @@ class API(Interface):
         ),
         result=DESCRIPTION_RESULT_TYPE,
     )
+    @debug_log
     async def call_api(self, api: str, **data: object) -> Result:
         res: Dict[str, Any] | List[Any]
         try:
@@ -70,6 +77,7 @@ class API(Interface):
         ),
         result="Receipt",
     )
+    @debug_log
     async def send_prv(self, qid: int | str, msg: T_Message) -> Receipt:
         return await send_message(
             bot=self.bot,
@@ -87,6 +95,7 @@ class API(Interface):
         ),
         result="Receipt",
     )
+    @debug_log
     async def send_grp(self, gid: int, msg: T_Message) -> Receipt:
         return await send_message(
             bot=self.bot,
@@ -103,6 +112,7 @@ class API(Interface):
         ),
         result="无",
     )
+    @debug_log
     async def send_prv_fwd(self, qid: int | str, msgs: List[T_Message]) -> None:
         await send_forward_message(
             bot=self.bot,
@@ -119,6 +129,7 @@ class API(Interface):
         ),
         result="无",
     )
+    @debug_log
     async def send_grp_fwd(self, gid: int, msgs: List[T_Message]) -> None:
         await send_forward_message(
             bot=self.bot,
@@ -153,6 +164,7 @@ class API(Interface):
         ),
         result="Receipt",
     )
+    @debug_log
     async def feedback(self, msg: T_Message) -> Receipt:
         if not check_message_t(msg):
             msg = str(msg)
@@ -171,6 +183,7 @@ class API(Interface):
         ),
         result=DESCRIPTION_RESULT_TYPE,
     )
+    @debug_log
     async def recall(self, msg_id: int) -> Result:
         if "OneBot" in self.bot.type:
             return await self.call_api("delete_msg", message_id=msg_id)
@@ -181,6 +194,7 @@ class API(Interface):
         parameters=None,
         result="当前会话为群聊返回True，否则返回False",
     )
+    @debug_log
     def is_group(self) -> bool:
         return isinstance(extract_target(self.event, self.bot), TargetQQGroup)
 
@@ -192,6 +206,7 @@ class API(Interface):
         ),
         result="无",
     )
+    @debug_log
     def set_const(self, name: str, value: Optional[T_ConstVar] = None) -> None:
         if value is None:
             set_const(self.event.get_user_id(), name)
@@ -205,6 +220,7 @@ class API(Interface):
         set_const(self.event.get_user_id(), name, value)
 
     @export
+    @debug_log
     def print(self, *args, sep: str = " ", end: str = "\n", **_):
         Buffer(self.event.get_user_id()).write(sep.join(str(i) for i in args) + end)
 
@@ -214,6 +230,7 @@ class API(Interface):
         parameters=None,
         result="无",
     )
+    @debug_log
     async def help(self) -> None:
         content, description = type(self).get_all_description()
         msgs = [
@@ -231,6 +248,7 @@ class API(Interface):
         ),
         result="无",
     )
+    @debug_log
     async def sleep(self, seconds: float) -> None:
         await asyncio.sleep(seconds)
 
@@ -240,6 +258,7 @@ class API(Interface):
         parameters=None,
         result="无",
     )
+    @debug_log
     def reset(self) -> None:
         self.context.clear()
         self.context.update(default_context)
