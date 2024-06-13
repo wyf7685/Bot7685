@@ -43,18 +43,19 @@ def MsgId():
 async def _(
     bot: Bot,
     target: Annotated[str, LotsTarget()],
-    msgid: Annotated[int, MsgId()],
+    msgid: Annotated[int | None, MsgId()],
 ):
     msg, emoji = get_lots_msg(target)
     await UniMessage.text(msg).send(reply_to=True)
 
     logger.info(f"bot={bot}, message_id={msgid}, emoji_id={emoji}")
 
-    try:
-        await bot.call_api(
-            "set_msg_emoji_like",
-            message_id=msgid,
-            emoji_id=emoji,
-        )
-    except Exception as err:
-        logger.opt(exception=err).error(f"调用api `set_msg_emoji_like` 失败: {err}")
+    if msgid is not None:
+        try:
+            await bot.call_api(
+                "set_msg_emoji_like",
+                message_id=msgid,
+                emoji_id=emoji,
+            )
+        except Exception as err:
+            logger.opt(exception=err).error(f"调用api `set_msg_emoji_like` 失败: {err}")
