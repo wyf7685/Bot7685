@@ -1,10 +1,10 @@
 import json
+from base64 import b64encode
 from pathlib import Path
 from random import Random
-from base64 import b64encode
+
 from nonebot import on_startswith
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent
-
 
 random = Random()
 # 图源: Bilibili@鱼烤箱
