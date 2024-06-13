@@ -96,7 +96,7 @@ class API(Interface):
         result="Receipt",
     )
     @debug_log
-    async def send_grp(self, gid: int, msg: T_Message) -> Receipt:
+    async def send_grp(self, gid: int | str, msg: T_Message) -> Receipt:
         return await send_message(
             bot=self.bot,
             event=self.event,
@@ -130,7 +130,7 @@ class API(Interface):
         result="无",
     )
     @debug_log
-    async def send_grp_fwd(self, gid: int, msgs: List[T_Message]) -> None:
+    async def send_grp_fwd(self, gid: int | str, msgs: List[T_Message]) -> None:
         await send_forward_message(
             bot=self.bot,
             event=self.event,
@@ -144,7 +144,7 @@ class API(Interface):
         parameters=dict(qid="用户QQ号"),
         result="User对象",
     )
-    def user(self, qid: int) -> "User":
+    def user(self, qid: str) -> "User":
         return User(self, qid)
 
     @export
@@ -153,7 +153,7 @@ class API(Interface):
         parameters=dict(gid="群号"),
         result="Group对象",
     )
-    def group(self, gid: int) -> "Group":
+    def group(self, gid: str) -> "Group":
         return Group(self, gid)
 
     @export
@@ -268,9 +268,9 @@ class API(Interface):
     def export_to(self, context: T_Context) -> None:
         super(API, self).export_to(context)
 
-        context["qid"] = int(self.event.get_user_id())
+        context["qid"] = self.event.get_user_id()
         context["usr"] = self.user(context["qid"])
-        context["gid"] = getattr(self.event, "group_id", None)
+        context["gid"] = str(getattr(self.event, "group_id", "")) or None
         context["grp"] = self.group(context["gid"]) if context["gid"] else None
         export_adapter_message(context, self.event)
 

@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 class User(Interface):
     __inst_name__: ClassVar[str] = "usr"
     api: "API"
-    uid: int
+    uid: str
 
-    def __init__(self, api: "API", uid: int):
+    def __init__(self, api: "API", uid: str):
         super(User, self).__init__()
         self.api = api
         self.uid = uid

@@ -14,9 +14,9 @@ if TYPE_CHECKING:
 class Group(Interface):
     __inst_name__: ClassVar[str] = "grp"
     api: "API"
-    uid: int
+    uid: str
 
-    def __init__(self, api: "API", uid: int):
+    def __init__(self, api: "API", uid: str):
         super(Group, self).__init__()
         self.api = api
         self.uid = uid

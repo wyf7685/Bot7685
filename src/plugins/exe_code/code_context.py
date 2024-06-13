@@ -1,7 +1,7 @@
 import contextlib
 from asyncio import Future
 from copy import deepcopy
-from typing import Any, Awaitable, Callable, ClassVar, Dict, List, Self
+from typing import Any, Awaitable, Callable, ClassVar, Self, cast
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
@@ -13,11 +13,10 @@ from .user_const_var import default_context, load_const
 from .utils import Buffer
 
 logger = logger.opt(colors=True)
-
-EXECUTOR_FUNCTION = """
-last_exc = __exception__
-__exception__ = (None, None)
-async def %s():
+EXECUTOR_INDENT = " " * 8
+EXECUTOR_FUNCTION = """\
+last_exc, __exception__ = __exception__,  (None, None)
+async def __executor__():
     try:
         %s
     except BaseException as e:
@@ -29,16 +28,15 @@ async def %s():
             if not k.startswith("__") and not k.endswith("__")
         })
 """
-EXECUTOR_FUNCTION_INDENT = " " * 8
 
 
 class Context:
-    _contexts: ClassVar[Dict[str, Self]] = {}
+    _contexts: ClassVar[dict[str, Self]] = {}
 
     uin: str
     ctx: T_Context
     locked: bool
-    waitlist: List[Future[None]]
+    waitlist: list[Future[None]]
 
     def __init__(self, uin: str) -> None:
         self.uin = uin
@@ -74,16 +72,15 @@ class Context:
 
     def solve_code(self, code: str) -> Callable[[], Awaitable[None]]:
         # 预处理代码
-        func_name = "__executor__"
         lines = []
         if self.ctx:
             lines.append("global " + ",".join(list(self.ctx)) + "\n    ")
         lines.extend(code.split("\n"))
-        func_code = ("\n" + EXECUTOR_FUNCTION_INDENT).join(lines)
+        func_code = ("\n" + EXECUTOR_INDENT).join(lines)
 
         # 包装为异步函数
-        exec(EXECUTOR_FUNCTION % (func_name, func_code), self.ctx)
-        return self.ctx.pop(func_name)
+        exec(EXECUTOR_FUNCTION % (func_code,), self.ctx)
+        return self.ctx.pop("__executor__")
 
     async def execute(self, bot: Bot, event: Event, code: str) -> None:
         async with self._lock():
@@ -98,7 +95,7 @@ class Context:
 
         # 处理异常
         if (exc := self.ctx.get("__exception__", (None, None)))[0]:
-            raise exc[0]  # type: ignore
+            raise cast(Exception, exc[0])
 
     def set_value(self, varname: str, value: Any) -> None:
         self.ctx[varname] = value
@@ -109,9 +106,13 @@ class Context:
     def set_gem(self, msg: Message) -> None:
         self.set_value("gem", msg)
 
-    def set_gurl(self, msg: UniMessage) -> None:
-        if msg.has(Image):
-            self.set_value("gurl", msg[Image, 0].url)
+    def set_gurl(self, msg: UniMessage | Image) -> None:
+        url = ""
+        if isinstance(msg, UniMessage) and msg.has(Image):
+            url = msg[Image, 0].url
+        elif isinstance(msg, Image):
+            url = msg.url
+        self.set_value("gurl", url)
 
     def __getitem__(self, key: str) -> Any:
         return self.ctx[key]
