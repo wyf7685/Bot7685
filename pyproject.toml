@@ -12,7 +12,8 @@ dependencies = [
 
 [tool.nonebot]
 adapters = [
-    { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" }
+    { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" },
+    {name = "Console", module_name = "nonebot.adapters.console"}
 ]
 plugins = []
 plugin_dirs = ["src/plugins"]
