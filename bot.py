@@ -1,5 +1,5 @@
 import nonebot
-from nonebot.adapters.console import Adapter as ConsoleAdapter
+# from nonebot.adapters.console import Adapter as ConsoleAdapter
 from nonebot.adapters.onebot.v11 import Adapter as ONEBOT_V11Adapter
 from nonebot.log import logger
 
@@ -19,7 +19,7 @@ logger.add(
 
 nonebot.init()
 driver = nonebot.get_driver()
-driver.register_adapter(ConsoleAdapter)
+# driver.register_adapter(ConsoleAdapter)
 driver.register_adapter(ONEBOT_V11Adapter)
 nonebot.load_from_toml("pyproject.toml")
 
