@@ -6,8 +6,7 @@ from nonebot_plugin_alconna.uniseg import Segment as UniSegment
 from nonebot_plugin_alconna.uniseg import UniMessage
 
 # description
-DESCRIPTION_MODEL = "{decl}\n* 描述: {desc}\n* 参数:\n{params}\n* 返回值:\n  {res}\n"
-DESCRIPTION_PROPERTY_MODEL = ("{decl}\n* 描述: {desc}",)
+DESCRIPTION_FORMAT = "{decl}\n* 描述: {desc}\n* 参数:\n{params}\n* 返回值:\n  {res}\n"
 DESCRIPTION_RESULT_TYPE = "Result类对象，可通过属性名获取接口响应"
 
 # interface

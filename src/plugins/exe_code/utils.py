@@ -1,4 +1,4 @@
-from typing import Any, ClassVar, Dict, Iterable, Optional, Self
+from typing import Annotated, Any, ClassVar, Dict, Iterable, Optional, Self
 
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot.matcher import Matcher
@@ -6,7 +6,7 @@ from nonebot.params import Depends
 from nonebot.rule import Rule
 from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_alconna.uniseg import Segment as UniSegment
-from nonebot_plugin_alconna.uniseg import Target, UniMessage, UniMsg
+from nonebot_plugin_alconna.uniseg import Target, UniMessage, UniMsg, reply_fetch
 from nonebot_plugin_alconna.uniseg.segment import At as UniAt
 from nonebot_plugin_alconna.uniseg.segment import Image as UniImage
 from nonebot_plugin_alconna.uniseg.segment import Reply as UniReply
@@ -179,7 +179,7 @@ EXECODE_ENABLED = ExeCodeEnabled()
 
 
 def ExtractCode():
-    def extract_code(msg: UniMsg):
+    def dependency(msg: UniMsg):
         code = ""
         for seg in msg:
             if isinstance(seg, UniText):
@@ -190,17 +190,32 @@ def ExtractCode():
                 code += f'"{seg.url}"'
         return code.removeprefix("code").strip()
 
-    return Depends(extract_code)
+    return Depends(dependency)
 
 
-def ExtractImage():
-    async def extract_image(msg: UniMsg) -> UniImage:
+def EventReplyMessage(allow_empty: bool = True):
+    async def dependency(event: Event, bot: Bot):
+        if not (reply := await reply_fetch(event, bot)) or not (msg := reply.msg):
+            if allow_empty:
+                return None
+            Matcher.skip()
+
+        if not isinstance(msg, Message):
+            msg = event.get_message().__class__(msg)
+
+        return await UniMessage.generate(message=msg)
+
+    return Depends(dependency)
+
+
+def EventImage():
+    async def dependency(msg: UniMsg) -> UniImage:
         if msg.has(UniImage):
             return msg[UniImage, 0]
         elif msg.has(UniReply):
             reply_msg = msg[UniReply, 0].msg
             if isinstance(reply_msg, Message):
-                return await extract_image(await UniMessage.generate(message=reply_msg))
+                return await dependency(await UniMessage.generate(message=reply_msg))
         Matcher.skip()
 
-    return Depends(extract_image)
+    return Depends(dependency)

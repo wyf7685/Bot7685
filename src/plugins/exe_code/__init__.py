@@ -15,7 +15,7 @@ from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, imag
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from .code_context import Context
-from .utils import ExtractCode, ExtractImage, EXECODE_ENABLED
+from .utils import EXECODE_ENABLED, EventImage, EventReplyMessage, ExtractCode
 
 __plugin_meta__ = PluginMetadata(
     name="exe_code",
@@ -51,16 +51,20 @@ async def _(
 
 
 @code_getcode.handle()
-async def _(event: Event, msg: UniMsg):
+async def _(
+    event: Event,
+    msg: UniMsg,
+    reply: Annotated[UniMessage, EventReplyMessage()],
+):
     ctx = Context.get_context(event)
     ctx.set_gev(event)
 
-    message = await msg.export()
     if msg.has(Reply):
-        reply = type(message)(msg[Reply, 0].msg or "")
-        ctx.set_gem(reply)
-        message = reply or ""
-        ctx.set_gurl(await UniMessage.generate(message=reply))
+        message = await reply.export()
+        ctx.set_gem(message)
+        ctx.set_gurl(reply)
+    else:
+        message = await msg.export()
 
     await UniMessage.text(str(message)).send()
 
@@ -70,7 +74,7 @@ async def _(event: Event, msg: UniMsg):
     ctx = Context.get_context(event)
     ctx.set_gev(event)
     if msg.has(Reply):
-        reply = msg[Reply][0]
+        reply = msg[Reply, 0]
         message = type(event.get_message())(reply.msg or "")
         ctx.set_gem(message)
         ctx.set_gurl(await UniMessage.generate(message=message))
@@ -82,7 +86,7 @@ async def _(
     bot: Bot,
     event: Event,
     matcher: Matcher,
-    image: Annotated[Image, ExtractImage()],
+    image: Annotated[Image, EventImage()],
 ):
     varname = event.get_message().extract_plain_text().removeprefix("getimg").strip()
     if (varname := varname or "img") and not varname.isidentifier():

@@ -2,7 +2,7 @@ import inspect
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, ParamSpec, Type, TypeVar
 
-from .const import DESCRIPTION_MODEL, INTERFACE_METHOD_DESCRIPTION, T_Message
+from .const import DESCRIPTION_FORMAT, INTERFACE_METHOD_DESCRIPTION, T_Message
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -17,7 +17,7 @@ class FuncDescription:
     result: str
 
     def format(self):
-        return DESCRIPTION_MODEL.format(
+        return DESCRIPTION_FORMAT.format(
             decl=self.declaration,
             desc=self.description,
             params=(
