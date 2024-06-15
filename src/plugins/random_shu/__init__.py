@@ -20,12 +20,13 @@ async def _(bot: Bot, event: GroupMessageEvent):
         "send_group_msg",
         group_id=event.group_id,
         message=[
+            {"type": "reply", "data": {"id": event.message_id}},
             {
                 "type": "image",
                 "data": {
                     "file": "base64://" + b64encode(fp.read_bytes()).decode(),
                     "summary": image_text[fp.name.split(".")[0]],
                 },
-            }
+            },
         ],
     )
