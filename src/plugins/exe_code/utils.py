@@ -1,24 +1,18 @@
-from typing import Annotated, Any, ClassVar, Dict, Iterable, Optional, Self
+from typing import Any, ClassVar, Dict, Iterable, Optional, Self
 
 from nonebot.adapters import Bot, Event, Message, MessageSegment
-from nonebot.matcher import Matcher
-from nonebot.params import Depends
-from nonebot.rule import Rule
 from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_alconna.uniseg import Segment as UniSegment
-from nonebot_plugin_alconna.uniseg import Target, UniMessage, UniMsg, reply_fetch
+from nonebot_plugin_alconna.uniseg import Target, UniMessage
 from nonebot_plugin_alconna.uniseg.segment import At as UniAt
 from nonebot_plugin_alconna.uniseg.segment import Image as UniImage
-from nonebot_plugin_alconna.uniseg.segment import Reply as UniReply
 from nonebot_plugin_alconna.uniseg.segment import Text as UniText
 from nonebot_plugin_saa import AggregatedMessageFactory
 from nonebot_plugin_saa import Image as SaaImage
 from nonebot_plugin_saa import Mention as SaaMention
 from nonebot_plugin_saa import MessageFactory, MessageSegmentFactory, PlatformTarget
 from nonebot_plugin_saa import Text as SaaText
-from nonebot_plugin_saa import extract_target
 
-from .config import cfg
 from .const import T_API_Result, T_Message
 
 
@@ -137,85 +131,3 @@ async def send_forward_message(
         await amf.send()
     else:
         await amf.send_to(target, bot)
-
-
-def ExeCodeEnabled():
-    try:
-        from nonebot.adapters.console import Bot as ConsoleBot
-    except ImportError:
-        ConsoleBot = None
-
-    from nonebot_plugin_saa import (
-        TargetQQGroup,
-        TargetQQGroupOpenId,
-        TargetQQGuildChannel,
-    )
-
-    def check(bot: Bot, event: Event):
-        if ConsoleBot and isinstance(bot, ConsoleBot):
-            return True
-
-        user_id = event.get_user_id()
-        if user_id in cfg.user:
-            return True
-
-        gid = None
-        target = extract_target(event, bot)
-        if isinstance(target, TargetQQGroup):
-            gid = target.group_id
-        elif isinstance(target, TargetQQGroupOpenId):
-            gid = target.group_openid
-        elif isinstance(target, TargetQQGuildChannel):
-            gid = target.channel_id
-        else:
-            return False
-
-        return str(gid) in cfg.group
-
-    return Rule(check)
-
-
-EXECODE_ENABLED = ExeCodeEnabled()
-
-
-def ExtractCode():
-    def dependency(msg: UniMsg):
-        code = ""
-        for seg in msg:
-            if isinstance(seg, UniText):
-                code += seg.text
-            elif isinstance(seg, UniAt):
-                code += f'"{seg.target}"'
-            elif isinstance(seg, UniImage) and seg.url:
-                code += f'"{seg.url}"'
-        return code.removeprefix("code").strip()
-
-    return Depends(dependency)
-
-
-def EventReplyMessage(allow_empty: bool = True):
-    async def dependency(event: Event, bot: Bot):
-        if not (reply := await reply_fetch(event, bot)) or not (msg := reply.msg):
-            if allow_empty:
-                return None
-            Matcher.skip()
-
-        if not isinstance(msg, Message):
-            msg = event.get_message().__class__(msg)
-
-        return await UniMessage.generate(message=msg)
-
-    return Depends(dependency)
-
-
-def EventImage():
-    async def dependency(msg: UniMsg) -> UniImage:
-        if msg.has(UniImage):
-            return msg[UniImage, 0]
-        elif msg.has(UniReply):
-            reply_msg = msg[UniReply, 0].msg
-            if isinstance(reply_msg, Message):
-                return await dependency(await UniMessage.generate(message=reply_msg))
-        Matcher.skip()
-
-    return Depends(dependency)

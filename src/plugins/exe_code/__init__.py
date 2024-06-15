@@ -15,7 +15,7 @@ from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, imag
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from .code_context import Context
-from .utils import EXECODE_ENABLED, EventImage, EventReplyMessage, ExtractCode
+from .depends import EXECODE_ENABLED, EventImage, EventReplyMessage, ExtractCode
 
 __plugin_meta__ = PluginMetadata(
     name="exe_code",
