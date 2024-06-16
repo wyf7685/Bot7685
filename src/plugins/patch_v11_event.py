@@ -50,8 +50,13 @@ def patch_group():
             if (name := (self.sender.card or self.sender.nickname))
             else str(self.user_id)
         )
+        group = escape_tag(
+            f"{info.group_name}({self.group_id})"
+            if (info := group_info_cache.get(self.group_id))
+            else str(self.group_id)
+        )
         return (
-            f"Message {self.message_id} from <le>{sender}</le>@[群:{self.group_id}] "
+            f"Message {self.message_id} from <le>{sender}</le>@[群:<le>{group}</le>] "
             f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
         )
 
