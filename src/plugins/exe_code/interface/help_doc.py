@@ -44,19 +44,15 @@ def _type_string(t: Type[type] | str) -> str:
     return inspect.formatannotation(t)
 
 
-def func_declaration(func: Callable) -> str:
-    sig = inspect.signature(func)
-    args = list(sig.parameters)
-    if "self" in args:
-        args.remove("self")
-    anno = func.__annotations__
+def func_declaration(func: Callable[..., Any]) -> str:
+    sig = inspect.Signature.from_callable(func)
+    params = [
+        f"{name}: {_type_string(param.annotation)}"
+        for name, param in sig.parameters.items()
+    ]
+    result = _type_string(sig.return_annotation)
 
-    for i in range(len(args)):
-        if args[i] in anno:
-            args[i] += f": {_type_string(anno[args[i]])}"
-
-    ret = _type_string(anno.get("return", "Unkown"))
-    return f"{func.__name__}({', '.join(args)}) -> {ret}"
+    return f"{func.__name__}({', '.join(params)}) -> {result}"
 
 
 def descript(
