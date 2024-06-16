@@ -1,7 +1,7 @@
 from typing import ClassVar, Tuple
 
-from ..const import INTERFACE_INST_NAME, INTERFACE_METHOD_DESCRIPTION, T_Context
-from ..help_doc import FuncDescription
+from ..constant import INTERFACE_INST_NAME, INTERFACE_METHOD_DESCRIPTION, T_Context
+from .help_doc import FuncDescription
 from .utils import is_export_method
 
 

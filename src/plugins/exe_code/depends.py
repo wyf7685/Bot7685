@@ -2,11 +2,8 @@ from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
 from nonebot.rule import Rule
-from nonebot_plugin_alconna.uniseg import UniMessage, UniMsg, reply_fetch, MsgTarget
-from nonebot_plugin_alconna.uniseg.segment import At as UniAt
-from nonebot_plugin_alconna.uniseg.segment import Image as UniImage
-from nonebot_plugin_alconna.uniseg.segment import Reply as UniReply
-from nonebot_plugin_alconna.uniseg.segment import Text as UniText
+from nonebot_plugin_alconna.uniseg import MsgTarget, UniMessage, UniMsg, reply_fetch
+from nonebot_plugin_alconna.uniseg.segment import At, Image, Reply, Text
 
 from .config import cfg
 
@@ -28,18 +25,15 @@ def ExeCodeEnabled():
     return Rule(check)
 
 
-EXECODE_ENABLED = ExeCodeEnabled()
-
-
 def ExtractCode():
     def extract_code(msg: UniMsg):
         code = ""
         for seg in msg:
-            if isinstance(seg, UniText):
+            if isinstance(seg, Text):
                 code += seg.text
-            elif isinstance(seg, UniAt):
+            elif isinstance(seg, At):
                 code += f'"{seg.target}"'
-            elif isinstance(seg, UniImage) and seg.url:
+            elif isinstance(seg, Image) and seg.url:
                 code += f'"{seg.url}"'
         return code.removeprefix("code").strip()
 
@@ -62,13 +56,16 @@ def EventReplyMessage(allow_empty: bool = True):
 
 
 def EventImage():
-    async def event_message(msg: UniMsg) -> UniImage:
-        if msg.has(UniImage):
-            return msg[UniImage, 0]
-        elif msg.has(UniReply):
-            reply_msg = msg[UniReply, 0].msg
+    async def event_message(msg: UniMsg) -> Image:
+        if msg.has(Image):
+            return msg[Image, 0]
+        elif msg.has(Reply):
+            reply_msg = msg[Reply, 0].msg
             if isinstance(reply_msg, Message):
                 return await event_message(await UniMessage.generate(message=reply_msg))
         Matcher.skip()
 
     return Depends(event_message)
+
+
+EXECODE_ENABLED = ExeCodeEnabled()

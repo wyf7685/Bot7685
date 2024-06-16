@@ -1,19 +1,19 @@
 import inspect
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, ParamSpec, Type, TypeVar
+from typing import Any, Callable, Optional, ParamSpec, Type, TypeVar
 
-from .const import DESCRIPTION_FORMAT, INTERFACE_METHOD_DESCRIPTION, T_Message
+from ..constant import DESCRIPTION_FORMAT, INTERFACE_METHOD_DESCRIPTION, T_Message
 
 P = ParamSpec("P")
 R = TypeVar("R")
-type_alia: Dict[Type[type], str] = {}
+type_alia: dict[Type[type], str] = {}
 
 
 @dataclass
 class FuncDescription:
     declaration: str
     description: str
-    parameters: Optional[Dict[str, str]]
+    parameters: Optional[dict[str, str]]
     result: Optional[str]
 
     def format(self):
@@ -61,7 +61,7 @@ def func_declaration(func: Callable) -> str:
 
 def descript(
     description: str,
-    parameters: Optional[Dict[str, str]],
+    parameters: Optional[dict[str, str]],
     result: Optional[str],
 ):
     def decorator(func: Callable[P, R]) -> Callable[P, R]:

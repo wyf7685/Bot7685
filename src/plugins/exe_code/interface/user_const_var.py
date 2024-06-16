@@ -1,10 +1,10 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from nonebot_plugin_alconna.uniseg import At, Image, Reply, Text, UniMessage
 
-from .const import DATA_PATH, T_ConstVar, T_Context
+from ..constant import DATA_PATH, T_ConstVar, T_Context
 
 default_context: T_Context = {}
 
@@ -38,5 +38,5 @@ def set_const(uin: str, name: str, value: Optional[T_ConstVar] = None):
     fp.write_text(json.dumps(data))
 
 
-def load_const(uin: str) -> Dict[str, T_ConstVar]:
+def load_const(uin: str) -> dict[str, T_ConstVar]:
     return json.loads(get_const_var_path(uin).read_text())

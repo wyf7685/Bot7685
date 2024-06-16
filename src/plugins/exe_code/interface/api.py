@@ -1,21 +1,21 @@
 import asyncio
 import functools
 import json
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Optional
 
 from nonebot.adapters import Bot, Event
 from nonebot.exception import ActionFailed
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
 
-from ..const import DESCRIPTION_RESULT_TYPE, T_Context, T_Message
-from ..help_doc import descript
-from ..user_const_var import T_ConstVar, default_context, load_const, set_const
-from ..utils import Buffer
+from ..constant import DESCRIPTION_RESULT_TYPE, T_Context, T_Message
 from .group import Group
+from .help_doc import descript
 from .interface import Interface
 from .user import User
+from .user_const_var import T_ConstVar, default_context, load_const, set_const
 from .utils import (
+    Buffer,
     Result,
     check_message_t,
     debug_log,
@@ -53,7 +53,7 @@ class API(Interface):
     )
     @debug_log
     async def call_api(self, api: str, **data: Any) -> Result:
-        res: Dict[str, Any] | List[Any]
+        res: dict[str, Any] | list[Any]
         try:
             res = await self.bot.call_api(api, **data) or {}
         except ActionFailed as e:
@@ -114,7 +114,7 @@ class API(Interface):
         result="Receipt",
     )
     @debug_log
-    async def send_prv_fwd(self, qid: int | str, msgs: List[T_Message]) -> Receipt:
+    async def send_prv_fwd(self, qid: int | str, msgs: list[T_Message]) -> Receipt:
         return await send_forward_message(
             bot=self.bot,
             event=self.event,
@@ -131,7 +131,7 @@ class API(Interface):
         result="Receipt",
     )
     @debug_log
-    async def send_grp_fwd(self, gid: int | str, msgs: List[T_Message]) -> Receipt:
+    async def send_grp_fwd(self, gid: int | str, msgs: list[T_Message]) -> Receipt:
         return await send_forward_message(
             bot=self.bot,
             event=self.event,
@@ -146,7 +146,7 @@ class API(Interface):
         result="Receipt",
     )
     @debug_log
-    async def send_fwd(self, msgs: List[T_Message]) -> Receipt:
+    async def send_fwd(self, msgs: list[T_Message]) -> Receipt:
         return await send_forward_message(
             bot=self.bot,
             event=self.event,
@@ -276,12 +276,12 @@ class API(Interface):
     def reset(self) -> None:
         self.context.clear()
         self.context.update(default_context)
-        self.context.update(load_const(self.event.get_user_id()))
         self.export_to(self.context)
 
     def export_to(self, context: T_Context) -> None:
         super(API, self).export_to(context)
 
+        self.context.update(load_const(self.event.get_user_id()))
         context["qid"] = self.event.get_user_id()
         context["usr"] = self.user(context["qid"])
         context["gid"] = str(getattr(self.event, "group_id", "")) or None

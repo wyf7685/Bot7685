@@ -3,11 +3,12 @@ import inspect
 from typing import (
     Any,
     Callable,
+    ClassVar,
     Coroutine,
     Iterable,
     Optional,
     ParamSpec,
-    Type,
+    Self,
     TypeVar,
     cast,
     overload,
@@ -16,15 +17,15 @@ from typing import (
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import (
+    CustomNode,
     Receipt,
+    Reference,
     Segment,
     Target,
     UniMessage,
-    CustomNode,
-    Reference,
 )
 
-from ..const import (
+from ..constant import (
     INTERFACE_EXPORT_METHOD,
     INTERFACE_METHOD_DESCRIPTION,
     T_API_Result,
@@ -95,6 +96,26 @@ def is_super_user(bot: Bot, event: Event) -> bool:
         in bot.config.superusers
         or user_id in bot.config.superusers
     )
+
+
+class Buffer:
+    _user_buf: ClassVar[dict[str, Self]] = {}
+    _buffer: str
+
+    def __new__(cls, uin: str) -> Self:
+        if uin not in cls._user_buf:
+            buf = super(Buffer, cls).__new__(cls)
+            buf._buffer = ""
+            cls._user_buf[uin] = buf
+        return cls._user_buf[uin]
+
+    def write(self, text: str) -> None:
+        assert isinstance(text, str)
+        self._buffer += text
+
+    def getvalue(self) -> str:
+        value, self._buffer = self._buffer, ""
+        return value
 
 
 class Result:
@@ -206,7 +227,7 @@ export_manager = _export_manager()
 
 
 def export_adapter_message(ctx: T_Context, event: Event):
-    MessageClass: Type[Message[MessageSegment]] = event.get_message().__class__
+    MessageClass = cast(type[Message], type(event.get_message()))
     MessageSegmentClass = MessageClass.get_segment_class()
     ctx["Message"] = MessageClass
     ctx["MessageSegment"] = MessageSegmentClass

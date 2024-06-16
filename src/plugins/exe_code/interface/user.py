@@ -1,9 +1,9 @@
-from typing import TYPE_CHECKING, ClassVar, List
+from typing import TYPE_CHECKING, ClassVar
 
 from nonebot_plugin_alconna.uniseg import Receipt
 
-from ..const import DESCRIPTION_RESULT_TYPE, T_Message
-from ..help_doc import descript
+from ..constant import DESCRIPTION_RESULT_TYPE, T_Message
+from .help_doc import descript
 from .interface import Interface
 from .utils import debug_log
 
@@ -36,7 +36,7 @@ class User(Interface):
         result="Receipt",
     )
     @debug_log
-    async def send_fwd(self, msgs: List[T_Message]) -> Receipt:
+    async def send_fwd(self, msgs: list[T_Message]) -> Receipt:
         return await self.api.send_prv_fwd(self.uid, msgs)
 
     def __repr__(self):

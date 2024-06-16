@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Union
 
 from nonebot.adapters import Message, MessageSegment
 from nonebot_plugin_alconna.uniseg import Segment as UniSegment
@@ -19,7 +19,7 @@ DATA_PATH = Path() / "data" / "exe_code"
 DATA_PATH.mkdir(parents=True, exist_ok=True)
 
 T_Message = Union[str, Message, MessageSegment, UniMessage, UniSegment]
-T_Context = Dict[str, Any]
-T_API_Result = Union[Dict[str, Any], List[Any]]
+T_Context = dict[str, Any]
+T_API_Result = Union[dict[str, Any], list[Any]]
 T_ResultCallback = Callable[[Any], Any]
-T_ConstVar = Union[str, bool, int, float]
+T_ConstVar = Union[str, bool, int, float, dict[str, "T_ConstVar"], list["T_ConstVar"]]

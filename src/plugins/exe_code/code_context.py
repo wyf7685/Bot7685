@@ -1,18 +1,18 @@
 import contextlib
 from asyncio import Future
 from copy import deepcopy
+from queue import Queue
 from typing import Any, Awaitable, Callable, ClassVar, Self, cast
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Image, UniMessage
 
-from .const import T_Context
-from .interface import API
-from .user_const_var import default_context, load_const
-from .utils import Buffer
+from .constant import T_Context
+from .interface import API, Buffer, default_context
 
 logger = logger.opt(colors=True)
+
 EXECUTOR_INDENT = " " * 8
 EXECUTOR_FUNCTION = """\
 last_exc, __exception__ = __exception__,  (None, None)
@@ -36,13 +36,13 @@ class Context:
     uin: str
     ctx: T_Context
     locked: bool
-    waitlist: list[Future[None]]
+    waitlist: Queue[Future[None]]
 
     def __init__(self, uin: str) -> None:
         self.uin = uin
         self.ctx = deepcopy(default_context)
         self.locked = False
-        self.waitlist = []
+        self.waitlist = Queue()
 
     @classmethod
     def get_context(cls, uin: str | int | Event) -> Self:
@@ -59,7 +59,7 @@ class Context:
     async def _lock(self):
         if self.locked:
             fut = Future()
-            self.waitlist.append(fut)
+            self.waitlist.put(fut)
             await fut
         self.locked = True
 
@@ -67,7 +67,7 @@ class Context:
             yield
         finally:
             if self.waitlist:
-                self.waitlist.pop(0).set_result(None)
+                self.waitlist.get().set_result(None)
             self.locked = False
 
     def solve_code(self, code: str) -> Callable[[], Awaitable[None]]:
@@ -84,10 +84,6 @@ class Context:
 
     async def execute(self, bot: Bot, event: Event, code: str) -> None:
         async with self._lock():
-            # 预处理ctx
-            self.ctx.update(load_const(self.uin))
-
-            # 执行代码
             API(bot, event, self.ctx).export_to(self.ctx)
             await self.solve_code(code)()
             if buf := Buffer(self.uin).getvalue().rstrip("\n"):
