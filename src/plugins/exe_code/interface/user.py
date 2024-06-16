@@ -33,10 +33,10 @@ class User(Interface):
     @descript(
         description="向用户发送私聊合并转发消息",
         parameters=dict(msgs="需要发送的消息列表"),
-        result="无",
+        result="Receipt",
     )
     @debug_log
-    async def send_fwd(self, msgs: List[T_Message]) -> None:
+    async def send_fwd(self, msgs: List[T_Message]) -> Receipt:
         return await self.api.send_prv_fwd(self.uid, msgs)
 
     def __repr__(self):

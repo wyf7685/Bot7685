@@ -1,11 +1,21 @@
 import functools
 import inspect
-from typing import Any, Callable, ParamSpec, Type, TypeVar
+from typing import Any, Callable, Iterable, Optional, ParamSpec, Type, TypeVar, cast
 
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot.log import logger
+from nonebot_plugin_alconna.uniseg import Receipt
+from nonebot_plugin_alconna.uniseg import Segment as UniSegment
+from nonebot_plugin_alconna.uniseg import Target, UniMessage
+from nonebot_plugin_alconna.uniseg.segment import CustomNode, Reference
 
-from ..const import INTERFACE_EXPORT_METHOD, INTERFACE_METHOD_DESCRIPTION, T_Context
+from ..const import (
+    INTERFACE_EXPORT_METHOD,
+    INTERFACE_METHOD_DESCRIPTION,
+    T_API_Result,
+    T_Context,
+    T_Message,
+)
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -58,8 +68,79 @@ def is_super_user(bot: Bot, event: Event) -> bool:
     )
 
 
+class Result:
+    error: Optional[Exception] = None
+    _data: T_API_Result
+
+    def __init__(self, data: T_API_Result):
+        self._data = data
+        if isinstance(data, dict) and "error" in data:
+            self.error = data["error"]
+
+    def __getitem__(self, key: str | int):
+        return self._data.__getitem__(key)  # type: ignore
+
+    def __getattribute__(self, name: str) -> Any:
+        if isinstance(self._data, dict) and name in self._data:
+            return self._data[name]
+        return super(Result, self).__getattribute__(name)
+
+    def __repr__(self) -> str:
+        if self.error is not None:
+            return f"<Result error={self.error!r}>"
+        return f"<Result data={self._data}>"
+
+
+def check_message_t(message: Any) -> bool:
+    return isinstance(message, (str, Message, MessageSegment, UniMessage, UniSegment))
+
+
+async def as_unimsg(message: T_Message) -> UniMessage:
+    if isinstance(message, MessageSegment):
+        message = cast(type[Message], message.get_message_class())([message])
+    if isinstance(message, (str, UniSegment)):
+        message = UniMessage(message)
+    elif isinstance(message, Message):
+        message = await UniMessage.generate(message=message)
+
+    return message
+
+
+async def send_message(
+    bot: Bot,
+    event: Event,
+    target: Optional[Target],
+    message: T_Message,
+) -> Receipt:
+    message = await as_unimsg(message)
+    return await message.send(target or event, bot)
+
+
+async def send_forward_message(
+    bot: Bot,
+    event: Event,
+    target: Optional[Target],
+    msgs: Iterable[T_Message],
+) -> Receipt:
+    return await send_message(
+        bot=bot,
+        event=event,
+        target=target,
+        message=Reference(
+            nodes=[
+                CustomNode(
+                    uid=bot.self_id,
+                    name="forward",
+                    content=await as_unimsg(msg),
+                )
+                for msg in msgs
+            ]
+        ),
+    )
+
+
 def _export_manager():
-    def set_usr(x: Any) -> None:
+    def set_usr(x: Any) -> bool:
         from ..config import cfg
 
         if (u := str(x)) in cfg.user:
@@ -67,13 +148,17 @@ def _export_manager():
         else:
             cfg.user.add(u)
 
-    def set_grp(x: Any) -> None:
+        return u in cfg.user
+
+    def set_grp(x: Any) -> bool:
         from ..config import cfg
 
         if (g := str(x)) in cfg.group:
-            cfg.user.remove(g)
+            cfg.group.remove(g)
         else:
-            cfg.user.add(g)
+            cfg.group.add(g)
+
+        return g in cfg.group
 
     def export_manager(ctx: T_Context) -> None:
         from ..code_context import Context
@@ -83,6 +168,9 @@ def _export_manager():
         ctx["set_grp"] = set_grp
 
     return export_manager
+
+
+def export_manager(ctx: T_Context) -> None: ...
 
 
 export_manager = _export_manager()

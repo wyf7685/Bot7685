@@ -11,16 +11,20 @@ from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
 from ..const import DESCRIPTION_RESULT_TYPE, T_Context, T_Message
 from ..help_doc import descript
 from ..user_const_var import T_ConstVar, default_context, load_const, set_const
-from ..utils import Buffer, Result, check_message_t, send_forward_message, send_message
+from ..utils import Buffer
 from .group import Group
 from .interface import Interface
 from .user import User
 from .utils import (
+    Result,
+    check_message_t,
     debug_log,
     export,
     export_adapter_message,
     export_manager,
     is_super_user,
+    send_forward_message,
+    send_message,
 )
 
 logger = logger.opt(colors=True)
@@ -107,7 +111,7 @@ class API(Interface):
         description="向QQ号为qid的用户发送合并转发消息",
         parameters=dict(
             qid="需要发送消息的QQ号",
-            msg="发送的消息列表",
+            msgs="发送的消息列表",
         ),
         result="Receipt",
     )
@@ -124,7 +128,7 @@ class API(Interface):
         description="向群号为gid的群聊发送合并转发消息",
         parameters=dict(
             gid="需要发送消息的群号",
-            msg="发送的消息列表",
+            msgs="发送的消息列表",
         ),
         result="Receipt",
     )
@@ -134,6 +138,20 @@ class API(Interface):
             bot=self.bot,
             event=self.event,
             target=Target.group(str(gid)),
+            msgs=msgs,
+        )
+
+    @descript(
+        description="向当前会话发送合并转发消息",
+        parameters=dict(msgs="发送的消息列表"),
+        result="Receipt",
+    )
+    @debug_log
+    async def send_fwd(self, msgs: List[T_Message]) -> Receipt:
+        return await send_forward_message(
+            bot=self.bot,
+            event=self.event,
+            target=None,
             msgs=msgs,
         )
 
