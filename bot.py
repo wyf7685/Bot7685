@@ -8,7 +8,7 @@ logger.add(
     "./logs/{time:YYYY-MM-DD}.log",
     rotation="00:00",
     level="DEBUG",
-    diagnose=False,
+    diagnose=True,
     format=(
         "<g>{time:MM-DD HH:mm:ss}</g> "
         "[<lvl>{level}</lvl>] "
