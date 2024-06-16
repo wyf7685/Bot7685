@@ -6,8 +6,7 @@ from typing import Any, ClassVar, Dict, List, Optional
 from nonebot.adapters import Bot, Event
 from nonebot.exception import ActionFailed
 from nonebot.log import logger
-from nonebot_plugin_alconna.uniseg import Receipt, Target
-from nonebot_plugin_saa import TargetQQGroup, TargetQQPrivate, extract_target
+from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
 
 from ..const import DESCRIPTION_RESULT_TYPE, T_Context, T_Message
 from ..help_doc import descript
@@ -110,14 +109,14 @@ class API(Interface):
             qid="需要发送消息的QQ号",
             msg="发送的消息列表",
         ),
-        result="无",
+        result="Receipt",
     )
     @debug_log
-    async def send_prv_fwd(self, qid: int | str, msgs: List[T_Message]) -> None:
-        await send_forward_message(
+    async def send_prv_fwd(self, qid: int | str, msgs: List[T_Message]) -> Receipt:
+        return await send_forward_message(
             bot=self.bot,
             event=self.event,
-            target=TargetQQPrivate(user_id=int(qid)),
+            target=Target.group(str(qid)),
             msgs=msgs,
         )
 
@@ -127,14 +126,14 @@ class API(Interface):
             gid="需要发送消息的群号",
             msg="发送的消息列表",
         ),
-        result="无",
+        result="Receipt",
     )
     @debug_log
-    async def send_grp_fwd(self, gid: int | str, msgs: List[T_Message]) -> None:
-        await send_forward_message(
+    async def send_grp_fwd(self, gid: int | str, msgs: List[T_Message]) -> Receipt:
+        return await send_forward_message(
             bot=self.bot,
             event=self.event,
-            target=TargetQQGroup(group_id=int(gid)),
+            target=Target.group(str(gid)),
             msgs=msgs,
         )
 
@@ -196,7 +195,7 @@ class API(Interface):
     )
     @debug_log
     def is_group(self) -> bool:
-        return isinstance(extract_target(self.event, self.bot), TargetQQGroup)
+        return not UniMessage.get_target(self.event, self.bot).private
 
     @descript(
         description="设置环境常量，在每次执行代码时加载",

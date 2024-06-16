@@ -2,12 +2,11 @@ from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
 from nonebot.rule import Rule
-from nonebot_plugin_alconna.uniseg import UniMessage, UniMsg, reply_fetch
+from nonebot_plugin_alconna.uniseg import UniMessage, UniMsg, reply_fetch, MsgTarget
 from nonebot_plugin_alconna.uniseg.segment import At as UniAt
 from nonebot_plugin_alconna.uniseg.segment import Image as UniImage
 from nonebot_plugin_alconna.uniseg.segment import Reply as UniReply
 from nonebot_plugin_alconna.uniseg.segment import Text as UniText
-from nonebot_plugin_saa import extract_target
 
 from .config import cfg
 
@@ -18,31 +17,13 @@ def ExeCodeEnabled():
     except ImportError:
         ConsoleBot = None
 
-    from nonebot_plugin_saa import (
-        TargetQQGroup,
-        TargetQQGroupOpenId,
-        TargetQQGuildChannel,
-    )
-
-    def check(bot: Bot, event: Event):
+    def check(bot: Bot, event: Event, target: MsgTarget):
         if ConsoleBot is not None and isinstance(bot, ConsoleBot):
             return True
 
-        if event.get_user_id() in cfg.user:
-            return True
-
-        gid = None
-        target = extract_target(event, bot)
-        if isinstance(target, TargetQQGroup):
-            gid = target.group_id
-        elif isinstance(target, TargetQQGroupOpenId):
-            gid = target.group_openid
-        elif isinstance(target, TargetQQGuildChannel):
-            gid = target.channel_id
-        else:
-            return False
-
-        return str(gid) in cfg.group
+        return event.get_user_id() in cfg.user or (
+            not target.private and str(target.id) in cfg.group
+        )
 
     return Rule(check)
 

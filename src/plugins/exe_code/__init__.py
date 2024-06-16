@@ -9,7 +9,6 @@ from nonebot.plugin import PluginMetadata
 from PIL.Image import open as Image_open
 
 require("nonebot_plugin_alconna")
-require("nonebot_plugin_saa")
 require("nonebot_plugin_userinfo")
 from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
