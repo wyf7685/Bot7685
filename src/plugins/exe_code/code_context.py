@@ -66,7 +66,7 @@ class Context:
         try:
             yield
         finally:
-            if self.waitlist:
+            if not self.waitlist.empty():
                 self.waitlist.get().set_result(None)
             self.locked = False
 

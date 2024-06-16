@@ -45,8 +45,8 @@ def _type_string(t: Type[type] | str) -> str:
 
 
 def func_declaration(func: Callable) -> str:
-    code = func.__code__
-    args = list(code.co_varnames)[: code.co_argcount]
+    sig = inspect.signature(func)
+    args = list(sig.parameters)
     if "self" in args:
         args.remove("self")
     anno = func.__annotations__
