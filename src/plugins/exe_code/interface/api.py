@@ -37,7 +37,7 @@ class API(Interface):
     event: Event
     context: T_Context
 
-    def __init__(self, bot: Bot, event: Event, context: T_Context):
+    def __init__(self, bot: Bot, event: Event, context: T_Context) -> None:
         super(API, self).__init__()
         self.bot = bot
         self.event = event
@@ -52,7 +52,7 @@ class API(Interface):
         result=DESCRIPTION_RESULT_TYPE,
     )
     @debug_log
-    async def call_api(self, api: str, **data: object) -> Result:
+    async def call_api(self, api: str, **data: Any) -> Result:
         res: Dict[str, Any] | List[Any]
         try:
             res = await self.bot.call_api(api, **data) or {}
@@ -71,7 +71,6 @@ class API(Interface):
             res.setdefault("error", None)
         return Result(res)
 
-    @export
     @descript(
         description="向QQ号为qid的用户发送私聊消息",
         parameters=dict(
@@ -89,7 +88,6 @@ class API(Interface):
             message=msg,
         )
 
-    @export
     @descript(
         description="向群号为gid的群聊发送消息",
         parameters=dict(
@@ -141,6 +139,7 @@ class API(Interface):
             msgs=msgs,
         )
 
+    @export
     @descript(
         description="向当前会话发送合并转发消息",
         parameters=dict(msgs="发送的消息列表"),
@@ -221,7 +220,7 @@ class API(Interface):
             name="设置的环境变量名",
             value="设置的环境常量，仅允许输入可被json序列化的对象，留空则为删除",
         ),
-        result="无",
+        result=None,
     )
     @debug_log
     def set_const(self, name: str, value: Optional[T_ConstVar] = None) -> None:
@@ -245,7 +244,7 @@ class API(Interface):
     @descript(
         description="向当前会话发送API说明(本文档)",
         parameters=None,
-        result="无",
+        result=None,
     )
     @debug_log
     async def help(self) -> None:
@@ -260,10 +259,8 @@ class API(Interface):
     @export
     @descript(
         description="在执行代码时等待",
-        parameters=dict(
-            seconds="等待的时间，单位秒",
-        ),
-        result="无",
+        parameters=dict(seconds="等待的时间，单位秒"),
+        result=None,
     )
     @debug_log
     async def sleep(self, seconds: float) -> None:
@@ -273,7 +270,7 @@ class API(Interface):
     @descript(
         description="重置环境",
         parameters=None,
-        result="无",
+        result=None,
     )
     @debug_log
     def reset(self) -> None:

@@ -1,13 +1,28 @@
 import functools
 import inspect
-from typing import Any, Callable, Iterable, Optional, ParamSpec, Type, TypeVar, cast
+from typing import (
+    Any,
+    Callable,
+    Coroutine,
+    Iterable,
+    Optional,
+    ParamSpec,
+    Type,
+    TypeVar,
+    cast,
+    overload,
+)
 
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot.log import logger
-from nonebot_plugin_alconna.uniseg import Receipt
-from nonebot_plugin_alconna.uniseg import Segment as UniSegment
-from nonebot_plugin_alconna.uniseg import Target, UniMessage
-from nonebot_plugin_alconna.uniseg.segment import CustomNode, Reference
+from nonebot_plugin_alconna.uniseg import (
+    Receipt,
+    Segment,
+    Target,
+    UniMessage,
+    CustomNode,
+    Reference,
+)
 
 from ..const import (
     INTERFACE_EXPORT_METHOD,
@@ -33,22 +48,36 @@ def export(call: Callable[P, R]) -> Callable[P, R]:
     return call
 
 
-def debug_log(call: Callable[P, R]) -> Callable[P, R]:
+@overload
+def debug_log(
+    call: Callable[P, Coroutine[None, None, R]]
+) -> Callable[P, Coroutine[None, None, R]]: ...
+
+
+@overload
+def debug_log(call: Callable[P, R]) -> Callable[P, R]: ...
+
+
+def debug_log(
+    call: Callable[P, Coroutine[None, None, R] | R]
+) -> Callable[P, Coroutine[None, None, R] | R]:
     def log(*args: P.args, **kwargs: P.kwargs):
         logger.debug(f"{call.__name__}: args={args}, kwargs={kwargs}")
 
     if inspect.iscoroutinefunction(call):
+        call = cast(Callable[P, Coroutine[None, None, R]], call)
 
         @functools.wraps(call, assigned=WRAPPER_ASSIGNMENTS)
         async def wrapper_async(*args: P.args, **kwargs: P.kwargs) -> R:
             log(*args, **kwargs)
             return await call(*args, **kwargs)
 
-        return wrapper_async  # type: ignore
+        return wrapper_async
     else:
+        call = cast(Callable[P, R], call)
 
         @functools.wraps(call, assigned=WRAPPER_ASSIGNMENTS)
-        def wrapper_sync(*args: P.args, **kwargs: P.kwargs):
+        def wrapper_sync(*args: P.args, **kwargs: P.kwargs) -> R:
             log(*args, **kwargs)
             return call(*args, **kwargs)
 
@@ -92,13 +121,13 @@ class Result:
 
 
 def check_message_t(message: Any) -> bool:
-    return isinstance(message, (str, Message, MessageSegment, UniMessage, UniSegment))
+    return isinstance(message, (str, Message, MessageSegment, UniMessage, Segment))
 
 
 async def as_unimsg(message: T_Message) -> UniMessage:
     if isinstance(message, MessageSegment):
         message = cast(type[Message], message.get_message_class())([message])
-    if isinstance(message, (str, UniSegment)):
+    if isinstance(message, (str, Segment)):
         message = UniMessage(message)
     elif isinstance(message, Message):
         message = await UniMessage.generate(message=message)

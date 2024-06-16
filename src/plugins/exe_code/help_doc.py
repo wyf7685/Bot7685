@@ -14,7 +14,7 @@ class FuncDescription:
     declaration: str
     description: str
     parameters: Optional[Dict[str, str]]
-    result: str
+    result: Optional[str]
 
     def format(self):
         return DESCRIPTION_FORMAT.format(
@@ -25,7 +25,7 @@ class FuncDescription:
                 if self.parameters
                 else "无"
             ),
-            res=self.result,
+            res=self.result or "无",
         )
 
 
@@ -59,7 +59,11 @@ def func_declaration(func: Callable) -> str:
     return f"{func.__name__}({', '.join(args)}) -> {ret}"
 
 
-def descript(description: str, parameters: Optional[Dict[str, str]], result: str):
+def descript(
+    description: str,
+    parameters: Optional[Dict[str, str]],
+    result: Optional[str],
+):
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         setattr(
             func,
