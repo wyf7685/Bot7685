@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from nonebot_plugin_alconna.uniseg import Receipt
 
-from ..constant import DESCRIPTION_RESULT_TYPE, T_Message
+from ..constant import T_Message
 from .help_doc import descript
 from .interface import Interface
 from .utils import debug_log
@@ -24,7 +24,7 @@ class User(Interface):
     @descript(
         description="向用户发送私聊消息",
         parameters=dict(msg="需要发送的消息"),
-        result=DESCRIPTION_RESULT_TYPE,
+        result="Receipt",
     )
     @debug_log
     async def send(self, msg: T_Message) -> Receipt:

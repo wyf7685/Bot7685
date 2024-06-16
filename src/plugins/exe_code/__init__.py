@@ -6,25 +6,31 @@ from nonebot.adapters import Bot, Event
 from nonebot.log import logger
 from nonebot.matcher import Matcher
 from nonebot.plugin import PluginMetadata
+from nonebot.plugin.load import inherit_supported_adapters
 from PIL.Image import open as Image_open
 
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_datastore")
 require("nonebot_plugin_userinfo")
 from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from .code_context import Context
+from .config import Config
 from .depends import EXECODE_ENABLED, EventImage, EventReplyMessage, ExtractCode
 
 __plugin_meta__ = PluginMetadata(
     name="exe_code",
     description="在对话中执行 Python 代码",
     usage="code {Your code here...}",
-    supported_adapters={
-        "~onebot.v11",
-        "~console",
-        # "~satori",
-    },
+    type="application",
+    config=Config,
+    supported_adapters=inherit_supported_adapters(
+        "nonebot_plugin_alconna",
+        "nonebot_plugin_datastore",
+        "nonebot_plugin_userinfo",
+    ),
+    extra={"author": "wyf7685"},
 )
 
 

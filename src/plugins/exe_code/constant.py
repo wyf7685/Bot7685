@@ -1,9 +1,11 @@
-from pathlib import Path
 from typing import Any, Callable, Union
 
 from nonebot.adapters import Message, MessageSegment
 from nonebot_plugin_alconna.uniseg import Segment as UniSegment
 from nonebot_plugin_alconna.uniseg import UniMessage
+from nonebot_plugin_datastore import get_plugin_data
+
+DATA_PATH = get_plugin_data().data_dir
 
 # description
 DESCRIPTION_FORMAT = "{decl}\n* 描述: {desc}\n* 参数:\n{params}\n* 返回值:\n  {res}\n"
@@ -14,9 +16,6 @@ INTERFACE_METHOD_DESCRIPTION = "__method_description__"
 INTERFACE_EXPORT_METHOD = "__export_method__"
 INTERFACE_INST_NAME = "__inst_name__"
 
-
-DATA_PATH = Path() / "data" / "exe_code"
-DATA_PATH.mkdir(parents=True, exist_ok=True)
 
 T_Message = Union[str, Message, MessageSegment, UniMessage, UniSegment]
 T_Context = dict[str, Any]

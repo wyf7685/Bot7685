@@ -1,4 +1,4 @@
-from typing import ClassVar, Tuple
+from typing import Any, Callable, ClassVar, Tuple, cast
 
 from ..constant import INTERFACE_INST_NAME, INTERFACE_METHOD_DESCRIPTION, T_Context
 from .help_doc import FuncDescription
@@ -45,21 +45,22 @@ class InterfaceMeta(type):
         result: list[str] = []
 
         # (is_export, inst_name, func_name, desc)
-        methods: list[Tuple[bool, str, str, FuncDescription]] = []
+        methods: list[Tuple[bool, str, str, str]] = []
         for _, cls_obj in cls.__interface_map__.items():
             inst_name: str = getattr(cls_obj, INTERFACE_INST_NAME)
             description: dict[str, FuncDescription] = getattr(
                 cls_obj, INTERFACE_METHOD_DESCRIPTION
             )
             for func_name, desc in description.items():
-                is_export = is_export_method(getattr(cls_obj, func_name))
-                methods.append((is_export, inst_name, func_name, desc))
+                func = cast(Callable[..., Any], getattr(cls_obj, func_name))
+                is_export = is_export_method(func)
+                methods.append((is_export, inst_name, func_name, desc.format(func)))
         methods.sort(key=lambda x: (1 - x[0], x[1], x[2]))
 
         for index, (is_export, inst_name, func_name, desc) in enumerate(methods, 1):
             prefix = f"{index}. " if is_export else f"{index}. {inst_name}."
             content.append(prefix + func_name)
-            result.append(prefix + desc.format())
+            result.append(prefix + desc)
 
         return content, result
 
