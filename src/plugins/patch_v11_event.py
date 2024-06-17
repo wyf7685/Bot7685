@@ -2,11 +2,11 @@ from typing import override
 
 from nonebot import get_driver, require
 from nonebot.adapters.onebot.utils import highlight_rich_message
-from nonebot.adapters.onebot.v11 import Bot
-from nonebot.adapters.onebot.v11.event import GroupMessageEvent, PrivateMessageEvent
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, PrivateMessageEvent
 from nonebot.log import logger
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
+from nonebot.compat import type_validate_python
 
 require("nonebot_plugin_apscheduler")
 from apscheduler.job import Job as SchedulerJob
@@ -20,18 +20,17 @@ class GroupInfo(BaseModel):
     max_member_count: int
 
 
+logger = logger.opt(colors=True)
 group_info_cache: dict[int, GroupInfo] = {}
 scheduler_job: dict[Bot, SchedulerJob] = {}
 
 
 async def update_group_cache(bot: Bot):
     update = {
-        info.group_id: info
-        for info in map(GroupInfo.model_validate, await bot.get_group_list())
+        (info := type_validate_python(GroupInfo, item)).group_id: info
+        for item in await bot.get_group_list()
     }
-    logger.opt(colors=True).success(
-        f"更新 {bot} 的 <y>{len(update)}</y> 条群聊信息缓存"
-    )
+    logger.success(f"更新 {bot} 的 <y>{len(update)}</y> 条群聊信息缓存")
     group_info_cache.update(update)
 
 
