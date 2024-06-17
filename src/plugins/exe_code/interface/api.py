@@ -3,10 +3,11 @@ import functools
 import json
 from typing import Any, ClassVar, Optional
 
-from nonebot.adapters import Bot, Event
+from nonebot.adapters import Bot
 from nonebot.exception import ActionFailed
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
+from nonebot_plugin_session import Session
 
 from ..constant import DESCRIPTION_RESULT_TYPE, T_Context, T_Message
 from .group import Group
@@ -34,13 +35,17 @@ class API(Interface):
     __inst_name__: ClassVar[str] = "api"
 
     bot: Bot
-    event: Event
+    qid: str
+    gid: str | None
+    session: Session
     context: T_Context
 
-    def __init__(self, bot: Bot, event: Event, context: T_Context) -> None:
+    def __init__(self, bot: Bot, session: Session, context: T_Context) -> None:
         super(API, self).__init__()
         self.bot = bot
-        self.event = event
+        self.qid = session.id1 or ""
+        self.gid = session.id2
+        self.session = session
         self.context = context
 
     @descript(
@@ -53,18 +58,16 @@ class API(Interface):
     )
     @debug_log
     async def call_api(self, api: str, **data: Any) -> Result:
-        res: dict[str, Any] | list[Any]
+        res: dict[str, Any] | list[Any] | None
         try:
-            res = await self.bot.call_api(api, **data) or {}
+            res = await self.bot.call_api(api, **data)
         except ActionFailed as e:
             res = {"error": e}
         except BaseException as e:
             res = {"error": e}
             logger.opt(exception=e).warning(
                 "用户({uin})调用api<y>{api}</y>时发生错误: <r>{err}</r>".format(
-                    uin=self.event.get_user_id(),
-                    api=api,
-                    err=e,
+                    uin=self.qid, api=api, err=e
                 )
             )
         if isinstance(res, dict):
@@ -83,7 +86,7 @@ class API(Interface):
     async def send_prv(self, qid: int | str, msg: T_Message) -> Receipt:
         return await send_message(
             bot=self.bot,
-            event=self.event,
+            session=self.session,
             target=Target.user(str(qid)),
             message=msg,
         )
@@ -100,7 +103,7 @@ class API(Interface):
     async def send_grp(self, gid: int | str, msg: T_Message) -> Receipt:
         return await send_message(
             bot=self.bot,
-            event=self.event,
+            session=self.session,
             target=Target.group(str(gid)),
             message=msg,
         )
@@ -117,7 +120,7 @@ class API(Interface):
     async def send_prv_fwd(self, qid: int | str, msgs: list[T_Message]) -> Receipt:
         return await send_forward_message(
             bot=self.bot,
-            event=self.event,
+            session=self.session,
             target=Target.group(str(qid)),
             msgs=msgs,
         )
@@ -134,7 +137,7 @@ class API(Interface):
     async def send_grp_fwd(self, gid: int | str, msgs: list[T_Message]) -> Receipt:
         return await send_forward_message(
             bot=self.bot,
-            event=self.event,
+            session=self.session,
             target=Target.group(str(gid)),
             msgs=msgs,
         )
@@ -149,7 +152,7 @@ class API(Interface):
     async def send_fwd(self, msgs: list[T_Message]) -> Receipt:
         return await send_forward_message(
             bot=self.bot,
-            event=self.event,
+            session=self.session,
             target=None,
             msgs=msgs,
         )
@@ -187,7 +190,7 @@ class API(Interface):
 
         return await send_message(
             bot=self.bot,
-            event=self.event,
+            session=self.session,
             target=None,
             message=msg,
         )
@@ -212,7 +215,7 @@ class API(Interface):
     )
     @debug_log
     def is_group(self) -> bool:
-        return not UniMessage.get_target(self.event, self.bot).private
+        return not UniMessage.get_target().private
 
     @descript(
         description="设置环境常量，在每次执行代码时加载",
@@ -225,7 +228,7 @@ class API(Interface):
     @debug_log
     def set_const(self, name: str, value: Optional[T_ConstVar] = None) -> None:
         if value is None:
-            set_const(self.event.get_user_id(), name)
+            set_const(self.qid, name)
             return
 
         try:
@@ -233,12 +236,12 @@ class API(Interface):
         except ValueError as e:
             raise TypeError("设置常量的类型必须是可被json序列化的对象") from e
 
-        set_const(self.event.get_user_id(), name, value)
+        set_const(self.qid, name, value)
 
     @export
     @debug_log
     def print(self, *args, sep: str = " ", end: str = "\n", **_):
-        Buffer(self.event.get_user_id()).write(sep.join(str(i) for i in args) + end)
+        Buffer(self.qid).write(sep.join(str(i) for i in args) + end)
 
     @export
     @descript(
@@ -249,12 +252,12 @@ class API(Interface):
     @debug_log
     async def help(self) -> None:
         content, description = type(self).get_all_description()
-        msgs = [
+        msgs: list[T_Message] = [
             "   ====API说明====   ",
             " - API说明文档 - 目录 - \n" + "\n".join(content),
             *description,
         ]
-        await send_forward_message(self.bot, self.event, None, msgs)
+        await self.send_fwd(msgs)
 
     @export
     @descript(
@@ -281,14 +284,14 @@ class API(Interface):
     def export_to(self, context: T_Context) -> None:
         super(API, self).export_to(context)
 
-        self.context.update(load_const(self.event.get_user_id()))
-        context["qid"] = self.event.get_user_id()
-        context["usr"] = self.user(context["qid"])
-        context["gid"] = str(getattr(self.event, "group_id", "")) or None
-        context["grp"] = self.group(context["gid"]) if context["gid"] else None
-        export_adapter_message(context, self.event)
+        self.context.update(load_const(self.qid))
+        context["qid"] = self.qid
+        context["usr"] = self.user(self.qid)
+        context["gid"] = self.gid
+        context["grp"] = self.group(self.gid) if self.gid else None
+        export_adapter_message(context)
 
-        if is_super_user(self.bot, self.event):
+        if is_super_user(self.bot, self.qid):
             export_manager(context)
 
     def __getattr__(self, name: str):
@@ -299,4 +302,4 @@ class API(Interface):
         return functools.partial(self.call_api, name)
 
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(user_id={self.event.get_user_id()})"
+        return f"{self.__class__.__name__}(user_id={self.qid})"

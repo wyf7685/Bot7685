@@ -4,6 +4,7 @@ from nonebot.params import Depends
 from nonebot.rule import Rule
 from nonebot_plugin_alconna.uniseg import MsgTarget, UniMessage, UniMsg, reply_fetch
 from nonebot_plugin_alconna.uniseg.segment import At, Image, Reply, Text
+from nonebot_plugin_session import EventSession
 
 from .config import cfg
 
@@ -14,11 +15,11 @@ def ExeCodeEnabled():
     except ImportError:
         ConsoleBot = None
 
-    def check(bot: Bot, event: Event, target: MsgTarget):
+    def check(bot: Bot, session: EventSession, target: MsgTarget):
         if ConsoleBot is not None and isinstance(bot, ConsoleBot):
             return True
 
-        return event.get_user_id() in cfg.user or (
+        return (session.id1 or "") in cfg.user or (
             not target.private and str(target.id) in cfg.group
         )
 
@@ -48,7 +49,7 @@ def EventReplyMessage(allow_empty: bool = True):
             Matcher.skip()
 
         if not isinstance(msg, Message):
-            msg = event.get_message().__class__(msg)
+            msg = type(event.get_message())(msg)
 
         return await UniMessage.generate(message=msg)
 

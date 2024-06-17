@@ -1,4 +1,5 @@
-import functools, asyncio
+import asyncio
+import functools
 import inspect
 from typing import (
     Any,
@@ -8,14 +9,14 @@ from typing import (
     Iterable,
     Optional,
     ParamSpec,
-    Protocol,
     Self,
     TypeVar,
     cast,
     overload,
 )
 
-from nonebot.adapters import Bot, Event, Message, MessageSegment
+from nonebot.adapters import Bot, Message, MessageSegment
+from nonebot.internal.matcher import current_event
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import (
     CustomNode,
@@ -25,6 +26,7 @@ from nonebot_plugin_alconna.uniseg import (
     Target,
     UniMessage,
 )
+from nonebot_plugin_session import Session
 
 from ..constant import (
     INTERFACE_EXPORT_METHOD,
@@ -90,12 +92,11 @@ def is_export_method(call: Callable) -> bool:
     return getattr(call, INTERFACE_EXPORT_METHOD, False)
 
 
-def is_super_user(bot: Bot, event: Event) -> bool:
-    user_id = event.get_user_id()
+def is_super_user(bot: Bot, uin: str) -> bool:
     return (
-        f"{bot.adapter.get_name().split(maxsplit=1)[0].lower()}:{user_id}"
+        f"{bot.adapter.get_name().split(maxsplit=1)[0].lower()}:{uin}"
         in bot.config.superusers
-        or user_id in bot.config.superusers
+        or uin in bot.config.superusers
     )
 
 
@@ -125,11 +126,12 @@ class Result:
 
     def __init__(self, data: T_API_Result):
         self._data = data
-        if isinstance(data, dict) and "error" in data:
-            self.error = data["error"]
+        if isinstance(data, dict):
+            self.error = data.get("error")
 
-    def __getitem__(self, key: str | int):
-        return self._data.__getitem__(key)  # type: ignore
+    def __getitem__(self, key: str | int) -> Any:
+        if self._data:
+            return self._data.__getitem__(key) # type: ignore
 
     def __getattribute__(self, name: str) -> Any:
         if isinstance(self._data, dict) and name in self._data:
@@ -139,7 +141,7 @@ class Result:
     def __repr__(self) -> str:
         if self.error is not None:
             return f"<Result error={self.error!r}>"
-        return f"<Result data={self._data}>"
+        return f"<Result data={self._data!r}>"
 
 
 def check_message_t(message: Any) -> bool:
@@ -148,7 +150,7 @@ def check_message_t(message: Any) -> bool:
 
 async def as_unimsg(message: T_Message) -> UniMessage:
     if isinstance(message, MessageSegment):
-        message = cast(type[Message], message.get_message_class())([message])
+        message = cast(type[Message], message.get_message_class())(message)
     if isinstance(message, (str, Segment)):
         message = UniMessage(message)
     elif isinstance(message, Message):
@@ -157,77 +159,52 @@ async def as_unimsg(message: T_Message) -> UniMessage:
     return message
 
 
-def rate_limit(count: int):
-    class SendMessageFunc(Protocol):
-        async def __call__(
-            self,
-            bot: Bot,
-            event: Event,
-            target: Optional[Target],
-            message: T_Message,
-        ) -> Receipt: ...
-
+def _send_message(count: int):
     class ReachLimit(Exception):
         def __init__(self, msg: str, count: int) -> None:
             self.msg = msg
             self.count = count
 
-    def decorator(call: SendMessageFunc) -> SendMessageFunc:
-        call_cnt: dict[str, int] = {}
+    call_cnt: dict[str, int] = {}
 
-        def clean_cnt(key: str):
-            if key in call_cnt:
-                del call_cnt[key]
+    def clean_cnt(key: str):
+        if key in call_cnt:
+            del call_cnt[key]
 
-        @functools.wraps(call)
-        async def wrapper(
-            bot: Bot,
-            event: Event,
-            target: Optional[Target],
-            message: T_Message,
-        ) -> Receipt:
-            key = f"{id(bot)}${id(event)}"
-            if key not in call_cnt:
-                call_cnt[key] = 1
-                asyncio.get_event_loop().call_later(60, clean_cnt, key)
-            elif call_cnt[key] >= count or call_cnt[key] < 0:
-                call_cnt[key] = -1
-                raise ReachLimit("消息发送触发次数限制", count)
-            else:
-                call_cnt[key] += 1
+    async def send_message(
+        bot: Bot,
+        session: Session,
+        target: Optional[Target],
+        message: T_Message,
+    ) -> Receipt:
+        key = f"{id(bot)}${id(session)}"
+        if key not in call_cnt:
+            call_cnt[key] = 1
+            asyncio.get_event_loop().call_later(60, clean_cnt, key)
+        elif call_cnt[key] >= count or call_cnt[key] < 0:
+            call_cnt[key] = -1
+            raise ReachLimit("消息发送触发次数限制", count)
+        else:
+            call_cnt[key] += 1
 
-            return await call(
-                bot=bot,
-                event=event,
-                target=target,
-                message=message,
-            )
+        message = await as_unimsg(message)
+        return await message.send(target, bot)
 
-        return wrapper
-
-    return decorator
+    return send_message
 
 
-@rate_limit(6)
-async def send_message(
-    bot: Bot,
-    event: Event,
-    target: Optional[Target],
-    message: T_Message,
-) -> Receipt:
-    message = await as_unimsg(message)
-    return await message.send(target or event, bot)
+send_message = _send_message(6)
 
 
 async def send_forward_message(
     bot: Bot,
-    event: Event,
+    session: Session,
     target: Optional[Target],
     msgs: Iterable[T_Message],
 ) -> Receipt:
     return await send_message(
         bot=bot,
-        event=event,
+        session=session,
         target=target,
         message=Reference(
             nodes=[
@@ -273,14 +250,11 @@ def _export_manager():
     return export_manager
 
 
-def export_manager(ctx: T_Context) -> None: ...
-
-
 export_manager = _export_manager()
 
 
-def export_adapter_message(ctx: T_Context, event: Event):
-    MessageClass = cast(type[Message], type(event.get_message()))
+def export_adapter_message(ctx: T_Context):
+    MessageClass = cast(type[Message], type(current_event.get().get_message()))
     MessageSegmentClass = MessageClass.get_segment_class()
     ctx["Message"] = MessageClass
     ctx["MessageSegment"] = MessageSegmentClass

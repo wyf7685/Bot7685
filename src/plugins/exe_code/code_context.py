@@ -7,6 +7,7 @@ from typing import Any, Awaitable, Callable, ClassVar, Self, cast
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Image, UniMessage
+from nonebot_plugin_session import Session
 
 from .constant import T_Context
 from .interface import API, Buffer, default_context
@@ -45,12 +46,8 @@ class Context:
         self.waitlist = Queue()
 
     @classmethod
-    def get_context(cls, uin: str | int | Event) -> Self:
-        if isinstance(uin, Event):
-            uin = uin.get_user_id()
-        uin = str(uin)
-
-        if uin not in cls._contexts:
+    def get_context(cls, session: Session) -> Self:
+        if (uin := session.id1 or "") not in cls._contexts:
             cls._contexts[uin] = cls(uin)
 
         return cls._contexts[uin]
@@ -82,9 +79,11 @@ class Context:
         exec(EXECUTOR_FUNCTION % (func_code,), self.ctx)
         return self.ctx.pop("__executor__")
 
-    async def execute(self, bot: Bot, event: Event, code: str) -> None:
+    @classmethod
+    async def execute(cls, session: Session, bot: Bot, code: str) -> None:
+        self = cls.get_context(session)
         async with self._lock():
-            API(bot, event, self.ctx).export_to(self.ctx)
+            API(bot, session, self.ctx).export_to(self.ctx)
             await self.solve_code(code)()
             if buf := Buffer(self.uin).getvalue().rstrip("\n"):
                 await UniMessage(buf).send()

@@ -11,8 +11,10 @@ from PIL.Image import open as Image_open
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_datastore")
+require("nonebot_plugin_session")
 require("nonebot_plugin_userinfo")
 from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, image_fetch
+from nonebot_plugin_session import EventSession
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from .code_context import Context
@@ -43,12 +45,12 @@ code_getimg = on_startswith("getimg", rule=EXECODE_ENABLED)
 @code_exec.handle()
 async def _(
     bot: Bot,
-    event: Event,
+    session: EventSession,
     code: Annotated[str, ExtractCode()],
     uinfo: Annotated[UserInfo, EventUserInfo()],
 ):
     try:
-        await Context.get_context(event).execute(bot, event, code)
+        await Context.execute(session, bot, code)
     except Exception as e:
         text = f"用户{uinfo.user_name}({uinfo.user_id}) 执行代码时发生错误: {e}"
         logger.opt(exception=True).warning(text)
@@ -58,10 +60,11 @@ async def _(
 @code_getcode.handle()
 async def _(
     event: Event,
+    session: EventSession,
     msg: UniMsg,
     reply: Annotated[UniMessage, EventReplyMessage()],
 ):
-    ctx = Context.get_context(event)
+    ctx = Context.get_context(session)
     ctx.set_gev(event)
 
     if msg.has(Reply):
@@ -75,8 +78,8 @@ async def _(
 
 
 @code_getmid.handle()
-async def _(event: Event, msg: UniMsg):
-    ctx = Context.get_context(event)
+async def _(event: Event, session: EventSession, msg: UniMsg):
+    ctx = Context.get_context(session)
     ctx.set_gev(event)
     if msg.has(Reply):
         reply = msg[Reply, 0]
@@ -90,6 +93,7 @@ async def _(event: Event, msg: UniMsg):
 async def _(
     bot: Bot,
     event: Event,
+    session: EventSession,
     matcher: Matcher,
     image: Annotated[Image, EventImage()],
 ):
@@ -104,7 +108,7 @@ async def _(
     except Exception as err:
         await matcher.finish(f"保存图片时出错: {err}")
 
-    ctx = Context.get_context(event)
+    ctx = Context.get_context(session)
     ctx.set_value(varname, Image_open(BytesIO(img_bytes)))
     ctx.set_gev(event)
     await matcher.finish(f"图片已保存至变量 {varname}")
