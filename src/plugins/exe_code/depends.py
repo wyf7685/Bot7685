@@ -41,17 +41,16 @@ def ExtractCode():
     return Depends(extract_code)
 
 
-def EventReplyMessage(allow_empty: bool = True):
-    async def event_reply_message(event: Event, bot: Bot):
+def EventReplyMessage():
+
+    async def event_reply_message(event: Event, bot: Bot) -> Message:
         if not (reply := await reply_fetch(event, bot)) or not (msg := reply.msg):
-            if allow_empty:
-                return None
             Matcher.skip()
 
         if not isinstance(msg, Message):
             msg = type(event.get_message())(msg)
 
-        return await UniMessage.generate(message=msg)
+        return msg
 
     return Depends(event_reply_message)
 

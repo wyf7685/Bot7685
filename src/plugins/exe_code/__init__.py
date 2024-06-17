@@ -2,7 +2,7 @@ from io import BytesIO
 from typing import Annotated
 
 from nonebot import on_startswith, require
-from nonebot.adapters import Bot, Event
+from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
 from nonebot.matcher import Matcher
 from nonebot.plugin import PluginMetadata
@@ -61,20 +61,13 @@ async def _(
 async def _(
     event: Event,
     session: EventSession,
-    msg: UniMsg,
-    reply: Annotated[UniMessage, EventReplyMessage()],
+    reply: Annotated[Message, EventReplyMessage()],
 ):
     ctx = Context.get_context(session)
     ctx.set_gev(event)
-
-    if msg.has(Reply):
-        message = await reply.export()
-        ctx.set_gem(message)
-        ctx.set_gurl(reply)
-    else:
-        message = await msg.export()
-
-    await UniMessage.text(str(message)).send()
+    ctx.set_gem(reply)
+    ctx.set_gurl(await UniMessage.generate(message=reply))
+    await UniMessage.text(str(reply)).send()
 
 
 @code_getmid.handle()
