@@ -2,7 +2,7 @@ from io import BytesIO
 from typing import Annotated
 
 from nonebot import on_startswith, require
-from nonebot.adapters import Bot, Event, Message
+from nonebot.adapters import Bot, Event
 from nonebot.log import logger
 from nonebot.matcher import Matcher
 from nonebot.plugin import PluginMetadata
@@ -13,7 +13,7 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_datastore")
 require("nonebot_plugin_session")
 require("nonebot_plugin_userinfo")
-from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, image_fetch
+from nonebot_plugin_alconna.uniseg import UniMessage, image_fetch
 from nonebot_plugin_session import EventSession
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
@@ -36,6 +36,7 @@ __plugin_meta__ = PluginMetadata(
     supported_adapters=inherit_supported_adapters(
         "nonebot_plugin_alconna",
         "nonebot_plugin_datastore",
+        "nonebot_plugin_session",
         "nonebot_plugin_userinfo",
     ),
     extra={"author": "wyf7685"},
@@ -52,7 +53,7 @@ code_getimg = on_startswith("getimg", rule=EXECODE_ENABLED)
 async def _(
     bot: Bot,
     session: EventSession,
-    code: Annotated[str, ExtractCode()],
+    code: ExtractCode,
     uinfo: Annotated[UserInfo, EventUserInfo()],
 ):
     try:
@@ -67,7 +68,7 @@ async def _(
 async def _(
     event: Event,
     session: EventSession,
-    message: Annotated[Message, EventReplyMessage()],
+    message: EventReplyMessage,
 ):
     ctx = Context.get_context(session)
     ctx.set_gev(event)
@@ -80,7 +81,7 @@ async def _(
 async def _(
     event: Event,
     session: EventSession,
-    reply: Annotated[Reply, EventReply()],
+    reply: EventReply,
 ):
     ctx = Context.get_context(session)
     message = type(event.get_message())(reply.msg or "")
@@ -96,7 +97,7 @@ async def _(
     event: Event,
     session: EventSession,
     matcher: Matcher,
-    image: Annotated[Image, EventImage()],
+    image: EventImage,
 ):
     varname = event.get_message().extract_plain_text().removeprefix("getimg").strip()
     if (varname := varname or "img") and not varname.isidentifier():

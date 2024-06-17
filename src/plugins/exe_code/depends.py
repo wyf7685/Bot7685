@@ -1,3 +1,4 @@
+from typing import Annotated
 from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
@@ -26,8 +27,9 @@ def ExeCodeEnabled():
     return Rule(check)
 
 
-def ExtractCode():
-    def extract_code(msg: UniMsg):
+def _ExtractCode():
+
+    def extract_code(msg: UniMsg) -> str:
         code = ""
         for seg in msg:
             if isinstance(seg, Text):
@@ -41,10 +43,20 @@ def ExtractCode():
     return Depends(extract_code)
 
 
-def EventReplyMessage():
+def _EventReply():
 
-    async def event_reply_message(event: Event, bot: Bot) -> Message:
-        if not (reply := await reply_fetch(event, bot)) or not (msg := reply.msg):
+    async def event_reply(event: Event, bot: Bot) -> Reply:
+        if reply := await reply_fetch(event, bot):
+            return reply
+        Matcher.skip()
+
+    return Depends(event_reply)
+
+
+def _EventReplyMessage():
+
+    async def event_reply_message(event: Event, reply: EventReply) -> Message:
+        if not (msg := reply.msg):
             Matcher.skip()
 
         if not isinstance(msg, Message):
@@ -55,17 +67,7 @@ def EventReplyMessage():
     return Depends(event_reply_message)
 
 
-def EventReply():
-
-    async def event_reply(event: Event, bot: Bot) -> Reply:
-        if reply := await reply_fetch(event, bot):
-            return reply
-        Matcher.skip()
-
-    return Depends(event_reply)
-
-
-def EventImage():
+def _EventImage():
     async def event_image(msg: UniMsg) -> Image:
         if msg.has(Image):
             return msg[Image, 0]
@@ -78,4 +80,8 @@ def EventImage():
     return Depends(event_image)
 
 
+ExtractCode = Annotated[str, _ExtractCode()]
+EventReply = Annotated[Reply, _EventReply()]
+EventReplyMessage = Annotated[Message, _EventReplyMessage()]
+EventImage = Annotated[Image, _EventImage()]
 EXECODE_ENABLED = ExeCodeEnabled()
