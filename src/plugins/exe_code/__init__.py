@@ -19,7 +19,13 @@ from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 from .code_context import Context
 from .config import Config
-from .depends import EXECODE_ENABLED, EventImage, EventReplyMessage, ExtractCode
+from .depends import (
+    EXECODE_ENABLED,
+    EventImage,
+    EventReply,
+    EventReplyMessage,
+    ExtractCode,
+)
 
 __plugin_meta__ = PluginMetadata(
     name="exe_code",
@@ -61,25 +67,27 @@ async def _(
 async def _(
     event: Event,
     session: EventSession,
-    reply: Annotated[Message, EventReplyMessage()],
+    message: Annotated[Message, EventReplyMessage()],
 ):
     ctx = Context.get_context(session)
     ctx.set_gev(event)
-    ctx.set_gem(reply)
-    ctx.set_gurl(await UniMessage.generate(message=reply))
-    await UniMessage.text(str(reply)).send()
+    ctx.set_gem(message)
+    ctx.set_gurl(await UniMessage.generate(message=message))
+    await UniMessage.text(str(message)).send()
 
 
 @code_getmid.handle()
-async def _(event: Event, session: EventSession, msg: UniMsg):
+async def _(
+    event: Event,
+    session: EventSession,
+    reply: Annotated[Reply, EventReply()],
+):
     ctx = Context.get_context(session)
+    message = type(event.get_message())(reply.msg or "")
     ctx.set_gev(event)
-    if msg.has(Reply):
-        reply = msg[Reply, 0]
-        message = type(event.get_message())(reply.msg or "")
-        ctx.set_gem(message)
-        ctx.set_gurl(await UniMessage.generate(message=message))
-        await UniMessage.text(reply.id).send()
+    ctx.set_gem(message)
+    ctx.set_gurl(await UniMessage.generate(message=message))
+    await UniMessage.text(reply.id).send()
 
 
 @code_getimg.handle()
@@ -102,6 +110,7 @@ async def _(
         await matcher.finish(f"保存图片时出错: {err}")
 
     ctx = Context.get_context(session)
-    ctx.set_value(varname, Image_open(BytesIO(img_bytes)))
     ctx.set_gev(event)
+    ctx.set_gurl(image)
+    ctx.set_value(varname, Image_open(BytesIO(img_bytes)))
     await matcher.finish(f"图片已保存至变量 {varname}")

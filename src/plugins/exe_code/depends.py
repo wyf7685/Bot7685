@@ -55,17 +55,27 @@ def EventReplyMessage():
     return Depends(event_reply_message)
 
 
+def EventReply():
+
+    async def event_reply(event: Event, bot: Bot) -> Reply:
+        if reply := await reply_fetch(event, bot):
+            return reply
+        Matcher.skip()
+
+    return Depends(event_reply)
+
+
 def EventImage():
-    async def event_message(msg: UniMsg) -> Image:
+    async def event_image(msg: UniMsg) -> Image:
         if msg.has(Image):
             return msg[Image, 0]
         elif msg.has(Reply):
             reply_msg = msg[Reply, 0].msg
             if isinstance(reply_msg, Message):
-                return await event_message(await UniMessage.generate(message=reply_msg))
+                return await event_image(await UniMessage.generate(message=reply_msg))
         Matcher.skip()
 
-    return Depends(event_message)
+    return Depends(event_image)
 
 
 EXECODE_ENABLED = ExeCodeEnabled()
