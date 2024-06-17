@@ -88,7 +88,7 @@ def debug_log(
         return wrapper_sync
 
 
-def is_export_method(call: Callable) -> bool:
+def is_export_method(call: Callable[..., Any]) -> bool:
     return getattr(call, INTERFACE_EXPORT_METHOD, False)
 
 

@@ -9,7 +9,7 @@ class InterfaceMeta(type):
     __interface_map__: ClassVar[dict[str, "InterfaceMeta"]] = {}
 
     __export_method__: list[str]
-    __method_description__: dict[str, str]
+    __method_description__: dict[str, FuncDescription]
 
     def __new__(cls, name: str, bases: tuple, attrs: dict[str, object]):
         if name in cls.__interface_map__:
@@ -39,26 +39,36 @@ class InterfaceMeta(type):
 
         return interface_cls
 
+    def get_export_method(self) -> list[str]:
+        return self.__export_method__
+
+    def __get_method_description(self) -> list[Tuple[bool, str, str]]:
+        # (is_export, func_name, desc)
+        methods: list[Tuple[bool, str, str]] = []
+        description: dict[str, FuncDescription] = self.__method_description__
+        for func_name, desc in description.items():
+            func = cast(Callable[..., Any], getattr(self, func_name))
+            is_export = is_export_method(func)
+            methods.append((is_export, func_name, desc.format(func)))
+        return methods
+
     @classmethod
     def get_all_description(cls) -> Tuple[list[str], list[str]]:
-        content: list[str] = []
-        result: list[str] = []
-
-        # (is_export, inst_name, func_name, desc)
+        # (is_export, func_name, desc, inst_name)
         methods: list[Tuple[bool, str, str, str]] = []
         for _, cls_obj in cls.__interface_map__.items():
-            inst_name: str = getattr(cls_obj, INTERFACE_INST_NAME)
-            description: dict[str, FuncDescription] = getattr(
-                cls_obj, INTERFACE_METHOD_DESCRIPTION
+            methods.extend(
+                (*item, getattr(cls_obj, "__inst_name__", ""))
+                for item in cls_obj.__get_method_description()
             )
-            for func_name, desc in description.items():
-                func = cast(Callable[..., Any], getattr(cls_obj, func_name))
-                is_export = is_export_method(func)
-                methods.append((is_export, inst_name, func_name, desc.format(func)))
-        methods.sort(key=lambda x: (1 - x[0], x[1], x[2]))
+        methods.sort(key=lambda x: (1 - x[0], x[3], x[1]))
 
-        for index, (is_export, inst_name, func_name, desc) in enumerate(methods, 1):
-            prefix = f"{index}. " if is_export else f"{index}. {inst_name}."
+        content: list[str] = []
+        result: list[str] = []
+        for index, (is_export, func_name, desc, inst_name) in enumerate(methods, 1):
+            prefix = f"{index}. "
+            if is_export:
+                prefix += f"{inst_name}."
             content.append(prefix + func_name)
             result.append(prefix + desc)
 
@@ -70,23 +80,7 @@ class Interface(metaclass=InterfaceMeta):
     __export_method__: ClassVar[list[str]]
     __method_description__: ClassVar[dict[str, str]]
 
-    @classmethod
-    def get_export_method(cls) -> list[str]:
-        return cls.__export_method__
-
     def export_to(self, context: T_Context):
-        for name in self.get_export_method():
+        for name in type(self).get_export_method():
             context[name] = getattr(self, name)
         context[self.__inst_name__] = self
-
-    @classmethod
-    def get_method_description(cls) -> list[Tuple[str, str]]:
-        name = cls.__inst_name__
-        assert (cls is not Interface) and (
-            name != Interface.__inst_name__
-        ), "Interface的子类必须拥有自己的`__inst_name__`属性"
-
-        return [
-            (f"{name}.{k}", f"{name}.{v}")
-            for k, v in cls.__method_description__.items()
-        ]
