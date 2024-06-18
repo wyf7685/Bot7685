@@ -11,6 +11,7 @@ from nonebot.adapters.onebot.v11 import (
 from nonebot.adapters.onebot.v11.event import NoticeEvent
 from nonebot.log import logger
 from nonebot.typing import T_State
+from nonebot.matcher import Matcher
 from pydantic import BaseModel
 from .data import Data
 from .router import setup_router
@@ -41,24 +42,18 @@ class GroupMsgEmojiLikeEvent(NoticeEvent):
 OneBotV11Adapter.add_custom_model(GroupMsgEmojiLikeEvent)
 
 
-def handle_response(msg_id: int, user_id: int, item: Data) -> None:
+def handle_response(msg_id: int, user_id: int, item: Data) -> type[Matcher]:
+    logger.debug(f"{msg_id=}, {user_id=}, {item=}")
     # 表情回应缓存
     cache: dict[int, int] = {}
 
-    async def rule(event: NoticeEvent, state: T_State) -> bool:
-        # 仅接收 group_msg_emoji_like 事件
-        if event.notice_type != "group_msg_emoji_like":
-            return False
-
+    async def rule(event: GroupMsgEmojiLikeEvent, state: T_State) -> bool:
         # 仅处理对应消息上的表情回应
-        notice_data = event.model_dump()
-        if notice_data.get("message_id") != msg_id:
+        if event.message_id != msg_id:
             return False
 
-        is_event_user = notice_data.get("user_id") == user_id
-        likes: dict[int, int] = {
-            int(i["emoji_id"]): i["count"] for i in notice_data.get("likes", [])
-        }
+        is_event_user = event.user_id == user_id
+        likes: dict[int, int] = {int(i.emoji_id): i.count for i in event.likes}
         for k, v in likes.items():
             if (
                 (k not in cache or cache[k] < v)  # 判断新增表情回应
@@ -73,7 +68,9 @@ def handle_response(msg_id: int, user_id: int, item: Data) -> None:
             cache.update(likes)
             return False
 
-    @on_notice(rule=rule, temp=True, expire_time=timedelta(minutes=3)).handle()
+    matcher = on_notice(rule=rule, temp=True, expire_time=timedelta(minutes=3))
+
+    @matcher.handle()
     async def _(state: T_State):
         weight, action = {
             76: (+1, "增加"),  # 大拇指
@@ -84,6 +81,8 @@ def handle_response(msg_id: int, user_id: int, item: Data) -> None:
             msg = f"黍泡泡 [<le>{item.text}</le>] 权重{action} 1, 当前权重: <c>{item.weight}</c>"
             logger.opt(colors=True).info(msg)
 
+    return matcher
+
 
 @on_startswith(("抽黍泡泡", "黍泡泡")).handle()
 async def _(bot: Bot, event: MessageEvent):
@@ -91,4 +90,8 @@ async def _(bot: Bot, event: MessageEvent):
     img = MessageSegment.image(file=str(url.with_query({"key": item.name})))
     img.data["summary"] = item.text
     send_result = await bot.send(event, MessageSegment.reply(event.message_id) + img)
-    handle_response(send_result["message_id"], event.user_id, item)
+    # 此处消息ID+1 为 NapCatQQ 的逻辑问题
+    # 获取的消息ID与表情回应的上报ID不一致, 差值为 1
+    # 暂时使用该方法纠正, 等 NapCatQQ 修复后再修改
+    matcher = handle_response(send_result["message_id"] + 1, event.user_id, item)
+    logger.debug(f"创建 Callback: {matcher}")

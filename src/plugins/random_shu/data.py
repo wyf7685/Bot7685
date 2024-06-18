@@ -50,5 +50,5 @@ class Data(BaseModel):
     def add_weight(self, w: int) -> None:
         data = self._load()
         next(i for i in data if i.name == self.name).weight += w
-        self.weight += 1
+        self.weight += w
         self._save(data)
