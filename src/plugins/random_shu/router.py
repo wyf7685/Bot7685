@@ -2,7 +2,7 @@ from nonebot import get_driver
 from nonebot.drivers import URL, ASGIMixin, HTTPServerSetup, Request, Response
 from nonebot.log import logger
 
-from .constant import image_dir, image_text, nonebot_config, router_path
+from .constant import image_dir, image_text, router_path
 
 
 async def handle(request: Request) -> Response:
@@ -35,6 +35,6 @@ def setup_router():
     return URL.build(
         scheme="http",
         host="nbv2",
-        port=nonebot_config.port,
+        port=driver.config.port,
         path=router_path,
     )

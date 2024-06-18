@@ -2,10 +2,7 @@ import json
 from pathlib import Path
 from random import Random
 
-from nonebot import get_driver
-
 random = Random()
-nonebot_config = get_driver().config
 router_path = "/random_shu/image"
 
 # 图源: Bilibili@鱼烤箱
