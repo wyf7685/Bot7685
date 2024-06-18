@@ -2,23 +2,22 @@ from nonebot import get_driver
 from nonebot.drivers import URL, ASGIMixin, HTTPServerSetup, Request, Response
 from nonebot.log import logger
 
-from .constant import image_dir, image_text, router_path
+from .constant import image_dir, router_path
+from .data import Data
 
 
 async def handle(request: Request) -> Response:
     key = request.url.query.get("key")
     if key is None or not key.endswith(".png"):
-        return Response(404, content="Invalid parameter key")
-    fp = image_dir / key
-    if not fp.exists():
-        return Response(404, content="Requested key not exists")
+        return Response(status_code=404, content="Invalid parameter key")
+    if (item := Data.find(key)) is None:
+        return Response(status_code=404, content="Requested key not exists")
 
-    image_text.get(fp.stem, "黍泡泡")
-    logger.info(f"黍泡泡抽取结果: {fp.name} - {image_text.get(fp.stem, '黍泡泡')}")
+    logger.info(f"黍泡泡抽取结果: {item.name} - {item.text}")
     return Response(
-        200,
+        status_code=200,
         headers={"Content-Type": "image/png"},
-        content=fp.read_bytes(),
+        content=(image_dir / item.name).read_bytes(),
     )
 
 

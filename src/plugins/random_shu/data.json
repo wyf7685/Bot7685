@@ -1,0 +1,502 @@
+[
+  {
+    "name": "1.png",
+    "text": "可以",
+    "weight": 1000
+  },
+  {
+    "name": "2.png",
+    "text": "不能",
+    "weight": 1000
+  },
+  {
+    "name": "3.png",
+    "text": "理所当然",
+    "weight": 1000
+  },
+  {
+    "name": "4.png",
+    "text": "是的",
+    "weight": 1000
+  },
+  {
+    "name": "5.png",
+    "text": "做梦",
+    "weight": 1000
+  },
+  {
+    "name": "6.png",
+    "text": "再问一遍",
+    "weight": 1000
+  },
+  {
+    "name": "7.png",
+    "text": "放轻松",
+    "weight": 1000
+  },
+  {
+    "name": "8.png",
+    "text": "去吃饭",
+    "weight": 1000
+  },
+  {
+    "name": "9.png",
+    "text": "也许吧",
+    "weight": 1000
+  },
+  {
+    "name": "10.png",
+    "text": "小概率会发生",
+    "weight": 1000
+  },
+  {
+    "name": "11.png",
+    "text": "很有可能",
+    "weight": 1000
+  },
+  {
+    "name": "12.png",
+    "text": "不会这样的",
+    "weight": 1000
+  },
+  {
+    "name": "13.png",
+    "text": "可以转变一下思路",
+    "weight": 1000
+  },
+  {
+    "name": "14.png",
+    "text": "这辈子都不可能",
+    "weight": 1000
+  },
+  {
+    "name": "15.png",
+    "text": "幸运的话就可以",
+    "weight": 1000
+  },
+  {
+    "name": "16.png",
+    "text": "不可以哦",
+    "weight": 1000
+  },
+  {
+    "name": "17.png",
+    "text": "这片大地",
+    "weight": 1000
+  },
+  {
+    "name": "18.png",
+    "text": "我不知道",
+    "weight": 1000
+  },
+  {
+    "name": "19.png",
+    "text": "这个可以有",
+    "weight": 1000
+  },
+  {
+    "name": "20.png",
+    "text": "这个真没有",
+    "weight": 1000
+  },
+  {
+    "name": "21.png",
+    "text": "你有点太极端了",
+    "weight": 1000
+  },
+  {
+    "name": "22.png",
+    "text": "异想天开",
+    "weight": 1000
+  },
+  {
+    "name": "23.png",
+    "text": "做不到",
+    "weight": 1000
+  },
+  {
+    "name": "24.png",
+    "text": "你可以的",
+    "weight": 1000
+  },
+  {
+    "name": "25.png",
+    "text": "你不能这么做",
+    "weight": 1000
+  },
+  {
+    "name": "26.png",
+    "text": "想吃点啥就吃点啥",
+    "weight": 1000
+  },
+  {
+    "name": "27.png",
+    "text": "你可以试试",
+    "weight": 1000
+  },
+  {
+    "name": "28.png",
+    "text": "试试就逝世",
+    "weight": 1000
+  },
+  {
+    "name": "29.png",
+    "text": "毋容置疑",
+    "weight": 1000
+  },
+  {
+    "name": "30.png",
+    "text": "会有血光之灾",
+    "weight": 1000
+  },
+  {
+    "name": "31.png",
+    "text": "不要这么做",
+    "weight": 1000
+  },
+  {
+    "name": "32.png",
+    "text": "不会有好事发生的",
+    "weight": 1000
+  },
+  {
+    "name": "33.png",
+    "text": "会有惊喜的",
+    "weight": 1000
+  },
+  {
+    "name": "34.png",
+    "text": "如果你想的话",
+    "weight": 1000
+  },
+  {
+    "name": "35.png",
+    "text": "去你的",
+    "weight": 1000
+  },
+  {
+    "name": "36.png",
+    "text": "谢谢惠顾",
+    "weight": 1000
+  },
+  {
+    "name": "37.png",
+    "text": "一定能",
+    "weight": 1000
+  },
+  {
+    "name": "38.png",
+    "text": "你怎么能这么想？",
+    "weight": 1000
+  },
+  {
+    "name": "39.png",
+    "text": "我不明白你的意思",
+    "weight": 1000
+  },
+  {
+    "name": "40.png",
+    "text": "可以哦",
+    "weight": 1000
+  },
+  {
+    "name": "41.png",
+    "text": "假的，绝对假的",
+    "weight": 1000
+  },
+  {
+    "name": "42.png",
+    "text": "这是个不错的选择",
+    "weight": 1000
+  },
+  {
+    "name": "43.png",
+    "text": "好文明",
+    "weight": 1000
+  },
+  {
+    "name": "44.png",
+    "text": "坏文明",
+    "weight": 1000
+  },
+  {
+    "name": "45.png",
+    "text": "死刑",
+    "weight": 1000
+  },
+  {
+    "name": "46.png",
+    "text": "好提议",
+    "weight": 1000
+  },
+  {
+    "name": "47.png",
+    "text": "这超出我的能力范围了",
+    "weight": 1000
+  },
+  {
+    "name": "48.png",
+    "text": "好的呢",
+    "weight": 1000
+  },
+  {
+    "name": "49.png",
+    "text": "不会的",
+    "weight": 1000
+  },
+  {
+    "name": "50.png",
+    "text": "会有这么一天的",
+    "weight": 1000
+  },
+  {
+    "name": "51.png",
+    "text": "你要交好运了",
+    "weight": 1000
+  },
+  {
+    "name": "52.png",
+    "text": "这是命运的安排",
+    "weight": 1000
+  },
+  {
+    "name": "53.png",
+    "text": "概率很低但不是0",
+    "weight": 1000
+  },
+  {
+    "name": "54.png",
+    "text": "很难实现",
+    "weight": 1000
+  },
+  {
+    "name": "55.png",
+    "text": "下辈子再说吧",
+    "weight": 1000
+  },
+  {
+    "name": "56.png",
+    "text": "无愧于心，努力就行",
+    "weight": 1000
+  },
+  {
+    "name": "57.png",
+    "text": "会有大麻烦的",
+    "weight": 1000
+  },
+  {
+    "name": "58.png",
+    "text": "够呛",
+    "weight": 1000
+  },
+  {
+    "name": "59.png",
+    "text": "100%可以的",
+    "weight": 1000
+  },
+  {
+    "name": "60.png",
+    "text": "爬",
+    "weight": 1000
+  },
+  {
+    "name": "61.png",
+    "text": "尽力就好",
+    "weight": 1000
+  },
+  {
+    "name": "62.png",
+    "text": "快跑",
+    "weight": 1000
+  },
+  {
+    "name": "63.png",
+    "text": "什么都不做",
+    "weight": 1000
+  },
+  {
+    "name": "64.png",
+    "text": "很有勇气",
+    "weight": 1000
+  },
+  {
+    "name": "65.png",
+    "text": "不可思议",
+    "weight": 1000
+  },
+  {
+    "name": "66.png",
+    "text": "ALL",
+    "weight": 1000
+  },
+  {
+    "name": "67.png",
+    "text": "随便你",
+    "weight": 1000
+  },
+  {
+    "name": "68.png",
+    "text": "什么都不要想",
+    "weight": 1000
+  },
+  {
+    "name": "69.png",
+    "text": "睡一觉就好",
+    "weight": 1000
+  },
+  {
+    "name": "70.png",
+    "text": "这不在我的预言范围内",
+    "weight": 1000
+  },
+  {
+    "name": "71.png",
+    "text": "没门",
+    "weight": 1000
+  },
+  {
+    "name": "72.png",
+    "text": "加油你一定行",
+    "weight": 1000
+  },
+  {
+    "name": "73.png",
+    "text": "还不错",
+    "weight": 1000
+  },
+  {
+    "name": "74.png",
+    "text": "好点子",
+    "weight": 1000
+  },
+  {
+    "name": "75.png",
+    "text": "实现起来很难",
+    "weight": 1000
+  },
+  {
+    "name": "76.png",
+    "text": "你可以问凯尔希",
+    "weight": 1000
+  },
+  {
+    "name": "77.png",
+    "text": "需要有人帮你",
+    "weight": 1000
+  },
+  {
+    "name": "78.png",
+    "text": "不要自讨没趣",
+    "weight": 1000
+  },
+  {
+    "name": "79.png",
+    "text": "爱的力量是无限的",
+    "weight": 1000
+  },
+  {
+    "name": "80.png",
+    "text": "喜欢就好",
+    "weight": 1000
+  },
+  {
+    "name": "81.png",
+    "text": "非也非也",
+    "weight": 1000
+  },
+  {
+    "name": "82.png",
+    "text": "可以问问朋友",
+    "weight": 1000
+  },
+  {
+    "name": "83.png",
+    "text": "善待自己",
+    "weight": 1000
+  },
+  {
+    "name": "84.png",
+    "text": "不",
+    "weight": 1000
+  },
+  {
+    "name": "85.png",
+    "text": "会有的",
+    "weight": 1000
+  },
+  {
+    "name": "86.png",
+    "text": "你自己觉得呢？",
+    "weight": 1000
+  },
+  {
+    "name": "87.png",
+    "text": "善待别人",
+    "weight": 1000
+  },
+  {
+    "name": "88.png",
+    "text": "万事顺利",
+    "weight": 1000
+  },
+  {
+    "name": "89.png",
+    "text": "这不太好",
+    "weight": 1000
+  },
+  {
+    "name": "90.png",
+    "text": "坚持就是胜利",
+    "weight": 1000
+  },
+  {
+    "name": "91.png",
+    "text": "打电话问问家里人",
+    "weight": 1000
+  },
+  {
+    "name": "92.png",
+    "text": "多关心一下自己",
+    "weight": 1000
+  },
+  {
+    "name": "93.png",
+    "text": "可",
+    "weight": 1000
+  },
+  {
+    "name": "94.png",
+    "text": "正确的选择",
+    "weight": 1000
+  },
+  {
+    "name": "95.png",
+    "text": "注意安全",
+    "weight": 1000
+  },
+  {
+    "name": "96.png",
+    "text": "好提议",
+    "weight": 1000
+  },
+  {
+    "name": "97.png",
+    "text": "这个我也不知道",
+    "weight": 1000
+  },
+  {
+    "name": "98.png",
+    "text": "不用担心",
+    "weight": 1000
+  },
+  {
+    "name": "99.png",
+    "text": "不会吧?",
+    "weight": 1000
+  },
+  {
+    "name": "100.png",
+    "text": "把你种在土里你重新长吧",
+    "weight": 1000
+  }
+]
