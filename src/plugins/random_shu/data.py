@@ -15,6 +15,10 @@ class Data(BaseModel):
     text: str
     weight: int
 
+    @property
+    def path(self) -> Path:
+        return image_dir / self.name
+
     @classmethod
     def _load(cls) -> list[Self]:
         return [
@@ -36,7 +40,7 @@ class Data(BaseModel):
     @classmethod
     def choose(cls) -> Self:
         data = cls._load()
-        total = sum(i.weight for i in data)
+        total = sum(max(10, i.weight) for i in data)
         key = random.randint(0, total)
         for item in data:
             if item.weight > key:
@@ -57,7 +61,3 @@ class Data(BaseModel):
         data = self._load()
         next(i for i in data if i.name == self.name).weight = self.weight
         self._save(data)
-
-    @property
-    def path(self) -> Path:
-        return image_dir / self.name

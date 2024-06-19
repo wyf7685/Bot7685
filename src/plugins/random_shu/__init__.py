@@ -1,15 +1,16 @@
 from datetime import timedelta
 from typing import Literal, override
 
-from nonebot import on_notice, on_startswith
+from nonebot import on_fullmatch, on_notice, on_startswith
 from nonebot.adapters.onebot.v11 import Adapter as OneBotV11Adapter
-from nonebot.adapters.onebot.v11 import Bot, MessageEvent, MessageSegment
-from nonebot.adapters.onebot.v11.event import NoticeEvent, GroupMessageEvent
+from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
+from nonebot.adapters.onebot.v11.event import GroupMessageEvent, NoticeEvent
 from nonebot.log import logger
 from nonebot.matcher import Matcher
 from nonebot.typing import T_State
 from pydantic import BaseModel
 
+from .constant import emoji_weight_actions
 from .data import Data
 from .router import setup_router
 
@@ -41,11 +42,6 @@ OneBotV11Adapter.add_custom_model(GroupMsgEmojiLikeEvent)
 
 def handle_response(msg_id: int, user_id: int, item: Data) -> type[Matcher]:
     logger.debug(f"{msg_id=}, {user_id=}, {item=}")
-
-    emoji_weight_actions = {
-        76: (+5, "增加"),  # 大拇指
-        265: (-5, "减少"),  # 老人手机
-    }
 
     async def rule(event: GroupMsgEmojiLikeEvent, state: T_State) -> bool:
         # 仅处理对应消息上的表情回应
@@ -84,7 +80,16 @@ def handle_response(msg_id: int, user_id: int, item: Data) -> type[Matcher]:
     )
 
 
-@on_startswith(("抽黍泡泡", "黍泡泡")).handle()
+@on_fullmatch("黍泡泡权重", priority=1).handle()
+async def _(bot: Bot, event: MessageEvent):
+    msg = Message("在黍泡泡消息上进行表情回应, 可以修改对应词条的权重\n\n")
+    for emoji_id, (weight, action) in emoji_weight_actions.items():
+        msg += MessageSegment.face(emoji_id) + f" {action} {abs(weight)} 权重\n"
+    await bot.send(event, msg)
+    await Matcher.finish()
+
+
+@on_startswith(("抽黍泡泡", "黍泡泡"), priority=2).handle()
 async def _(bot: Bot, event: MessageEvent):
     item = Data.choose()
     img = MessageSegment.image(file=str(url.with_query({"key": item.name})))
