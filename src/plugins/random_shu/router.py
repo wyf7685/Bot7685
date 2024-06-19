@@ -2,7 +2,7 @@ from nonebot import get_driver
 from nonebot.drivers import URL, ASGIMixin, HTTPServerSetup, Request, Response
 from nonebot.log import logger
 
-from .constant import image_dir, router_path
+from .constant import router_path
 from .data import Data
 
 
@@ -17,7 +17,7 @@ async def handle(request: Request) -> Response:
     return Response(
         status_code=200,
         headers={"Content-Type": "image/png"},
-        content=(image_dir / item.name).read_bytes(),
+        content=item.path.read_bytes(),
     )
 
 
