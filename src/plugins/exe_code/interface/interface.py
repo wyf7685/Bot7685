@@ -15,16 +15,16 @@ class InterfaceMeta(type):
         if name in cls.__interface_map__:
             raise TypeError(f"Interface {name} already exists")
 
-        interface_cls = super(InterfaceMeta, cls).__new__(cls, name, bases, attrs)
-        attr = interface_cls.__dict__
+        Interface = super(InterfaceMeta, cls).__new__(cls, name, bases, attrs)
+        attr = Interface.__dict__  # shortcut
 
         # export
-        interface_cls.__export_method__ = [
+        Interface.__export_method__ = [
             k for k, v in attr.items() if is_export_method(v)
         ]
 
         # description
-        interface_cls.__method_description__ = {
+        Interface.__method_description__ = {
             k: desc
             for k, v in attr.items()
             if (desc := getattr(v, INTERFACE_METHOD_DESCRIPTION, None))
@@ -32,12 +32,11 @@ class InterfaceMeta(type):
 
         # inst_name
         if INTERFACE_INST_NAME not in attr:
-            setattr(interface_cls, INTERFACE_INST_NAME, name.lower())
+            setattr(Interface, INTERFACE_INST_NAME, name.lower())
 
         # store interface class
-        cls.__interface_map__[name] = interface_cls
-
-        return interface_cls
+        cls.__interface_map__[name] = Interface
+        return Interface
 
     def get_export_method(self) -> list[str]:
         return self.__export_method__

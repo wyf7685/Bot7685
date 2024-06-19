@@ -65,11 +65,8 @@ class API(Interface):
             res = {"error": e}
         except BaseException as e:
             res = {"error": e}
-            logger.opt(exception=e).warning(
-                "用户({uin})调用api<y>{api}</y>时发生错误: <r>{err}</r>".format(
-                    uin=self.qid, api=api, err=e
-                )
-            )
+            msg = f"用户({self.qid})调用api<y>{api}</y>时发生错误: <r>{e}</r>"
+            logger.opt(exception=e).warning(msg)
         if isinstance(res, dict):
             res.setdefault("error", None)
         return Result(res)
@@ -159,6 +156,29 @@ class API(Interface):
 
     @export
     @descript(
+        description="向当前会话发送消息",
+        parameters=dict(
+            msg="需要发送的消息",
+        ),
+        result="Receipt",
+    )
+    @debug_log
+    async def feedback(self, msg: T_Message, fwd: bool = False) -> Receipt:
+        if fwd and isinstance(msg, list) and all(check_message_t(i) for i in msg):
+            return await self.send_fwd(msg)
+
+        if not check_message_t(msg):
+            msg = str(msg)
+
+        return await send_message(
+            bot=self.bot,
+            session=self.session,
+            target=None,
+            message=msg,
+        )
+
+    @export
+    @descript(
         description="获取用户对象",
         parameters=dict(qid="用户QQ号"),
         result="User对象",
@@ -174,26 +194,6 @@ class API(Interface):
     )
     def group(self, gid: str) -> "Group":
         return Group(self, gid)
-
-    @export
-    @descript(
-        description="向当前会话发送消息",
-        parameters=dict(
-            msg="需要发送的消息",
-        ),
-        result="Receipt",
-    )
-    @debug_log
-    async def feedback(self, msg: T_Message) -> Receipt:
-        if not check_message_t(msg):
-            msg = str(msg)
-
-        return await send_message(
-            bot=self.bot,
-            session=self.session,
-            target=None,
-            message=msg,
-        )
 
     @descript(
         description="撤回指定消息",
