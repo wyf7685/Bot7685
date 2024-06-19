@@ -17,7 +17,7 @@ async def _(bot: Bot, target: LotsTarget, msgid: MsgId):
     msg, emoji = get_lots_msg(target)
     await UniMessage.text(msg).send(reply_to=True)
 
-    logger.info(f"bot={bot}, message_id={msgid}, emoji_id={emoji}")
+    logger.info(f"{bot=}, {msgid=}, {emoji=}")
 
     if msgid is not None:
         try:
