@@ -65,7 +65,7 @@ def patch_group():
             else f"<c>{self.group_id}</c>"
         )
         return (
-            f"Message <c>{self.message_id}</c> from {sender}@[群:{group}] "
+            f"Message <c>{self.message_id}</c> from [群:{group}]@{sender} "
             f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
         )
 
