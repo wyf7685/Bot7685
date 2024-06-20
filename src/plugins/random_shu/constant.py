@@ -7,7 +7,7 @@ root = Path(__file__).parent.resolve()
 image_dir = root / "images"
 data_fp = root / "data.json"
 
-emoji_weight_actions = {
+emoji_weight_actions: dict[int, tuple[int, str]] = {
     66: (+10, "增加"),  # 爱心
     76: (+5, "增加"),  # 大拇指(赞)
     265: (-5, "减少"),  # 老人手机

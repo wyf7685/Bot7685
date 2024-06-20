@@ -80,13 +80,12 @@ def handle_response(msg_id: int, user_id: int, item: Data) -> type[Matcher]:
     )
 
 
-@on_fullmatch("黍泡泡权重", priority=1).handle()
+@on_fullmatch("黍泡泡权重", priority=1, block=True).handle()
 async def _(bot: Bot, event: MessageEvent):
     msg = Message("在黍泡泡消息上进行表情回应, 可以修改对应词条的权重\n\n")
     for emoji_id, (weight, action) in emoji_weight_actions.items():
         msg += MessageSegment.face(emoji_id) + f" {action} {abs(weight)} 权重\n"
     await bot.send(event, msg)
-    await Matcher.finish()
 
 
 @on_startswith(("抽黍泡泡", "黍泡泡"), priority=2).handle()
