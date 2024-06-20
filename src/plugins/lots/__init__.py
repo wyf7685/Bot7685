@@ -1,3 +1,5 @@
+import contextlib
+
 from nonebot import require
 from nonebot.adapters import Bot
 from nonebot.log import logger
@@ -17,14 +19,11 @@ async def _(bot: Bot, target: LotsTarget, msgid: MsgId):
     msg, emoji = get_lots_msg(target)
     await UniMessage.text(msg).send(reply_to=True)
 
-    logger.info(f"{bot=}, {msgid=}, {emoji=}")
-
     if msgid is not None:
-        try:
+        with contextlib.suppress(Exception):
             await bot.call_api(
                 "set_msg_emoji_like",
                 message_id=msgid,
                 emoji_id=emoji,
             )
-        except Exception as err:
-            logger.opt(exception=err).error(f"调用api `set_msg_emoji_like` 失败: {err}")
+            logger.debug(f"{bot=}, {msgid=}, {emoji=}")
