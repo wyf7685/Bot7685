@@ -1,15 +1,15 @@
 import contextlib
-from asyncio import Future
+from asyncio import Future, get_event_loop, Task
 from copy import deepcopy
 from queue import Queue
-from typing import Any, Awaitable, Callable, ClassVar, Self, cast
+from typing import Any, ClassVar, Optional, Self, cast
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Image, UniMessage
 from nonebot_plugin_session import Session
 
-from .constant import T_Context
+from .constant import T_Context, T_Executor
 from .interface import API, Buffer, default_context
 
 logger = logger.opt(colors=True)
@@ -38,16 +38,32 @@ class Context:
     ctx: T_Context
     locked: bool
     waitlist: Queue[Future[None]]
+    task: Optional[Task[Any]]
 
     def __init__(self, uin: str) -> None:
         self.uin = uin
         self.ctx = deepcopy(default_context)
         self.locked = False
         self.waitlist = Queue()
+        self.task = None
 
     @classmethod
-    def get_context(cls, session: Session) -> Self:
-        if (uin := session.id1 or "") not in cls._contexts:
+    def get_context(
+        cls,
+        session: Session | Event | str,
+        *,
+        create: bool = True,
+    ) -> Self:
+        if isinstance(session, Session):
+            uin = session.id1 or ""
+        elif isinstance(session, Event):
+            uin = session.get_user_id()
+        else:
+            uin = str(session)
+
+        if uin not in cls._contexts:
+            if not create:
+                raise KeyError(f"uin {uin} has no context")
             cls._contexts[uin] = cls(uin)
 
         return cls._contexts[uin]
@@ -55,7 +71,7 @@ class Context:
     @contextlib.asynccontextmanager
     async def _lock(self):
         if self.locked:
-            fut = Future()
+            fut = get_event_loop().create_future()
             self.waitlist.put(fut)
             await fut
         self.locked = True
@@ -66,43 +82,59 @@ class Context:
             if not self.waitlist.empty():
                 self.waitlist.get().set_result(None)
             self.locked = False
+            if self.task is not None:
+                self.task = None
 
-    def solve_code(self, code: str) -> Callable[[], Awaitable[None]]:
+    def _solve_code(self, code: str) -> T_Executor:
+        assert self.locked, "`Context._run_code` must be called with lock"
+
         # 预处理代码
-        lines = []
-        if self.ctx:
-            lines.append("global " + ",".join(list(self.ctx)) + "\n    ")
-        lines.extend(code.split("\n"))
+        lines = [f"global {','.join(self.ctx.keys())}", *code.split("\n")]
         func_code = ("\n" + EXECUTOR_INDENT).join(lines)
 
         # 包装为异步函数
         exec(EXECUTOR_FUNCTION % (func_code,), self.ctx)
         return self.ctx.pop("__executor__")
+        # return await executor()
 
     @classmethod
     async def execute(cls, session: Session, bot: Bot, code: str) -> None:
         self = cls.get_context(session)
         async with self._lock():
             API(bot, session, self.ctx).export_to(self.ctx)
-            await self.solve_code(code)()
+            executor = self._solve_code(code)
+            self.task = get_event_loop().create_task(executor())
+            result, self.task = await self.task, None
+
             if buf := Buffer(self.uin).getvalue().rstrip("\n"):
                 await UniMessage(buf).send()
+            if result is not None:
+                await UniMessage(repr(result)).send()
 
         # 处理异常
         if (exc := self.ctx.get("__exception__", (None, None)))[0]:
             raise cast(Exception, exc[0])
 
+    def terminate(self) -> bool:
+        if self.task is not None:
+            return self.task.cancel()
+        return False
+
     def set_value(self, varname: str, value: Any) -> None:
-        self.ctx[varname] = value
+        if value is not None:
+            self.ctx[varname] = value
+        elif varname in self.ctx:
+            del self.ctx[varname]
 
     def set_gev(self, event: Event) -> None:
         self.set_value("gev", event)
-
-    def set_gem(self, msg: Message) -> None:
+        msg: Optional[Message] = None
+        with contextlib.suppress(Exception):
+            msg = event.get_message()
         self.set_value("gem", msg)
 
-    def set_gurl(self, msg: UniMessage | Image) -> None:
-        url = ""
+    def set_gurl(self, msg: UniMessage[Image] | Image) -> None:
+        url = None
         if isinstance(msg, UniMessage) and msg.has(Image):
             url = msg[Image, 0].url
         elif isinstance(msg, Image):

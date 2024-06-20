@@ -10,7 +10,7 @@ from nonebot_plugin_session import EventSession
 from .config import cfg
 
 
-def ExeCodeEnabled():
+def ExeCodeEnabled() -> Rule:
     try:
         from nonebot.adapters.console import Bot as ConsoleBot
     except ImportError:
@@ -43,6 +43,31 @@ def _ExtractCode():
     return Depends(extract_code)
 
 
+def _EventTarget():
+
+    async def event_target(event: Event, msg: UniMsg) -> str:
+        uin = event.get_user_id()
+        if msg.has(At):
+            uin = msg[At, 0].target
+        return uin
+
+    return Depends(event_target)
+
+
+def _EventImage():
+
+    async def event_image(msg: UniMsg) -> Image:
+        if msg.has(Image):
+            return msg[Image, 0]
+        elif msg.has(Reply):
+            reply_msg = msg[Reply, 0].msg
+            if isinstance(reply_msg, Message):
+                return await event_image(await UniMessage.generate(message=reply_msg))
+        Matcher.skip()
+
+    return Depends(event_image)
+
+
 def _EventReply():
 
     async def event_reply(event: Event, bot: Bot) -> Reply:
@@ -67,21 +92,9 @@ def _EventReplyMessage():
     return Depends(event_reply_message)
 
 
-def _EventImage():
-    async def event_image(msg: UniMsg) -> Image:
-        if msg.has(Image):
-            return msg[Image, 0]
-        elif msg.has(Reply):
-            reply_msg = msg[Reply, 0].msg
-            if isinstance(reply_msg, Message):
-                return await event_image(await UniMessage.generate(message=reply_msg))
-        Matcher.skip()
-
-    return Depends(event_image)
-
-
+EXECODE_ENABLED = ExeCodeEnabled()
 ExtractCode = Annotated[str, _ExtractCode()]
+EventTarget = Annotated[str, _EventTarget()]
+EventImage = Annotated[Image, _EventImage()]
 EventReply = Annotated[Reply, _EventReply()]
 EventReplyMessage = Annotated[Message, _EventReplyMessage()]
-EventImage = Annotated[Image, _EventImage()]
-EXECODE_ENABLED = ExeCodeEnabled()

@@ -1,3 +1,4 @@
+import contextlib
 from io import BytesIO
 from typing import Annotated
 
@@ -5,6 +6,7 @@ from nonebot import on_startswith, require
 from nonebot.adapters import Bot, Event
 from nonebot.log import logger
 from nonebot.matcher import Matcher
+from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from nonebot.plugin.load import inherit_supported_adapters
 from PIL.Image import open as Image_open
@@ -24,6 +26,7 @@ from .depends import (
     EventImage,
     EventReply,
     EventReplyMessage,
+    EventTarget,
     ExtractCode,
 )
 
@@ -47,6 +50,7 @@ code_exec = on_startswith("code", rule=EXECODE_ENABLED)
 code_getcode = on_startswith("getcqcode", rule=EXECODE_ENABLED)
 code_getmid = on_startswith("getmid", rule=EXECODE_ENABLED)
 code_getimg = on_startswith("getimg", rule=EXECODE_ENABLED)
+code_terminate = on_startswith("terminate", rule=EXECODE_ENABLED, permission=SUPERUSER)
 
 
 @code_exec.handle()
@@ -72,7 +76,6 @@ async def _(
 ):
     ctx = Context.get_context(session)
     ctx.set_gev(event)
-    ctx.set_gem(message)
     ctx.set_gurl(await UniMessage.generate(message=message))
     await UniMessage.text(str(message)).send()
 
@@ -86,7 +89,6 @@ async def _(
     ctx = Context.get_context(session)
     message = type(event.get_message())(reply.msg or "")
     ctx.set_gev(event)
-    ctx.set_gem(message)
     ctx.set_gurl(await UniMessage.generate(message=message))
     await UniMessage.text(reply.id).send()
 
@@ -115,3 +117,10 @@ async def _(
     ctx.set_gurl(image)
     ctx.set_value(varname, Image_open(BytesIO(img_bytes)))
     await matcher.finish(f"图片已保存至变量 {varname}")
+
+
+@code_terminate.handle()
+async def _(target: EventTarget):
+    with contextlib.suppress(KeyError):
+        if Context.get_context(target).terminate():
+            await UniMessage("中止").at(target).text("的执行任务").send()
