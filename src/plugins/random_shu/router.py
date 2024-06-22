@@ -10,7 +10,7 @@ async def handle(request: Request) -> Response:
     key = request.url.query.get("key")
     if key is None or not key.endswith(".png"):
         return Response(status_code=404, content="Invalid parameter key")
-    if (item := Data.find(key)) is None:
+    if (item := await Data.find(key)) is None:
         return Response(status_code=404, content="Requested key not exists")
 
     logger.info(f"黍泡泡抽取结果: {item.name} - {item.text}")

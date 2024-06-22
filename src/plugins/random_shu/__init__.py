@@ -21,12 +21,10 @@ def handle_response(msg_id: int, user_id: int, item: Data) -> type[Matcher]:
 
     async def rule(event: GroupMsgEmojiLikeEvent) -> bool:
         if (
-            (event.message_id != msg_id or event.user_id != user_id)
-            or not event.likes
-            or (
-                (emoji_id := int(event.likes.pop(0).emoji_id))
-                and emoji_id not in emoji_weight_actions
-            )
+            event.message_id != msg_id or event.user_id != user_id or not event.likes
+        ) or (
+            (emoji_id := int(event.likes.pop(0).emoji_id))
+            and emoji_id not in emoji_weight_actions
         ):
             return False
 
