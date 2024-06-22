@@ -19,7 +19,7 @@ EXECUTOR_FUNCTION = """\
 last_exc, __exception__ = __exception__,  (None, None)
 async def __executor__():
     try:
-        %s
+        {CODE}
     except BaseException as e:
         global __exception__
         __exception__ = (e, __import__("traceback").format_exc())
@@ -90,12 +90,11 @@ class Context:
 
         # 预处理代码
         lines = [f"global {','.join(self.ctx.keys())}", *code.split("\n")]
-        func_code = ("\n" + EXECUTOR_INDENT).join(lines)
+        func_code = f"\n{EXECUTOR_INDENT}".join(lines)
 
         # 包装为异步函数
-        exec(EXECUTOR_FUNCTION % (func_code,), self.ctx)
+        exec(EXECUTOR_FUNCTION.replace("{CODE}", func_code), self.ctx)
         return self.ctx.pop("__executor__")
-        # return await executor()
 
     @classmethod
     async def execute(cls, session: Session, bot: Bot, code: str) -> None:

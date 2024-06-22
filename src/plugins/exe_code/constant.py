@@ -16,8 +16,8 @@ INTERFACE_EXPORT_METHOD = "__export_method__"
 INTERFACE_METHOD_DESCRIPTION = "__method_description__"
 
 
-T_Message = Union[str, Message, MessageSegment, UniMessage, Segment]
 T_Context = dict[str, Any]
-T_API_Result = Optional[Union[dict[str, Any], list[Any]]]
-T_ConstVar = Union[str, bool, int, float, dict[str, "T_ConstVar"], list["T_ConstVar"]]
 T_Executor = Callable[[], Coroutine[None, None, Any]]
+T_API_Result = Optional[Union[dict[str, Any], list[Any]]]
+T_Message = Union[str, Message, MessageSegment, UniMessage, Segment]
+T_ConstVar = Union[str, bool, int, float, dict[str, "T_ConstVar"], list["T_ConstVar"]]

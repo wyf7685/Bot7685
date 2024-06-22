@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import importlib
 import inspect
 from typing import (
     Any,
@@ -16,7 +17,7 @@ from typing import (
 )
 
 from nonebot.adapters import Bot, Message, MessageSegment
-from nonebot.internal.matcher import current_event
+from nonebot.internal.matcher import current_bot
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import (
     CustomNode,
@@ -131,7 +132,7 @@ class Result:
 
     def __getitem__(self, key: str | int) -> Any:
         if self._data:
-            return self._data.__getitem__(key) # type: ignore
+            return self._data.__getitem__(key)  # type: ignore
 
     def __getattribute__(self, name: str) -> Any:
         if isinstance(self._data, dict) and name in self._data:
@@ -159,7 +160,7 @@ async def as_unimsg(message: T_Message) -> UniMessage:
     return message
 
 
-def _send_message(count: int):
+def _send_message(limit: int):
     class ReachLimit(Exception):
         def __init__(self, msg: str, count: int) -> None:
             self.msg = msg
@@ -181,9 +182,9 @@ def _send_message(count: int):
         if key not in call_cnt:
             call_cnt[key] = 1
             asyncio.get_event_loop().call_later(60, clean_cnt, key)
-        elif call_cnt[key] >= count or call_cnt[key] < 0:
+        elif call_cnt[key] >= limit or call_cnt[key] < 0:
             call_cnt[key] = -1
-            raise ReachLimit("消息发送触发次数限制", count)
+            raise ReachLimit("消息发送触发次数限制", limit)
         else:
             call_cnt[key] += 1
 
@@ -202,20 +203,21 @@ async def send_forward_message(
     target: Optional[Target],
     msgs: Iterable[T_Message],
 ) -> Receipt:
+    message = Reference(
+        nodes=[
+            CustomNode(
+                uid=bot.self_id,
+                name="forward",
+                content=await as_unimsg(msg),
+            )
+            for msg in msgs
+        ],
+    )
     return await send_message(
         bot=bot,
         session=session,
         target=target,
-        message=Reference(
-            nodes=[
-                CustomNode(
-                    uid=bot.self_id,
-                    name="forward",
-                    content=await as_unimsg(msg),
-                )
-                for msg in msgs
-            ]
-        ),
+        message=message,
     )
 
 
@@ -253,8 +255,13 @@ def _export_manager():
 export_manager = _export_manager()
 
 
-def export_adapter_message(ctx: T_Context):
-    MessageClass = cast(type[Message], type(current_event.get().get_message()))
+def _get_message_class() -> type[Message]:
+    name = type(current_bot.get()).__module__.rpartition(".")[0]
+    return getattr(importlib.import_module(name), "Message")
+
+
+def export_adapter_message(ctx: T_Context) -> None:
+    MessageClass = _get_message_class()
     MessageSegmentClass = MessageClass.get_segment_class()
     ctx["Message"] = MessageClass
     ctx["MessageSegment"] = MessageSegmentClass

@@ -1,6 +1,6 @@
 import inspect
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, ParamSpec, Type, TypeVar
+from typing import Any, Callable, Optional, ParamSpec, TypeVar
 
 from ..constant import DESCRIPTION_FORMAT, INTERFACE_METHOD_DESCRIPTION, T_Message
 from .utils import Receipt, Result
@@ -12,6 +12,7 @@ type_alias: dict[type, str] = {
     Receipt: "Receipt",
     Result: "Result",
     T_Message: "T_Message",
+    inspect.Signature.empty: "Unkown",
 }
 
 

@@ -23,7 +23,7 @@ context_var(lambda x: Reply(id=str(x)), "Reply")
 [context_var(i) for i in {Image, Text, UniMessage}]
 
 
-def get_const_var_path(uin: str) -> Path:
+def _const_var_path(uin: str) -> Path:
     fp = DATA_PATH / f"{uin}.json"
     if not fp.exists():
         fp.parent.mkdir(parents=True, exist_ok=True)
@@ -32,7 +32,7 @@ def get_const_var_path(uin: str) -> Path:
 
 
 def set_const(uin: str, name: str, value: Optional[T_ConstVar] = None):
-    fp = get_const_var_path(uin)
+    fp = _const_var_path(uin)
     data = json.loads(fp.read_text())
     if value is not None:
         data[name] = value
@@ -42,4 +42,4 @@ def set_const(uin: str, name: str, value: Optional[T_ConstVar] = None):
 
 
 def load_const(uin: str) -> dict[str, T_ConstVar]:
-    return json.loads(get_const_var_path(uin).read_text())
+    return json.loads(_const_var_path(uin).read_text())
