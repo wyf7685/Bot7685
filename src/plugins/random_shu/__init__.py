@@ -1,5 +1,4 @@
 from datetime import timedelta
-from typing import cast
 from nonebot import on_fullmatch, on_notice, on_startswith
 from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent
@@ -18,35 +17,29 @@ url = setup_router()
 def handle_response(msg_id: int, user_id: int, item: Data) -> type[Matcher]:
     logger.debug(f"{msg_id=}, {user_id=}, {item=}")
 
-    async def rule(event: GroupMsgEmojiLikeEvent, state: T_State) -> bool:
-        # 仅处理对应消息上的表情回应
-        if event.message_id != msg_id:
-            return False
+    weight, action = 0, ""
 
-        cache = cast(dict[int, int], state.setdefault("like_cache", {}))
-        likes = {int(i.emoji_id): i.count for i in event.likes}
-        for k, v in likes.items():
-            if (
-                (k not in cache or cache[k] < v)  # 判断新增表情回应
-                and (event.user_id == user_id)  # 判断是否为触发黍泡泡的用户
-                and (k in emoji_weight_actions)  # 判断是否为指定表情
-            ):
-                state["emoji_id"] = k
-                return True
-        else:
-            # 不符合上述条件, 更新表情回应缓存
-            cache.clear()
-            cache.update(likes)
-            return False
-
-    async def handler(state: T_State):
-        weight, action = emoji_weight_actions.get(state["emoji_id"], (0, ""))
-        if weight:
-            item.add_weight(weight)
-            logger.opt(colors=True).info(
-                f"黍泡泡 [<le>{item.text}</le>] 权重{action} {abs(weight)}, "
-                f"当前权重: <c>{item.weight}</c>"
+    async def rule(event: GroupMsgEmojiLikeEvent) -> bool:
+        if (
+            (event.message_id != msg_id or event.user_id != user_id)
+            or not event.likes
+            or (
+                (emoji_id := int(event.likes.pop(0).emoji_id))
+                and emoji_id not in emoji_weight_actions
             )
+        ):
+            return False
+
+        nonlocal weight, action
+        weight, action = emoji_weight_actions[emoji_id]
+        return True
+
+    async def handler():
+        await item.add_weight(weight)
+        logger.opt(colors=True).info(
+            f"黍泡泡 [<le>{item.text}</le>] 权重{action} {abs(weight)}, "
+            f"当前权重: <c>{item.weight}</c>"
+        )
 
     return on_notice(
         rule=rule,
@@ -66,7 +59,7 @@ async def _(bot: Bot, event: MessageEvent):
 
 @on_startswith(("抽黍泡泡", "黍泡泡"), priority=2).handle()
 async def _(bot: Bot, event: MessageEvent):
-    item = Data.choose()
+    item = await Data.choose()
     img = MessageSegment.image(file=str(url.with_query({"key": item.name})))
     img.data["summary"] = item.text
     send_result = await bot.send(event, MessageSegment.reply(event.message_id) + img)

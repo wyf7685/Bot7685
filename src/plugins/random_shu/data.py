@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
 from random import Random
-from typing import Self
+from typing import Optional, Self
 
+import aiofiles
 from pydantic import BaseModel
 
 from .constant import data_fp, image_dir
@@ -20,26 +21,24 @@ class Data(BaseModel):
         return image_dir / self.name
 
     @classmethod
-    def _load(cls) -> list[Self]:
-        return [
-            cls.model_validate(i)
-            for i in json.loads(data_fp.read_text(encoding="utf-8"))
-        ]
+    async def _load(cls) -> list[Self]:
+        async with aiofiles.open(data_fp, "r+", encoding="utf-8") as file:
+            raw = await file.read()
+        return [cls.model_validate(i) for i in json.loads(raw)]
 
     @classmethod
-    def _save(cls, data: list[Self]) -> None:
-        data_fp.write_text(
-            data=json.dumps(
-                [i.model_dump() for i in data],
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
+    async def _save(cls, data: list[Self]) -> None:
+        raw = json.dumps(
+            [i.model_dump() for i in data],
+            ensure_ascii=False,
+            indent=2,
         )
+        async with aiofiles.open(data_fp, "w+", encoding="utf-8") as file:
+            await file.write(raw)
 
     @classmethod
-    def choose(cls) -> Self:
-        data = cls._load()
+    async def choose(cls) -> Self:
+        data = await cls._load()
         total = sum(max(10, i.weight) for i in data)
         key = random.randint(0, total)
         for item in data:
@@ -50,14 +49,14 @@ class Data(BaseModel):
             return data[-1]
 
     @classmethod
-    def find(cls, name: str) -> Self | None:
-        data = cls._load()
+    async def find(cls, name: str) -> Optional[Self]:
+        data = await cls._load()
         for item in data:
             if item.name == name:
                 return item
 
-    def add_weight(self, w: int) -> None:
+    async def add_weight(self, w: int) -> None:
         self.weight = max(self.weight + w, 10)
-        data = self._load()
+        data = await self._load()
         next(i for i in data if i.name == self.name).weight = self.weight
-        self._save(data)
+        await self._save(data)
