@@ -1,8 +1,15 @@
-from typing import Any, Callable, ClassVar, Tuple, cast
+from typing import Any, Callable, ClassVar, NamedTuple, cast
 
 from ..constant import INTERFACE_INST_NAME, INTERFACE_METHOD_DESCRIPTION, T_Context
 from .help_doc import FuncDescription
 from .utils import is_export_method
+
+
+class _Desc(NamedTuple):
+    inst_name: str
+    func_name: str
+    is_export: bool
+    description: str
 
 
 class InterfaceMeta(type):
@@ -20,14 +27,14 @@ class InterfaceMeta(type):
 
         # export
         Interface.__export_method__ = [
-            k for k, v in attr.items() if is_export_method(v)
+            name for name, value in attr.items() if is_export_method(value)
         ]
 
         # description
         Interface.__method_description__ = {
-            k: desc
-            for k, v in attr.items()
-            if (desc := getattr(v, INTERFACE_METHOD_DESCRIPTION, None))
+            name: desc
+            for name, value in attr.items()
+            if (desc := getattr(value, INTERFACE_METHOD_DESCRIPTION, None))
         }
 
         # inst_name
@@ -41,35 +48,30 @@ class InterfaceMeta(type):
     def get_export_method(self) -> list[str]:
         return self.__export_method__
 
-    def __get_method_description(self) -> list[Tuple[bool, str, str]]:
-        # (is_export, func_name, desc)
-        methods: list[Tuple[bool, str, str]] = []
-        description: dict[str, FuncDescription] = self.__method_description__
-        for func_name, desc in description.items():
+    def __get_method_description(self) -> list[_Desc]:
+        methods: list[_Desc] = []
+        inst_name: str = getattr(self, "__inst_name__")
+        for func_name, desc in self.__method_description__.items():
             func = cast(Callable[..., Any], getattr(self, func_name))
             is_export = is_export_method(func)
-            methods.append((is_export, func_name, desc.format(func)))
+            methods.append(_Desc(inst_name, func_name, is_export, desc.format(func)))
         return methods
 
     @classmethod
-    def get_all_description(cls) -> Tuple[list[str], list[str]]:
-        # (is_export, func_name, desc, inst_name)
-        methods: list[Tuple[bool, str, str, str]] = []
-        for _, cls_obj in cls.__interface_map__.items():
-            methods.extend(
-                (*item, getattr(cls_obj, "__inst_name__", ""))
-                for item in cls_obj.__get_method_description()
-            )
-        methods.sort(key=lambda x: (1 - x[0], x[3], x[1]))
+    def get_all_description(cls) -> tuple[list[str], list[str]]:
+        methods: list[_Desc] = []
+        for cls_obj in cls.__interface_map__.values():
+            methods.extend(cls_obj.__get_method_description())
+        methods.sort(key=lambda x: (not x.is_export, x.inst_name, x.func_name))
 
         content: list[str] = []
         result: list[str] = []
-        for index, (is_export, func_name, desc, inst_name) in enumerate(methods, 1):
+        for index, desc in enumerate(methods, 1):
             prefix = f"{index}. "
-            if is_export:
-                prefix += f"{inst_name}."
-            content.append(prefix + func_name)
-            result.append(prefix + desc)
+            if not desc.is_export:
+                prefix += f"{desc.inst_name}."
+            content.append(prefix + desc.func_name)
+            result.append(prefix + desc.description)
 
         return content, result
 

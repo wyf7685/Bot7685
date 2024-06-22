@@ -103,13 +103,11 @@ def is_super_user(bot: Bot, uin: str) -> bool:
 
 class Buffer:
     _user_buf: ClassVar[dict[str, Self]] = {}
-    _buffer: str
+    _buffer: str = ""
 
     def __new__(cls, uin: str) -> Self:
         if uin not in cls._user_buf:
-            buf = super(Buffer, cls).__new__(cls)
-            buf._buffer = ""
-            cls._user_buf[uin] = buf
+            cls._user_buf[uin] = super(Buffer, cls).__new__(cls)
         return cls._user_buf[uin]
 
     def write(self, text: str) -> None:
@@ -163,12 +161,11 @@ async def as_unimsg(message: T_Message) -> UniMessage:
 def _send_message(limit: int):
     class ReachLimit(Exception):
         def __init__(self, msg: str, count: int) -> None:
-            self.msg = msg
-            self.count = count
+            self.msg, self.count = msg, count
 
-    call_cnt: dict[str, int] = {}
+    call_cnt: dict[int, int] = {}
 
-    def clean_cnt(key: str):
+    def clean_cnt(key: int):
         if key in call_cnt:
             del call_cnt[key]
 
@@ -178,7 +175,7 @@ def _send_message(limit: int):
         target: Optional[Target],
         message: T_Message,
     ) -> Receipt:
-        key = f"{id(bot)}${id(session)}"
+        key = hash(f"{id(bot)}${id(session)}")
         if key not in call_cnt:
             call_cnt[key] = 1
             asyncio.get_event_loop().call_later(60, clean_cnt, key)
@@ -194,7 +191,7 @@ def _send_message(limit: int):
     return send_message
 
 
-send_message = _send_message(6)
+send_message = _send_message(limit=6)
 
 
 async def send_forward_message(
