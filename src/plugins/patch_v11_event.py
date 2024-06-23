@@ -26,10 +26,15 @@ scheduler_job: dict[Bot, SchedulerJob] = {}
 
 
 async def update_group_cache(bot: Bot):
-    update = {
-        (info := type_validate_python(GroupInfo, item)).group_id: info
-        for item in await bot.get_group_list()
-    }
+    try:
+        update = {
+            (info := type_validate_python(GroupInfo, item)).group_id: info
+            for item in await bot.get_group_list()
+        }
+    except Exception as err:
+        logger.warning(f"更新 {bot} 的群聊信息缓存时出错: {err!r}")
+        return
+
     logger.success(f"更新 {bot} 的 <y>{len(update)}</y> 条群聊信息缓存")
     group_info_cache.update(update)
 
@@ -91,4 +96,5 @@ async def on_bot_connect(bot: Bot):
 
 @get_driver().on_bot_disconnect
 async def on_bot_disconnect(bot: Bot):
-    scheduler_job.pop(bot).remove()
+    if bot in scheduler_job:
+        scheduler_job.pop(bot).remove()
