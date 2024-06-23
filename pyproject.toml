@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10, <4.0"
 dependencies = [
     "nonebot-adapter-onebot>=2.4.3",
-    "nonebot2[websockets]>=2.2.1",
+    "nonebot2>=2.2.1",
     "aiohttp>=3.9.3",
     "aiofiles>=23.2.1",
 ]
@@ -14,10 +14,15 @@ dependencies = [
 [tool.nonebot]
 adapters = [
     { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" },
-    {name = "Console", module_name = "nonebot.adapters.console"}
 ]
-plugins = []
+plugins = [
+    "nonebot_plugin_memes",
+    "nonebot_plugin_wordle",
+    "nonebot_plugin_apscheduler",
+    "nonebot_plugin_chatrecorder",
+    "nonebot_plugin_datastore",
+    "nonebot_plugin_wordcloud",
+]
 plugin_dirs = ["src/plugins"]
 builtin_plugins = [""]
 
-[tool.pdm]
