@@ -4,6 +4,7 @@ from random import Random
 from typing import Optional, Self
 
 import aiofiles
+from nonebot.compat import model_dump, type_validate_python
 from pydantic import BaseModel
 
 from .constant import data_fp, image_dir
@@ -24,12 +25,12 @@ class Data(BaseModel):
     async def _load(cls) -> list[Self]:
         async with aiofiles.open(data_fp, "r+", encoding="utf-8") as file:
             raw = await file.read()
-        return [cls.model_validate(i) for i in json.loads(raw)]
+        return [type_validate_python(cls, i) for i in json.loads(raw)]
 
     @classmethod
     async def _save(cls, data: list[Self]) -> None:
         raw = json.dumps(
-            [i.model_dump() for i in data],
+            [model_dump(i) for i in data],
             ensure_ascii=False,
             indent=2,
         )
