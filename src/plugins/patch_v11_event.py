@@ -1,3 +1,4 @@
+import asyncio
 from typing import override
 
 from nonebot import get_driver, require
@@ -25,7 +26,7 @@ group_info_cache: dict[int, GroupInfo] = {}
 scheduler_job: dict[Bot, SchedulerJob] = {}
 
 
-async def update_group_cache(bot: Bot):
+async def update_group_cache(bot: Bot, *, _try_count: int = 1):
     try:
         update = {
             (info := type_validate_python(GroupInfo, item)).group_id: info
@@ -33,6 +34,11 @@ async def update_group_cache(bot: Bot):
         }
     except Exception as err:
         logger.warning(f"更新 {bot} 的群聊信息缓存时出错: {err!r}")
+        if _try_count <= 3:
+            loop = asyncio.get_running_loop()
+            coro = update_group_cache(bot, _try_count=_try_count + 1)
+            loop.call_later(30, loop.create_task, coro)
+            logger.warning("<y>30</y>s 后重试...")
         return
 
     logger.success(f"更新 {bot} 的 <y>{len(update)}</y> 条群聊信息缓存")
