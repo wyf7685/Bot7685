@@ -2,7 +2,7 @@ import copy
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Union
+from typing import Optional, Union
 
 import httpx
 from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent
@@ -17,8 +17,8 @@ from openai.types.chat import ChatCompletion
 
 from .apikey import APIKey, APIKeyPool
 from .config import plugin_config
-from .exceptions import NeedCreatSession, NoResponseError
-from .loadpresets import templateDict
+from .exceptions import NeedCreateSession, NoResponseError
+from .preset import templateDict
 
 type_user_id = int
 type_group_id = str
@@ -41,26 +41,23 @@ def get_group_id(event: MessageEvent) -> str:
 
 
 class SessionContainer:
-    def __init__(
-        self,
-        api_keys: APIKeyPool,
-        chat_memory_max: int,
-        base_url: str,
-        history_max: int,
-        dir_path: Path,
-        default_only_admin: bool,
-    ):
-        self.api_keys: APIKeyPool = api_keys
-        self.base_url: str = base_url
-        self.chat_memory_max: int = chat_memory_max
-        self.history_max: int = history_max
-        self.dir_path: Path = dir_path
-        self.sessions: List[Session] = []
-        self.session_usage: Dict[type_group_id, Dict[type_user_id, Session]] = {}
-        self.default_only_admin: bool = default_only_admin
-        self.group_auth: Dict[str, bool] = {}
-        if not dir_path.exists():
-            dir_path.mkdir(parents=True)
+
+    def __init__(self) -> None:
+        self.api_keys: APIKeyPool = plugin_config.api_key_pool
+        self.base_url: str = plugin_config.openai_api_base
+        self.chat_memory_max: int = min(plugin_config.chat_memory_max, 2)
+        self.history_max: int = 100
+        self.dir_path: Path = plugin_config.history_save_path
+        self.sessions: list[Session] = []
+        self.session_usage: dict[type_group_id, dict[type_user_id, Session]] = {}
+        self.default_only_admin: bool = plugin_config.default_only_admin
+        self.group_auth: dict[str, bool] = {}
+
+        if not self.dir_path.exists():
+            self.dir_path.mkdir(parents=True)
+        if plugin_config.history_max > self.chat_memory_max:
+            self.history_max = plugin_config.history_max
+
         self.load()
         self.load_group_auth()
 
@@ -68,11 +65,11 @@ class SessionContainer:
     def group_auth_file_path(self) -> Path:
         return self.dir_path / "group_auth_file.json"
 
-    def save_group_auth(self):
+    def save_group_auth(self) -> None:
         with open(self.group_auth_file_path, "w", encoding="utf8") as f:
             json.dump(self.group_auth, f, ensure_ascii=False)
 
-    def load_group_auth(self):
+    def load_group_auth(self) -> None:
         if not self.group_auth_file_path.exists():
             self.save_group_auth()
             return
@@ -82,12 +79,12 @@ class SessionContainer:
     def get_group_auth(self, gid: str) -> bool:
         return self.group_auth.setdefault(gid, self.default_only_admin)
 
-    def set_group_auth(self, gid: str, auth: bool):
+    def set_group_auth(self, gid: str, auth: bool) -> None:
         self.group_auth[gid] = auth
         self.save_group_auth()
 
     async def delete_session(self, session: "Session", gid: str) -> None:
-        group_usage: Dict[int, Session] = self.get_group_usage(gid)
+        group_usage: dict[int, Session] = self.get_group_usage(gid)
         users = set(uid for uid, s in group_usage.items() if s is session)
         for user in users:
             group_usage.pop(user, None)
@@ -95,18 +92,18 @@ class SessionContainer:
         session.delete_file()
         logger.success(f"成功删除群 {gid} 会话 {session.name}")
 
-    def get_group_sessions(self, group_id: Union[str, int]) -> List["Session"]:
+    def get_group_sessions(self, group_id: Union[str, int]) -> list["Session"]:
         return [s for s in self.sessions if s.group == str(group_id)]
 
     @staticmethod
-    def old_version_check(session: "Session"):
+    def old_version_check(session: "Session") -> None:
         if session.group == PRIVATE_GROUP:
             session.file_path.unlink(missing_ok=True)
             session.group = PRIVATE_GROUP + f"_{session.creator}"
             session.save()
 
     def load(self) -> None:
-        files: List[Path] = list(self.dir_path.glob("*.json"))
+        files: list[Path] = list(self.dir_path.glob("*.json"))
         try:
             files.remove(self.group_auth_file_path)
         except ValueError:
@@ -121,23 +118,23 @@ class SessionContainer:
             for user in session.users:
                 group[user] = session
 
-    def get_group_usage(self, gid: Union[str, int]) -> Dict[type_user_id, "Session"]:
+    def get_group_usage(self, gid: Union[str, int]) -> dict[type_user_id, "Session"]:
         return self.session_usage.setdefault(str(gid), {})
 
     def get_user_usage(self, gid: Union[str, int], uid: int) -> "Session":
         try:
             return self.get_group_usage(gid)[uid]
         except KeyError:
-            raise NeedCreatSession(f"群{gid} 用户{uid} 需要创建 Session")
+            raise NeedCreateSession(f"群{gid} 用户{uid} 需要创建 Session")
 
     def create_with_chat_log(
         self,
-        chat_log: List[Dict[str, str]],
+        chat_log: list[dict[str, str]],
         creator: int,
         group: Union[int, str],
         name: str = "",
     ) -> "Session":
-        session: Session = Session(
+        session = Session(
             chat_log=chat_log,
             creator=creator,
             group=group,
@@ -155,9 +152,7 @@ class SessionContainer:
     def create_with_template(
         self, template_id: str, creator: int, group: Union[int, str]
     ) -> "Session":
-        deep_copy: List[Dict[str, str]] = copy.deepcopy(
-            templateDict[template_id].preset
-        )
+        deep_copy = copy.deepcopy(templateDict[template_id].preset)
         return self.create_with_chat_log(
             deep_copy, creator, group, name=templateDict[template_id].name
         )
@@ -191,9 +186,10 @@ class SessionContainer:
 
 
 class Session:
+
     def __init__(
         self,
-        chat_log: List[Dict[str, str]],
+        chat_log: list[dict[str, str]],
         creator: int,
         group: Union[int, str],
         name: str,
@@ -203,10 +199,10 @@ class Session:
         users=None,
         is_save: bool = True,
         basic_len: int | None = None,
-    ):
-        self.history: List[Dict[str, str]] = chat_log
+    ) -> None:
+        self.history: list[dict[str, str]] = chat_log
         self.creator: int = creator
-        self._users: Set[int] = set(users) if users else set()
+        self._users: set[int] = set(users) if users else set()
         self.group: str = str(group)
         self.name: str = name
         self.chat_memory_max: int = chat_memory_max
@@ -230,7 +226,7 @@ class Session:
         self.save()
 
     @property
-    def users(self) -> Set[int]:
+    def users(self) -> set[int]:
         return self._users
 
     def add_user(self, user: int) -> None:
@@ -245,7 +241,7 @@ class Session:
         self.file_path.unlink(missing_ok=True)
 
     @property
-    def chat_memory(self) -> List[Dict[str, str]]:
+    def chat_memory(self) -> list[dict[str, str]]:
         return (
             self.history[: self.basic_len]
             + self.history[self.basic_len - self.chat_memory_max :]
@@ -299,7 +295,7 @@ class Session:
                     messages=self.chat_memory,  # type: ignore
                     temperature=temperature,
                     max_tokens=max_tokens,
-                    timeout=_timeout,
+                    timeout=min(10, plugin_config.timeout),
                 )
                 # 不知道新版本这个改成什么了
                 if completion.choices is None:
@@ -349,7 +345,7 @@ class Session:
     @classmethod
     def reload(
         cls,
-        chat_log: List[Dict[str, str]],
+        chat_log: list[dict[str, str]],
         creator: int,
         group: str,
         name: str,
@@ -357,7 +353,7 @@ class Session:
         chat_memory_max: int,
         dir_path: Path,
         history_max: int,
-        users: List[int] | None = None,
+        users: list[int] | None = None,
         basic_len: int | None = None,
     ) -> "Session":
         session: "Session" = cls(
@@ -379,11 +375,11 @@ class Session:
     def reload_from_file(cls, file_path: Path) -> Optional["Session"]:
         try:
             with open(file_path, "r", encoding="utf8") as f:
-                session: Session = cls.reload(dir_path=file_path.parent, **json.load(f))
+                session = cls.reload(dir_path=file_path.parent, **json.load(f))
                 logger.success(f"从文件 {file_path} 加载 Session 成功")
                 return session
         except Exception as e:
-            logger.error(f"从文件 {file_path} 加载 Session 失败\n{type(e)}:{e}")
+            logger.error(f"从文件 {file_path} 加载 Session 失败: {e!r}")
 
     def as_dict(self) -> dict:
         return {
@@ -403,28 +399,12 @@ class Session:
         file_name = f"{self.group}_{self.name}_{self.creator}_{self.creation_time}.json"
         return self.dir_path / file_name
 
-    def save(self):
-        with open(self.file_path, "w", encoding="utf8") as f:
+    def save(self) -> None:
+        with self.file_path.open("w+", encoding="utf-8") as f:
             json.dump(self.as_dict(), f, ensure_ascii=False)
 
     def dump2json_str(self) -> str:
         return json.dumps(self.chat_memory, ensure_ascii=False)
 
 
-_timeout = 10
-_history_max = 100
-_chat_memory_max = min(plugin_config.chat_memory_max, 2)
-
-if plugin_config.history_max > _chat_memory_max:
-    _history_max = plugin_config.history_max
-if plugin_config.timeout > 0:
-    _timeout = plugin_config.timeout
-
-session_container = SessionContainer(
-    dir_path=plugin_config.history_save_path,
-    chat_memory_max=_chat_memory_max,
-    api_keys=plugin_config.api_key_pool,
-    base_url=plugin_config.openai_api_base,
-    history_max=_history_max,
-    default_only_admin=plugin_config.default_only_admin,
-)
+session_container = SessionContainer()

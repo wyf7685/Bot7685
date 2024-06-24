@@ -1,6 +1,6 @@
 import random
 from collections import UserList, UserString
-from typing import List, Union
+from typing import Union
 
 
 class APIKey(UserString):
@@ -35,7 +35,7 @@ class APIKeyPool(UserList):
         super().__init__(map(APIKey, api_keys))
 
     @property
-    def api_keys(self) -> List[APIKey]:
+    def api_keys(self) -> list[APIKey]:
         return self.data
 
     def __len__(self):
@@ -48,7 +48,7 @@ class APIKeyPool(UserList):
     def shuffle(self):
         random.shuffle(self.api_keys)
 
-    def fail_keys(self) -> List[APIKey]:
+    def fail_keys(self) -> list[APIKey]:
         return [k for k in self.api_keys if not k.status]
 
     def show_fail_keys(self) -> str:

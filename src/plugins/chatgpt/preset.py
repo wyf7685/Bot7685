@@ -1,7 +1,7 @@
 import json
 from datetime import date
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import chardet
 from nonebot.log import logger
@@ -9,14 +9,14 @@ from pydantic import BaseModel, ValidationError, field_validator
 
 from .config import plugin_config
 
-# 在这里统一写进字典后不需要改动其他地方的代码了
-# 字典的key会保存为Preset的name以及文件名
-PRESET_PROMPTS: Dict[str, List[Dict[str, str]]] = {
+
+PRESET_PROMPTS: dict[str, list[dict[str, str]]] = {
     "ChatGPT": [
         {
-            "role": "user",
+            "role": "sysrem",
             "content": (
-                "You are ChatGPT, a large language model trained by OpenAI. Respond conversationally. Do not answer as the user.\n"
+                f"You are ChatGPT, a large language model trained by OpenAI, based on {plugin_config.model_name}.\n"
+                "Respond conversationally. Do not answer as the user.\n"
                 f"Current date: {date.today()}"
             ),
         },
@@ -34,7 +34,7 @@ class Preset(BaseModel):
     """
 
     name: str
-    preset: List[Dict[str, str]]
+    preset: list[dict[str, str]]
     preset_id: int
 
     @field_validator("preset")
@@ -47,7 +47,7 @@ class Preset(BaseModel):
         return f"{self.preset_id}:{self.name}"
 
     @staticmethod
-    def presets2str(presets: List["Preset"]) -> str:
+    def presets2str(presets: list["Preset"]) -> str:
         """
         根据输入的预设模板列表生成回复字符串
         """
@@ -87,7 +87,7 @@ def create_preset2json(
         )
         dir_path.mkdir(parents=True)
     try:
-        with open(filepath, "w", encoding=encoding) as f:
+        with filepath.open("w", encoding=encoding) as f:
             json.dump(prompt, f, ensure_ascii=ensure_ascii, **kwargs)
     except Exception:
         logger.error(f"创建{file_name}失败!")
@@ -95,13 +95,17 @@ def create_preset2json(
         logger.success(f"创建{file_name}成功!")
 
 
-def load_preset(filepath: Path, num: int, encoding: str = "utf8") -> Optional[Preset]:
+def load_preset(
+    filepath: Path,
+    preset_id: int,
+    encoding: str = "utf-8",
+) -> Optional[Preset]:
     """
     加载路径下的模板 json文件
     """
 
     try:
-        preset_data: List[dict] = json.loads(filepath.read_text(encoding=encoding))
+        preset_data: list[dict] = json.loads(filepath.read_text(encoding=encoding))
     except json.JSONDecodeError:
         logger.error(f"预设: {filepath.stem} 读取失败! encoding {encoding}")
         return
@@ -110,7 +114,7 @@ def load_preset(filepath: Path, num: int, encoding: str = "utf8") -> Optional[Pr
         preset = Preset(
             name=filepath.stem,
             preset=preset_data,
-            preset_id=num,
+            preset_id=preset_id,
         )
     except ValidationError:
         logger.error(f"预设: {filepath.stem} 解析失败! encoding {encoding}")
@@ -127,13 +131,13 @@ def get_encoding(file_path: Path) -> str:
     return chardet.detect(file_path.read_bytes()).get("encoding") or "utf-8"
 
 
-def load_all_preset(path: Path) -> List[Preset]:
+def load_all_preset(path: Path) -> list[Preset]:
     """
     加载指定文件夹下所有模板 json文件，返回 Preset列表
     """
     if not path.exists():
         path.mkdir(parents=True)
-    presets: List[Preset] = []
+    presets: list[Preset] = []
     CreateBasicPresetJson(path)
     for file in path.rglob("*.json"):
         preset = load_preset(file, len(presets) + 1)
@@ -141,16 +145,13 @@ def load_all_preset(path: Path) -> List[Preset]:
             preset = load_preset(file, len(presets) + 1, encoding=get_encoding(file))
         if preset is not None:
             presets.append(preset)
-    if len(presets) > 0:
+    if presets:
         logger.success(f"此次共成功加载{len(presets)}个预设")
     else:
         logger.error("未成功加载任何预设!")
     return presets
 
 
-preset_path: Path = plugin_config.preset_path
-presets_list: List[Preset] = load_all_preset(preset_path)
-presets_str: str = Preset.presets2str(presets_list)
-templateDict: Dict[str, Preset] = {
-    str(preset.preset_id): preset for preset in presets_list
-}
+presets_list = load_all_preset(plugin_config.preset_path)
+presets_str = Preset.presets2str(presets_list)
+templateDict = {str(preset.preset_id): preset for preset in presets_list}

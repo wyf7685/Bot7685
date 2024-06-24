@@ -14,7 +14,7 @@ class NoResponseError(Error):
     pass
 
 
-class NeedCreatSession(Error):
+class NeedCreateSession(Error):
     pass
 
 
