@@ -1,11 +1,11 @@
 import random
 from pathlib import Path
 
-from pil_utils import BuildImage
-from pydantic import Field
-
 from meme_generator import MemeArgsModel, MemeArgsParser, MemeArgsType, add_meme
 from meme_generator.exception import TextOverLength
+from pil_utils import BuildImage
+from pil_utils.types import PointsType, PosTypeInt, SizeType
+from pydantic import Field
 
 img_dir = Path(__file__).parent / "images"
 total_num = len(list(img_dir.iterdir()))
@@ -19,14 +19,14 @@ class Model(MemeArgsModel):
     number: int = Field(0, description=help)
 
 
-params = [
-    ((410, 220), (275, 770), ((0, 84), (388, 15), (430, 220), (42, 280))),
-    ((400, 240), (290, 760), ((0, 0), (400, 0), (400, 240), (0, 240))),
-    ((610, 300), (230, 10), ((0, 0), (610, 0), (585, 300), (25, 300))),
-    ((560, 320), (290, 700), ((0, 80), (510, 20), (560, 300), (50, 360))),
-    ((590, 350), (-30, 50), ((0, 90), (480, -20), (540, 270), (60, 380))),
-    ((600, 480), (315, 610), ((0, 140), (510, 0), (600, 340), (70, 480))),
-    ((550, 340), (540, 50), ((40, 0), (520, 90), (480, 340), (0, 250))),
+params: list[tuple[PosTypeInt, SizeType, PointsType]] = [
+    ((275, 770), (410, 220), ((0, 84), (388, 15), (430, 220), (42, 280))),
+    ((290, 760), (400, 240), ((0, 0), (400, 0), (400, 240), (0, 240))),
+    ((230, 10), (610, 300), ((0, 0), (610, 0), (585, 300), (25, 300))),
+    ((290, 700), (560, 320), ((0, 80), (510, 20), (560, 300), (50, 360))),
+    ((-30, 50), (590, 350), ((0, 90), (480, -20), (540, 270), (60, 380))),
+    ((315, 610), (600, 480), ((0, 140), (510, 0), (600, 340), (70, 480))),
+    ((540, 50), (550, 340), ((40, 0), (520, 90), (480, 340), (0, 250))),
 ]
 
 
@@ -37,17 +37,17 @@ def goldenglow_holdsign(images, texts: list[str], args: Model):
     else:
         num = random.randint(1, total_num)
 
-    size, loc, points = params[num - 1]
+    loc, (width, height), points = params[num - 1]
     frame = BuildImage.open(img_dir / f"{num}.png")
-    text_img = BuildImage.new("RGBA", size)
+    text_img = BuildImage.new("RGBA", (width, height))
     # text_img.draw_rectangle((0, 0, *text_img.size), "green", "red", 8)
     padding = 10
     try:
         text_img.draw_text(
-            (padding, padding, size[0] - padding, size[1] - padding),
+            (padding, padding, width - padding, height - padding),
             text,
-            max_fontsize=150,
-            min_fontsize=45,
+            max_fontsize=180,
+            min_fontsize=60,
             allow_wrap=True,
             lines_align="center",
             spacing=10,
@@ -67,5 +67,5 @@ add_meme(
     max_texts=1,
     default_texts=["YOU!"],
     args_type=MemeArgsType(parser, Model),
-    keywords=["澄闪举牌"],
+    keywords=["澄闪举牌", "猪猪举牌"],
 )
