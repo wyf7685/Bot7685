@@ -100,7 +100,7 @@ class Context:
     async def execute(cls, session: Session, bot: Bot, code: str) -> None:
         self = cls.get_context(session)
         async with self._lock():
-            API(bot, session, self.ctx).export_to(self.ctx)
+            API(bot, session).export_to(self.ctx)
             executor = self._solve_code(code)
             self.task = get_event_loop().create_task(executor())
             result, self.task = await self.task, None

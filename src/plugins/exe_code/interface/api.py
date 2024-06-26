@@ -38,15 +38,13 @@ class API(Interface):
     qid: str
     gid: str | None
     session: Session
-    context: T_Context
 
-    def __init__(self, bot: Bot, session: Session, context: T_Context) -> None:
+    def __init__(self, bot: Bot, session: Session) -> None:
         super(API, self).__init__()
         self.bot = bot
         self.qid = session.id1 or ""
         self.gid = session.id2
         self.session = session
-        self.context = context
 
     @descript(
         description="调用 OneBot V11 接口",
@@ -277,14 +275,17 @@ class API(Interface):
     )
     @debug_log
     def reset(self) -> None:
-        self.context.clear()
-        self.context.update(default_context)
-        self.export_to(self.context)
+        from ..code_context import Context
+
+        context = Context.get_context(self.session).ctx
+        context.clear()
+        context.update(default_context)
+        self.export_to(context)
 
     def export_to(self, context: T_Context) -> None:
         super(API, self).export_to(context)
 
-        self.context.update(load_const(self.qid))
+        context.update(load_const(self.qid))
         context["qid"] = self.qid
         context["usr"] = self.user(self.qid)
         context["gid"] = self.gid
