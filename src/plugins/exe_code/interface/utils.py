@@ -15,6 +15,7 @@ from typing import (
     cast,
     overload,
 )
+from typing_extensions import TypeIs
 
 from nonebot.adapters import Bot, Message, MessageSegment
 from nonebot.internal.matcher import current_bot
@@ -143,7 +144,7 @@ class Result:
         return f"<Result data={self._data!r}>"
 
 
-def check_message_t(message: Any) -> bool:
+def is_message_t(message: Any) -> TypeIs[T_Message]:
     return isinstance(message, (str, Message, MessageSegment, UniMessage, Segment))
 
 

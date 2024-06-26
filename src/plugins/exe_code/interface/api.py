@@ -18,11 +18,11 @@ from .user_const_var import T_ConstVar, default_context, load_const, set_const
 from .utils import (
     Buffer,
     Result,
-    check_message_t,
     debug_log,
     export,
     export_adapter_message,
     export_manager,
+    is_message_t,
     is_super_user,
     send_forward_message,
     send_message,
@@ -161,11 +161,12 @@ class API(Interface):
         result="Receipt",
     )
     @debug_log
-    async def feedback(self, msg: T_Message, fwd: bool = False) -> Receipt:
-        if fwd and isinstance(msg, list) and all(check_message_t(i) for i in msg):
-            return await self.send_fwd(msg)
+    async def feedback(self, msg: Any, fwd: bool = False) -> Receipt:
+        if isinstance(msg, list):
+            if fwd and all(is_message_t(i) for i in msg):
+                return await self.send_fwd(msg)
 
-        if not check_message_t(msg):
+        if not is_message_t(msg):
             msg = str(msg)
 
         return await send_message(
@@ -181,8 +182,8 @@ class API(Interface):
         parameters=dict(qid="用户QQ号"),
         result="User对象",
     )
-    def user(self, qid: str) -> "User":
-        return User(self, qid)
+    def user(self, qid: int | str) -> "User":
+        return User(self, str(qid))
 
     @export
     @descript(
@@ -190,8 +191,8 @@ class API(Interface):
         parameters=dict(gid="群号"),
         result="Group对象",
     )
-    def group(self, gid: str) -> "Group":
-        return Group(self, gid)
+    def group(self, gid: int | str) -> "Group":
+        return Group(self, str(gid))
 
     @descript(
         description="撤回指定消息",
