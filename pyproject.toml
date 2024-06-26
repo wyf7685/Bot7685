@@ -22,7 +22,9 @@ plugins = [
     "nonebot_plugin_chatrecorder",
     "nonebot_plugin_datastore",
     "nonebot_plugin_wordcloud",
+    "nonebot_plugin_kawaii_status",
 ]
 plugin_dirs = ["src/plugins"]
 builtin_plugins = [""]
 
+[tool.pdm]

@@ -10,6 +10,7 @@ nonebot-adapter-onebot
 nonebot-plugin-alconna
 nonebot-plugin-apscheduler
 nonebot-plugin-datastore
+nonebot-plugin-kawaii-status
 nonebot-plugin-wordcloud
 nonebot2
 nonebot_plugin_chatrecorder
