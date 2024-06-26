@@ -106,7 +106,11 @@ class Context:
             result, self.task = await self.task, None
 
             if buf := Buffer(self.uin).getvalue().rstrip("\n"):
-                await UniMessage(buf).send()
+                await (
+                    UniMessage.text(buf)
+                    if buf.count("\n") < 20
+                    else UniMessage.file(raw=buf.encode(), name="output.txt")
+                ).send()
             if result is not None:
                 await UniMessage(repr(result)).send()
 
