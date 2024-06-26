@@ -61,7 +61,7 @@ async def _(
     uinfo: Annotated[UserInfo, EventUserInfo()],
 ):
     try:
-        await Context.execute(session, bot, code)
+        await Context.execute(bot, session, code)
     except Exception as e:
         text = f"用户{uinfo.user_name}({uinfo.user_id}) 执行代码时发生错误: {e}"
         logger.opt(exception=True).warning(text)
@@ -122,5 +122,5 @@ async def _(
 @code_terminate.handle()
 async def _(target: EventTarget):
     with contextlib.suppress(KeyError):
-        if Context.get_context(target).terminate():
+        if Context.get_context(target).canccel():
             await UniMessage("中止").at(target).text("的执行任务").send()

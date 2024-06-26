@@ -97,7 +97,7 @@ class Context:
         return self.ctx.pop("__executor__")
 
     @classmethod
-    async def execute(cls, session: Session, bot: Bot, code: str) -> None:
+    async def execute(cls, bot: Bot, session: Session, code: str) -> None:
         self = cls.get_context(session)
         async with self._lock():
             API(bot, session).export_to(self.ctx)
@@ -106,19 +106,15 @@ class Context:
             result, self.task = await self.task, None
 
             if buf := Buffer(self.uin).getvalue().rstrip("\n"):
-                await (
-                    UniMessage.text(buf)
-                    if buf.count("\n") < 20
-                    else UniMessage.file(raw=buf.encode(), name="output.txt")
-                ).send()
+                await UniMessage.text(buf).send()
             if result is not None:
-                await UniMessage(repr(result)).send()
+                await UniMessage.text(repr(result)).send()
 
         # 处理异常
-        if (exc := self.ctx.get("__exception__", (None, None)))[0]:
+        if (exc := self.ctx.setdefault("__exception__", (None, None)))[0]:
             raise cast(Exception, exc[0])
 
-    def terminate(self) -> bool:
+    def canccel(self) -> bool:
         if self.task is not None:
             return self.task.cancel()
         return False
