@@ -200,16 +200,15 @@ async def send_forward_message(
     target: Optional[Target],
     msgs: Iterable[T_Message],
 ) -> Receipt:
-    message = Reference(
-        nodes=[
-            CustomNode(
-                uid=bot.self_id,
-                name="forward",
-                content=await as_unimsg(msg),
-            )
-            for msg in msgs
-        ],
-    )
+    async def create_node(msg: T_Message) -> CustomNode:
+        return CustomNode(
+            uid=bot.self_id,
+            name="forward",
+            content=await as_unimsg(msg),
+        )
+
+    nodes = await asyncio.gather(*[create_node(msg) for msg in msgs])
+    message = Reference(nodes=nodes)
     return await send_message(
         bot=bot,
         session=session,
