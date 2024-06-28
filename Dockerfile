@@ -12,7 +12,7 @@ WORKDIR /app
 
 ENV TZ=Asia/Shanghai
 ENV PYTHONPATH=/app
-ENV APP_MODULE _main:app
+ENV APP_MODULE bot:app
 ENV MAX_WORKERS 1
 
 COPY ./docker/gunicorn_conf.py ./docker/start.sh /
@@ -21,12 +21,13 @@ RUN chmod +x /start.sh
 # https://github.com/MeetWq/meme-generator/blob/main/Dockerfile
 COPY ./docker/fonts /usr/share/fonts/meme-fonts/
 RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources \
-  && apt-get update \
-  && apt-get install -y --no-install-recommends locales fontconfig fonts-noto-color-emoji gettext \
-  && localedef -i zh_CN -c -f UTF-8 -A /usr/share/locale/locale.alias zh_CN.UTF-8 \
-  && fc-cache -fv \
-  && apt-get purge -y --auto-remove \
-  && rm -rf /var/lib/apt/lists/*
+    && apt-get update \
+    && apt-get install -y --no-install-recommends locales fontconfig fonts-noto-color-emoji gettext \
+    && localedef -i zh_CN -c -f UTF-8 -A /usr/share/locale/locale.alias zh_CN.UTF-8 \
+    && fc-cache -fv \
+    && apt-get purge -y --auto-remove \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # 安装 Python 依赖
 COPY --from=wheels /wheel /wheel
