@@ -8,7 +8,7 @@ logger.add(
     level="DEBUG",
     diagnose=True,
     format=(
-        "<g>{time:MM-DD HH:mm:ss}</g> "
+        "<g>{time:HH:mm:ss}</g> "
         "[<lvl>{level}</lvl>] "
         "<c><u>{name}</u></c> | "
         "<c>{function}:{line}</c>| "
