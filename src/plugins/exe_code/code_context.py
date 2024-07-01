@@ -86,7 +86,7 @@ class Context:
                 self.task = None
 
     def _solve_code(self, code: str) -> T_Executor:
-        assert self.locked, "`Context._run_code` must be called with lock"
+        assert self.locked, "`Context._solve_code` must be called with lock"
 
         # 预处理代码
         lines = [f"global {','.join(self.ctx.keys())}", *code.split("\n")]
@@ -111,7 +111,7 @@ class Context:
                 await UniMessage.text(repr(result)).send()
 
         # 处理异常
-        if (exc := self.ctx.setdefault("__exception__", (None, None)))[0]:
+        if exc := self.ctx.setdefault("__exception__", (None, None))[0]:
             raise cast(Exception, exc[0])
 
     def canccel(self) -> bool:
@@ -133,15 +133,10 @@ class Context:
         self.set_value("gem", msg)
 
     def set_gurl(self, msg: UniMessage[Image] | Image) -> None:
-        url = None
+        url: Optional[str] = None
         if isinstance(msg, UniMessage) and msg.has(Image):
             url = msg[Image, 0].url
         elif isinstance(msg, Image):
             url = msg.url
         self.set_value("gurl", url)
 
-    def __getitem__(self, key: str) -> Any:
-        return self.ctx[key]
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        self.ctx[key] = value

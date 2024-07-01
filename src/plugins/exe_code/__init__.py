@@ -11,10 +11,13 @@ from nonebot.plugin import PluginMetadata
 from nonebot.plugin.load import inherit_supported_adapters
 from PIL.Image import open as Image_open
 
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_datastore")
-require("nonebot_plugin_session")
-require("nonebot_plugin_userinfo")
+requirements = {
+    "nonebot_plugin_alconna",
+    "nonebot_plugin_datastore",
+    "nonebot_plugin_session",
+    "nonebot_plugin_userinfo",
+}
+[require(i) for i in requirements]
 from nonebot_plugin_alconna.uniseg import UniMessage, image_fetch
 from nonebot_plugin_session import EventSession
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
@@ -36,12 +39,7 @@ __plugin_meta__ = PluginMetadata(
     usage="code {Your code here...}",
     type="application",
     config=Config,
-    supported_adapters=inherit_supported_adapters(
-        "nonebot_plugin_alconna",
-        "nonebot_plugin_datastore",
-        "nonebot_plugin_session",
-        "nonebot_plugin_userinfo",
-    ),
+    supported_adapters=inherit_supported_adapters(*requirements),
     extra={"author": "wyf7685"},
 )
 
