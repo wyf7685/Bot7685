@@ -1,4 +1,4 @@
-FROM python:3.12.2 as wheels
+FROM python:3.12.2 AS wheels
 
 WORKDIR /wheel
 
@@ -39,4 +39,4 @@ RUN /usr/local/bin/meme download && \
     rm -rf /root/.config/meme_generator/
 
 VOLUME [ "/app", "/root/.config/meme_generator" ]
-CMD ["/start.sh"]
+CMD [ "/start.sh" ]
