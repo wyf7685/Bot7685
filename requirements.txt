@@ -5,8 +5,7 @@ fastapi
 httpx
 gunicorn
 nonebot-adapter-onebot
-# nonebot-adapter-qq
-# nonebot-adapter-satori
+nonebot-adapter-qq
 nonebot-plugin-alconna
 nonebot-plugin-apscheduler
 nonebot-plugin-datastore
