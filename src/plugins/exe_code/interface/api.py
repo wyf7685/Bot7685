@@ -29,8 +29,16 @@ from .utils import (
 )
 
 logger = logger.opt(colors=True)
+api_registry: dict[type[Bot], type["API"]] = {}
 
+def register_api(bot_type: type[Bot]):
+    def decorator(api_class: type["API"]):
+        api_registry[bot_type] = api_class
+        return api_class
 
+    return decorator
+
+@register_api(Bot)
 class API(Interface):
     __inst_name__: ClassVar[str] = "api"
 
@@ -176,6 +184,36 @@ class API(Interface):
             message=msg,
         )
 
+    # @descript(
+    #     description="[OneBotV11] 撤回指定消息",
+    #     parameters=dict(msg_id="需要撤回的消息ID，可通过Result获取"),
+    #     result=DESCRIPTION_RESULT_TYPE,
+    # )
+    # @debug_log
+    # @ob11api
+    # async def recall(self, msg_id: int) -> Result:
+    #     return await self.call_api("delete_msg", message_id=msg_id)
+
+    # @descript(
+    #     description="[OneBotV11] 通过消息ID获取指定消息",
+    #     parameters=dict(msg_id="需要获取的消息ID，可通过getmid获取"),
+    #     result=DESCRIPTION_RESULT_TYPE,
+    # )
+    # @debug_log
+    # @ob11api
+    # async def get_msg(self, msg_id: int) -> Result:
+    #     return await self.call_api("get_msg", message_id=msg_id)
+
+    # @descript(
+    #     description="[OneBotV11] 通过合并转发ID获取合并转发消息",
+    #     parameters=dict(msg_id="需要获取的合并转发ID，可通过getcqcode获取"),
+    #     result=DESCRIPTION_RESULT_TYPE,
+    # )
+    # @debug_log
+    # @ob11api
+    # async def get_fwd(self, msg_id: int) -> Result:
+        return await self.call_api("get_forward_msg", message_id=msg_id)
+
     @export
     @descript(
         description="获取用户对象",
@@ -193,19 +231,6 @@ class API(Interface):
     )
     def group(self, gid: int | str) -> "Group":
         return Group(self, str(gid))
-
-    @descript(
-        description="撤回指定消息",
-        parameters=dict(
-            msg="需要撤回的消息ID，可通过Result获取",
-        ),
-        result=DESCRIPTION_RESULT_TYPE,
-    )
-    @debug_log
-    async def recall(self, msg_id: int) -> Result:
-        if "OneBot" in self.bot.type:
-            return await self.call_api("delete_msg", message_id=msg_id)
-        raise NotImplementedError
 
     @descript(
         description="判断当前会话是否为群聊",
