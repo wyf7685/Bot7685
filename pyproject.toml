@@ -21,11 +21,11 @@ plugins = [
     "nonebot_plugin_chatrecorder",
     "nonebot_plugin_datastore",
     "nonebot_plugin_kawaii_status",
-    "nonebot_plugin_memes",
+    # "nonebot_plugin_memes",
     "nonebot_plugin_wordcloud",
     "nonebot_plugin_wordle",
 ]
 plugin_dirs = ["src/plugins"]
-builtin_plugins = [""]
+builtin_plugins = []
 
 [tool.pdm]
