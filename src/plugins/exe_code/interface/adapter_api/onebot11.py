@@ -1,10 +1,7 @@
 from typing import ClassVar
 
-from plugins.exe_code.constant import T_Context
-
-from ...constant import DESCRIPTION_RESULT_TYPE
-from ..api import API
-from ..api import register_api
+from ...constant import DESCRIPTION_RESULT_TYPE, T_Context
+from ..api import API, register_api
 from ..help_doc import descript
 from ..utils import Result, debug_log
 
@@ -47,7 +44,6 @@ try:
             context["api"] = self
             if self.__inst_name__ in context:
                 del context[self.__inst_name__]
-
 
 except ImportError:
     pass
