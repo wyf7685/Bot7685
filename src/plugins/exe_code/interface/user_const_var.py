@@ -24,7 +24,7 @@ context_var(lambda x: Reply(id=str(x)), "Reply")
 
 
 def _const_var_path(uin: str) -> Path:
-    fp = DATA_PATH / f"{uin}.json"
+    fp = DATA_PATH() / f"{uin}.json"
     if not fp.exists():
         fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text("{}")
