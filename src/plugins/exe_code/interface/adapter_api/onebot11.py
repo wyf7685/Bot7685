@@ -1,5 +1,7 @@
 from typing import ClassVar
 
+from plugins.exe_code.constant import T_Context
+
 from ...constant import DESCRIPTION_RESULT_TYPE
 from ..api import API
 from ..api import register_api
@@ -39,6 +41,12 @@ try:
         @debug_log
         async def get_fwd(self, msg_id: int) -> Result:
             return await self.call_api("get_forward_msg", message_id=msg_id)
+
+        def export_to(self, context: T_Context) -> None:
+            super().export_to(context)
+            context["api"] = self
+            if self.__inst_name__ in context:
+                del context[self.__inst_name__]
 
 
 except ImportError:

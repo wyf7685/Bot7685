@@ -46,7 +46,11 @@ class InterfaceMeta(type):
         return Interface
 
     def get_export_method(self) -> list[str]:
-        return self.__export_method__
+        result: list[str] = []
+        for cls in reversed(self.mro()):
+            if isinstance(cls, InterfaceMeta) and hasattr(cls, "__export_method__"):
+                result.extend(cls.__export_method__)
+        return result
 
     def __get_method_description(self) -> list[_Desc]:
         methods: list[_Desc] = []

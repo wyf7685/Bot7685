@@ -123,5 +123,5 @@ async def _(
 @code_terminate.handle()
 async def _(target: EventTarget):
     with contextlib.suppress(KeyError):
-        if Context.get_context(target).canccel():
+        if Context.get_context(target).cancel():
             await UniMessage("中止").at(target).text("的执行任务").send()

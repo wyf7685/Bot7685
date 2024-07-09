@@ -6,11 +6,11 @@ from typing import Any, ClassVar, Optional, Self, cast
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
-from nonebot_plugin_alconna.uniseg import Image, UniMessage, Reply, reply_fetch
+from nonebot_plugin_alconna.uniseg import Image, UniMessage
 from nonebot_plugin_session import Session
 
 from .constant import T_Context, T_Executor
-from .interface import API, Buffer, default_context
+from .interface import Buffer, default_context, get_api_class
 
 logger = logger.opt(colors=True)
 
@@ -47,6 +47,15 @@ class Context:
         self.waitlist = Queue()
         self.task = None
 
+    @staticmethod
+    def _session2uin(session: Session | Event | str) -> str:
+        if isinstance(session, Session):
+            return session.id1 or "None"
+        elif isinstance(session, Event):
+            return session.get_user_id()
+        else:
+            return str(session)
+
     @classmethod
     def get_context(
         cls,
@@ -54,13 +63,7 @@ class Context:
         *,
         create: bool = True,
     ) -> Self:
-        if isinstance(session, Session):
-            uin = session.id1
-        if isinstance(session, Event):
-            uin = session.get_user_id()
-        else:
-            uin = str(session)
-
+        uin = cls._session2uin(session)
         if uin not in cls._contexts:
             if not create:
                 raise KeyError(f"uin {uin} has no context")
@@ -100,21 +103,21 @@ class Context:
     async def execute(cls, bot: Bot, session: Session, code: str) -> None:
         self = cls.get_context(session)
         async with self._lock():
-            API(bot, session).export_to(self.ctx)
+            get_api_class(bot)(bot, session).export_to(self.ctx)
             executor = self._solve_code(code)
             self.task = get_event_loop().create_task(executor())
             result, self.task = await self.task, None
 
-            if buf := Buffer(self.uin).getvalue().rstrip("\n"):
+            if buf := Buffer(self._session2uin(session)).getvalue().rstrip("\n"):
                 await UniMessage.text(buf).send()
             if result is not None:
                 await UniMessage.text(repr(result)).send()
 
         # 处理异常
         if exc := self.ctx.setdefault("__exception__", (None, None))[0]:
-            raise cast(Exception, exc[0])
+            raise cast(Exception, exc)
 
-    def canccel(self) -> bool:
+    def cancel(self) -> bool:
         if self.task is not None:
             return self.task.cancel()
         return False
