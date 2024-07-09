@@ -88,15 +88,16 @@ class Context:
             if self.task is not None:
                 self.task = None
 
-    def _solve_code(self, code: str) -> T_Executor:
+    def _solve_code(self, raw_code: str) -> T_Executor:
         assert self.locked, "`Context._solve_code` must be called with lock"
 
         # 预处理代码
-        lines = [f"global {','.join(self.ctx.keys())}", *code.split("\n")]
-        func_code = f"\n{EXECUTOR_INDENT}".join(lines)
+        lines = [f"global {','.join(self.ctx.keys())}", *raw_code.split("\n")]
+        solved = EXECUTOR_FUNCTION.replace("{CODE}", f"\n{EXECUTOR_INDENT}".join(lines))
+        code = compile(solved, f"<executor_{self.uin}>", "exec")
 
         # 包装为异步函数
-        exec(EXECUTOR_FUNCTION.replace("{CODE}", func_code), self.ctx)
+        exec(code, self.ctx, self.ctx)
         return self.ctx.pop("__executor__")
 
     @classmethod
