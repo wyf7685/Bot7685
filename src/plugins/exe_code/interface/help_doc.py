@@ -73,6 +73,8 @@ def descript(
         sig = inspect.Signature.from_callable(func)
         if parameters is not None:
             for name, param in sig.parameters.items():
+                if name == "self":
+                    continue
                 text = f"方法 '{func.__name__}' 的参数 '{name}'"
                 assert param.annotation is not EMPTY, f"{text} 未添加类型注释注释"
                 assert name in parameters, f"{text} 未添加描述"
