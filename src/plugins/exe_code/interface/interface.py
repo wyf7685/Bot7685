@@ -13,15 +13,12 @@ class _Desc(NamedTuple):
 
 
 class InterfaceMeta(type):
-    __interface_map__: ClassVar[dict[str, "InterfaceMeta"]] = {}
+    __interfaces__: ClassVar[set["InterfaceMeta"]] = set()
 
     __export_method__: list[str]
     __method_description__: dict[str, FuncDescription]
 
-    def __new__(cls, name: str, bases: tuple, attrs: dict[str, object]):
-        if name in cls.__interface_map__:
-            raise TypeError(f"Interface {name} already exists")
-
+    def __new__(cls, name: str, bases: tuple[type, ...], attrs: dict[str, Any]):
         Interface = super(InterfaceMeta, cls).__new__(cls, name, bases, attrs)
         attr = Interface.__dict__  # shortcut
 
@@ -42,7 +39,7 @@ class InterfaceMeta(type):
             setattr(Interface, INTERFACE_INST_NAME, name.lower())
 
         # store interface class
-        cls.__interface_map__[name] = Interface
+        cls.__interfaces__.add(Interface)
         return Interface
 
     def get_export_method(self) -> list[str]:
@@ -64,7 +61,7 @@ class InterfaceMeta(type):
     @classmethod
     def get_all_description(cls) -> tuple[list[str], list[str]]:
         methods: list[_Desc] = []
-        for cls_obj in cls.__interface_map__.values():
+        for cls_obj in cls.__interfaces__:
             methods.extend(cls_obj.__get_method_description())
         methods.sort(key=lambda x: (not x.is_export, x.inst_name, x.func_name))
 

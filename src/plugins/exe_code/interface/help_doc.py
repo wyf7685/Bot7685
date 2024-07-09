@@ -2,17 +2,24 @@ import inspect
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, ParamSpec, TypeVar
 
-from ..constant import DESCRIPTION_FORMAT, INTERFACE_METHOD_DESCRIPTION, T_Message
+from ..constant import (
+    DESCRIPTION_FORMAT,
+    INTERFACE_METHOD_DESCRIPTION,
+    T_Message,
+    DESCRIPTION_RESULT_TYPE,
+)
 from .utils import Receipt, Result
 
 P = ParamSpec("P")
 R = TypeVar("R")
+EMPTY = inspect.Signature.empty
+
 
 type_alias: dict[type, str] = {
     Receipt: "Receipt",
     Result: "Result",
     T_Message: "T_Message",
-    inspect.Signature.empty: "Unkown",
+    EMPTY: "Unkown",  # not supposed to appear in docs
 }
 
 
@@ -58,9 +65,21 @@ class FuncDescription:
 def descript(
     description: str,
     parameters: Optional[dict[str, str]],
-    result: Optional[str],
+    result: Optional[str] = None,
 ):
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
+        nonlocal result
+
+        sig = inspect.Signature.from_callable(func)
+        if parameters is not None:
+            for name, param in sig.parameters.items():
+                text = f"方法 '{func.__name__}' 的参数 '{name}'"
+                assert param.annotation is not EMPTY, f"{text} 未添加类型注释注释"
+                assert name in parameters, f"{text} 未添加描述"
+
+        if result is None and sig.return_annotation is Result:
+            result = DESCRIPTION_RESULT_TYPE
+
         setattr(
             func,
             INTERFACE_METHOD_DESCRIPTION,

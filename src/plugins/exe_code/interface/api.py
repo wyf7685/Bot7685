@@ -9,7 +9,7 @@ from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
 from nonebot_plugin_session import Session
 
-from ..constant import DESCRIPTION_RESULT_TYPE, T_Context, T_Message
+from ..constant import T_Context, T_Message
 from .group import Group
 from .help_doc import descript
 from .interface import Interface
@@ -60,7 +60,6 @@ class API(Interface):
             api="需要调用的接口名，参考 https://github.com/botuniverse/onebot-11/blob/master/api/public.md",
             data="以命名参数形式传入的接口调用参数",
         ),
-        result=DESCRIPTION_RESULT_TYPE,
     )
     @debug_log
     async def call_api(self, api: str, **data: Any) -> Result:
@@ -247,7 +246,6 @@ class API(Interface):
             name="设置的环境变量名",
             value="设置的环境常量，仅允许输入可被json序列化的对象，留空则为删除",
         ),
-        result=None,
     )
     @debug_log
     def set_const(self, name: str, value: Optional[T_ConstVar] = None) -> None:
@@ -271,7 +269,6 @@ class API(Interface):
     @descript(
         description="向当前会话发送API说明(本文档)",
         parameters=None,
-        result=None,
     )
     @debug_log
     async def help(self) -> None:
@@ -287,7 +284,6 @@ class API(Interface):
     @descript(
         description="在执行代码时等待",
         parameters=dict(seconds="等待的时间，单位秒"),
-        result=None,
     )
     @debug_log
     async def sleep(self, seconds: float) -> None:
@@ -297,7 +293,6 @@ class API(Interface):
     @descript(
         description="重置环境",
         parameters=None,
-        result=None,
     )
     @debug_log
     def reset(self) -> None:
