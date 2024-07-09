@@ -1,12 +1,12 @@
 import contextlib
-from asyncio import Future, get_event_loop, Task
+from asyncio import Future, Task, get_event_loop
 from copy import deepcopy
 from queue import Queue
 from typing import Any, ClassVar, Optional, Self, cast
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.log import logger
-from nonebot_plugin_alconna.uniseg import Image, UniMessage
+from nonebot_plugin_alconna.uniseg import Image, UniMessage, Reply, reply_fetch
 from nonebot_plugin_session import Session
 
 from .constant import T_Context, T_Executor
@@ -55,8 +55,8 @@ class Context:
         create: bool = True,
     ) -> Self:
         if isinstance(session, Session):
-            uin = session.id1 or ""
-        elif isinstance(session, Event):
+            uin = session.id1
+        if isinstance(session, Event):
             uin = session.get_user_id()
         else:
             uin = str(session)
@@ -132,6 +132,9 @@ class Context:
             msg = event.get_message()
         self.set_value("gem", msg)
 
+    def set_gem(self, msg: Message) -> None:
+        self.set_value("gem", msg)
+
     def set_gurl(self, msg: UniMessage[Image] | Image) -> None:
         url: Optional[str] = None
         if isinstance(msg, UniMessage) and msg.has(Image):
@@ -139,4 +142,3 @@ class Context:
         elif isinstance(msg, Image):
             url = msg.url
         self.set_value("gurl", url)
-

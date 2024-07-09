@@ -36,8 +36,8 @@ def _ExtractCode():
                 code += seg.text
             elif isinstance(seg, At):
                 code += f'"{seg.target}"'
-            elif isinstance(seg, Image) and seg.url:
-                code += f'"{seg.url}"'
+            elif isinstance(seg, Image):
+                code += f'"{seg.url or "[url]"}"'
         return code.removeprefix("code").strip()
 
     return Depends(extract_code)

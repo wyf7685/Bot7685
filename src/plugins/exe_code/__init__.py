@@ -74,6 +74,7 @@ async def _(
 ):
     ctx = Context.get_context(session)
     ctx.set_gev(event)
+    ctx.set_gem(message)
     ctx.set_gurl(await UniMessage.generate(message=message))
     await UniMessage.text(str(message)).send()
 
@@ -87,6 +88,7 @@ async def _(
     ctx = Context.get_context(session)
     message = type(event.get_message())(reply.msg or "")
     ctx.set_gev(event)
+    ctx.set_gem(message)
     ctx.set_gurl(await UniMessage.generate(message=message))
     await UniMessage.text(reply.id).send()
 
@@ -112,6 +114,7 @@ async def _(
 
     ctx = Context.get_context(session)
     ctx.set_gev(event)
+    ctx.set_gem(event.get_message())
     ctx.set_gurl(image)
     ctx.set_value(varname, Image_open(BytesIO(img_bytes)))
     await matcher.finish(f"图片已保存至变量 {varname}")
