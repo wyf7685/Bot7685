@@ -1,4 +1,4 @@
-from nonebot.adapters import Bot
+from nonebot.adapters import Adapter, Bot
 
 from . import adapter_api as _
 from .api import API as API
@@ -8,10 +8,10 @@ from .utils import Buffer as Buffer
 
 
 def get_api_class(bot: Bot):
-    bot_cls = list(api_registry.keys())
-    bot_cls.remove(Bot)
+    adapters = list(api_registry.keys())
+    adapters.remove(Adapter)
 
-    for cls in bot_cls:
-        if isinstance(bot, cls):
+    for cls in adapters:
+        if isinstance(bot.adapter, cls):
             return api_registry[cls]
     return API

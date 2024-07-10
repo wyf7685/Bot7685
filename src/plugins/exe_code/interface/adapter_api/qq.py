@@ -6,7 +6,7 @@ from ..help_doc import descript
 from ..utils import debug_log
 
 try:
-    from nonebot.adapters.qq import Bot, Event, MessageSegment
+    from nonebot.adapters.qq import Adapter, Bot, Event, MessageSegment
     from nonebot.adapters.qq.models import (
         MessageArk,
         MessageArkKv,
@@ -15,12 +15,12 @@ try:
     )
     from nonebot.internal.matcher import current_event
 
-    @register_api(Bot)
+    @register_api(Adapter)
     class API(BaseAPI):
         __inst_name__: ClassVar[str] = "api"
 
         @descript(
-            description="[QQ] 构建ark结构体",
+            description="构建ark结构体",
             parameters=dict(
                 template_id="ark模板id, 目前可以为23/24/37",
                 data="ark模板参数",
@@ -45,7 +45,7 @@ try:
             return ark
 
         @descript(
-            description="[QQ] 发送ark卡片",
+            description="发送ark卡片",
             parameters=dict(ark="通过build_ark构建的ark结构体"),
         )
         @debug_log

@@ -48,14 +48,12 @@ class InterfaceMeta(type):
                 for name in cls.__export_method__:
                     yield name
 
-    def __get_method_description(self) -> list[_Desc]:
-        methods: list[_Desc] = []
+    def __get_method_description(self) -> Generator[_Desc, None, None]:
         inst_name: str = getattr(self, "__inst_name__")
         for func_name, desc in self.__method_description__.items():
             func = cast(Callable[..., Any], getattr(self, func_name))
             is_export = is_export_method(func)
-            methods.append(_Desc(inst_name, func_name, is_export, desc.format(func)))
-        return methods
+            yield _Desc(inst_name, func_name, is_export, desc.format(func))
 
     @classmethod
     def get_all_description(cls) -> tuple[list[str], list[str]]:

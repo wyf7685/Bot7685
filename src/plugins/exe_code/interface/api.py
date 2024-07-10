@@ -3,7 +3,7 @@ import functools
 import json
 from typing import Any, ClassVar, Optional
 
-from nonebot.adapters import Bot
+from nonebot.adapters import Adapter, Bot
 from nonebot.exception import ActionFailed
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
@@ -29,18 +29,22 @@ from .utils import (
 )
 
 logger = logger.opt(colors=True)
-api_registry: dict[type[Bot], type["API"]] = {}
+api_registry: dict[type[Adapter], type["API"]] = {}
 
 
-def register_api(bot: type[Bot]):
-    def decorator(api: type["API"]):
-        api_registry[bot] = api
+def register_api(adapter: type[Adapter]):
+
+    def decorator(api: type["API"]) -> type["API"]:
+        api_registry[adapter] = api
+        adapter_name = adapter.get_name()
+        for desc in api.__method_description__.values():
+            desc.description = f"[{adapter_name}] {desc.description}"
         return api
 
     return decorator
 
 
-@register_api(Bot)
+@register_api(Adapter)
 class API(Interface):
     __inst_name__: ClassVar[str] = "api"
 
