@@ -84,12 +84,11 @@ async def _(
     event: Event,
     session: EventSession,
     reply: EventReply,
+    reply_msg: EventReplyMessage,
 ):
     ctx = Context.get_context(session)
-    message = type(event.get_message())(reply.msg or "")
     ctx.set_gev(event)
-    ctx.set_gem(message)
-    ctx.set_gurl(await UniMessage.generate(message=message))
+    ctx.set_gem(reply_msg)
     await UniMessage.text(reply.id).send()
 
 
