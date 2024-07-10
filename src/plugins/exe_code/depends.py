@@ -1,4 +1,5 @@
 from typing import Annotated
+
 from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import Depends

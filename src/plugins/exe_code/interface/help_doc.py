@@ -1,6 +1,6 @@
 import inspect
 from dataclasses import dataclass
-from typing import Any, Callable, Optional, ParamSpec, TypeVar
+from typing import Any, Callable, Optional
 
 from nonebot_plugin_alconna.uniseg import Receipt
 
@@ -13,8 +13,6 @@ from ..constant import (
 )
 from .utils import Result
 
-P = ParamSpec("P")
-R = TypeVar("R")
 EMPTY = inspect.Signature.empty
 
 
@@ -72,7 +70,7 @@ def descript(
     *,
     ignore: Optional[list[str]] = None,
 ):
-    def decorator(call: Callable[P, R]) -> Callable[P, R]:
+    def decorator[**P, R](call: Callable[P, R]) -> Callable[P, R]:
         nonlocal result
 
         sig = inspect.Signature.from_callable(call)

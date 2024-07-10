@@ -9,9 +9,7 @@ from typing import (
     Coroutine,
     Iterable,
     Optional,
-    ParamSpec,
     Self,
-    TypeVar,
     cast,
     overload,
 )
@@ -38,8 +36,6 @@ from ..constant import (
     T_Message,
 )
 
-P = ParamSpec("P")
-R = TypeVar("R")
 
 WRAPPER_ASSIGNMENTS = (
     *functools.WRAPPER_ASSIGNMENTS,
@@ -48,23 +44,25 @@ WRAPPER_ASSIGNMENTS = (
 )
 
 
-def export(call: Callable[P, R]) -> Callable[P, R]:
+def export[**P, R](call: Callable[P, R]) -> Callable[P, R]:
     """将一个方法标记为导出函数"""
     setattr(call, INTERFACE_EXPORT_METHOD, True)
     return call
 
 
+# fmt: off
+
 @overload
-def debug_log(
+def debug_log[**P, R](
     call: Callable[P, Coroutine[None, None, R]]
 ) -> Callable[P, Coroutine[None, None, R]]: ...
 
 
 @overload
-def debug_log(call: Callable[P, R]) -> Callable[P, R]: ...
+def debug_log[**P, R](call: Callable[P, R]) -> Callable[P, R]: ...
 
 
-def debug_log(
+def debug_log[**P, R](
     call: Callable[P, Coroutine[None, None, R] | R]
 ) -> Callable[P, Coroutine[None, None, R] | R]:
     def log(*args: P.args, **kwargs: P.kwargs):
@@ -88,6 +86,8 @@ def debug_log(
             return call(*args, **kwargs)
 
         return wrapper_sync
+
+# fmt: on
 
 
 def is_export_method(call: Callable[..., Any]) -> bool:

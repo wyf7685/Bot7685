@@ -1,16 +1,15 @@
 import json
 from pathlib import Path
-from typing import Optional, TypeVar
+from typing import Optional
 
 from nonebot_plugin_alconna.uniseg import At, Image, Reply, Text, UniMessage
 
 from ..constant import DATA_PATH, T_ConstVar, T_Context
 
-T = TypeVar("T")
 default_context: T_Context = {}
 
 
-def context_var(item: T, name: Optional[str] = None) -> T:
+def context_var[T](item: T, name: Optional[str] = None) -> T:
     key = name or getattr(item, "__name__", None)
     assert key is not None, f"Name for {item!r} cannot be empty"
     default_context[key] = item
