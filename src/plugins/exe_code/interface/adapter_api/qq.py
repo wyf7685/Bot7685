@@ -25,6 +25,7 @@ try:
                 template_id="ark模板id, 目前可以为23/24/37",
                 data="ark模板参数",
             ),
+            result="ark结构体",
         )
         @debug_log
         async def build_ark(

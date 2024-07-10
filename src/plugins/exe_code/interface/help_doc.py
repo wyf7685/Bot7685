@@ -79,8 +79,12 @@ def descript(
                 if name == "self" or (ignore is not None and name in ignore):
                     continue
                 text = f"方法 '{call.__name__}' 的参数 '{name}'"
-                assert param.annotation is not EMPTY, f"{text} 未添加类型注释注释"
+                assert param.annotation is not EMPTY, f"{text} 未添加类型注释"
                 assert name in parameters, f"{text} 未添加描述"
+
+        assert (
+            sig.return_annotation is not EMPTY
+        ), f"方法 '{call.__name__}' 的返回值未添加类型注释"
 
         if result is None:
             if sig.return_annotation is Result:
@@ -90,7 +94,7 @@ def descript(
             else:
                 assert (
                     sig.return_annotation is None
-                ), f"方法 '{call.__name__}' 的返回值未添加类型注释注释"
+                ), f"方法 '{call.__name__}' 的返回值未添加描述"
 
         setattr(
             call,
