@@ -62,9 +62,16 @@ class API(Interface):
             api="需要调用的接口名，参考 https://github.com/botuniverse/onebot-11/blob/master/api/public.md",
             data="以命名参数形式传入的接口调用参数",
         ),
+        ignore=["raise_text"],
     )
     @debug_log
-    async def call_api(self, api: str, **data: Any) -> Result:
+    async def call_api(
+        self,
+        api: str,
+        *,
+        raise_text: Optional[str] = None,
+        **data: Any,
+    ) -> Result:
         res: dict[str, Any] | list[Any] | None
         try:
             res = await self.bot.call_api(api, **data)
@@ -76,7 +83,11 @@ class API(Interface):
             logger.opt(exception=e).warning(msg)
         if isinstance(res, dict):
             res.setdefault("error", None)
-        return Result(res)
+
+        result = Result(res)
+        if result.error is not None and raise_text is not None:
+            raise RuntimeError(raise_text) from result.error
+        return result
 
     @descript(
         description="向QQ号为qid的用户发送私聊消息",
@@ -84,7 +95,6 @@ class API(Interface):
             qid="需要发送私聊的QQ号",
             msg="发送的内容",
         ),
-        result="Receipt",
     )
     @debug_log
     async def send_prv(self, qid: int | str, msg: T_Message) -> Receipt:
@@ -101,7 +111,6 @@ class API(Interface):
             gid="需要发送消息的群号",
             msg="发送的内容",
         ),
-        result="Receipt",
     )
     @debug_log
     async def send_grp(self, gid: int | str, msg: T_Message) -> Receipt:
@@ -135,7 +144,6 @@ class API(Interface):
             gid="需要发送消息的群号",
             msgs="发送的消息列表",
         ),
-        result="Receipt",
     )
     @debug_log
     async def send_grp_fwd(self, gid: int | str, msgs: list[T_Message]) -> Receipt:
@@ -150,7 +158,6 @@ class API(Interface):
     @descript(
         description="向当前会话发送合并转发消息",
         parameters=dict(msgs="发送的消息列表"),
-        result="Receipt",
     )
     @debug_log
     async def send_fwd(self, msgs: list[T_Message]) -> Receipt:
@@ -168,7 +175,6 @@ class API(Interface):
             msg="需要发送的消息",
             fwd="传入的是否为合并转发消息列表",
         ),
-        result="Receipt",
     )
     @debug_log
     async def feedback(self, msg: Any, fwd: bool = False) -> Receipt:

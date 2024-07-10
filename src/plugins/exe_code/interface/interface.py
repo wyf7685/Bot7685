@@ -1,4 +1,4 @@
-from typing import Any, Callable, ClassVar, NamedTuple, cast
+from typing import Any, Callable, ClassVar, Generator, NamedTuple, cast
 
 from ..constant import INTERFACE_INST_NAME, INTERFACE_METHOD_DESCRIPTION, T_Context
 from .help_doc import FuncDescription

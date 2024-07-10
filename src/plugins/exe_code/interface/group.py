@@ -24,7 +24,6 @@ class Group(Interface):
     @descript(
         description="向群聊发送消息",
         parameters=dict(msg="需要发送的消息"),
-        result="Receipt",
     )
     @debug_log
     async def send(self, msg: T_Message) -> Receipt:
@@ -33,7 +32,6 @@ class Group(Interface):
     @descript(
         description="向群聊发送合并转发消息",
         parameters=dict(msgs="需要发送的消息列表"),
-        result="Receipt",
     )
     @debug_log
     async def send_fwd(self, msgs: list[T_Message]) -> Receipt:

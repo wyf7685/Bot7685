@@ -9,6 +9,7 @@ DATA_PATH = lambda: get_plugin_data().data_dir
 # description
 DESCRIPTION_FORMAT = "{decl}\n* 描述: {desc}\n* 参数:\n{params}\n* 返回值:\n  {res}\n"
 DESCRIPTION_RESULT_TYPE = "Result类对象，可通过属性名获取接口响应"
+DESCRIPTION_RECEIPT_TYPE = "UniMessage发送后返回的Receipt对象，用于操作对应消息"
 
 # interface
 INTERFACE_INST_NAME = "__inst_name__"

@@ -2,13 +2,16 @@ import inspect
 from dataclasses import dataclass
 from typing import Any, Callable, Optional, ParamSpec, TypeVar
 
+from nonebot_plugin_alconna.uniseg import Receipt
+
 from ..constant import (
     DESCRIPTION_FORMAT,
+    DESCRIPTION_RECEIPT_TYPE,
+    DESCRIPTION_RESULT_TYPE,
     INTERFACE_METHOD_DESCRIPTION,
     T_Message,
-    DESCRIPTION_RESULT_TYPE,
 )
-from .utils import Receipt, Result
+from .utils import Result
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -66,27 +69,36 @@ def descript(
     description: str,
     parameters: Optional[dict[str, str]],
     result: Optional[str] = None,
+    *,
+    ignore: Optional[list[str]] = None,
 ):
-    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+    def decorator(call: Callable[P, R]) -> Callable[P, R]:
         nonlocal result
 
-        sig = inspect.Signature.from_callable(func)
+        sig = inspect.Signature.from_callable(call)
         if parameters is not None:
             for name, param in sig.parameters.items():
-                if name == "self":
+                if name == "self" or (ignore is not None and name in ignore):
                     continue
-                text = f"方法 '{func.__name__}' 的参数 '{name}'"
+                text = f"方法 '{call.__name__}' 的参数 '{name}'"
                 assert param.annotation is not EMPTY, f"{text} 未添加类型注释注释"
                 assert name in parameters, f"{text} 未添加描述"
 
-        if result is None and sig.return_annotation is Result:
-            result = DESCRIPTION_RESULT_TYPE
+        if result is None:
+            if sig.return_annotation is Result:
+                result = DESCRIPTION_RESULT_TYPE
+            elif sig.return_annotation is Receipt:
+                result = DESCRIPTION_RECEIPT_TYPE
+            else:
+                assert (
+                    sig.return_annotation is None
+                ), f"方法 '{call.__name__}' 的返回值未添加类型注释注释"
 
         setattr(
-            func,
+            call,
             INTERFACE_METHOD_DESCRIPTION,
             FuncDescription(description, parameters, result),
         )
-        return func
+        return call
 
     return decorator
