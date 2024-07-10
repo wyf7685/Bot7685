@@ -133,7 +133,7 @@ class Result:
         if self._data:
             return self._data.__getitem__(key)  # type: ignore
 
-    def __getattribute__(self, name: str) -> Any:
+    def __getattr__(self, name: str) -> Any:
         if isinstance(self._data, dict) and name in self._data:
             return self._data[name]
         return super(Result, self).__getattribute__(name)

@@ -42,12 +42,11 @@ class InterfaceMeta(type):
         cls.__interfaces__.add(Interface)
         return Interface
 
-    def get_export_method(self) -> list[str]:
-        result: list[str] = []
+    def get_export_method(self) -> Generator[str, None, None]:
         for cls in reversed(self.mro()):
             if isinstance(cls, InterfaceMeta) and hasattr(cls, "__export_method__"):
-                result.extend(cls.__export_method__)
-        return result
+                for name in cls.__export_method__:
+                    yield name
 
     def __get_method_description(self) -> list[_Desc]:
         methods: list[_Desc] = []

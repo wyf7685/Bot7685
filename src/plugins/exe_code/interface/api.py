@@ -32,10 +32,10 @@ logger = logger.opt(colors=True)
 api_registry: dict[type[Bot], type["API"]] = {}
 
 
-def register_api(bot_type: type[Bot]):
-    def decorator(api_class: type["API"]):
-        api_registry[bot_type] = api_class
-        return api_class
+def register_api(bot: type[Bot]):
+    def decorator(api: type["API"]):
+        api_registry[bot] = api
+        return api
 
     return decorator
 
@@ -235,7 +235,7 @@ class API(Interface):
 
     @export
     @debug_log
-    def print(self, *args, sep: str = " ", end: str = "\n", **_):
+    def print(self, *args: Any, sep: str = " ", end: str = "\n", **_):
         Buffer(self.qid).write(sep.join(str(i) for i in args) + end)
 
     @export

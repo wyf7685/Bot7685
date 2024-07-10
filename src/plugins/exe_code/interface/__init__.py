@@ -13,9 +13,5 @@ def get_api_class(bot: Bot):
 
     for cls in bot_cls:
         if isinstance(bot, cls):
-            api_cls = api_registry[cls]
-            break
-    else:
-        api_cls = API
-
-    return api_cls
+            return api_registry[cls]
+    return API
