@@ -17,7 +17,7 @@ class Config(BaseModel, extra="ignore", arbitrary_types_allowed=True):
     chat_memory_max: int = 10
     history_max: int = 100
     temperature: float = 0.5
-    model_name: str = "gpt-3.5-turbo"
+    gpt_model_name: str = "gpt-3.5-turbo"
     allow_private: bool = True
     change_chat_to: Optional[str] = None
     max_tokens: int = 1024

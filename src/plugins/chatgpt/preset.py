@@ -15,7 +15,7 @@ PRESET_PROMPTS: dict[str, list[dict[str, str]]] = {
         {
             "role": "sysrem",
             "content": (
-                f"You are ChatGPT, a large language model trained by OpenAI, based on {plugin_config.model_name}.\n"
+                f"You are ChatGPT, a large language model trained by OpenAI, based on {plugin_config.gpt_model_name}.\n"
                 "Respond conversationally. Do not answer as the user.\n"
                 f"Current date: {date.today()}"
             ),
