@@ -1,4 +1,4 @@
-from typing import ClassVar, cast
+from typing import cast
 
 from ..api import API as BaseAPI
 from ..api import register_api
@@ -17,8 +17,6 @@ try:
 
     @register_api(Adapter)
     class API(BaseAPI):
-        __inst_name__: ClassVar[str] = "api"
-
         @descript(
             description="构建ark结构体",
             parameters=dict(

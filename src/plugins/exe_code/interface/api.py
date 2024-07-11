@@ -1,11 +1,7 @@
 import asyncio
-import functools
-import json
-from typing import Any, ClassVar, Optional
 import contextlib
 
 from nonebot.adapters import Adapter, Bot
-from nonebot.exception import ActionFailed
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
 from nonebot_plugin_session import Session
@@ -18,7 +14,6 @@ from .user import User
 from .user_const_var import T_ConstVar, default_context, load_const, set_const
 from .utils import (
     Buffer,
-    Result,
     debug_log,
     export,
     export_adapter_message,
@@ -61,39 +56,6 @@ class API(Interface):
         self.qid = session.id1 or ""
         self.gid = session.id2
         self.session = session
-
-    @descript(
-        description="调用 OneBot V11 接口",
-        parameters=dict(
-            api="需要调用的接口名，参考 https://github.com/botuniverse/onebot-11/blob/master/api/public.md",
-            data="以命名参数形式传入的接口调用参数",
-        ),
-        ignore=["raise_text"],
-    )
-    @debug_log
-    async def call_api(
-        self,
-        api: str,
-        *,
-        raise_text: Optional[str] = None,
-        **data: Any,
-    ) -> Result:
-        res: dict[str, Any] | list[Any] | None
-        try:
-            res = await self.bot.call_api(api, **data)
-        except ActionFailed as e:
-            res = {"error": e}
-        except BaseException as e:
-            res = {"error": e}
-            msg = f"用户({self.qid})调用api<y>{api}</y>时发生错误: <r>{e}</r>"
-            logger.opt(exception=e).warning(msg)
-        if isinstance(res, dict):
-            res.setdefault("error", None)
-
-        result = Result(res)
-        if result.error is not None and raise_text is not None:
-            raise RuntimeError(raise_text) from result.error
-        return result
 
     @descript(
         description="向QQ号为qid的用户发送私聊消息",
@@ -300,13 +262,6 @@ class API(Interface):
 
         if is_super_user(self.bot, self.qid):
             export_manager(context)
-
-    def __getattr__(self, name: str):
-        if name.startswith("__") and name.endswith("__"):
-            raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute '{name}'"
-            )
-        return functools.partial(self.call_api, name)
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(user_id={self.qid})"

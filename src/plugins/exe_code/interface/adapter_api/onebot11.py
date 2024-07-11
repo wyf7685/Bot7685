@@ -1,18 +1,58 @@
-from typing import ClassVar
+import functools
+from typing import Any, Optional
+
+from nonebot.log import logger
 
 from ..api import API as BaseAPI
 from ..api import register_api
 from ..help_doc import descript, type_alias
 from ..utils import Result, debug_log, export
 
+logger = logger.opt(colors=True)
+
+
 try:
-    from nonebot.adapters.onebot.v11 import Adapter, Message
+    from nonebot.adapters.onebot.v11 import ActionFailed, Adapter, Message
 
     type_alias[Message] = "Message"
 
     @register_api(Adapter)
     class API(BaseAPI):
-        __inst_name__: ClassVar[str] = "api"
+        @descript(
+            description="调用 OneBot V11 接口",
+            parameters=dict(
+                api=(
+                    "需要调用的接口名，参考"
+                    " https://github.com/botuniverse/onebot-11/blob/master/api/public.md"
+                ),
+                data="以命名参数形式传入的接口调用参数",
+            ),
+            ignore={"raise_text"},
+        )
+        @debug_log
+        async def call_api(
+            self,
+            api: str,
+            *,
+            raise_text: Optional[str] = None,
+            **data: Any,
+        ) -> Result:
+            res: dict[str, Any] | list[Any] | None
+            try:
+                res = await self.bot.call_api(api, **data)
+            except ActionFailed as e:
+                res = {"error": e}
+            except BaseException as e:
+                res = {"error": e}
+                msg = f"用户({self.qid})调用api<y>{api}</y>时发生错误: <r>{e}</r>"
+                logger.opt(exception=e).warning(msg)
+            if isinstance(res, dict):
+                res.setdefault("error", None)
+
+            result = Result(res)
+            if result.error is not None and raise_text is not None:
+                raise RuntimeError(raise_text) from result.error
+            return result
 
         @export
         @descript(
@@ -56,6 +96,13 @@ try:
                 raise_text="获取合并转发消息失败",
             )
             return [Message(i["raw_message"]) for i in res["messages"]]
+
+        def __getattr__(self, name: str):
+            if name.startswith("__") and name.endswith("__"):
+                raise AttributeError(
+                    f"'{self.__class__.__name__}' object has no attribute '{name}'"
+                )
+            return functools.partial(self.call_api, name)
 
 except ImportError:
     pass
