@@ -220,24 +220,24 @@ async def send_forward_message(
 
 def _export_manager():
     def set_usr(x: Any) -> bool:
-        from ..config import cfg
+        from ..config import config
 
-        if (u := str(x)) in cfg.user:
-            cfg.user.remove(u)
+        if (u := str(x)) in config.user:
+            config.user.remove(u)
         else:
-            cfg.user.add(u)
+            config.user.add(u)
 
-        return u in cfg.user
+        return u in config.user
 
     def set_grp(x: Any) -> bool:
-        from ..config import cfg
+        from ..config import config
 
-        if (g := str(x)) in cfg.group:
-            cfg.group.remove(g)
+        if (g := str(x)) in config.group:
+            config.group.remove(g)
         else:
-            cfg.group.add(g)
+            config.group.add(g)
 
-        return g in cfg.group
+        return g in config.group
 
     def export_manager(ctx: T_Context) -> None:
         from ..code_context import Context

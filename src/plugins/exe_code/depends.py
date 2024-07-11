@@ -8,7 +8,7 @@ from nonebot_plugin_alconna.uniseg import MsgTarget, UniMessage, UniMsg, reply_f
 from nonebot_plugin_alconna.uniseg.segment import At, Image, Reply, Text
 from nonebot_plugin_session import EventSession
 
-from .config import cfg
+from .config import config
 
 
 def ExeCodeEnabled() -> Rule:
@@ -21,8 +21,8 @@ def ExeCodeEnabled() -> Rule:
         if ConsoleBot is not None and isinstance(bot, ConsoleBot):
             return True
 
-        return (session.id1 or "") in cfg.user or (
-            not target.private and str(target.id) in cfg.group
+        return (session.id1 or "") in config.user or (
+            not target.private and str(target.id) in config.group
         )
 
     return Rule(check)

@@ -1,12 +1,14 @@
-from typing import Set
-
 from nonebot import get_plugin_config
 from pydantic import BaseModel, Field
 
 
+class ExeCodeConfig(BaseModel):
+    user: set[str] = Field(default_factory=set)
+    group: set[str] = Field(default_factory=set)
+
+
 class Config(BaseModel):
-    user: Set[str] = Field(default_factory=set, alias="exe_code_user")
-    group: Set[str] = Field(default_factory=set, alias="exe_code_group")
+    exe_code: ExeCodeConfig = Field(default_factory=ExeCodeConfig)
 
 
-cfg = get_plugin_config(Config)
+config = get_plugin_config(Config).exe_code
