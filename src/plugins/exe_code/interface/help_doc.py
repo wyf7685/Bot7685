@@ -9,7 +9,9 @@ from ..constant import (
     DESCRIPTION_RECEIPT_TYPE,
     DESCRIPTION_RESULT_TYPE,
     INTERFACE_METHOD_DESCRIPTION,
+    T_ForwardMsg,
     T_Message,
+    T_OptConstVar,
 )
 from .utils import Result
 
@@ -20,6 +22,8 @@ type_alias: dict[type, str] = {
     Receipt: "Receipt",
     Result: "Result",
     T_Message: "T_Message",
+    T_ForwardMsg: "T_ForwardMsg",
+    T_OptConstVar: "Optional[T_ConstVar]",
     EMPTY: "Unkown",  # not supposed to appear in docs
 }
 
@@ -32,12 +36,12 @@ def _type_string(t: type | str) -> str:
     return inspect.formatannotation(t)
 
 
-def func_declaration(func: Callable[..., Any]) -> str:
-    sig = inspect.Signature.from_callable(func)
+def func_declaration(func: Callable[..., Any], ignore: set[str]) -> str:
+    sig = inspect.signature(func)
     params = [
         f"{name}: {_type_string(param.annotation)}"
         for name, param in sig.parameters.items()
-        if name != "self"
+        if name not in ignore
     ]
     result = _type_string(sig.return_annotation)
 
@@ -49,10 +53,11 @@ class FuncDescription:
     description: str
     parameters: Optional[dict[str, str]]
     result: Optional[str]
+    ignore: set[str]
 
     def format(self, func: Callable[..., Any]):
         return DESCRIPTION_FORMAT.format(
-            decl=func_declaration(func),
+            decl=func_declaration(func, self.ignore),
             desc=self.description,
             params=(
                 "\n".join(f" - {k}: {v}" for k, v in self.parameters.items())
@@ -63,20 +68,24 @@ class FuncDescription:
         )
 
 
-def descript(
+# fmt: off
+def descript[**P, R](
     description: str,
     parameters: Optional[dict[str, str]],
     result: Optional[str] = None,
     *,
-    ignore: Optional[list[str]] = None,
-):
-    def decorator[**P, R](call: Callable[P, R]) -> Callable[P, R]:
+    ignore: Optional[set[str]] = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
+# fmt: on
+    ignore = {"self", *(ignore or set())}
+
+    def decorator(call: Callable[P, R]) -> Callable[P, R]:
         nonlocal result
 
-        sig = inspect.Signature.from_callable(call)
+        sig = inspect.signature(call)
         if parameters is not None:
             for name, param in sig.parameters.items():
-                if name == "self" or (ignore is not None and name in ignore):
+                if name == "self" or name in ignore:
                     continue
                 text = f"方法 '{call.__name__}' 的参数 '{name}'"
                 assert param.annotation is not EMPTY, f"{text} 未添加类型注释"
@@ -91,7 +100,7 @@ def descript(
                 result = DESCRIPTION_RESULT_TYPE
             elif sig.return_annotation is Receipt:
                 result = DESCRIPTION_RECEIPT_TYPE
-            else:
+            elif "return" in ignore:
                 assert (
                     sig.return_annotation is None
                 ), f"方法 '{call.__name__}' 的返回值未添加描述"
@@ -99,7 +108,7 @@ def descript(
         setattr(
             call,
             INTERFACE_METHOD_DESCRIPTION,
-            FuncDescription(description, parameters, result),
+            FuncDescription(description, parameters, result, ignore),
         )
         return call
 

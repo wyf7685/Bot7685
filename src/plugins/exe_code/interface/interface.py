@@ -60,7 +60,7 @@ class InterfaceMeta(type):
         methods: list[_Desc] = []
         for cls_obj in cls.__interfaces__:
             methods.extend(cls_obj.__get_method_description())
-        methods.sort(key=lambda x: (not x.is_export, x.inst_name, x.func_name))
+        methods.sort(key=lambda x: (1 - x.is_export, x.inst_name, x.func_name))
 
         content: list[str] = []
         result: list[str] = []

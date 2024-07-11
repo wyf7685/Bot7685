@@ -1,17 +1,19 @@
 import asyncio
 import contextlib
+import json
+from typing import Any, ClassVar, override
 
 from nonebot.adapters import Adapter, Bot
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
 from nonebot_plugin_session import Session
 
-from ..constant import T_Context, T_Message
+from ..constant import T_Context, T_ForwardMsg, T_Message, T_OptConstVar
 from .group import Group
 from .help_doc import descript
 from .interface import Interface
 from .user import User
-from .user_const_var import T_ConstVar, default_context, load_const, set_const
+from .user_const_var import default_context, load_const, set_const
 from .utils import (
     Buffer,
     debug_log,
@@ -98,7 +100,7 @@ class API(Interface):
         result="Receipt",
     )
     @debug_log
-    async def send_prv_fwd(self, qid: int | str, msgs: list[T_Message]) -> Receipt:
+    async def send_prv_fwd(self, qid: int | str, msgs: T_ForwardMsg) -> Receipt:
         return await send_forward_message(
             bot=self.bot,
             session=self.session,
@@ -114,7 +116,7 @@ class API(Interface):
         ),
     )
     @debug_log
-    async def send_grp_fwd(self, gid: int | str, msgs: list[T_Message]) -> Receipt:
+    async def send_grp_fwd(self, gid: int | str, msgs: T_ForwardMsg) -> Receipt:
         return await send_forward_message(
             bot=self.bot,
             session=self.session,
@@ -128,7 +130,7 @@ class API(Interface):
         parameters=dict(msgs="发送的消息列表"),
     )
     @debug_log
-    async def send_fwd(self, msgs: list[T_Message]) -> Receipt:
+    async def send_fwd(self, msgs: T_ForwardMsg) -> Receipt:
         return await send_forward_message(
             bot=self.bot,
             session=self.session,
@@ -191,11 +193,11 @@ class API(Interface):
         description="设置环境常量，在每次执行代码时加载",
         parameters=dict(
             name="设置的环境变量名",
-            value="设置的环境常量，仅允许输入可被json序列化的对象，留空则为删除",
+            value="设置的环境常量值，仅允许输入可被json序列化的对象，留空(None)则为删除",
         ),
     )
     @debug_log
-    def set_const(self, name: str, value: Optional[T_ConstVar] = None) -> None:
+    def set_const(self, name: str, value: T_OptConstVar = None) -> None:
         if value is None:
             set_const(self.qid, name)
             return
@@ -250,6 +252,7 @@ class API(Interface):
         context.update(default_context)
         self.export_to(context)
 
+    @override
     def export_to(self, context: T_Context) -> None:
         super(API, self).export_to(context)
 
