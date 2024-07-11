@@ -24,9 +24,27 @@ class GroupInfo(BaseModel):
 logger = logger.opt(colors=True)
 group_info_cache: dict[int, GroupInfo] = {}
 scheduler_job: dict[Bot, SchedulerJob] = {}
+update_retry_id: dict[str, int] = {}
 
 
-async def update_group_cache(bot: Bot, *, _try_count: int = 1):
+async def update_group_cache(
+    bot: Bot,
+    *,
+    _try_count: int = 1,
+    _wait_secs: int = 0,
+    _id: int = 0,
+):
+    key = repr(bot)
+    if _id == 0:
+        if key in update_retry_id:
+            return
+        _id = hash(f"{key}{id(bot)}")
+        update_retry_id[key] = _id
+    elif update_retry_id.get(key, 0) != _id:
+        return
+
+    await asyncio.sleep(_wait_secs)
+
     try:
         update = {
             (info := type_validate_python(GroupInfo, item)).group_id: info
@@ -35,14 +53,16 @@ async def update_group_cache(bot: Bot, *, _try_count: int = 1):
     except Exception as err:
         logger.warning(f"更新 {bot} 的群聊信息缓存时出错: {err!r}")
         if _try_count <= 3:
-            loop = asyncio.get_running_loop()
-            coro = update_group_cache(bot, _try_count=_try_count + 1)
-            loop.call_later(30, loop.create_task, coro)
+            coro = update_group_cache(
+                bot, _try_count=_try_count + 1, _wait_secs=30, _id=_id
+            )
+            asyncio.get_running_loop().create_task(coro)
             logger.warning("<y>30</y>s 后重试...")
         return
 
     logger.success(f"更新 {bot} 的 <y>{len(update)}</y> 条群聊信息缓存")
     group_info_cache.update(update)
+    del update_retry_id[key]
 
 
 def patch_private():
