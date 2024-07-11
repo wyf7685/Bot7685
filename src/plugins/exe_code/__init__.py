@@ -113,7 +113,6 @@ async def _(
 
     ctx = Context.get_context(session)
     ctx.set_gev(event)
-    ctx.set_gem(event.get_message())
     ctx.set_gurl(image)
     ctx.set_value(varname, Image_open(BytesIO(img_bytes)))
     await matcher.finish(f"图片已保存至变量 {varname}")
