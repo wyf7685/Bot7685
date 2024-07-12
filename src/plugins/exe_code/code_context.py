@@ -92,7 +92,10 @@ class Context:
         assert self.locked, "`Context._solve_code` must be called with lock"
 
         # 预处理代码
-        lines = [f"global {','.join(self.ctx.keys())}", *raw_code.split("\n")]
+        lines: list[str] = [
+            f"global {', '.join(self.ctx.keys())}",
+            *raw_code.split("\n"),
+        ]
         solved = EXECUTOR_FUNCTION.replace("{CODE}", f"\n{EXECUTOR_INDENT}".join(lines))
         code = compile(solved, f"<executor_{self.uin}>", "exec")
 
@@ -119,9 +122,9 @@ class Context:
             raise cast(Exception, exc)
 
     def cancel(self) -> bool:
-        if self.task is not None:
-            return self.task.cancel()
-        return False
+        if self.task is None:
+            return False
+        return self.task.cancel()
 
     def set_value(self, varname: str, value: Any) -> None:
         if value is not None:

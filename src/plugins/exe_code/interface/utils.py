@@ -219,25 +219,18 @@ async def send_forward_message(
 
 
 def _export_manager():
+    def f(s: set[str], x: str):
+        return (s.remove if x in s else s.add)(x) or x in s
+
     def set_usr(x: Any) -> bool:
         from ..config import config
 
-        if (u := str(x)) in config.user:
-            config.user.remove(u)
-        else:
-            config.user.add(u)
-
-        return u in config.user
+        return f(config.user, str(x))
 
     def set_grp(x: Any) -> bool:
         from ..config import config
 
-        if (g := str(x)) in config.group:
-            config.group.remove(g)
-        else:
-            config.group.add(g)
-
-        return g in config.group
+        return f(config.group, str(x))
 
     def export_manager(ctx: T_Context) -> None:
         from ..code_context import Context
