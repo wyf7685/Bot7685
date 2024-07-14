@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from nonebot_plugin_alconna.uniseg import Receipt
 
-from ..constant import T_Message
+from ..constant import T_Message, T_ForwardMsg
 from .help_doc import descript
 from .interface import Interface
 from .utils import debug_log
@@ -34,7 +34,7 @@ class Group(Interface):
         parameters=dict(msgs="需要发送的消息列表"),
     )
     @debug_log
-    async def send_fwd(self, msgs: list[T_Message]) -> Receipt:
+    async def send_fwd(self, msgs: T_ForwardMsg) -> Receipt:
         return await self.api.send_grp_fwd(self.uid, msgs)
 
     def __repr__(self):

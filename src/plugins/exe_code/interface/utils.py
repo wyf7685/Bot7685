@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import importlib
 import inspect
 from typing import (
     Any,
@@ -13,10 +12,8 @@ from typing import (
     cast,
     overload,
 )
-from typing_extensions import TypeIs
 
 from nonebot.adapters import Bot, Message, MessageSegment
-from nonebot.internal.matcher import current_bot
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import (
     CustomNode,
@@ -27,6 +24,7 @@ from nonebot_plugin_alconna.uniseg import (
     UniMessage,
 )
 from nonebot_plugin_session import Session
+from typing_extensions import TypeIs
 
 from ..constant import (
     INTERFACE_EXPORT_METHOD,
@@ -35,7 +33,6 @@ from ..constant import (
     T_Context,
     T_Message,
 )
-
 
 WRAPPER_ASSIGNMENTS = (
     *functools.WRAPPER_ASSIGNMENTS,
@@ -209,12 +206,11 @@ async def send_forward_message(
         )
 
     nodes = await asyncio.gather(*[create_node(msg) for msg in msgs])
-    message = Reference(nodes=nodes)
     return await send_message(
         bot=bot,
         session=session,
         target=target,
-        message=message,
+        message=Reference(nodes=nodes),
     )
 
 
@@ -243,15 +239,3 @@ def _export_manager():
 
 
 export_manager = _export_manager()
-
-
-def _get_message_class() -> type[Message]:
-    name = type(current_bot.get()).__module__.rpartition(".")[0]
-    return getattr(importlib.import_module(name), "Message")
-
-
-def export_adapter_message(ctx: T_Context) -> None:
-    MessageClass = _get_message_class()
-    MessageSegmentClass = MessageClass.get_segment_class()
-    ctx["Message"] = MessageClass
-    ctx["MessageSegment"] = MessageSegmentClass
