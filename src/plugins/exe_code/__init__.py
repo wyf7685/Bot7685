@@ -52,7 +52,7 @@ code_terminate = on_startswith("terminate", rule=EXECODE_ENABLED, permission=SUP
 
 
 @code_exec.handle()
-async def _(
+async def handle_exec(
     bot: Bot,
     session: EventSession,
     code: ExtractCode,
@@ -67,7 +67,7 @@ async def _(
 
 
 @code_getcode.handle()
-async def _(
+async def handle_getcode(
     event: Event,
     session: EventSession,
     message: EventReplyMessage,
@@ -80,7 +80,7 @@ async def _(
 
 
 @code_getmid.handle()
-async def _(
+async def handle_getmid(
     event: Event,
     session: EventSession,
     reply: EventReply,
@@ -89,11 +89,12 @@ async def _(
     ctx = Context.get_context(session)
     ctx.set_gev(event)
     ctx.set_gem(reply_msg)
+    ctx.set_gurl(await UniMessage.generate(message=reply_msg))
     await UniMessage.text(reply.id).send()
 
 
 @code_getimg.handle()
-async def _(
+async def handle_getimg(
     bot: Bot,
     event: Event,
     session: EventSession,
@@ -119,7 +120,7 @@ async def _(
 
 
 @code_terminate.handle()
-async def _(target: EventTarget):
+async def handle_terminate(target: EventTarget):
     with contextlib.suppress(KeyError):
         if Context.get_context(target).cancel():
             await UniMessage("中止").at(target).text("的执行任务").send()
