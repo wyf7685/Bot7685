@@ -19,6 +19,25 @@ with contextlib.suppress(ImportError):
     type_alias[Message] = "Message"
     type_alias[MessageSegment] = "MessageSegment"
 
+    # fmt: off
+    def build_ark(
+        template_id: int,
+        data: dict[str, str | list[dict[str, str]]],
+    ) -> MessageArk:
+        return MessageArk(template_id=template_id, kv=[
+            MessageArkKv(key=key, value=val)
+            if isinstance(val, str) else
+            MessageArkKv(key=key, obj=[
+                MessageArkObj(obj_kv=[
+                    MessageArkObjKv(key=k, value=v)
+                    for k, v in okvd.items()
+                ])
+                for okvd in val
+            ])
+            for key, val in data.items()
+        ])
+    # fmt: on
+
     @register_api(Adapter)
     class API(BaseAPI):
         @descript(
@@ -30,25 +49,12 @@ with contextlib.suppress(ImportError):
             result="ark结构体",
         )
         @debug_log
-        async def build_ark(
+        def build_ark(
             self,
             template_id: int,
             data: dict[str, str | list[dict[str, str]]],
         ) -> MessageArk:
-            # fmt: off
-            return MessageArk(template_id=template_id, kv=[
-                MessageArkKv(key=key, value=val)
-                if isinstance(val, str)
-                else MessageArkKv(key=key, obj=[
-                    MessageArkObj(obj_kv=[
-                        MessageArkObjKv(key=k, value=v)
-                        for k, v in okvd.items()
-                    ])
-                    for okvd in val
-                ])
-                for key, val in data.items()
-            ])
-            # fmt: on
+            return build_ark(template_id, data)
 
         @descript(
             description="发送ark卡片",
@@ -57,7 +63,7 @@ with contextlib.suppress(ImportError):
         @debug_log
         async def send_ark(self, ark: MessageArk) -> None:
             assert isinstance(self.event, Event)
-            await cast(Bot, self.bot).send(self.event, MessageSegment.ark(ark))
+            await self._native_send(MessageSegment.ark(ark))
 
         @override
         def export_to(self, context: T_Context) -> None:
