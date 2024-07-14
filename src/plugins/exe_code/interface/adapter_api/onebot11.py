@@ -1,20 +1,28 @@
+import contextlib
 import functools
-from typing import Any, Optional
+from typing import Any, Optional, override
 
 from nonebot.log import logger
+
+from plugins.exe_code.constant import T_Context
 
 from ..api import API as BaseAPI
 from ..api import register_api
 from ..help_doc import descript, type_alias
 from ..utils import Result, debug_log, export
 
-logger = logger.opt(colors=True)
 
+with contextlib.suppress(ImportError):
+    from nonebot.adapters.onebot.v11 import (
+        ActionFailed,
+        Adapter,
+        Message,
+        MessageSegment,
+    )
 
-try:
-    from nonebot.adapters.onebot.v11 import ActionFailed, Adapter, Message
-
+    logger = logger.opt(colors=True)
     type_alias[Message] = "Message"
+    type_alias[MessageSegment] = "MessageSegment"
 
     @register_api(Adapter)
     class API(BaseAPI):
@@ -22,8 +30,8 @@ try:
             description="调用 OneBot V11 接口",
             parameters=dict(
                 api=(
-                    "需要调用的接口名，参考"
-                    " https://github.com/botuniverse/onebot-11/blob/master/api/public.md"
+                    "需要调用的接口名，参考 "
+                    "https://github.com/botuniverse/onebot-11/blob/master/api/public.md"
                 ),
                 data="以命名参数形式传入的接口调用参数",
             ),
@@ -37,7 +45,7 @@ try:
             raise_text: Optional[str] = None,
             **data: Any,
         ) -> Result:
-            res: dict[str, Any] | list[Any] | None
+            res: dict[str, Any] | list[Any] | None = None
             try:
                 res = await self.bot.call_api(api, **data)
             except ActionFailed as e:
@@ -46,6 +54,7 @@ try:
                 res = {"error": e}
                 msg = f"用户({self.qid})调用api<y>{api}</y>时发生错误: <r>{e}</r>"
                 logger.opt(exception=e).warning(msg)
+
             if isinstance(res, dict):
                 res.setdefault("error", None)
 
@@ -53,6 +62,13 @@ try:
             if result.error is not None and raise_text is not None:
                 raise RuntimeError(raise_text) from result.error
             return result
+
+        def __getattr__(self, name: str):
+            if name.startswith("__") and name.endswith("__"):
+                raise AttributeError(
+                    f"'{self.__class__.__name__}' object has no attribute '{name}'"
+                )
+            return functools.partial(self.call_api, name)
 
         @export
         @descript(
@@ -91,18 +107,35 @@ try:
         @debug_log
         async def get_fwd(self, msg_id: int) -> list[Message]:
             res = await self.call_api(
-                "get_msg",
+                "get_forward_msg",
                 message_id=msg_id,
                 raise_text="获取合并转发消息失败",
             )
             return [Message(i["raw_message"]) for i in res["messages"]]
 
-        def __getattr__(self, name: str):
-            if name.startswith("__") and name.endswith("__"):
-                raise AttributeError(
-                    f"'{self.__class__.__name__}' object has no attribute '{name}'"
-                )
-            return functools.partial(self.call_api, name)
+        @descript(
+            description="发送带有外显文本的图片",
+            parameters=dict(
+                summary="外显文本",
+                url="图片链接，默认为当前环境gurl",
+            ),
+        )
+        @debug_log
+        async def img_summary(self, summary: str, url: Optional[str] = None) -> None:
+            if url is None:
+                from ...code_context import Context
 
-except ImportError:
-    pass
+                url = Context.get_context(self.session).ctx.get("gurl")
+
+            if not url:
+                raise ValueError("无效 url")
+
+            seg = MessageSegment.image(url)
+            seg.data["summary"] = summary
+            await self.bot.send(self.event, Message(seg))
+
+        @override
+        def export_to(self, context: T_Context) -> None:
+            super(API, self).export_to(context)
+            context["Message"] = Message
+            context["MessageSegment"] = MessageSegment

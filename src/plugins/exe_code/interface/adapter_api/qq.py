@@ -1,19 +1,23 @@
-from typing import cast
+import contextlib
+from typing import cast, override
 
+from ...constant import T_Context
 from ..api import API as BaseAPI
 from ..api import register_api
-from ..help_doc import descript
+from ..help_doc import descript, type_alias
 from ..utils import debug_log
 
-try:
-    from nonebot.adapters.qq import Adapter, Bot, Event, MessageSegment
+with contextlib.suppress(ImportError):
+    from nonebot.adapters.qq import Adapter, Bot, Event, Message, MessageSegment
     from nonebot.adapters.qq.models import (
         MessageArk,
         MessageArkKv,
         MessageArkObj,
         MessageArkObjKv,
     )
-    from nonebot.internal.matcher import current_event
+
+    type_alias[Message] = "Message"
+    type_alias[MessageSegment] = "MessageSegment"
 
     @register_api(Adapter)
     class API(BaseAPI):
@@ -49,9 +53,11 @@ try:
         )
         @debug_log
         async def send_ark(self, ark: MessageArk) -> None:
-            event = current_event.get()
-            assert isinstance(event, Event)
-            await cast(Bot, self.bot).send(event, MessageSegment.ark(ark))
+            assert isinstance(self.event, Event)
+            await cast(Bot, self.bot).send(self.event, MessageSegment.ark(ark))
 
-except ImportError:
-    pass
+        @override
+        def export_to(self, context: T_Context) -> None:
+            super(API, self).export_to(context)
+            context["Message"] = Message
+            context["MessageSegment"] = MessageSegment
