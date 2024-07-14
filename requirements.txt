@@ -1,6 +1,7 @@
 aiofiles
 aiohttp
 chardet
+cos-python-sdk-v5
 fastapi
 httpx
 gunicorn
