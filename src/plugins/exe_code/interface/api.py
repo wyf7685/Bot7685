@@ -3,7 +3,8 @@ import contextlib
 import json
 from typing import Any, ClassVar, override
 
-from nonebot.adapters import Adapter, Bot
+from nonebot.adapters import Adapter, Bot, Event
+from nonebot.internal.matcher import current_event
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
 from nonebot_plugin_session import Session
@@ -18,7 +19,6 @@ from .utils import (
     Buffer,
     debug_log,
     export,
-    export_adapter_message,
     export_manager,
     is_message_t,
     is_super_user,
@@ -51,6 +51,7 @@ class API(Interface):
     qid: str
     gid: str | None
     session: Session
+    event: Event
 
     def __init__(self, bot: Bot, session: Session) -> None:
         super(API, self).__init__()
@@ -58,6 +59,7 @@ class API(Interface):
         self.qid = session.id1 or ""
         self.gid = session.id2
         self.session = session
+        self.event = current_event.get()
 
     @descript(
         description="向QQ号为qid的用户发送私聊消息",
@@ -220,14 +222,14 @@ class API(Interface):
         parameters=None,
     )
     @debug_log
-    async def help(self) -> None:
+    async def help(self) -> Receipt:
         content, description = type(self).get_all_description()
         msgs: list[T_Message] = [
-            "   ====API说明====   ",
+            "   ===== API说明 =====   ",
             " - API说明文档 - 目录 - \n" + "\n".join(content),
             *description,
         ]
-        await self.send_fwd(msgs)
+        return await self.send_fwd(msgs)
 
     @export
     @descript(
@@ -261,7 +263,6 @@ class API(Interface):
         context["usr"] = self.user(self.qid)
         context["gid"] = self.gid
         context["grp"] = self.group(self.gid) if self.gid else None
-        export_adapter_message(context)
 
         if is_super_user(self.bot, self.qid):
             export_manager(context)

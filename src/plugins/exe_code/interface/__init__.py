@@ -8,7 +8,7 @@ from .utils import Buffer as Buffer
 
 
 def get_api_class(bot: Bot):
-    adapters = list(api_registry.keys())
+    adapters = set(api_registry.keys())
     adapters.remove(Adapter)
 
     for cls in adapters:
