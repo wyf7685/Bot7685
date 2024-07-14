@@ -35,17 +35,20 @@ with contextlib.suppress(ImportError):
             template_id: int,
             data: dict[str, str | list[dict[str, str]]],
         ) -> MessageArk:
-            ark = MessageArk(template_id=template_id, kv=(kv := []))
-            for key, val in data.items():
-                if isinstance(val, str):
-                    kv.append(MessageArkKv(key=key, value=val))
-                elif isinstance(val, list):
-                    kv.append(MessageArkKv(key=key, obj=(obj := [])))
-                    for okvd in val:
-                        obj.append(MessageArkObj(obj_kv=(okv := [])))
-                        for k, v in okvd.items():
-                            okv.append(MessageArkObjKv(key=k, value=v))
-            return ark
+            # fmt: off
+            return MessageArk(template_id=template_id, kv=[
+                MessageArkKv(key=key, value=val)
+                if isinstance(val, str)
+                else MessageArkKv(key=key, obj=[
+                    MessageArkObj(obj_kv=[
+                        MessageArkObjKv(key=k, value=v)
+                        for k, v in okvd.items()
+                    ])
+                    for okvd in val
+                ])
+                for key, val in data.items()
+            ])
+            # fmt: on
 
         @descript(
             description="发送ark卡片",
