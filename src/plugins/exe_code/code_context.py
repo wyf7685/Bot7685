@@ -1,7 +1,6 @@
 import contextlib
-from asyncio import Future, Task, get_event_loop
+from asyncio import Future, Task, get_event_loop, Queue
 from copy import deepcopy
-from queue import Queue
 from typing import Any, ClassVar, Optional, Self, cast
 
 from nonebot.adapters import Bot, Event, Message
@@ -75,7 +74,7 @@ class Context:
     async def _lock(self):
         if self.locked:
             fut = get_event_loop().create_future()
-            self.waitlist.put(fut)
+            await self.waitlist.put(fut)
             await fut
         self.locked = True
 
@@ -83,7 +82,8 @@ class Context:
             yield
         finally:
             if not self.waitlist.empty():
-                self.waitlist.get().set_result(None)
+                fut = await self.waitlist.get()
+                fut.set_result(None)
             self.locked = False
             if self.task is not None:
                 self.task = None
