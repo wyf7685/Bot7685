@@ -1,17 +1,23 @@
 import asyncio
 import contextlib
 import json
-from typing import Any, ClassVar, override
+from typing import Any, ClassVar, override, cast
 
-from nonebot.adapters import Adapter, Bot, Event
+from nonebot.adapters import Adapter, Bot, Event, Message, MessageSegment
 from nonebot.internal.matcher import current_event
 from nonebot.log import logger
 from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
 from nonebot_plugin_session import Session
 
-from ..constant import T_Context, T_ForwardMsg, T_Message, T_OptConstVar
+from ..constant import (
+    T_Context,
+    T_ForwardMsg,
+    T_Message,
+    T_OptConstVar,
+    INTERFACE_METHOD_DESCRIPTION,
+)
 from .group import Group
-from .help_doc import descript
+from .help_doc import descript, FuncDescription
 from .interface import Interface
 from .user import User
 from .user_const_var import default_context, load_const, set_const
@@ -60,6 +66,9 @@ class API(Interface):
         self.gid = session.id2
         self.session = session
         self.event = current_event.get()
+
+    async def _native_send(self, msg: str | Message | MessageSegment) -> None:
+        await self.bot.send(self.event, msg)
 
     @descript(
         description="向QQ号为qid的用户发送私聊消息",
@@ -218,11 +227,15 @@ class API(Interface):
 
     @export
     @descript(
-        description="向当前会话发送API说明(本文档)",
-        parameters=None,
+        description="向当前会话发送API说明",
+        parameters=dict(method="需要获取帮助的函数，留空则为完整文档"),
     )
     @debug_log
-    async def help(self) -> Receipt:
+    async def help(self, method: Any = ...) -> Receipt:
+        if method is not ...:
+            desc = cast(FuncDescription, getattr(method, INTERFACE_METHOD_DESCRIPTION))
+            return await self.feedback(desc.format(method))
+
         content, description = type(self).get_all_description()
         msgs: list[T_Message] = [
             "   ===== API说明 =====   ",

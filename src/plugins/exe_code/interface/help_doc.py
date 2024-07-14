@@ -76,7 +76,7 @@ def descript[**P, R](
     *,
     ignore: Optional[set[str]] = None,
 ) -> Callable[[Callable[P, R]], Callable[P, R]]:
-# fmt: on
+    # fmt: on
     ignore = {"self", *(ignore or set())}
 
     def decorator(call: Callable[P, R]) -> Callable[P, R]:
