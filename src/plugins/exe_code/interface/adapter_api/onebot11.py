@@ -48,6 +48,7 @@ with contextlib.suppress(ImportError):
 
         qbot_id = get_plugin_config(Config).exe_code.qbot_id
         if not qbot_id:
+            logger.warning("官方QQ账号未配置，ark卡片将不可用")
             raise RuntimeError
 
         async def create_ark_card(
