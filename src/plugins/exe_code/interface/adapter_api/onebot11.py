@@ -13,6 +13,7 @@ from ..api import API as BaseAPI
 from ..api import register_api
 from ..help_doc import descript, type_alias
 from ..utils import Result, debug_log, export
+from .send_ark import SendArk
 
 with contextlib.suppress(ImportError):
     from nonebot.adapters.onebot.v11 import (
@@ -27,9 +28,7 @@ with contextlib.suppress(ImportError):
     type_alias[Message] = "Message"
     type_alias[MessageSegment] = "MessageSegment"
 
-    async def create_ark_card(  # pyright: ignore[reportRedeclaration]
-        api: Any, ark: Any
-    ):
+    async def create_ark_card(api: "API", ark: "MessageArk") -> MessageSegment:
         raise NotImplementedError
 
     with contextlib.suppress(ImportError, RuntimeError):
@@ -48,7 +47,7 @@ with contextlib.suppress(ImportError):
 
         qbot_id = get_plugin_config(Config).exe_code.qbot_id
         if not qbot_id:
-            logger.warning("官方QQ账号未配置，ark卡片将不可用")
+            logger.warning("官方机器人QQ账号未配置，ark卡片将不可用")
             raise RuntimeError
 
         async def create_ark_card(
@@ -104,7 +103,7 @@ with contextlib.suppress(ImportError):
             return MessageSegment.json(await fut)
 
     @register_api(Adapter)
-    class API(BaseAPI):
+    class API(SendArk, BaseAPI):
         @descript(
             description="调用 OneBot V11 接口",
             parameters=dict(
@@ -219,111 +218,5 @@ with contextlib.suppress(ImportError):
             context["Message"] = Message
             context["MessageSegment"] = MessageSegment
 
-        # @descript(
-        #     description="调用官方Bot接口发送ark23卡片",
-        #     parameters=dict(
-        #         desc="描述文本",
-        #         prompt="外显文本",
-        #         lines="内容列表：str->纯文本，tuple[str,str]->跳转链接",
-        #     ),
-        # )
-        # @debug_log
-        # async def ark_23(
-        #     self,
-        #     desc: str,
-        #     prompt: str,
-        #     lines: list[str | tuple[str, str]],
-        # ) -> None:
-        #     try:
-        #         from .qq import build_ark
-        #     except Exception as e:
-        #         raise NotImplementedError from e
-
-        #     content = [
-        #         {"desc": i} if isinstance(i, str) else {"desc": i[0], "link": i[1]}
-        #         for i in lines
-        #     ]
-        #     ark = build_ark(
-        #         template_id=23,
-        #         data={
-        #             "#DESC#": desc,
-        #             "#PROMPT#": prompt,
-        #             "#LIST#": content,
-        #         },
-        #     )
-        #     seg = await create_ark_card(self, ark)
-        #     await self.bot.send(self.event, seg)
-
-        @descript(
-            description="调用官方Bot接口发送ark24卡片",
-            parameters=dict(
-                title="标题",
-                desc="描述文本",
-                prompt="外显文本",
-                img="小图链接",
-                link="跳转链接",
-            ),
-        )
-        @debug_log
-        async def ark_24(
-            self,
-            title: str,
-            desc: str,
-            prompt: str,
-            img: str,
-            link: str,
-        ) -> None:
-            try:
-                from .qq import build_ark
-            except Exception as e:
-                raise NotImplementedError from e
-
-            ark = build_ark(
-                template_id=24,
-                data={
-                    "#TITLE#": title,
-                    "#METADESC#": desc,
-                    "#PROMPT#": prompt,
-                    "#IMG#": img,
-                    "#LINK#": link,
-                },
-            )
-            seg = await create_ark_card(self, ark)
-            await self._native_send(seg)
-
-        # @descript(
-        #     description="调用官方Bot接口发送ark37卡片",
-        #     parameters=dict(
-        #         title="标题",
-        #         subtitle="副标题",
-        #         prompt="外显文本",
-        #         img="图片链接",
-        #         link="跳转链接",
-        #     ),
-        # )
-        # @debug_log
-        # async def ark_37(
-        #     self,
-        #     title: str,
-        #     subtitle: str,
-        #     prompt: str,
-        #     img: str,
-        #     link: str,
-        # ) -> None:
-        #     try:
-        #         from .qq import build_ark
-        #     except Exception as e:
-        #         raise NotImplementedError from e
-
-        #     ark = build_ark(
-        #         template_id=37,
-        #         data={
-        #             "#METATITLE": title,
-        #             "#METASUBTITLE": subtitle,
-        #             "#PROMPT#": prompt,
-        #             "#METACOVER#": img,
-        #             "#METAURL#": link,
-        #         },
-        #     )
-        #     seg = await create_ark_card(self, ark)
-        #     await self.bot.send(self.event, seg)
+        async def _send_ark(self, ark: "MessageArk") -> None:
+            await self._native_send(await create_ark_card(self, ark))
