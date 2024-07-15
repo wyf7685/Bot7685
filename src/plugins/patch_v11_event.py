@@ -79,7 +79,7 @@ def patch_private():
         )
 
     PrivateMessageEvent.get_event_description = get_event_description
-    logger.success("Patched PrivateMessageEvent.get_event_description")
+    logger.success("Patched <g>PrivateMessageEvent</g>.<y>get_event_description</y>")
 
 
 def patch_group():
@@ -101,7 +101,7 @@ def patch_group():
         )
 
     GroupMessageEvent.get_event_description = get_event_description
-    logger.success("Patched GroupMessageEvent.get_event_description")
+    logger.success("Patched <g>GroupMessageEvent</g>.<y>get_event_description</y>")
 
 
 @get_driver().on_startup
