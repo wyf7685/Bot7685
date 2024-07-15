@@ -1,27 +1,23 @@
+import contextlib
 from hashlib import sha256
 
 from nonebot import on_startswith, require
-from nonebot.adapters import Bot, Event
+from nonebot.adapters import Event
 from nonebot.permission import SUPERUSER
-from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_datastore")
-from nonebot_plugin_alconna.uniseg import UniMessage, image_fetch
+from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_alconna.uniseg.utils import fleep
 
 from .cos_ops import presign, put_file
-from .depends import EventImage
+from .depends import EventImageRaw
 
 upload_cos = on_startswith("cos上传", permission=SUPERUSER)
 
 
 @upload_cos.handle()
-async def _(bot: Bot, event: Event, state: T_State, image: EventImage):
-    raw = await image_fetch(event, bot, state, image)
-    if not isinstance(raw, bytes):
-        await upload_cos.finish("图片获取失败")
-
+async def _(event:Event, raw: EventImageRaw):
     digest = sha256(raw).hexdigest()
     key = f"{digest[:2]}/{digest}.{fleep.get(raw).extensions[0]}"
     try:
@@ -31,3 +27,8 @@ async def _(bot: Bot, event: Event, state: T_State, image: EventImage):
 
     url = await presign(key)
     await UniMessage(url).send(reply_to=True)
+
+    with contextlib.suppress(ImportError):
+        from src.plugins.exe_code.code_context import Context
+
+        Context.get_context(event).set_value("url", url)
