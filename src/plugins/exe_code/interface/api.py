@@ -234,7 +234,7 @@ class API(Interface):
     async def help(self, method: Any = ...) -> Receipt:
         if method is not ...:
             desc = cast(FuncDescription, getattr(method, INTERFACE_METHOD_DESCRIPTION))
-            return await self.feedback(desc.format(method))
+            return await self.feedback(f"{self.__inst_name__}.{desc.format(method)}")
 
         content, description = type(self).get_all_description()
         msgs: list[T_Message] = [
