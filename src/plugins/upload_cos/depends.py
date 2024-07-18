@@ -5,6 +5,8 @@ from nonebot.matcher import Matcher
 from nonebot.params import Depends
 from nonebot.typing import T_State
 from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, image_fetch
+from nonebot.permission import SUPERUSER
+from .database import user_has_perm
 
 
 def _EventImage():
@@ -36,5 +38,10 @@ def _EventImageRaw():
     return Depends(event_image_raw)
 
 
+async def _allow_upload(event: Event):
+    return await user_has_perm(event.get_user_id())
+
+
 EventImage = Annotated[Image, _EventImage()]
 EventImageRaw = Annotated[bytes, _EventImageRaw()]
+ALLOW_UPLOAD = SUPERUSER | _allow_upload

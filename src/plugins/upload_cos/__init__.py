@@ -10,15 +10,25 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_datastore")
 require("nonebot_plugin_orm")
-from nonebot_plugin_alconna.uniseg import UniMessage
+from nonebot_plugin_alconna import Alconna, on_alconna, Args, Match
+from nonebot_plugin_alconna.uniseg import UniMessage, At
 from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_apscheduler import scheduler
 
 from .cos_ops import delete_file, presign, put_file
-from .database import pop_expired, update_key
-from .depends import EventImageRaw
+from .database import (
+    pop_expired_keys,
+    remove_expired_perm,
+    update_key,
+    update_permission,
+)
+from .depends import EventImageRaw, ALLOW_UPLOAD
 
-upload_cos = on_startswith("cos上传", permission=SUPERUSER)
+upload_cos = on_startswith("cos上传", permission=ALLOW_UPLOAD)
+update_perm = on_alconna(
+    Alconna("cos加权", Args["target", At], Args["expired?", int]),
+    permission=SUPERUSER,
+)
 logger = logger.opt(colors=True)
 
 
@@ -37,14 +47,23 @@ async def _(event: Event, raw: EventImageRaw):
     logger.success(f"预签名URL: <y>{url}</y>")
     await UniMessage(url).send(reply_to=True)
 
-    with contextlib.suppress(ImportError):
-        from ..exe_code.code_context import Context
+    # with contextlib.suppress(ImportError):
+    #     from ..exe_code.code_context import Context
 
-        Context.get_context(event).set_value("url", url)
+    #     Context.get_context(event).set_value("url", url)
 
 
-@scheduler.scheduled_job("cron", minutes="*/5")
+@update_perm.handle()
+async def _(target: Match[At], expired: Match[int]):
+    if not target.available:
+        return
+    expire = expired.result if expired.available else 3600
+    await update_permission(target.result.target, expire)
+
+
+@scheduler.scheduled_job("cron", minute="*/10")
 async def _():
-    async for key in pop_expired():
+    await remove_expired_perm()
+    async for key in pop_expired_keys():
         await delete_file(key)
         logger.info(f"删除超时文件: <c>{key}</c>")
