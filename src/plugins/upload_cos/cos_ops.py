@@ -22,7 +22,7 @@ def new_client(retry: int = 1) -> CosS3Client:
     )
 
 
-async def put_file(data: bytes, key: str, retry: int = 3):
+async def put_file(data: bytes, key: str, retry: int = 3) -> None:
     cache = get_plugin_data().cache_dir / str(id(data))
     await asyncio.to_thread(cache.write_bytes, data=data)
 
@@ -37,15 +37,15 @@ async def put_file(data: bytes, key: str, retry: int = 3):
         await asyncio.to_thread(cache.unlink)
 
 
-async def delete_file(key: str, retry: int = 3):
+async def delete_file(key: str, retry: int = 3) -> None:
     await asyncio.to_thread(
         new_client(retry).delete_object,
         Bucket=config.bucket,
-        Key=(ROOT / key),
+        Key=(ROOT / key).as_posix(),
     )
 
 
-async def presign(key: str, expired: int = 3600):
+async def presign(key: str, expired: int = 3600) -> str:
     return await asyncio.to_thread(
         new_client().get_presigned_url,
         Bucket=config.bucket,
