@@ -7,9 +7,9 @@ from nonebot.log import logger
 from nonebot.permission import SUPERUSER
 
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_datastore")
 require("nonebot_plugin_orm")
-require("nonebot_plugin_apscheduler")
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_apscheduler import scheduler
