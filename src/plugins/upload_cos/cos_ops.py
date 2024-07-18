@@ -37,6 +37,14 @@ async def put_file(data: bytes, key: str, retry: int = 3):
         await asyncio.to_thread(cache.unlink)
 
 
+async def delete_file(key: str, retry: int = 3):
+    await asyncio.to_thread(
+        new_client(retry).delete_object,
+        Bucket=config.bucket,
+        Key=(ROOT / key),
+    )
+
+
 async def presign(key: str, expired: int = 3600):
     return await asyncio.to_thread(
         new_client().get_presigned_url,
