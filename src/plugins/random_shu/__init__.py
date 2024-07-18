@@ -4,7 +4,6 @@ from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegme
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent
 from nonebot.log import logger
 from nonebot.matcher import Matcher
-from nonebot.typing import T_State
 
 from .constant import emoji_weight_actions
 from .data import Data
