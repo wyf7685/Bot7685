@@ -61,7 +61,7 @@ async def update_permission(user_id: str, expired: float) -> None:
 
 async def remove_expired_perm() -> None:
     now = datetime.now().timestamp()
-    stmt = delete(CosUploadPermission).where(CosUploadFile.expire_at <= now)
+    stmt = delete(CosUploadPermission).where(CosUploadPermission.expire_at <= now)
     async with get_session() as session:
         await session.execute(stmt)
         await session.commit()

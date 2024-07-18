@@ -47,18 +47,20 @@ async def _(event: Event, raw: EventImageRaw):
     logger.success(f"预签名URL: <y>{url}</y>")
     await UniMessage(url).send(reply_to=True)
 
-    # with contextlib.suppress(ImportError):
-    #     from ..exe_code.code_context import Context
+    with contextlib.suppress(ImportError):
+        from ..exe_code.code_context import Context
 
-    #     Context.get_context(event).set_value("url", url)
+        Context.get_context(event).set_value("url", url)
 
 
 @update_perm.handle()
 async def _(target: Match[At], expired: Match[int]):
     if not target.available:
         return
-    expire = expired.result if expired.available else 3600
-    await update_permission(target.result.target, expire)
+    user_id = target.result.target
+    expire = expired.result if expired.available else 60
+    await update_permission(user_id, expire)
+    await UniMessage("临时授权").at(user_id).text(f": {expire}s").send(reply_to=True)
 
 
 @scheduler.scheduled_job("cron", minute="*/10")
