@@ -11,7 +11,7 @@ from nonebot.log import logger
 from ...constant import T_Context
 from ..api import API as BaseAPI
 from ..api import register_api
-from ..help_doc import descript, type_alias
+from ..help_doc import descript, message_alia
 from ..utils import Result, debug_log, export
 from .send_ark import SendArk
 
@@ -25,8 +25,7 @@ with contextlib.suppress(ImportError):
     )
 
     logger = logger.opt(colors=True)
-    type_alias[Message] = "Message"
-    type_alias[MessageSegment] = "MessageSegment"
+    message_alia(Message, MessageSegment)
 
     async def create_ark_card(api: "API", ark: "MessageArk") -> MessageSegment:
         raise NotImplementedError

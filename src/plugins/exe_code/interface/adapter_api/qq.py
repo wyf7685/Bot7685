@@ -4,7 +4,7 @@ from typing import override
 from ...constant import T_Context
 from ..api import API as BaseAPI
 from ..api import register_api
-from ..help_doc import descript, type_alias
+from ..help_doc import descript, message_alia
 from ..utils import debug_log
 from .send_ark import SendArk
 
@@ -12,8 +12,7 @@ with contextlib.suppress(ImportError):
     from nonebot.adapters.qq import Adapter, Message, MessageSegment
     from nonebot.adapters.qq.models import MessageArk
 
-    type_alias[Message] = "Message"
-    type_alias[MessageSegment] = "MessageSegment"
+    message_alia(Message, MessageSegment)
 
     @register_api(Adapter)
     class API(SendArk, BaseAPI):

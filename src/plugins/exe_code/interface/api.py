@@ -1,7 +1,7 @@
 import asyncio
 import contextlib
 import json
-from typing import Any, ClassVar, override, cast
+from typing import Any, ClassVar, cast, override
 
 from nonebot.adapters import Adapter, Bot, Event, Message, MessageSegment
 from nonebot.internal.matcher import current_event
@@ -10,14 +10,14 @@ from nonebot_plugin_alconna.uniseg import Receipt, Target, UniMessage
 from nonebot_plugin_session import Session
 
 from ..constant import (
+    INTERFACE_METHOD_DESCRIPTION,
     T_Context,
     T_ForwardMsg,
     T_Message,
     T_OptConstVar,
-    INTERFACE_METHOD_DESCRIPTION,
 )
 from .group import Group
-from .help_doc import descript, FuncDescription
+from .help_doc import FuncDescription, descript, message_alia
 from .interface import Interface
 from .user import User
 from .user_const_var import default_context, load_const, set_const
@@ -25,6 +25,7 @@ from .utils import (
     Buffer,
     debug_log,
     export,
+    is_export_method,
     export_manager,
     is_message_t,
     is_super_user,
@@ -34,6 +35,7 @@ from .utils import (
 
 logger = logger.opt(colors=True)
 api_registry: dict[type[Adapter], type["API"]] = {}
+message_alia(Message, MessageSegment)
 
 
 def register_api(adapter: type[Adapter]):
@@ -234,9 +236,12 @@ class API(Interface):
     async def help(self, method: Any = ...) -> Receipt:
         if method is not ...:
             desc = cast(FuncDescription, getattr(method, INTERFACE_METHOD_DESCRIPTION))
-            return await self.feedback(f"{self.__inst_name__}.{desc.format(method)}")
+            text = desc.format(method)
+            if is_export_method(method):
+                text = f"{self.__inst_name__}.{text}"
+            return await self.feedback(text)
 
-        content, description = type(self).get_all_description()
+        content, description = self._get_all_description()
         msgs: list[T_Message] = [
             "   ===== API说明 =====   ",
             " - API说明文档 - 目录 - \n" + "\n".join(content),

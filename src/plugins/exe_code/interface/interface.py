@@ -48,18 +48,48 @@ class InterfaceMeta(type):
                 for name in cls.__export_method__:
                     yield name
 
-    def __get_method_description(self) -> Generator[_Desc, None, None]:
+    def _get_method_description(self) -> Generator[_Desc, None, None]:
         inst_name: str = getattr(self, "__inst_name__")
         for func_name, desc in self.__method_description__.items():
             func = cast(Callable[..., Any], getattr(self, func_name))
             is_export = is_export_method(func)
             yield _Desc(inst_name, func_name, is_export, desc.format(func))
 
+    # @classmethod
+    # def get_all_description(cls) -> tuple[list[str], list[str]]:
+    #     methods: list[_Desc] = []
+    #     for cls_obj in cls.__interfaces__:
+    #         methods.extend(cls_obj._get_method_description())
+    #     methods.sort(key=lambda x: (1 - x.is_export, x.inst_name, x.func_name))
+
+    #     content: list[str] = []
+    #     result: list[str] = []
+    #     for index, desc in enumerate(methods, 1):
+    #         prefix = f"{index}. "
+    #         if not desc.is_export:
+    #             prefix += f"{desc.inst_name}."
+    #         content.append(prefix + desc.func_name)
+    #         result.append(prefix + desc.description)
+
+    #     return content, result
+
+
+class Interface(metaclass=InterfaceMeta):
+    __inst_name__: ClassVar[str] = "interface"
+    __export_method__: ClassVar[list[str]]
+    __method_description__: ClassVar[dict[str, str]]
+
+    def export_to(self, context: T_Context):
+        for name in type(self).get_export_method():
+            context[name] = getattr(self, name)
+        context[self.__inst_name__] = self
+
     @classmethod
-    def get_all_description(cls) -> tuple[list[str], list[str]]:
+    def _get_all_description(cls) -> tuple[list[str], list[str]]:
         methods: list[_Desc] = []
-        for cls_obj in cls.__interfaces__:
-            methods.extend(cls_obj.__get_method_description())
+        for c in cls.mro():
+            if issubclass(c, Interface):
+                methods.extend(c._get_method_description())
         methods.sort(key=lambda x: (1 - x.is_export, x.inst_name, x.func_name))
 
         content: list[str] = []
@@ -72,14 +102,3 @@ class InterfaceMeta(type):
             result.append(prefix + desc.description)
 
         return content, result
-
-
-class Interface(metaclass=InterfaceMeta):
-    __inst_name__: ClassVar[str] = "interface"
-    __export_method__: ClassVar[list[str]]
-    __method_description__: ClassVar[dict[str, str]]
-
-    def export_to(self, context: T_Context):
-        for name in type(self).get_export_method():
-            context[name] = getattr(self, name)
-        context[self.__inst_name__] = self

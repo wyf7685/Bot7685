@@ -1,8 +1,8 @@
 import contextlib
 from typing import ClassVar
 
-from ..api import API as BaseAPI
 from ..help_doc import descript
+from ..interface import Interface
 from ..utils import debug_log
 
 
@@ -41,7 +41,7 @@ with contextlib.suppress(ImportError):
     # fmt: on
 
 
-class SendArk(BaseAPI):
+class SendArk(Interface):
     """
     `SendArk` Mixin
 

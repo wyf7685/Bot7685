@@ -2,6 +2,7 @@ import inspect
 from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
+from nonebot.adapters import Message, MessageSegment
 from nonebot_plugin_alconna.uniseg import Receipt
 
 from ..constant import (
@@ -26,6 +27,11 @@ type_alias: dict[type, str] = {
     T_OptConstVar: "Optional[T_ConstVar]",
     EMPTY: "Unkown",  # not supposed to appear in docs
 }
+
+
+def message_alia(M: type[Message], MS: type[MessageSegment]) -> None:
+    type_alias[M] = "Message"
+    type_alias[MS] = "MessageSegment"
 
 
 def _type_string(t: type | str) -> str:
