@@ -1,9 +1,14 @@
 FROM python:3.12 AS wheels
 
 WORKDIR /wheel
-
 COPY ./requirements.txt /wheel/
 RUN python -m pip wheel --wheel-dir=/wheel --no-cache-dir --requirement ./requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+FROM python:3.12 AS memes
+
+RUN python -m pip install meme-generator -i https://pypi.tuna.tsinghua.edu.cn/simple && \
+    /usr/local/bin/meme download && \
+    mv /usr/local/lib/python3.12/site-packages/meme_generator/memes /memes
 
 FROM python:3.12-slim-bookworm AS app
 
@@ -23,13 +28,13 @@ RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.li
     fc-cache -fv && \
     apt-get purge -y --auto-remove && \
     apt clean && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+    chmod +x /start.sh
 
 COPY --from=wheels /wheel /wheel
 RUN python -m pip install --no-cache-dir --no-index --force-reinstall --find-links=/wheel -r /wheel/requirements.txt && \
-    /usr/local/bin/meme download && \
-    rm -rf /wheel /root/.config/meme_generator/ && \
-    chmod +x /start.sh
+    rm -rf /wheel
+COPY --from=memes /memes /usr/local/lib/python3.12/site-packages/meme_generator/memes
 
 VOLUME [ "/app", "/root/.config/meme_generator" ]
 CMD [ "/start.sh" ]
