@@ -19,6 +19,9 @@ class InterfaceMeta(type):
     __method_description__: dict[str, FuncDescription]
 
     def __new__(cls, name: str, bases: tuple[type, ...], attrs: dict[str, Any]):
+        # inst_name
+        attrs.setdefault(INTERFACE_INST_NAME, name.lower())
+
         Interface = super(InterfaceMeta, cls).__new__(cls, name, bases, attrs)
         attr = Interface.__dict__  # shortcut
 
@@ -33,10 +36,6 @@ class InterfaceMeta(type):
             for name, value in attr.items()
             if (desc := getattr(value, INTERFACE_METHOD_DESCRIPTION, None))
         }
-
-        # inst_name
-        if INTERFACE_INST_NAME not in attr:
-            setattr(Interface, INTERFACE_INST_NAME, name.lower())
 
         # store interface class
         cls.__interfaces__.add(Interface)
@@ -54,24 +53,6 @@ class InterfaceMeta(type):
             func = cast(Callable[..., Any], getattr(self, func_name))
             is_export = is_export_method(func)
             yield _Desc(inst_name, func_name, is_export, desc.format(func))
-
-    # @classmethod
-    # def get_all_description(cls) -> tuple[list[str], list[str]]:
-    #     methods: list[_Desc] = []
-    #     for cls_obj in cls.__interfaces__:
-    #         methods.extend(cls_obj._get_method_description())
-    #     methods.sort(key=lambda x: (1 - x.is_export, x.inst_name, x.func_name))
-
-    #     content: list[str] = []
-    #     result: list[str] = []
-    #     for index, desc in enumerate(methods, 1):
-    #         prefix = f"{index}. "
-    #         if not desc.is_export:
-    #             prefix += f"{desc.inst_name}."
-    #         content.append(prefix + desc.func_name)
-    #         result.append(prefix + desc.description)
-
-    #     return content, result
 
 
 class Interface(metaclass=InterfaceMeta):
