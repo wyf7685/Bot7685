@@ -16,6 +16,7 @@ with contextlib.suppress(ImportError):
 
     @register_api(Adapter)
     class API(SendArk, BaseAPI):
+        @override
         async def _send_ark(self, ark: MessageArk) -> None:
             await self._native_send(MessageSegment.ark(ark))
 
