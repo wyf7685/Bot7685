@@ -47,44 +47,34 @@ def export[**P, R](call: Callable[P, R]) -> Callable[P, R]:
     return call
 
 
-# fmt: off
+type Coro[T] = Coroutine[None, None, T]
+
 
 @overload
-def debug_log[**P, R](
-    call: Callable[P, Coroutine[None, None, R]]
-) -> Callable[P, Coroutine[None, None, R]]: ...
+def debug_log[**P, R](call: Callable[P, Coro[R]]) -> Callable[P, Coro[R]]: ...
 
 
 @overload
 def debug_log[**P, R](call: Callable[P, R]) -> Callable[P, R]: ...
 
 
-def debug_log[**P, R](
-    call: Callable[P, Coroutine[None, None, R] | R]
-) -> Callable[P, Coroutine[None, None, R] | R]:
+def debug_log[**P, R](call: Callable[P, Coro[R] | R]) -> Callable[P, Coro[R] | R]:
     def log(*args: P.args, **kwargs: P.kwargs):
         logger.debug(f"{call.__name__}: args={args}, kwargs={kwargs}")
 
     if inspect.iscoroutinefunction(call):
-        call = cast(Callable[P, Coroutine[None, None, R]], call)
 
-        @functools.wraps(call, assigned=WRAPPER_ASSIGNMENTS)
-        async def wrapper_async(*args: P.args, **kwargs: P.kwargs) -> R:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:  # type: ignore
             log(*args, **kwargs)
-            return await call(*args, **kwargs)
+            return await cast(Callable[P, Coro[R]], call)(*args, **kwargs)
 
-        return wrapper_async
     else:
-        call = cast(Callable[P, R], call)
 
-        @functools.wraps(call, assigned=WRAPPER_ASSIGNMENTS)
-        def wrapper_sync(*args: P.args, **kwargs: P.kwargs) -> R:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             log(*args, **kwargs)
-            return call(*args, **kwargs)
+            return cast(Callable[P, R], call)(*args, **kwargs)
 
-        return wrapper_sync
-
-# fmt: on
+    return functools.update_wrapper(wrapper, call, assigned=WRAPPER_ASSIGNMENTS)
 
 
 def is_export_method(call: Callable[..., Any]) -> bool:
@@ -125,15 +115,18 @@ class Result:
         self._data = data
         if isinstance(data, dict):
             self.error = data.get("error")
+            for k, v in data.items():
+                setattr(self, k, v)
 
     def __getitem__(self, key: str | int) -> Any:
-        if self._data:
-            return self._data.__getitem__(key)  # type: ignore
-
-    def __getattr__(self, name: str) -> Any:
-        if isinstance(self._data, dict) and name in self._data:
-            return self._data[name]
-        return super(Result, self).__getattribute__(name)
+        if isinstance(self._data, dict) and isinstance(key, str):
+            return self._data[key]
+        elif isinstance(self._data, list) and isinstance(key, int):
+            return self._data[key]
+        elif self._data is not None:
+            raise KeyError(f"{key!r} 不能作为索引")
+        else:
+            raise ValueError("None")
 
     def __repr__(self) -> str:
         if self.error is not None:
