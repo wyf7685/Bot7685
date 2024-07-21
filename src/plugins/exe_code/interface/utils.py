@@ -63,7 +63,8 @@ def debug_log[**P, R](call: Callable[P, Coro[R] | R]) -> Callable[P, Coro[R] | R
         logger.debug(f"{call.__name__}: args={args}, kwargs={kwargs}")
 
     if inspect.iscoroutinefunction(call):
-
+        # 本来应该用 # pyright: ignore[reportRedeclaration]
+        # 但是格式化后有点难绷，所以直接用了 # type: ignore
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:  # type: ignore
             log(*args, **kwargs)
             return await cast(Callable[P, Coro[R]], call)(*args, **kwargs)

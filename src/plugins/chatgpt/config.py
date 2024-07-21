@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
 from nonebot import get_plugin_config
 from pydantic import BaseModel

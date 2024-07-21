@@ -10,9 +10,10 @@ from nonebot.adapters.onebot.v11 import (
     PrivateMessageEvent,
 )
 from nonebot.matcher import Matcher
-from nonebot.params import EventMessage, Depends
+from nonebot.params import Depends, EventMessage
 from nonebot.permission import SUPERUSER, Permission
 from nonebot.rule import Rule
+from nonebot_plugin_alconna import AlcMatches, At
 
 from .config import plugin_config
 from .session import get_group_id, session_container
@@ -58,9 +59,20 @@ def _MsgAt():
     return Depends(msg_at)
 
 
+def _AtTarget():
+
+    async def at_target(result: AlcMatches) -> str:
+        if target := result.query[At]("target"):
+            return target.target
+        Matcher.skip()
+
+    return Depends(at_target)
+
+
 IS_ADMIN = Rule(admin_check)
 AuthCheck = Depends(auth_check)
 AdminCheck = Annotated[bool, Depends(admin_check)]
 ALLOW_PRIVATE = Permission(allow_private)
 GroupId = Annotated[str, _GroupId()]
 MsgAt = Annotated[int, _MsgAt()]
+AtTarget = Annotated[int, _AtTarget()]

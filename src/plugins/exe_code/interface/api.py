@@ -25,8 +25,8 @@ from .utils import (
     Buffer,
     debug_log,
     export,
-    is_export_method,
     export_manager,
+    is_export_method,
     is_message_t,
     is_super_user,
     send_forward_message,
@@ -60,6 +60,7 @@ class API(Interface):
     gid: str | None
     session: Session
     event: Event
+    __is_super_user: bool
 
     def __init__(self, bot: Bot, session: Session) -> None:
         super(API, self).__init__()
@@ -68,6 +69,7 @@ class API(Interface):
         self.gid = session.id2
         self.session = session
         self.event = current_event.get()
+        self.__is_super_user = is_super_user(self.bot, self.qid)
 
     async def _native_send(self, msg: str | Message | MessageSegment) -> None:
         await self.bot.send(self.event, msg)
@@ -278,11 +280,11 @@ class API(Interface):
 
         context.update(load_const(self.qid))
         context["qid"] = self.qid
-        context["usr"] = self.user(self.qid)
         context["gid"] = self.gid
-        context["grp"] = self.group(self.gid) if self.gid else None
+        # context["usr"] = self.user(self.qid)
+        # context["grp"] = self.group(self.gid) if self.gid else None
 
-        if is_super_user(self.bot, self.qid):
+        if self.__is_super_user:
             export_manager(context)
 
     def __repr__(self) -> str:

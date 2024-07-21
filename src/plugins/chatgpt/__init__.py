@@ -4,25 +4,21 @@ from json import JSONDecodeError
 from typing import Any, Optional
 
 from nonebot import require
-from nonebot.adapters.onebot.v11 import (
-    GroupMessageEvent,
-    Message,
-    MessageEvent,
-)
+from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent
 from nonebot.adapters.onebot.v11.permission import GROUP
 from nonebot.adapters.onebot.v11.utils import unescape
 from nonebot.log import logger
+from nonebot.matcher import Matcher
 from nonebot.params import ArgPlainText, RegexDict
 from nonebot.permission import SUPERUSER, Permission
 from nonebot.plugin import PluginMetadata, on_regex
 from nonebot.rule import Rule
-from nonebot.matcher import Matcher
 
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna.uniseg import UniMessage
 
 from .config import APIKeyPool, Config, plugin_config
-from .depends import ALLOW_PRIVATE, IS_ADMIN, AuthCheck, GroupId, MsgAt, AdminCheck
+from .depends import ALLOW_PRIVATE, IS_ADMIN, AdminCheck, AuthCheck, GroupId, MsgAt
 from .exceptions import NeedCreateSession
 from .preset import presets_str
 from .session import Session, session_container
@@ -97,11 +93,7 @@ def on(
     return on_regex(prefix + pattern, flags, rule=rule, permission=permission)
 
 
-Chat = on_regex(
-    rf"^{prefix_str}{talk_cmd_str}\s+(?P<content>.+)",
-    flags=re.S,
-    permission=ALLOW_PRIVATE,
-)  # 聊天
+Chat = on_regex(rf"^{prefix_str}{talk_cmd_str}\s+(?P<content>.+)", flags=re.S)  # 聊天
 CallMenu = on(r"help$")  # 呼出菜单
 ShowList = on(r"list\s*$")  # 展示群聊天列表
 Join = on(r"join\s+(?P<id>\d+)")  # 加入会话
@@ -439,7 +431,7 @@ async def _(
 
 @CreateConversationWithJson.got(
     key="jsonStr",
-    prompt=Message("请直接输入json"),
+    prompt="请直接输入json",
     parameterless=[AuthCheck],
 )
 async def _(

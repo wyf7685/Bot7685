@@ -9,7 +9,6 @@ from pydantic import BaseModel, ValidationError, field_validator
 
 from .config import plugin_config
 
-
 PRESET_PROMPTS: dict[str, list[dict[str, str]]] = {
     "ChatGPT": [
         {

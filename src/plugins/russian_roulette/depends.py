@@ -1,5 +1,5 @@
-from nonebot.rule import Rule
 from nonebot.adapters.onebot.v11 import GroupMessageEvent
+from nonebot.rule import Rule
 
 
 async def _game_running(event: GroupMessageEvent):
@@ -9,7 +9,9 @@ async def _game_running(event: GroupMessageEvent):
 
 
 async def _game_not_running(event: GroupMessageEvent):
-    return not await _game_running(event)
+    from .game import running_game
+
+    return event.group_id not in running_game
 
 
 GameRunning = Rule(_game_running)

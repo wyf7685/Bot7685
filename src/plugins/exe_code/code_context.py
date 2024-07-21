@@ -1,5 +1,5 @@
 import contextlib
-from asyncio import Future, Task, get_event_loop, Queue
+from asyncio import Future, Queue, Task, get_event_loop
 from copy import deepcopy
 from typing import Any, ClassVar, Optional, Self, cast
 
@@ -106,8 +106,11 @@ class Context:
     @classmethod
     async def execute(cls, bot: Bot, session: Session, code: str) -> None:
         self = cls.get_context(session)
+        API = get_api_class(bot)
+
+        # 执行代码时加锁，避免出现多段代码分别读写变量
         async with self._lock():
-            get_api_class(bot)(bot, session).export_to(self.ctx)
+            API(bot, session).export_to(self.ctx)
             executor = self._solve_code(code)
             self.task = get_event_loop().create_task(executor())
             result, self.task = await self.task, None

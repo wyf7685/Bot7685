@@ -13,13 +13,11 @@ class _Desc(NamedTuple):
 
 
 class InterfaceMeta(type):
-    __interfaces__: ClassVar[set["InterfaceMeta"]] = set()
-
     __export_method__: list[str]
     __method_description__: dict[str, FuncDescription]
 
     def __new__(cls, name: str, bases: tuple[type, ...], attrs: dict[str, Any]):
-        # inst_name
+        # default instance name
         attrs.setdefault(INTERFACE_INST_NAME, name.lower())
 
         Interface = super(InterfaceMeta, cls).__new__(cls, name, bases, attrs)
@@ -37,8 +35,6 @@ class InterfaceMeta(type):
             if (desc := getattr(value, INTERFACE_METHOD_DESCRIPTION, None))
         }
 
-        # store interface class
-        cls.__interfaces__.add(Interface)
         return Interface
 
     def get_export_method(self) -> Generator[str, None, None]:

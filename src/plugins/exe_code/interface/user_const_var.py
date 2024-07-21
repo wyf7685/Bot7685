@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from nonebot_plugin_alconna.uniseg import At, Image, Reply, Text, UniMessage
 
-from ..constant import DATA_PATH, T_ConstVar, T_Context, T_OptConstVar
+from ..constant import T_ConstVar, T_Context, T_OptConstVar, get_data_path
 
 default_context: T_Context = {}
 
@@ -23,9 +23,8 @@ context_var(lambda x: Reply(id=str(x)), "Reply")
 
 
 def _const_var_path(uin: str) -> Path:
-    fp = DATA_PATH() / f"{uin}.json"
+    fp = get_data_path() / f"{uin}.json"
     if not fp.exists():
-        fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text("{}")
     return fp
 

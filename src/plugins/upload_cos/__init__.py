@@ -10,8 +10,8 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_datastore")
 require("nonebot_plugin_orm")
-from nonebot_plugin_alconna import Alconna, on_alconna, Args, Match
-from nonebot_plugin_alconna.uniseg import UniMessage, At
+from nonebot_plugin_alconna import Alconna, Args, Match, on_alconna
+from nonebot_plugin_alconna.uniseg import At, UniMessage
 from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_apscheduler import scheduler
 
@@ -22,7 +22,7 @@ from .database import (
     update_key,
     update_permission,
 )
-from .depends import EventImageRaw, ALLOW_UPLOAD
+from .depends import ALLOW_UPLOAD, EventImageRaw
 
 upload_cos = on_startswith("cos上传", permission=ALLOW_UPLOAD)
 update_perm = on_alconna(

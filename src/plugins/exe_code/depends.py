@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from nonebot import get_driver
 from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
@@ -12,17 +13,19 @@ from .config import config
 
 
 def ExeCodeEnabled() -> Rule:
+    global_config = get_driver().config
     try:
         from nonebot.adapters.console import Bot as ConsoleBot
     except ImportError:
         ConsoleBot = None
 
     def check(bot: Bot, session: EventSession, target: MsgTarget):
+        # ConsoleBot 仅有标准输入，跳过检查
         if ConsoleBot is not None and isinstance(bot, ConsoleBot):
             return True
 
-        return (session.id1 or "") in config.user or (
-            not target.private and str(target.id) in config.group
+        return (session.id1 or "") in (global_config.superusers | config.user) or (
+            not target.private and target.id in config.group
         )
 
     return Rule(check)
@@ -31,6 +34,15 @@ def ExeCodeEnabled() -> Rule:
 def _ExtractCode():
 
     def extract_code(msg: UniMsg) -> str:
+        # 特例：@xxx code print(123)
+        #  --> "xxx" code print(123)
+        if (
+            msg.count(Text) == 0
+            or not isinstance(seg := msg[0], Text)
+            or not seg.text.startswith("code")
+        ):
+            Matcher.skip()
+
         code = ""
         for seg in msg:
             if isinstance(seg, Text):
@@ -93,7 +105,7 @@ def _EventReplyMessage():
     return Depends(event_reply_message)
 
 
-EXECODE_ENABLED = ExeCodeEnabled()
+EXECODE_ENABLED: Rule = ExeCodeEnabled()
 ExtractCode = Annotated[str, _ExtractCode()]
 EventTarget = Annotated[str, _EventTarget()]
 EventImage = Annotated[Image, _EventImage()]

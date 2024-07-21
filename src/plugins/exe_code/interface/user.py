@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from nonebot_plugin_alconna.uniseg import Receipt
 
-from ..constant import T_Message, T_ForwardMsg
+from ..constant import T_ForwardMsg, T_Message
 from .help_doc import descript
 from .interface import Interface
 from .utils import debug_log

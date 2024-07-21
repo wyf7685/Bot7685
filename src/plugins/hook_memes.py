@@ -3,7 +3,6 @@ from nonebot.exception import IgnoredException
 from nonebot.matcher import Matcher
 from nonebot.message import run_preprocessor
 
-
 disabled_group: set[int] = {429379849}
 
 

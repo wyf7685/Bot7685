@@ -2,6 +2,7 @@ import asyncio
 from datetime import datetime, timedelta
 from random import Random
 from typing import ClassVar
+
 from nonebot.adapters.onebot.v11 import Bot
 
 random = Random(__file__)

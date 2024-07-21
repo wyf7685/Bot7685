@@ -282,7 +282,7 @@ class Session:
             log_info = f"Api Key([{num + 1}/{len(api_keys)}]): {api_key.show()}"
             if not api_key.status:
                 logger.warning(
-                    f"{log_info} 被标记失效，已跳过... \n失效原因:{api_key.fail_res}"
+                    f"{log_info} 被标记失效，已跳过... \n失效原因:{api_key.fail_reason}"
                 )
                 continue
             aclient = AsyncOpenAI(
