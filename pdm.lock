@@ -5,7 +5,7 @@
 groups = ["default"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.2"
-content_hash = "sha256:6de152044fa265591833868668988a1dee6291864b2e55db93de4a39d6790150"
+content_hash = "sha256:1ffe224137a52661d6fbe2ad3ca9ec666c48f24cd7a4d1cf96ecdfdea4e53879"
 
 [[package]]
 name = "aiofiles"
@@ -956,7 +956,7 @@ files = [
 
 [[package]]
 name = "nonebot-plugin-alconna"
-version = "0.50.0"
+version = "0.50.1"
 requires_python = ">=3.9"
 summary = "Alconna Adapter for Nonebot"
 groups = ["default"]
@@ -970,8 +970,8 @@ dependencies = [
     "tarina>=0.5.4",
 ]
 files = [
-    {file = "nonebot_plugin_alconna-0.50.0-py3-none-any.whl", hash = "sha256:69423404d29a8bda3506446743d090f5913c2973db2c810d379cb595db7f9a56"},
-    {file = "nonebot_plugin_alconna-0.50.0.tar.gz", hash = "sha256:deccaed139fc4e67eff4c88d0921bc5e5fbeb5235250694be150829304b6388e"},
+    {file = "nonebot_plugin_alconna-0.50.1-py3-none-any.whl", hash = "sha256:3328c554ea1556cc5e33ce2f68e097ffea2cb71292748065dd4db74571d9c61b"},
+    {file = "nonebot_plugin_alconna-0.50.1.tar.gz", hash = "sha256:f47d6bbfd06708cdc86ecdb63a5a3ff40e2d3bba902af2cadb39f33b6ffdcb78"},
 ]
 
 [[package]]
@@ -1039,6 +1039,25 @@ dependencies = [
 files = [
     {file = "nonebot_plugin_datastore-1.3.0-py3-none-any.whl", hash = "sha256:68c74686a71f3f3c48f2b5f9860282d3a4f31faf97a3252859be919975f0a385"},
     {file = "nonebot_plugin_datastore-1.3.0.tar.gz", hash = "sha256:0e5e54968daeb5a12287e0b509f0b991cd0cc081928cd5ce5bd6815b78305207"},
+]
+
+[[package]]
+name = "nonebot-plugin-exe-code"
+version = "1.0.1"
+requires_python = ">=3.12"
+summary = "在聊天中执行带有上下文的 Python 代码"
+groups = ["default"]
+dependencies = [
+    "Pillow>=10.4.0",
+    "nonebot-plugin-alconna>=0.50.1",
+    "nonebot-plugin-datastore>=1.3.0",
+    "nonebot-plugin-session>=0.3.1",
+    "nonebot-plugin-userinfo>=0.2.4",
+    "nonebot2>=2.3.2",
+]
+files = [
+    {file = "nonebot_plugin_exe_code-1.0.1-py3-none-any.whl", hash = "sha256:d27fdb263e4729a21c66f32407463eed2403f42b27ce4129a405f740a8eb9026"},
+    {file = "nonebot_plugin_exe_code-1.0.1.tar.gz", hash = "sha256:9b2198510bd926f91907b50b6700123e223307bb38f03058c0d7ccdb626b7625"},
 ]
 
 [[package]]
@@ -1329,7 +1348,7 @@ files = [
 
 [[package]]
 name = "openai"
-version = "1.35.15"
+version = "1.36.1"
 requires_python = ">=3.7.1"
 summary = "The official Python library for the openai API"
 groups = ["default"]
@@ -1343,8 +1362,8 @@ dependencies = [
     "typing-extensions<5,>=4.7",
 ]
 files = [
-    {file = "openai-1.35.15-py3-none-any.whl", hash = "sha256:1b9a6ada4239b91f38f51c426c6ee2746a2069c92cbf25ed8694e5ec00ff4597"},
-    {file = "openai-1.35.15.tar.gz", hash = "sha256:307007e2036d57115612c1ecb50e9bc98fcc93537109a9f9efa1b4eedb2ea968"},
+    {file = "openai-1.36.1-py3-none-any.whl", hash = "sha256:d399b9d476dbbc167aceaac6bc6ed0b2e2bb6c9e189c7f7047f822743ae62e64"},
+    {file = "openai-1.36.1.tar.gz", hash = "sha256:41be9e0302e95dba8a9374b885c5cb1cec2202816a70b98736fee25a2cadd1f2"},
 ]
 
 [[package]]
@@ -1993,7 +2012,7 @@ files = [
 
 [[package]]
 name = "uvicorn"
-version = "0.30.1"
+version = "0.30.3"
 requires_python = ">=3.8"
 summary = "The lightning-fast ASGI server."
 groups = ["default"]
@@ -2002,13 +2021,13 @@ dependencies = [
     "h11>=0.8",
 ]
 files = [
-    {file = "uvicorn-0.30.1-py3-none-any.whl", hash = "sha256:cd17daa7f3b9d7a24de3617820e634d0933b69eed8e33a516071174427238c81"},
-    {file = "uvicorn-0.30.1.tar.gz", hash = "sha256:d46cd8e0fd80240baffbcd9ec1012a712938754afcf81bce56c024c1656aece8"},
+    {file = "uvicorn-0.30.3-py3-none-any.whl", hash = "sha256:94a3608da0e530cea8f69683aa4126364ac18e3826b6630d1a65f4638aade503"},
+    {file = "uvicorn-0.30.3.tar.gz", hash = "sha256:0d114d0831ff1adbf231d358cbf42f17333413042552a624ea6a9b4c33dcfd81"},
 ]
 
 [[package]]
 name = "uvicorn"
-version = "0.30.1"
+version = "0.30.3"
 extras = ["standard"]
 requires_python = ">=3.8"
 summary = "The lightning-fast ASGI server."
@@ -2018,14 +2037,14 @@ dependencies = [
     "httptools>=0.5.0",
     "python-dotenv>=0.13",
     "pyyaml>=5.1",
-    "uvicorn==0.30.1",
+    "uvicorn==0.30.3",
     "uvloop!=0.15.0,!=0.15.1,>=0.14.0; (sys_platform != \"cygwin\" and sys_platform != \"win32\") and platform_python_implementation != \"PyPy\"",
     "watchfiles>=0.13",
     "websockets>=10.4",
 ]
 files = [
-    {file = "uvicorn-0.30.1-py3-none-any.whl", hash = "sha256:cd17daa7f3b9d7a24de3617820e634d0933b69eed8e33a516071174427238c81"},
-    {file = "uvicorn-0.30.1.tar.gz", hash = "sha256:d46cd8e0fd80240baffbcd9ec1012a712938754afcf81bce56c024c1656aece8"},
+    {file = "uvicorn-0.30.3-py3-none-any.whl", hash = "sha256:94a3608da0e530cea8f69683aa4126364ac18e3826b6630d1a65f4638aade503"},
+    {file = "uvicorn-0.30.3.tar.gz", hash = "sha256:0d114d0831ff1adbf231d358cbf42f17333413042552a624ea6a9b4c33dcfd81"},
 ]
 
 [[package]]
