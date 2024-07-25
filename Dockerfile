@@ -33,6 +33,7 @@ RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.li
 
 COPY --from=wheels /wheel /wheel
 RUN python -m pip install --no-cache-dir --no-index --force-reinstall --find-links=/wheel -r /wheel/requirements.txt && \
+    playwright install && \
     rm -rf /wheel
 COPY --from=memes /memes /usr/local/lib/python3.12/site-packages/meme_generator/memes
 
