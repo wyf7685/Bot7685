@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from random import Random
-from typing import Optional, Self
+from typing import Self
 
 import aiofiles
 from nonebot.compat import model_dump, type_validate_python
@@ -50,7 +50,7 @@ class Data(BaseModel):
             return data[-1]
 
     @classmethod
-    async def find(cls, name: str) -> Optional[Self]:
+    async def find(cls, name: str) -> Self | None:
         data = await cls._load()
         for item in data:
             if item.name == name:

@@ -1,4 +1,4 @@
-from typing import Annotated, Optional
+from typing import Annotated
 
 from nonebot.adapters import Event
 from nonebot.params import Depends
@@ -12,7 +12,7 @@ def _MsgId():
     except ImportError:
         MessageEvent = None
 
-    def msg_id(event: Event) -> Optional[int]:
+    def msg_id(event: Event) -> int | None:
         if MessageEvent is not None and isinstance(event, MessageEvent):
             return event.message_id
 
@@ -30,5 +30,5 @@ def _LotsTarget():
     return Depends(lots_target)
 
 
-MsgId = Annotated[Optional[int], _MsgId()]
+MsgId = Annotated[int | None, _MsgId()]
 LotsTarget = Annotated[str, _LotsTarget()]

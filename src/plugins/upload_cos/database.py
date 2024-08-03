@@ -1,5 +1,6 @@
+from collections.abc import AsyncGenerator
 from datetime import datetime
-from typing import AsyncGenerator
+from typing import Any, ClassVar
 
 from nonebot_plugin_orm import Model, get_session
 from sqlalchemy import FLOAT, TEXT, delete, insert, select, update
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 
 class CosUploadFile(Model):
-    __table_args__ = {"extend_existing": True}
+    __table_args__: ClassVar[Any] = {"extend_existing": True}
 
     key: Mapped[str] = mapped_column(TEXT, primary_key=True)
     expire_at: Mapped[float] = mapped_column(FLOAT)
@@ -39,7 +40,7 @@ async def pop_expired_keys() -> AsyncGenerator[str, None]:
 
 
 class CosUploadPermission(Model):
-    __table_args__ = {"extend_existing": True}
+    __table_args__: ClassVar[Any] = {"extend_existing": True}
 
     user_id: Mapped[str] = mapped_column(TEXT, primary_key=True)
     expire_at: Mapped[float] = mapped_column(FLOAT)

@@ -2,7 +2,7 @@ import copy
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 import httpx
 from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent
@@ -24,7 +24,7 @@ type_user_id = int
 type_group_id = str
 PRIVATE_GROUP: str = "Private"
 
-proxy: Optional[str] = plugin_config.openai_proxy
+proxy: str | None = plugin_config.openai_proxy
 if proxy:
     proxy_client = httpx.AsyncClient(proxies=proxy)
     logger.info("已配置代理")
@@ -73,7 +73,7 @@ class SessionContainer:
         if not self.group_auth_file_path.exists():
             self.save_group_auth()
             return
-        with open(self.group_auth_file_path, "r", encoding="utf8") as f:
+        with open(self.group_auth_file_path, encoding="utf8") as f:
             self.group_auth = json.load(f)
 
     def get_group_auth(self, gid: str) -> bool:
@@ -85,14 +85,14 @@ class SessionContainer:
 
     async def delete_session(self, session: "Session", gid: str) -> None:
         group_usage: dict[int, Session] = self.get_group_usage(gid)
-        users = set(uid for uid, s in group_usage.items() if s is session)
+        users = {uid for uid, s in group_usage.items() if s is session}
         for user in users:
             group_usage.pop(user, None)
         self.sessions.remove(session)
         session.delete_file()
         logger.success(f"成功删除群 {gid} 会话 {session.name}")
 
-    def get_group_sessions(self, group_id: Union[str, int]) -> list["Session"]:
+    def get_group_sessions(self, group_id: str | int) -> list["Session"]:
         return [s for s in self.sessions if s.group == str(group_id)]
 
     @staticmethod
@@ -118,10 +118,10 @@ class SessionContainer:
             for user in session.users:
                 group[user] = session
 
-    def get_group_usage(self, gid: Union[str, int]) -> dict[type_user_id, "Session"]:
+    def get_group_usage(self, gid: str | int) -> dict[type_user_id, "Session"]:
         return self.session_usage.setdefault(str(gid), {})
 
-    def get_user_usage(self, gid: Union[str, int], uid: int) -> "Session":
+    def get_user_usage(self, gid: str | int, uid: int) -> "Session":
         try:
             return self.get_group_usage(gid)[uid]
         except KeyError:
@@ -131,7 +131,7 @@ class SessionContainer:
         self,
         chat_log: list[dict[str, str]],
         creator: int,
-        group: Union[int, str],
+        group: int | str,
         name: str = "",
     ) -> "Session":
         session = Session(
@@ -150,7 +150,7 @@ class SessionContainer:
         return session
 
     def create_with_template(
-        self, template_id: str, creator: int, group: Union[int, str]
+        self, template_id: str, creator: int, group: int | str
     ) -> "Session":
         deep_copy = copy.deepcopy(templateDict[template_id].preset)
         return self.create_with_chat_log(
@@ -158,7 +158,7 @@ class SessionContainer:
         )
 
     def create_with_str(
-        self, custom_prompt: str, creator: int, group: Union[int, str], name: str = ""
+        self, custom_prompt: str, creator: int, group: int | str, name: str = ""
     ) -> "Session":
         prompt = [
             {"role": "user", "content": custom_prompt},
@@ -191,7 +191,7 @@ class Session:
         self,
         chat_log: list[dict[str, str]],
         creator: int,
-        group: Union[int, str],
+        group: int | str,
         name: str,
         chat_memory_max: int,
         dir_path: Path,
@@ -273,7 +273,7 @@ class Session:
         max_tokens=1024,
     ) -> str:
         if api_keys.valid_num <= 0:
-            logger.error(f"当前不存在api key，请在配置文件里进行配置...")
+            logger.error("当前不存在api key，请在配置文件里进行配置...")
             return "当前不存在可用apikey，请联系管理员检查apikey信息"
         if plugin_config.key_load_balancing:
             api_keys.shuffle()
@@ -374,7 +374,7 @@ class Session:
     @classmethod
     def reload_from_file(cls, file_path: Path) -> Optional["Session"]:
         try:
-            with open(file_path, "r", encoding="utf8") as f:
+            with open(file_path, encoding="utf8") as f:
                 session = cls.reload(dir_path=file_path.parent, **json.load(f))
                 logger.success(f"从文件 {file_path} 加载 Session 成功")
                 return session

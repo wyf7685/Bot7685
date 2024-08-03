@@ -1,7 +1,7 @@
 import json
 import re
 from json import JSONDecodeError
-from typing import Any, Optional
+from typing import Any
 
 from nonebot import require
 from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent
@@ -39,16 +39,20 @@ __usage__: str = (
     f"    {menu_chat_str} auth 获取当前群会话管理权限状态\n"
     f"    {menu_chat_str} auth on 设置当前群仅管理员可以管理会话\n"
     f"    {menu_chat_str} auth off 设置当前群所有人均可管理会话\n"
-    f"    {prefix_str}{talk_cmd_str} <会话内容> 在当前会话中进行会话(同样不需要括号，后面直接接你要说的话就行)\n"
+    f"    {prefix_str}{talk_cmd_str} <会话内容> 在当前会话中进行会话"
+    f"(同样不需要括号，后面直接接你要说的话就行)\n"
     ">> 增\n"
     f"    {menu_chat_str} new  根据预制模板prompt创建并加入一个新的会话\n"
     f"    {menu_chat_str} new <自定义prompt> 根据自定义prompt创建并加入一个新的会话\n"
-    f"    {menu_chat_str} json 根据历史会话json来创建一个会话，输入该命令后会提示你在下一个消息中输入json\n"
+    f"    {menu_chat_str} json 根据历史会话json来创建一个会话，"
+    "输入该命令后会提示你在下一个消息中输入json\n"
     f"    {menu_chat_str} cp 根据当前会话创建并加入一个新的会话\n"
-    f"    {menu_chat_str} cp <id> 根据会话<id>为模板进行复制新建加入（id为{menu_chat_str} list中的序号）\n"
+    f"    {menu_chat_str} cp <id> 根据会话<id>为模板进行复制新建加入"
+    f"（id为{menu_chat_str} list中的序号）\n"
     ">> 删\n"
     f"    {menu_chat_str} del 删除当前所在会话\n"
-    f"    {menu_chat_str} del <id> 删除序号为<id>的会话（id为{menu_chat_str} list中的序号）\n"
+    f"    {menu_chat_str} del <id> 删除序号为<id>的会话"
+    f"（id为{menu_chat_str} list中的序号）\n"
     f"    {menu_chat_str} clear 清空本群全部会话\n"
     f"    {menu_chat_str} clear <@user> 删除@用户创建的会话\n"
     ">> 改\n"
@@ -59,7 +63,8 @@ __usage__: str = (
     f"    {menu_chat_str} list 获取当前群所有存在的会话的序号及创建时间\n"
     f"    {menu_chat_str} list <@user> 获取当前群查看@的用户创建的会话\n"
     f"    {menu_chat_str} prompt 查看当前会话的prompt\n"
-    f"    {menu_chat_str} dump 导出当前会话json字符串格式的上下文信息，可以用于{menu_chat_str} json导入\n"
+    f"    {menu_chat_str} dump 导出当前会话json字符串格式的上下文信息，"
+    f"可以用于{menu_chat_str} json导入\n"
     f"    {menu_chat_str} keys 脱敏显示当前失效api key，仅主人"
 )
 __plugin_meta__ = PluginMetadata(
@@ -86,7 +91,7 @@ at_sender: bool = plugin_config.at_sender
 def on(
     pattern: str,
     permission: Permission = ALLOW_PRIVATE,
-    rule: Optional[Rule] = None,
+    rule: Rule | None = None,
     prefix: str = rf"^{pattern_str}\s+",
     flags: re.RegexFlag | int = 0,
 ):
@@ -177,7 +182,10 @@ async def _(event: MessageEvent, group_id: GroupId):
     user_id = event.user_id
     group_usage = session_container.get_group_usage(group_id)
     if user_id not in group_usage:
-        text = f"请先加入一个会话，再进行复制当前会话 或者使用 {menu_chat_str} cp <id> 进行复制"
+        text = (
+            "请先加入一个会话，再进行复制当前会话\n"
+            f"或者使用 {menu_chat_str} cp <id> 进行复制"
+        )
         await UniMessage(text).finish(at_sender=True)
     session = group_usage[user_id]
     group_usage[user_id].del_user(user_id)

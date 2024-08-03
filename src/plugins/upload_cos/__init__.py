@@ -48,7 +48,7 @@ async def _(event: Event, raw: EventImageRaw):
     await UniMessage(url).send(reply_to=True)
 
     with contextlib.suppress(ImportError):
-        from nonebot_plugin_exe_code.code_context import Context
+        from nonebot_plugin_exe_code.context import Context
 
         Context.get_context(event).set_value("url", url)
 

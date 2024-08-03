@@ -1,9 +1,8 @@
 from typing import Literal
 
-from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent
+from nonebot.adapters.onebot.v11 import MessageEvent
 from nonebot.adapters.onebot.v11.permission import GROUP
 from nonebot_plugin_alconna import (
-    AlcMatches,
     Alconna,
     Args,
     At,
@@ -13,18 +12,12 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna.uniseg import UniMessage
 
-from .config import APIKeyPool, Config, plugin_config
 from .depends import (
-    ALLOW_PRIVATE,
     IS_ADMIN,
-    AdminCheck,
     AtTarget,
     AuthCheck,
     GroupId,
-    MsgAt,
 )
-from .exceptions import NeedCreateSession
-from .preset import presets_str
 from .session import Session, session_container
 
 __usage__ = ""

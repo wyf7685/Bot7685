@@ -12,7 +12,6 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import sqlite
 
 revision: str = "4e22438c2c74"
 down_revision: str | Sequence[str] | None = None

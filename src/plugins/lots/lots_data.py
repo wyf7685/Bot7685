@@ -1,9 +1,8 @@
 from datetime import date
 from random import Random, choice
-from typing import Tuple
 
 
-def get_lots_msg(qid: str | int) -> Tuple[str, str]:
+def get_lots_msg(qid: str | int) -> tuple[str, str]:
     msg = Random(f"#{date.today()}#{qid}#").choice(lots_data)
     lot = msg.splitlines()[0].strip("—")
     emoji = choice(lots_emoji.get(lot, ["277"]))  # 默认使用 doge

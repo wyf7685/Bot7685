@@ -1,6 +1,5 @@
 import random
 from collections import UserList, UserString
-from typing import Union
 
 
 class APIKey(UserString):
@@ -26,8 +25,8 @@ class APIKey(UserString):
 
 class APIKeyPool(UserList):
 
-    def __init__(self, api_keys: Union[str, list]):
-        if not api_keys or not (isinstance(api_keys, (str, list))):
+    def __init__(self, api_keys: str | list):
+        if not api_keys or not (isinstance(api_keys, str | list)):
             raise Exception("请输入正确的 API KEY")
         if isinstance(api_keys, str):
             api_keys = [api_keys]

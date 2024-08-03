@@ -22,7 +22,8 @@ async def handle(request: Request) -> Response:
 
 
 def setup_router():
-    assert isinstance((driver := get_driver()), ASGIMixin)
+    driver = get_driver()
+    assert isinstance(driver, ASGIMixin)
     driver.setup_http_server(
         HTTPServerSetup(
             path=URL(router_path),

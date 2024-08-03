@@ -1,7 +1,6 @@
 import json
 from datetime import date
 from pathlib import Path
-from typing import Optional
 
 import chardet
 from nonebot.log import logger
@@ -14,7 +13,8 @@ PRESET_PROMPTS: dict[str, list[dict[str, str]]] = {
         {
             "role": "sysrem",
             "content": (
-                f"You are ChatGPT, a large language model trained by OpenAI, based on {plugin_config.gpt_model_name}.\n"
+                "You are ChatGPT, a large language model trained by OpenAI, "
+                f"based on {plugin_config.gpt_model_name}.\n"
                 "Respond conversationally. Do not answer as the user.\n"
                 f"Current date: {date.today()}"
             ),
@@ -98,7 +98,7 @@ def load_preset(
     filepath: Path,
     preset_id: int,
     encoding: str = "utf-8",
-) -> Optional[Preset]:
+) -> Preset | None:
     """
     加载路径下的模板 json文件
     """
