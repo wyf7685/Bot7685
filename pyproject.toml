@@ -50,3 +50,8 @@ plugin_dirs = ["src/plugins"]
 builtin_plugins = []
 
 [tool.pdm]
+
+[tool.pdm.dev-dependencies]
+dev = [
+    "meme-generator>=0.0.21",
+]
