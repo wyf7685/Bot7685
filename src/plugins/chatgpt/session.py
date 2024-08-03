@@ -356,7 +356,7 @@ class Session:
         users: list[int] | None = None,
         basic_len: int | None = None,
     ) -> "Session":
-        session: "Session" = cls(
+        session: Session = cls(
             chat_log,
             creator,
             group,
