@@ -10,6 +10,7 @@ dependencies = [
     "nonebot-adapter-qq>=1.4.4",
     "nonebot-plugin-chatrecorder>=0.6.0",
     "nonebot-plugin-datastore>=1.3.0",
+    "nonebot-plugin-htmlrender>=0.3.3",
     "nonebot-plugin-kawaii-status>=0.1.5",
     "nonebot-plugin-memes-api>=0.3.2",
     "nonebot-plugin-orm[default]>=0.7.5",
