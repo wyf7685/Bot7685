@@ -9,7 +9,7 @@ disabled_group: set[int] = {429379849}
 @run_preprocessor
 async def hook_memes(event: GroupMessageEvent, matcher: Matcher):
     if (
-        matcher.plugin_name == "nonebot_plugin_memes"
+        matcher.plugin_name == "nonebot_plugin_memes_api"
         and event.group_id in disabled_group
     ):
         raise IgnoredException(f"群 {event.group_id} 内禁用 memes")
