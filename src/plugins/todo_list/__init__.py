@@ -8,7 +8,7 @@ require("nonebot_plugin_session")
 require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import Alconna, Args, Match, Option, Subcommand, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
-from nonebot_plugin_waiter import prompt
+from nonebot_plugin_waiter import prompt, suggest
 
 from .todo_list import Todo, TodoList, UserTodo
 
@@ -22,7 +22,7 @@ todo = on_alconna(
         Subcommand("uncheck", Args["index", int]),
         Subcommand("pin", Args["index", int]),
         Subcommand("unpin", Args["index", int]),
-        Subcommand("purge", Option("-y|--yes", Args["yes?", bool])),
+        Subcommand("purge"),
     ),
 )
 
@@ -102,17 +102,20 @@ async def handle_todo_unpin(user_todo: UserTodo, index: Match[int]):
 
 
 @todo.assign("purge")
-async def handle_todo_purge(user_todo: UserTodo, yes: Match[bool]):
-    if not yes.available:
-        text = "将要清除的待办事项:\n"
-        text += "\n".join(todo.show() for todo in user_todo.checked())
-        text += "\n\n确认删除? [y|N]"
-        if (check := await prompt(text, timeout=30)) is None:
-            await UniMessage("删除确认超时，已取消").finish()
-        if (check := check.extract_plain_text().strip().lower()) not in {"y", "n"}:
-            await UniMessage("输入错误: 应输入 y 或 n").finish()
-        yes.result = check == "y"
+async def handle_todo_purge(user_todo: UserTodo):
+    prompt = "\n".join(
+        [
+            "将要删除的待办事项:",
+            *(todo.show() for todo in user_todo.checked()),
+            "\n确认删除? [y|N]",
+        ]
+    )
+    resp = await suggest(prompt, ["y", "n"], timeout=30, retry=3)
 
-    if yes.result:
+    if resp is None:
+        await UniMessage("删除确认超时，已取消").finish()
+
+    if resp.extract_plain_text().strip().lower() == "y":
         await user_todo.purge()
+
     await send_todo(user_todo)
