@@ -1,6 +1,7 @@
 import json
+from collections.abc import Generator
 from datetime import datetime
-from typing import Annotated, Self
+from typing import Annotated, Any, Self
 
 import aiofiles
 from nonebot.params import Depends
@@ -100,10 +101,10 @@ class TodoList:
         await self.save()
 
     def show(self) -> str:
-        return "\n".join(i.show() for i in self.todo)
+        return "\n".join(todo.show() for todo in self.todo)
 
-    def checked(self) -> list[Todo]:
-        return [i for i in self.todo if i.checked]
+    def checked(self) -> Generator[Todo, Any, None]:
+        yield from (todo for todo in self.todo if todo.checked)
 
     async def purge(self) -> None:
         for todo in self.checked():
