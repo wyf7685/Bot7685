@@ -18,6 +18,12 @@ class Todo(BaseModel):
     def new(cls, content: str) -> Self:
         return cls(content=content, checked=False, pinned=False, time=datetime.now())
 
+    def show(self) -> str:
+        return (
+            f"{'●' if self.checked else '○'} "
+            f"{'★ ' if self.pinned else ''}{self.content}"
+        )
+
 
 class TodoList:
     session_id: str
@@ -82,11 +88,15 @@ class TodoList:
         self.save()
 
     def show(self) -> str:
-        result = [
-            f"{'●' if i.checked else '○'} {'★ ' if i.pinned else ''}{i.content}"
-            for i in self.todo
-        ]
-        return "\n".join(result)
+        return "\n".join(i.show() for i in self.todo)
+
+    def purge(self, *, dry_run: bool) -> list[Todo]:
+        checked = [i for i in self.todo if i.checked]
+        if not dry_run:
+            for i in checked:
+                self.todo.remove(i)
+            self.save()
+        return checked
 
 
 def _user_todo(session_id: Annotated[str, SessionId(SessionIdType.USER)]) -> TodoList:

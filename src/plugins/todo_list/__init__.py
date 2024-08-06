@@ -1,4 +1,6 @@
 from nonebot import require
+from nonebot.params import Depends
+from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_datastore")
@@ -20,19 +22,18 @@ from .todo_list import TodoList, UserTodo
 todo = on_alconna(
     Alconna(
         "todo",
-        Subcommand("show"),
-        Subcommand(
-            "add",
-            Option("-p|--pin", Args["pin", bool], default=False),
-            Args["content?", str],
-        ),
+        Subcommand("show", alias=["list"]),
+        Subcommand("add", Args["content?", str], Option("-p|--pin")),
         Subcommand("remove", Args["index", int]),
         Subcommand("check", Args["index", int]),
         Subcommand("uncheck", Args["index", int]),
         Subcommand("pin", Args["index", int]),
         Subcommand("unpin", Args["index", int]),
-    )
+        Subcommand("purge", Option("-y|--yes", Args["yes?", bool])),
+    ),
 )
+
+todo_add = todo.dispatch("add")
 
 
 async def send_todo(user_todo: TodoList):
@@ -41,7 +42,7 @@ async def send_todo(user_todo: TodoList):
         if user_todo.todo
         else "🎉当前没有待办事项"
     )
-    await UniMessage.text(msg).send()
+    await UniMessage.text(msg).send(reply_to=True)
 
 
 @todo.assign("show")
@@ -49,20 +50,30 @@ async def handle_todo_show(user_todo: UserTodo):
     await send_todo(user_todo)
 
 
-@todo.assign("add")
-async def handle_todo_add(user_todo: UserTodo, pin: Match[bool], content: Match[str]):
+async def _todo_add_content(content: Match[str], state: T_State):
     if content.available:
-        text = content.result
-    else:
-        text = await prompt("请发送 todo 内容", timeout=30)
-        if text is None:
-            await UniMessage("todo 发送超时!").finish(reply_to=True)
-        text = text.extract_plain_text().strip()
+        state["content"] = content.result
 
-    todo = user_todo.add(text)
-    if pin.result:
-        todo.pinned = True
-        user_todo.save()
+    text = await prompt("请发送 todo 内容", timeout=30)
+    if text is None:
+        await UniMessage("todo 发送超时!").finish(reply_to=True)
+    state["content"] = text.extract_plain_text().strip()
+
+
+@todo_add.assign("~", parameterless=[Depends(_todo_add_content)])
+async def handle_todo_add(user_todo: UserTodo, state: T_State):
+    user_todo.add(state["content"])
+
+
+@todo_add.assign("~pin")
+async def handle_todo_add_pin(user_todo: UserTodo, state: T_State):
+    todo = next(i for i in user_todo.todo if i.content == state["content"])
+    todo.pinned = True
+    user_todo.save()
+
+
+@todo_add.assign("~")
+async def handle_todo_add_send(user_todo: UserTodo):
     await send_todo(user_todo)
 
 
@@ -93,4 +104,21 @@ async def handle_todo_pin(user_todo: UserTodo, index: Match[int]):
 @todo.assign("unpin")
 async def handle_todo_unpin(user_todo: UserTodo, index: Match[int]):
     user_todo.unpin(index.result)
+    await send_todo(user_todo)
+
+
+@todo.assign("purge")
+async def handle_todo_purge(user_todo: UserTodo, yes: Match[bool]):
+    if not yes.available:
+        text = "将要清除的待办事项:\n"
+        text += "\n".join(todo.show() for todo in user_todo.purge(dry_run=True))
+        text += "\n\n确认删除? [y|N]"
+        if (check := await prompt(text, timeout=30)) is None:
+            await UniMessage("删除确认超时，已取消").finish()
+        if (check := check.extract_plain_text().strip().lower()) not in {"y", "n"}:
+            await UniMessage("输入错误: 应输入 y 或 n").finish()
+        yes.result = check == "y"
+
+    if yes.result:
+        user_todo.purge(dry_run=False)
     await send_todo(user_todo)
