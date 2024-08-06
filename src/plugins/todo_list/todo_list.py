@@ -15,7 +15,7 @@ class Todo(BaseModel):
     time: datetime
 
     @classmethod
-    def new(cls, content: str):
+    def new(cls, content: str) -> Self:
         return cls(content=content, checked=False, pinned=False, time=datetime.now())
 
 
@@ -49,37 +49,39 @@ class TodoList:
             encoding="utf-8",
         )
 
-    def sort(self):
+    def sort(self) -> None:
         self.todo.sort(key=lambda x: (1 - x.pinned, x.checked, x.time.timestamp()))
 
-    def _get(self, index: int):
+    def _get(self, index: int) -> Todo:
         return self.todo[index - 1]
 
-    def add(self, content: str):
-        self.todo.append(Todo.new(content))
+    def add(self, content: str) -> Todo:
+        todo = Todo.new(content)
+        self.todo.append(todo)
         self.save()
+        return todo
 
-    def remove(self, index: int):
+    def remove(self, index: int) -> None:
         self.todo.pop(index - 1)
         self.save()
 
-    def check(self, index: int):
+    def check(self, index: int) -> None:
         self._get(index).checked = True
         self.save()
 
-    def uncheck(self, index: int):
+    def uncheck(self, index: int) -> None:
         self._get(index).checked = False
         self.save()
 
-    def pin(self, index: int):
+    def pin(self, index: int) -> None:
         self._get(index).pinned = True
         self.save()
 
-    def unpin(self, index: int):
+    def unpin(self, index: int) -> None:
         self._get(index).pinned = False
         self.save()
 
-    def show(self):
+    def show(self) -> str:
         result = [
             f"{'●' if i.checked else '○'} {'★ ' if i.pinned else ''}{i.content}"
             for i in self.todo
@@ -87,7 +89,7 @@ class TodoList:
         return "\n".join(result)
 
 
-def _user_todo(session_id: Annotated[str, SessionId(SessionIdType.USER)]):
+def _user_todo(session_id: Annotated[str, SessionId(SessionIdType.USER)]) -> TodoList:
     return TodoList.load(session_id)
 
 

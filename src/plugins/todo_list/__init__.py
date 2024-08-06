@@ -3,22 +3,29 @@ from nonebot import require
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_datastore")
 require("nonebot_plugin_session")
+require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
     Match,
+    Option,
     Subcommand,
     UniMessage,
     on_alconna,
 )
+from nonebot_plugin_waiter import prompt
 
-from .todo_list import UserTodo, TodoList
+from .todo_list import TodoList, UserTodo
 
 todo = on_alconna(
     Alconna(
         "todo",
         Subcommand("show"),
-        Subcommand("add", Args["content", str]),
+        Subcommand(
+            "add",
+            Option("-p|--pin", Args["pin", bool], default=False),
+            Args["content?", str],
+        ),
         Subcommand("remove", Args["index", int]),
         Subcommand("check", Args["index", int]),
         Subcommand("uncheck", Args["index", int]),
@@ -29,10 +36,12 @@ todo = on_alconna(
 
 
 async def send_todo(user_todo: TodoList):
-    if user_todo.todo:
-        await UniMessage("==== TODO List ====\n").text(user_todo.show()).send()
-    else:
-        await UniMessage("🎉当前没有待办事项").send()
+    msg = (
+        f"==== TODO List ====\n{user_todo.show()}"
+        if user_todo.todo
+        else "🎉当前没有待办事项"
+    )
+    await UniMessage.text(msg).send()
 
 
 @todo.assign("show")
@@ -41,8 +50,19 @@ async def handle_todo_show(user_todo: UserTodo):
 
 
 @todo.assign("add")
-async def handle_todo_add(user_todo: UserTodo, content: Match[str]):
-    user_todo.add(content.result)
+async def handle_todo_add(user_todo: UserTodo, pin: Match[bool], content: Match[str]):
+    if content.available:
+        text = content.result
+    else:
+        text = await prompt("请发送 todo 内容", timeout=30)
+        if text is None:
+            await UniMessage("todo 发送超时!").finish(reply_to=True)
+        text = text.extract_plain_text().strip()
+
+    todo = user_todo.add(text)
+    if pin.result:
+        todo.pinned = True
+        user_todo.save()
     await send_todo(user_todo)
 
 
