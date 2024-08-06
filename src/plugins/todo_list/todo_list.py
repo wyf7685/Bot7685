@@ -62,7 +62,7 @@ class TodoList:
             await file.write(data)
 
     def sort(self) -> None:
-        self.todo.sort(key=lambda x: (1 - x.pinned, x.checked, x.time.timestamp()))
+        self.todo.sort(key=lambda x: (x.checked, 1 - x.pinned, x.time.timestamp()))
 
     async def get(self, index: int) -> Todo:
         if index > 0:
