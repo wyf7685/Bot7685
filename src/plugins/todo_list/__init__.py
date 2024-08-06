@@ -55,7 +55,7 @@ async def _todo_add_content(content: Match[str], state: T_State):
 
 @todo_add.assign("~", parameterless=[Depends(_todo_add_content)])
 async def handle_todo_add(user_todo: UserTodo, state: T_State):
-    state["todo"] = user_todo.add(state["content"])
+    state["todo"] = await user_todo.add(state["content"])
 
 
 @todo_add.assign("~pin")
