@@ -46,8 +46,9 @@ async def handle_todo_show(user_todo: UserTodo):
 async def _todo_add_content(content: Match[str], state: T_State):
     if content.available:
         state["content"] = content.result
+        return
 
-    text = await prompt("请发送 todo 内容", timeout=30)
+    text = await prompt("请发送 todo 内容", timeout=120)
     if text is None:
         await UniMessage("todo 发送超时!").finish(reply_to=True)
     state["content"] = text.extract_plain_text().strip()
