@@ -29,12 +29,8 @@ jobs:
         uses: docker/metadata-action@v4
         id: metadata
         with:
-          images: |
-            wyf7685/bot7685
-          tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
+          images: wyf7685/bot7685
+          tags: type=semver,pattern={{version}}
 
       - name: Build and Publish
         uses: docker/build-push-action@v4
