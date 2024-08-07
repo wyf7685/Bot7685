@@ -107,7 +107,7 @@ class TodoList:
         yield from (todo for todo in self.todo if todo.checked)
 
     async def purge(self) -> None:
-        for todo in self.checked():
+        for todo in [*self.checked()]:
             self.todo.remove(todo)
         await self.save()
 
