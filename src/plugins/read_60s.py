@@ -2,9 +2,9 @@ import contextlib
 
 import httpx
 from nonebot import get_bots, get_plugin_config, require
-from nonebot.adapters.onebot.v11 import Bot, Message, MessageSegment
+from nonebot.adapters.onebot.v11 import Bot, MessageSegment
 from pydantic import BaseModel, Field
-
+from nonebot.log import logger
 require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler
 
@@ -30,20 +30,20 @@ async def get_url(api: str) -> str:
     return resp.json()["imageUrl"]
 
 
-async def suijitu():
+async def read60s():
     for api in api_url:
         with contextlib.suppress(Exception):
             url = await get_url(api)
+            msg = "今日60S读世界已送达\n" + MessageSegment.image(url)
             break
     else:
-        return Message(MessageSegment.text("今日60S读世界获取失败!"))
+        msg = "今日60S读世界获取失败!"
 
-    return "今日60S读世界已送达\n" + MessageSegment.image(url)
+    bot = next((b for b in get_bots().values() if isinstance(b, Bot)), None)
 
-
-async def read60s():
-    msg = await suijitu()
-    bot = next(b for b in get_bots().values() if isinstance(b, Bot))
+    if bot is None:
+        logger.opt(colors=True).warning("未找到 <m>OneBot V11</m> Bot")
+        return
 
     for qq in config.read_qq_friends:
         await bot.send_private_msg(user_id=qq, message=msg)
