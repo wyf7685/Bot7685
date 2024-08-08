@@ -4,6 +4,7 @@ from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_datastore")
+require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_session")
 require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import Alconna, Args, Match, Option, Subcommand, on_alconna
@@ -17,7 +18,7 @@ todo = on_alconna(
         "todo",
         Subcommand("show", alias=["list"]),
         Subcommand("add", Args["content?", str], Option("-p|--pin")),
-        Subcommand("remove", Args["index", int]),
+        Subcommand("remove", Args["index", int], alias={"del"}),
         Subcommand("check", Args["index", int]),
         Subcommand("uncheck", Args["index", int]),
         Subcommand("pin", Args["index", int]),
@@ -31,11 +32,11 @@ todo_add = todo.dispatch("add")
 
 async def send_todo(user_todo: TodoList):
     msg = (
-        f"==== TODO List ====\n{user_todo.show()}"
+        UniMessage.image(raw=await user_todo.render())
         if user_todo.todo
-        else "🎉当前没有待办事项"
+        else UniMessage.text("🎉当前没有待办事项")
     )
-    await UniMessage.text(msg).send(reply_to=True)
+    await msg.finish(reply_to=True)
 
 
 @todo.assign("show")

@@ -10,6 +10,8 @@ from nonebot_plugin_datastore import get_plugin_data
 from nonebot_plugin_session import SessionId, SessionIdType
 from pydantic import BaseModel
 
+from .render import render_markdown
+
 
 class Todo(BaseModel):
     content: str
@@ -27,6 +29,11 @@ class Todo(BaseModel):
             f"{'★ ' if self.pinned else ''}{self.content}"
         )
 
+    def _markdown(self) -> str:
+        check = "[x]" if self.checked else "[ ]"
+        pin = " 📌" if self.pinned else ""
+        return f"- {check}{pin} {self.content}"
+
 
 class TodoList:
     session_id: str
@@ -37,7 +44,9 @@ class TodoList:
         self.todo = todo
 
     @classmethod
-    async def load(cls, session_id: str) -> Self:
+    async def load(
+        cls, session_id: Annotated[str, SessionId(SessionIdType.USER)]
+    ) -> Self:
         fp = get_plugin_data().data_dir / f"{session_id}.json"
         if not fp.exists():
             fp.write_text("[]")
@@ -66,11 +75,12 @@ class TodoList:
         self.todo.sort(key=lambda x: (x.checked, 1 - x.pinned, x.time.timestamp()))
 
     async def get(self, index: int) -> Todo:
+        i = index
         if index > 0:
-            index -= 1
+            i = index - 1
 
         try:
-            return self.todo[index]
+            return self.todo[i]
         except IndexError:
             await UniMessage(f"没有序号为 {index} 的待办事项").finish()
 
@@ -103,6 +113,11 @@ class TodoList:
     def show(self) -> str:
         return "\n".join(todo.show() for todo in self.todo)
 
+    async def render(self) -> bytes:
+        md = "### 📝 Todo List\n"
+        md += "\n".join(todo._markdown() for todo in self.todo)
+        return await render_markdown(md)
+
     def checked(self) -> Generator[Todo, Any, None]:
         yield from (todo for todo in self.todo if todo.checked)
 
@@ -112,8 +127,4 @@ class TodoList:
         await self.save()
 
 
-async def _user_todo(session_id: Annotated[str, SessionId(SessionIdType.USER)]):
-    return await TodoList.load(session_id)
-
-
-UserTodo = Annotated[TodoList, Depends(_user_todo)]
+UserTodo = Annotated[TodoList, Depends(TodoList.load)]
