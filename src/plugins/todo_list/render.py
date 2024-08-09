@@ -1,5 +1,5 @@
 from collections.abc import Callable, Hashable
-from typing import Any, Generic, ParamSpec, Protocol, TypeVar
+from typing import Any, Generic, ParamSpec, Protocol, TypeVar, cast
 
 from nonebot_plugin_htmlrender import md_to_pic
 
@@ -9,6 +9,10 @@ R = TypeVar("R", covariant=True)
 
 class AsyncCallable(Protocol, Generic[P, R]):
     async def __call__(self, *args: P.args, **kwds: P.kwargs) -> R: ...
+
+
+class _lru_wrapped(AsyncCallable[P, R]):
+    def cache_clear(self) -> None: ...
 
 
 def _make_key(
@@ -29,9 +33,8 @@ def _make_key(
 def _async_lru_cache_wrapper(
     user_function: AsyncCallable[P, R],
     maxsize: int,
-) -> AsyncCallable[P, R]:
-    cache = {}
-    hits = misses = 0
+) -> _lru_wrapped[P, R]:
+    cache: dict[Hashable, list] = {}
     full = False
     cache_get = cache.get
     cache_len = cache.__len__
@@ -40,7 +43,7 @@ def _async_lru_cache_wrapper(
     PREV, NEXT, KEY, RESULT = 0, 1, 2, 3
 
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        nonlocal root, hits, misses, full
+        nonlocal root, full
         key = _make_key(args, kwargs)
         link = cache_get(key)
         if link is not None:
@@ -51,9 +54,8 @@ def _async_lru_cache_wrapper(
             last[NEXT] = root[PREV] = link
             link[PREV] = last
             link[NEXT] = root
-            hits += 1
             return result
-        misses += 1
+
         result = await user_function(*args, **kwargs)
         if key in cache:
             pass
@@ -74,21 +76,20 @@ def _async_lru_cache_wrapper(
         return result
 
     def cache_clear():
-        nonlocal hits, misses, full
+        nonlocal full
         cache.clear()
         root[:] = [root, root, None, None]
-        hits = misses = 0
         full = False
 
     setattr(wrapper, "cache_clear", cache_clear)
-    return wrapper
+    return cast(_lru_wrapped[P, R], wrapper)
 
 
 def _lru_cache(
     maxsize: int,
-) -> Callable[[AsyncCallable[P, R]], AsyncCallable[P, R]]:
+) -> Callable[[AsyncCallable[P, R]], _lru_wrapped[P, R]]:
 
-    def decorator(func) -> AsyncCallable[P, R]:
+    def decorator(func) -> _lru_wrapped[P, R]:
         return _async_lru_cache_wrapper(func, maxsize)
 
     return decorator

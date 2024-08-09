@@ -30,9 +30,9 @@ class Todo(BaseModel):
         )
 
     def _markdown(self) -> str:
-        check = "[x]" if self.checked else "[ ]"
-        pin = " 📌" if self.pinned else ""
-        return f"- {check}{pin} {self.content}"
+        check = "x" if self.checked else " "
+        pin = "📌" if self.pinned else " "
+        return f"- [{check}] {pin} {self.content}"
 
 
 class TodoList:

@@ -16,9 +16,9 @@ from .todo_list import Todo, TodoList, UserTodo
 todo = on_alconna(
     Alconna(
         "todo",
-        Subcommand("show", alias=["list"]),
+        Subcommand("show", alias={"list", "ls"}),
         Subcommand("add", Args["content?", str], Option("-p|--pin")),
-        Subcommand("remove", Args["index", int], alias={"del"}),
+        Subcommand("remove", Args["index", int], alias={"rm", "del"}),
         Subcommand("check", Args["index", int]),
         Subcommand("uncheck", Args["index", int]),
         Subcommand("pin", Args["index", int]),
