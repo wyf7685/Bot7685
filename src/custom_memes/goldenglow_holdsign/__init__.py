@@ -1,8 +1,9 @@
 import random
 from pathlib import Path
 
-from meme_generator import MemeArgsModel, MemeArgsParser, MemeArgsType, add_meme
 from meme_generator.exception import TextOverLength
+from meme_generator.manager import add_meme
+from meme_generator.meme import MemeArgsModel, MemeArgsParser, MemeArgsType
 from pil_utils import BuildImage
 from pil_utils.types import PointsType, PosTypeInt, SizeType
 from pydantic import Field
