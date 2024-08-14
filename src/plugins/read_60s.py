@@ -3,8 +3,9 @@ import contextlib
 import httpx
 from nonebot import get_bots, get_plugin_config, require
 from nonebot.adapters.onebot.v11 import Bot, MessageSegment
-from pydantic import BaseModel, Field
 from nonebot.log import logger
+from pydantic import BaseModel, Field
+
 require("nonebot_plugin_apscheduler")
 from nonebot_plugin_apscheduler import scheduler
 

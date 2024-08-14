@@ -2,22 +2,10 @@ from typing import Literal
 
 from nonebot.adapters.onebot.v11 import MessageEvent
 from nonebot.adapters.onebot.v11.permission import GROUP
-from nonebot_plugin_alconna import (
-    Alconna,
-    Args,
-    At,
-    Match,
-    Subcommand,
-    on_alconna,
-)
+from nonebot_plugin_alconna import Alconna, Args, At, Match, Subcommand, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
 
-from .depends import (
-    IS_ADMIN,
-    AtTarget,
-    AuthCheck,
-    GroupId,
-)
+from .depends import IS_ADMIN, AtTarget, AuthCheck, GroupId
 from .session import Session, session_container
 
 __usage__ = ""
