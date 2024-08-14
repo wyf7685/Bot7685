@@ -2,8 +2,7 @@ import random
 from pathlib import Path
 
 from meme_generator.exception import TextOverLength
-from meme_generator.manager import add_meme
-from meme_generator.meme import MemeArgsModel, MemeArgsParser, MemeArgsType
+from meme_generator import MemeArgsModel, add_meme, MemeArgsType, ParserOption
 from pil_utils import BuildImage
 from pil_utils.types import PointsType, PosTypeInt, SizeType
 from pydantic import Field
@@ -12,8 +11,7 @@ img_dir = Path(__file__).parent / "images"
 total_num = len(list(img_dir.iterdir()))
 
 help = f"图片编号，范围为 1~{total_num}"
-parser = MemeArgsParser()
-parser.add_argument("-n", "--number", type=int, default=0, help=help)
+parser_options = [ParserOption(names=["-n", "--number"], default=0, help_text=help)]
 
 
 class Model(MemeArgsModel):
@@ -31,7 +29,7 @@ params: list[tuple[PosTypeInt, SizeType, PointsType]] = [
 ]
 
 
-def goldenglow_holdsign(images, texts: list[str], args: Model):
+def goldenglow_holdsign(images: list[BuildImage], texts: list[str], args: Model):
     text = texts[0]
     if 1 <= args.number <= total_num:
         num = args.number
@@ -41,7 +39,6 @@ def goldenglow_holdsign(images, texts: list[str], args: Model):
     loc, (width, height), points = params[num - 1]
     frame = BuildImage.open(img_dir / f"{num}.png")
     text_img = BuildImage.new("RGBA", (width, height))
-    # text_img.draw_rectangle((0, 0, *text_img.size), "green", "red", 8)
     padding = 10
     try:
         text_img.draw_text(
@@ -67,6 +64,10 @@ add_meme(
     min_texts=1,
     max_texts=1,
     default_texts=["YOU!"],
-    args_type=MemeArgsType(parser, Model),
+    args_type=MemeArgsType(
+        args_model=Model,
+        args_examples=[Model(number=1)],
+        parser_options=parser_options,
+    ),
     keywords=["澄闪举牌", "猪猪举牌"],
 )
