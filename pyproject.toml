@@ -60,7 +60,14 @@ builtin_plugins = []
 dev = [
     "meme-generator>=0.0.21",
     "ipykernel>=6.29.5",
+    "isort>=5.13.2",
+    "black>=24.8.0",
+    "pyright>=1.1.375",
+    "ruff>=0.5.7",
 ]
+
+[tool.pdm.scripts]
+lint = { composite = ["isort .", "black .", "pyright .", "ruff check ."] }
 
 [tool.black]
 line-length = 88
@@ -82,25 +89,25 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = [
-  "F",     # Pyflakes
-  "W",     # pycodestyle warnings
-  "E",     # pycodestyle errors
-  "UP",    # pyupgrade
-  "ASYNC", # flake8-async
-  "C4",    # flake8-comprehensions
-  "T10",   # flake8-debugger
-  "T20",   # flake8-print
-  "PYI",   # flake8-pyi
-  "PT",    # flake8-pytest-style
-  "Q",     # flake8-quotes
-  "RUF",   # Ruff-specific rules
+    "F",     # Pyflakes
+    "W",     # pycodestyle warnings
+    "E",     # pycodestyle errors
+    "UP",    # pyupgrade
+    "ASYNC", # flake8-async
+    "C4",    # flake8-comprehensions
+    "T10",   # flake8-debugger
+    "T20",   # flake8-print
+    "PYI",   # flake8-pyi
+    "PT",    # flake8-pytest-style
+    "Q",     # flake8-quotes
+    "RUF",   # Ruff-specific rules
 ]
 ignore = [
-  "E402",   # module-import-not-at-top-of-file
-  "UP037",  # quoted-annotation
-  "RUF001", # ambiguous-unicode-character-string
-  "RUF002", # ambiguous-unicode-character-docstring
-  "RUF003", # ambiguous-unicode-character-comment
+    "E402",   # module-import-not-at-top-of-file
+    "UP037",  # quoted-annotation
+    "RUF001", # ambiguous-unicode-character-string
+    "RUF002", # ambiguous-unicode-character-docstring
+    "RUF003", # ambiguous-unicode-character-comment
 ]
 
 [tool.pyright]
