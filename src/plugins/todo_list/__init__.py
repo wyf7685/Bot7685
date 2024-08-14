@@ -7,7 +7,15 @@ require("nonebot_plugin_datastore")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_session")
 require("nonebot_plugin_waiter")
-from nonebot_plugin_alconna import Alconna, Args, Match, Option, Subcommand, on_alconna
+from nonebot_plugin_alconna import (
+    Alconna,
+    Args,
+    CommandMeta,
+    Match,
+    Option,
+    Subcommand,
+    on_alconna,
+)
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_waiter import prompt, suggest
 
@@ -16,14 +24,31 @@ from .todo_list import Todo, TodoList, UserTodo
 todo = on_alconna(
     Alconna(
         "todo",
-        Subcommand("show", alias={"list", "ls"}),
-        Subcommand("add", Args["content?", str], Option("-p|--pin")),
-        Subcommand("remove", Args["index", int], alias={"rm", "del"}),
-        Subcommand("check", Args["index", int]),
-        Subcommand("uncheck", Args["index", int]),
-        Subcommand("pin", Args["index", int]),
-        Subcommand("unpin", Args["index", int]),
-        Subcommand("purge"),
+        Subcommand("list", alias={"ls", "show"}, help_text="显示 todo"),
+        Subcommand(
+            "add",
+            Args["content?", str],
+            Option("-p|--pin"),
+            help_text="添加 todo",
+        ),
+        Subcommand(
+            "remove",
+            Args["index", int],
+            alias={"rm", "del"},
+            help_text="删除 todo",
+        ),
+        Subcommand("get", Args["index", int], help_text="获取 todo 文本"),
+        Subcommand("set", Args["index", int], help_text="修改 todo"),
+        Subcommand("check", Args["index", int], help_text="标记 todo 为已完成"),
+        Subcommand("uncheck", Args["index", int], help_text="标记 todo 为未完成"),
+        Subcommand("pin", Args["index", int], help_text="置顶 todo"),
+        Subcommand("unpin", Args["index", int], help_text="取消 todo"),
+        Subcommand("purge", help_text="清空已完成的 todo"),
+        meta=CommandMeta(
+            description="待办事项",
+            usage="todo --help",
+            author="wyf7685",
+        ),
     ),
 )
 
@@ -39,8 +64,8 @@ async def send_todo(user_todo: TodoList):
     await msg.finish(reply_to=True)
 
 
-@todo.assign("show")
-async def handle_todo_show(user_todo: UserTodo):
+@todo.assign("list")
+async def handle_todo_list(user_todo: UserTodo):
     await send_todo(user_todo)
 
 
@@ -78,6 +103,24 @@ async def handle_todo_remove(user_todo: UserTodo, index: Match[int]):
     await send_todo(user_todo)
 
 
+@todo.assign("get")
+async def handle_todo_get(user_todo: UserTodo, index: Match[int]):
+    todo = await user_todo.get(index.result)
+    await UniMessage.text(todo.content).finish()
+
+
+@todo.assign("set")
+async def handle_todo_set(user_todo: UserTodo, index: Match[int]):
+    todo = await user_todo.get(index.result)
+    await UniMessage.text(f"当前选中的 todo:\n{todo.content}").send()
+    text = await prompt("请输入新的 todo 内容")
+    if text is None:
+        await UniMessage("todo 发送超时!").finish(reply_to=True)
+    todo.content = text.extract_plain_text()
+    await user_todo.save()
+    await UniMessage.text(f"已修改 todo:\n{todo.content}").finish()
+
+
 @todo.assign("check")
 async def handle_todo_check(user_todo: UserTodo, index: Match[int]):
     await user_todo.check(index.result)
@@ -104,13 +147,11 @@ async def handle_todo_unpin(user_todo: UserTodo, index: Match[int]):
 
 @todo.assign("purge")
 async def handle_todo_purge(user_todo: UserTodo):
-    prompt = "\n".join(
-        [
-            "将要删除的待办事项:",
-            *(todo.show() for todo in user_todo.checked()),
-            "\n确认删除? [y|N]",
-        ]
-    )
+    prompt = await (
+        UniMessage.text("将要删除的待办事项:\n")
+        .image(raw=await user_todo.render(user_todo.checked()))
+        .text("\n确认删除? [y|N]")
+    ).export()
     resp = await suggest(prompt, ["y", "n"], timeout=30, retry=3)
 
     if resp is None:

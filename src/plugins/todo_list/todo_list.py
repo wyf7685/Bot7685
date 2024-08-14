@@ -1,5 +1,5 @@
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 from datetime import datetime
 from typing import Annotated, Any, Self
 
@@ -113,9 +113,9 @@ class TodoList:
     def show(self) -> str:
         return "\n".join(todo.show() for todo in self.todo)
 
-    async def render(self) -> bytes:
+    async def render(self, todo: Iterable[Todo] | None = None) -> bytes:
         md = "### 📝 Todo List\n"
-        md += "\n".join(todo._markdown() for todo in self.todo)
+        md += "\n".join(todo._markdown() for todo in (todo or self.todo))
         return await render_markdown(md)
 
     def checked(self) -> Generator[Todo, Any, None]:
