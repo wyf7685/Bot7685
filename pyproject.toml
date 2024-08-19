@@ -33,6 +33,7 @@ dependencies = [
     "numpy>=1.26.4",
     "openai>=1.40.0",
     "pandas>=2.2.2",
+    "tarina>=0.5.5",
     "uvicorn[standard]>=0.30.5",
     "websockets>=12.0",
     "nonebot-plugin-exe-code>=1.0.8",
