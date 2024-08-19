@@ -27,7 +27,7 @@ PRIVATE_GROUP: str = "Private"
 proxy: str | None = plugin_config.openai_proxy
 if proxy:
     proxy_client = httpx.AsyncClient(proxies=proxy)
-    logger.info("已配置代理")
+    logger.debug("已配置代理")
 else:
     proxy_client = httpx.AsyncClient()
     logger.warning("未配置代理")

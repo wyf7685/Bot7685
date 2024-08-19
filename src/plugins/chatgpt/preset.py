@@ -119,7 +119,7 @@ def load_preset(
         logger.error(f"预设: {filepath.stem} 解析失败! encoding {encoding}")
         return
 
-    logger.success(f"预设: {filepath.stem} 读取成功!")
+    logger.debug(f"预设: {filepath.stem} 读取成功!")
     return preset
 
 
@@ -145,9 +145,9 @@ def load_all_preset(path: Path) -> list[Preset]:
         if preset is not None:
             presets.append(preset)
     if presets:
-        logger.success(f"此次共成功加载{len(presets)}个预设")
+        logger.debug(f"此次共成功加载{len(presets)}个预设")
     else:
-        logger.error("未成功加载任何预设!")
+        logger.debug("未成功加载任何预设!")
     return presets
 
 
