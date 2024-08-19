@@ -374,9 +374,9 @@ class Session:
     @classmethod
     def reload_from_file(cls, file_path: Path) -> Optional["Session"]:
         try:
-            with open(file_path, encoding="utf8") as f:
+            with file_path.open(encoding="utf-8") as f:
                 session = cls.reload(dir_path=file_path.parent, **json.load(f))
-                logger.success(f"从文件 {file_path} 加载 Session 成功")
+                logger.debug(f"从文件 {file_path} 加载 Session 成功")
                 return session
         except Exception as e:
             logger.error(f"从文件 {file_path} 加载 Session 失败: {e!r}")
