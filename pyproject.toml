@@ -1,6 +1,6 @@
 [project]
 name = "Bot7685"
-version = "1.0.6"
+version = "1.0.7"
 description = "Bot7685"
 readme = "README.md"
 requires-python = ">=3.12, <4.0"
@@ -83,7 +83,7 @@ extend-exclude = '''
 profile = "black"
 line_length = 88
 skip_gitignore = true
-src_paths = ["nonebot_plugin_exe_code"]
+src_paths = ["src"]
 extra_standard_library = ["typing_extensions"]
 
 [tool.ruff]
