@@ -21,38 +21,28 @@ from nonebot_plugin_waiter import prompt, suggest
 
 from .todo_list import Todo, TodoList, UserTodo
 
-todo = on_alconna(
-    Alconna(
-        "todo",
-        Subcommand("list", alias={"ls", "show"}, help_text="显示 todo"),
-        Subcommand(
-            "add",
-            Args["content?", str],
-            Option("-p|--pin"),
-            help_text="添加 todo",
-        ),
-        Subcommand(
-            "remove",
-            Args["index", int],
-            alias={"rm", "del"},
-            help_text="删除 todo",
-        ),
-        Subcommand("get", Args["index", int], help_text="获取 todo 文本"),
-        Subcommand("set", Args["index", int], help_text="修改 todo"),
-        Subcommand("check", Args["index", int], help_text="标记 todo 为已完成"),
-        Subcommand("uncheck", Args["index", int], help_text="标记 todo 为未完成"),
-        Subcommand("pin", Args["index", int], help_text="置顶 todo"),
-        Subcommand("unpin", Args["index", int], help_text="取消 todo"),
-        Subcommand("purge", help_text="清空已完成的 todo"),
-        meta=CommandMeta(
-            description="待办事项",
-            usage="todo --help",
-            author="wyf7685",
-        ),
+arg_index = Args["index#todo序号", int]
+arg_content = Args["content?#todo内容", str]
+opt_pin = Option("-p|--pin")
+alc = Alconna(
+    "todo",
+    Subcommand("list", alias={"ls", "show"}, help_text="显示 todo"),
+    Subcommand("add", arg_content, opt_pin, help_text="添加 todo"),
+    Subcommand("remove", arg_index, alias={"rm", "del"}, help_text="删除 todo"),
+    Subcommand("get", arg_index, help_text="获取 todo 文本"),
+    Subcommand("set", arg_index, help_text="修改 todo"),
+    Subcommand("check", arg_index, help_text="标记 todo 为已完成"),
+    Subcommand("uncheck", arg_index, help_text="标记 todo 为未完成"),
+    Subcommand("pin", arg_index, help_text="置顶 todo"),
+    Subcommand("unpin", arg_index, help_text="取消 todo"),
+    Subcommand("purge", help_text="清空已完成的 todo"),
+    meta=CommandMeta(
+        description="待办事项",
+        usage="todo --help",
+        author="wyf7685",
     ),
 )
-
-todo_add = todo.dispatch("add")
+todo = on_alconna(alc)
 
 
 async def send_todo(user_todo: TodoList):
@@ -80,19 +70,19 @@ async def _todo_add_content(content: Match[str], state: T_State):
     state["content"] = text.extract_plain_text().strip()
 
 
-@todo_add.assign("~", parameterless=[Depends(_todo_add_content)])
+@todo.assign("add", parameterless=[Depends(_todo_add_content)])
 async def handle_todo_add(user_todo: UserTodo, state: T_State):
     state["todo"] = await user_todo.add(state["content"])
 
 
-@todo_add.assign("~pin")
+@todo.assign("add.pin")
 async def handle_todo_add_pin(user_todo: UserTodo, state: T_State):
     todo: Todo = state["todo"]
     todo.pinned = True
     await user_todo.save()
 
 
-@todo_add.assign("~")
+@todo.assign("add")
 async def handle_todo_add_send(user_todo: UserTodo):
     await send_todo(user_todo)
 
