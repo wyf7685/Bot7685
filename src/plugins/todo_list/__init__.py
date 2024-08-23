@@ -42,7 +42,7 @@ alc = Alconna(
         author="wyf7685",
     ),
 )
-todo = on_alconna(alc)
+todo = on_alconna(alc, use_cmd_start=True)
 
 
 async def send_todo(user_todo: TodoList):
