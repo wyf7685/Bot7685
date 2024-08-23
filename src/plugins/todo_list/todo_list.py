@@ -23,16 +23,10 @@ class Todo(BaseModel):
     def new(cls, content: str) -> Self:
         return cls(content=content, checked=False, pinned=False, time=datetime.now())
 
-    def show(self) -> str:
-        return (
-            f"{'●' if self.checked else '○'} "
-            f"{'★ ' if self.pinned else ''}{self.content}"
-        )
-
-    def _markdown(self) -> str:
+    def show_markdown(self, idx: int) -> str:
         check = "x" if self.checked else " "
-        pin = "📌" if self.pinned else " "
-        return f"- [{check}] {pin} {self.content}"
+        pin = "📌" if self.pinned else "&nbsp; &nbsp; &nbsp;"
+        return f"- [{check}] {pin} **{idx}.** {self.content}"
 
 
 class TodoList:
@@ -110,12 +104,10 @@ class TodoList:
         (await self.get(index)).pinned = False
         await self.save()
 
-    def show(self) -> str:
-        return "\n".join(todo.show() for todo in self.todo)
-
     async def render(self, todo: Iterable[Todo] | None = None) -> bytes:
         md = "### 📝 Todo List\n"
-        md += "\n".join(todo._markdown() for todo in (todo or self.todo))
+        for i, t in enumerate(todo or self.todo, 1):
+            md += f"{t.show_markdown(i)}\n"
         return await render_markdown(md)
 
     def checked(self) -> Generator[Todo, Any, None]:
