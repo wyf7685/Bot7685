@@ -1,53 +1,56 @@
-from datetime import timedelta
+import asyncio
+import contextlib
 from typing import Annotated
 
-from nonebot import get_driver, on_message, on_request, require
+from nonebot import get_driver, on_message, on_type, require
 from nonebot.adapters.onebot.v11 import Bot, FriendRequestEvent, PrivateMessageEvent
-from nonebot.params import EventPlainText
 from nonebot.permission import SUPERUSER
-from nonebot.rule import Rule
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_userinfo")
-from nonebot_plugin_alconna.uniseg import Reply, Target, UniMessage, UniMsg
+from nonebot_plugin_alconna.uniseg import Reply, Target, UniMessage, UniMsg, Receipt
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
-superusers = get_driver().config.superusers
-friend_add = on_request()
 
-
-@friend_add.handle()
-async def _(
-    event: FriendRequestEvent,
-    info: Annotated[UserInfo, EventUserInfo()],
-):
+@on_type(FriendRequestEvent).handle()
+async def _(event: FriendRequestEvent, info: Annotated[UserInfo, EventUserInfo()]):
     message = UniMessage.text(f"收到好友申请: {info.user_name}({info.user_id})\n")
     if avatar := info.user_avatar:
-        message += UniMessage.image(raw=await avatar.get_image())
+        message.image(raw=await avatar.get_image())
+    message.text("\n回复 “接受” 或 “拒绝”")
 
-    msgid: dict[str, int] = {}
-    for target in superusers:
-        res = await message.send(Target(target, private=True))
-        msgid[target] = res.msg_ids[0]["message_id"]
+    receipts: dict[str, Receipt] = {}
+    for user_id in get_driver().config.superusers:
+        with contextlib.suppress(Exception):
+            receipts[user_id] = await message.send(Target(user_id, private=True))
 
-    def checker(event: PrivateMessageEvent, msg: UniMsg):
-        reply_id = int(msg[Reply, 0].id) if msg.has(Reply) else -1
-        return reply_id == msgid.get(event.get_user_id(), 0)
+    if not receipts:
+        return
 
-    matcher = on_message(
-        rule=Rule(checker),
-        permission=SUPERUSER,
-        temp=True,
-        expire_time=timedelta(minutes=10),
-    )
+    async def rule(event: PrivateMessageEvent, msg: UniMsg):
+        return (
+            (receipt := receipts.get(event.get_user_id())) is not None
+            and (reply := receipt.get_reply()) is not None
+            and msg.has(Reply)
+            and msg[Reply, 0].id == reply.id
+            and msg.extract_plain_text() in {"接受", "拒绝"}
+        )
+
+    matcher = on_message(rule=rule, permission=SUPERUSER, temp=True)
+    task = asyncio.create_task(asyncio.sleep(10 * 60))
 
     @matcher.handle()
-    async def _(bot: Bot, msg: Annotated[str, EventPlainText()]):
-        if "接受" in msg:
-            await event.approve(bot)
-            await matcher.finish("已接受好友申请")
-        elif "拒绝" in msg:
-            await event.reject(bot)
-            await matcher.finish("已拒绝好友申请")
-        else:
-            await matcher.reject("无效命令")
+    async def _(bot: Bot, msg: UniMsg):
+        await (
+            event.approve
+            if (text := msg.extract_plain_text()) == "接受"
+            else event.reject
+        )(bot)
+        await UniMessage.text(f"已{text}该好友申请").send()
+        task.cancel()
+
+    with contextlib.suppress(Exception):
+        await task
+        matcher.destroy()
+        for receipt in receipts.values():
+            await receipt.reply("操作超时，将忽略该好友申请")
