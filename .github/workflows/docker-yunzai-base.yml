@@ -26,8 +26,8 @@ jobs:
               id: metadata
               uses: docker/metadata-action@v5
               with:
-                  images: wyf7685:bot7685
-                  tags: type=raw,value=base
+                  images: wyf7685/bot7685
+                  tags: type=raw,value=yunzai-base
 
             - name: Build and Publish
               uses: docker/build-push-action@v6
