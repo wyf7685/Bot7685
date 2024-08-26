@@ -1,4 +1,4 @@
-name: yunzai
+name: Docker yunzai
 
 on:
     workflow_dispatch:

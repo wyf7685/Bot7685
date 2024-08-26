@@ -1,4 +1,4 @@
-name: yunzai-base
+name: Docker yunzai-base
 
 on:
     workflow_dispatch:

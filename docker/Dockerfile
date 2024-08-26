@@ -16,7 +16,7 @@ ENV LANG=zh_CN.UTF-8
 ENV LANGUAGE=zh_CN.UTF-8
 ENV LC_ALL=zh_CN.UTF-8
 
-COPY ./docker/gunicorn_conf.py ./docker/start.sh /
+COPY ./gunicorn_conf.py ./start.sh /
 COPY --from=wheels /wheel /wheel
 RUN apt-get update && \
     apt-get install -y --no-install-recommends locales locales-all fonts-noto libnss3-dev libxss1 libasound2 libxrandr2 libatk1.0-0 libgtk-3-0 libgbm-dev libxshmfence1 && \

@@ -1,4 +1,4 @@
-name: Docker Hub Release
+name: Docker Bot7685
 
 on:
   push:
@@ -13,6 +13,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup PDM
+        uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: "3.12"
+
+      - name: Export requirements.txt
+        run: pdm export --no-hashes --prod -o docker/requirements.txt
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -36,7 +44,7 @@ jobs:
       - name: Build and Publish
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./docker/.
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
