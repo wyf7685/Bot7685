@@ -8,6 +8,9 @@ jobs:
     name: Update Bot7685 Dependencies
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
