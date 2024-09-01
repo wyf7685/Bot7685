@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["inherit_metadata"]
 lock_version = "4.5.0"
-content_hash = "sha256:dd0ad0e49758530f30668066e06d9ed3df1ee685f8afd69609bb19fc34261913"
+content_hash = "sha256:df71c369fc77b7c510628b8b1360ae7462c7db6fa56ab8c35dfd885a2b509a3f"
 
 [[metadata.targets]]
 requires_python = "~=3.12"
@@ -189,18 +189,18 @@ files = [
 
 [[package]]
 name = "arclet-alconna"
-version = "1.8.28"
+version = "1.8.29"
 requires_python = ">=3.8"
 summary = "A High-performance, Generality, Humane Command Line Arguments Parser Library."
 groups = ["default", "dev"]
 dependencies = [
     "nepattern<1.0.0,>=0.7.6",
-    "tarina>=0.5.5",
+    "tarina>=0.5.8",
     "typing-extensions>=4.5.0",
 ]
 files = [
-    {file = "arclet_alconna-1.8.28-py3-none-any.whl", hash = "sha256:e1819e063b2f53b94765d93d269e9e7dbf5c39e275f24d7428374a1e7bf0a654"},
-    {file = "arclet_alconna-1.8.28.tar.gz", hash = "sha256:1cc6c0fe3c04d33c63148d3a606f309de6f79e18861f69e01e1e7f068c852ac9"},
+    {file = "arclet_alconna-1.8.29-py3-none-any.whl", hash = "sha256:8f71a129ff55f8ffb017bd1ad87d1f709df44e483bf8b851a83332bcb052f7ff"},
+    {file = "arclet_alconna-1.8.29.tar.gz", hash = "sha256:99bd65c509050909fc5e3ae5948daa3c8238dd7665b7090fe4632c63ee2eac11"},
 ]
 
 [[package]]
@@ -1719,7 +1719,7 @@ files = [
 
 [[package]]
 name = "nonebot-plugin-werewolf"
-version = "1.0.1"
+version = "1.0.3"
 requires_python = ">=3.10"
 summary = "Default template for PDM package"
 groups = ["default"]
@@ -1730,8 +1730,8 @@ dependencies = [
     "nonebot2>=2.3.3",
 ]
 files = [
-    {file = "nonebot_plugin_werewolf-1.0.1-py3-none-any.whl", hash = "sha256:efcbfc4164d65293f79d357f291994501a4bf7ff6130ec0fc478d10b3016ac1e"},
-    {file = "nonebot_plugin_werewolf-1.0.1.tar.gz", hash = "sha256:2d09728f82f376ef9cb95476cb8ac4ac2d8185bf4934d02df3d26337db2c5fdb"},
+    {file = "nonebot_plugin_werewolf-1.0.3-py3-none-any.whl", hash = "sha256:eff6a3ded7501baafb9e6361c4dce1834ecb64a8b0b6731da91e8929c5a23a10"},
+    {file = "nonebot_plugin_werewolf-1.0.3.tar.gz", hash = "sha256:94a076be939aaf4dd947b32a75e0b178217add060e06bcfa197ce0882fd1a274"},
 ]
 
 [[package]]
@@ -2681,7 +2681,7 @@ files = [
 
 [[package]]
 name = "starlette"
-version = "0.38.2"
+version = "0.38.3"
 requires_python = ">=3.8"
 summary = "The little ASGI library that shines."
 groups = ["default", "dev"]
@@ -2690,8 +2690,8 @@ dependencies = [
     "typing-extensions>=3.10.0; python_version < \"3.10\"",
 ]
 files = [
-    {file = "starlette-0.38.2-py3-none-any.whl", hash = "sha256:4ec6a59df6bbafdab5f567754481657f7ed90dc9d69b0c9ff017907dd54faeff"},
-    {file = "starlette-0.38.2.tar.gz", hash = "sha256:c7c0441065252160993a1a37cf2a73bb64d271b17303e0b0c1eb7191cfb12d75"},
+    {file = "starlette-0.38.3-py3-none-any.whl", hash = "sha256:0e4af343a4e59324b96fbe0f3c6ad8c3a908d73f12f5c80a797803a6c3ad4687"},
+    {file = "starlette-0.38.3.tar.gz", hash = "sha256:f674450f0f46a790be1f3a128f386080600b58fa358f8e320d93dbef6d7f676c"},
 ]
 
 [[package]]

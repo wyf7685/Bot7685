@@ -37,7 +37,7 @@ dependencies = [
     "uvicorn[standard]>=0.30.6",
     "websockets>=13.0",
     "nonebot-plugin-exe-code>=1.0.9",
-    "nonebot-plugin-werewolf>=1.0.1",
+    "nonebot-plugin-werewolf>=1.0.3",
 ]
 
 [tool.nonebot]
