@@ -1,0 +1,33 @@
+name: Update dependencies
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: Update Bot7685 Dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PDM
+        uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: "3.12"
+
+      - name: Setup PDM
+        uses: pdm-project/setup-pdm@v4
+        with:
+          python-version: "3.12"
+
+      - name: Update dependencies
+        run: pdm update
+
+      - name: Commit changes
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          "git add -u && git commit -m 'Update Dependencies' || true"
+          git push --set-upstream --force origin
