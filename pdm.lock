@@ -1719,19 +1719,20 @@ files = [
 
 [[package]]
 name = "nonebot-plugin-werewolf"
-version = "1.0.4"
+version = "1.0.6"
 requires_python = ">=3.10"
 summary = "Default template for PDM package"
 groups = ["default"]
 dependencies = [
+    "StrEnum>=0.4.15",
     "nonebot-plugin-alconna>=0.52.1",
     "nonebot-plugin-userinfo>=0.2.6",
     "nonebot-plugin-waiter>=0.7.1",
     "nonebot2>=2.3.3",
 ]
 files = [
-    {file = "nonebot_plugin_werewolf-1.0.4-py3-none-any.whl", hash = "sha256:3c86d659e7f41247c17816a8b0410df017a0964120a2646d2b91f456acee539b"},
-    {file = "nonebot_plugin_werewolf-1.0.4.tar.gz", hash = "sha256:cb2c8b6448c6ea95fd0888cc8bb269e75415d54691ae29c082cd2211b4c9bb9b"},
+    {file = "nonebot_plugin_werewolf-1.0.6-py3-none-any.whl", hash = "sha256:db3292b15e999f6773139af08b598db6bc3862f9eb09e491eb7c75136a86d34a"},
+    {file = "nonebot_plugin_werewolf-1.0.6.tar.gz", hash = "sha256:8dc9343e95e7b64dce6ac9e15d1f6bf58e34b3bccc716a60ea78c8ef015b44c4"},
 ]
 
 [[package]]
