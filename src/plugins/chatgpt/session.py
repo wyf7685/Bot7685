@@ -20,7 +20,7 @@ from .config import plugin_config
 from .exceptions import NeedCreateSession, NoResponseError
 from .preset import templateDict
 
-type_user_id = int
+type_user_id = int | str
 type_group_id = str
 PRIVATE_GROUP: str = "Private"
 
@@ -84,7 +84,7 @@ class SessionContainer:
         self.save_group_auth()
 
     async def delete_session(self, session: "Session", gid: str) -> None:
-        group_usage: dict[int, Session] = self.get_group_usage(gid)
+        group_usage: dict[type_user_id, Session] = self.get_group_usage(gid)
         users = {uid for uid, s in group_usage.items() if s is session}
         for user in users:
             group_usage.pop(user, None)
@@ -130,7 +130,7 @@ class SessionContainer:
     def create_with_chat_log(
         self,
         chat_log: list[dict[str, str]],
-        creator: int,
+        creator: int | str,
         group: int | str,
         name: str = "",
     ) -> "Session":
@@ -150,7 +150,7 @@ class SessionContainer:
         return session
 
     def create_with_template(
-        self, template_id: str, creator: int, group: int | str
+        self, template_id: str, creator: int|str, group: int | str
     ) -> "Session":
         deep_copy = copy.deepcopy(templateDict[template_id].preset)
         return self.create_with_chat_log(
@@ -158,7 +158,7 @@ class SessionContainer:
         )
 
     def create_with_str(
-        self, custom_prompt: str, creator: int, group: int | str, name: str = ""
+        self, custom_prompt: str, creator: int | str, group: int | str, name: str = ""
     ) -> "Session":
         prompt = [
             {"role": "user", "content": custom_prompt},
@@ -190,7 +190,7 @@ class Session:
     def __init__(
         self,
         chat_log: list[dict[str, str]],
-        creator: int,
+        creator: int | str,
         group: int | str,
         name: str,
         chat_memory_max: int,
@@ -201,8 +201,8 @@ class Session:
         basic_len: int | None = None,
     ) -> None:
         self.history: list[dict[str, str]] = chat_log
-        self.creator: int = creator
-        self._users: set[int] = set(users) if users else set()
+        self.creator: str = str(creator)
+        self._users: set[type_user_id] = set(users) if users else set()
         self.group: str = str(group)
         self.name: str = name
         self.chat_memory_max: int = chat_memory_max
@@ -226,10 +226,10 @@ class Session:
         self.save()
 
     @property
-    def users(self) -> set[int]:
+    def users(self) -> set[type_user_id]:
         return self._users
 
-    def add_user(self, user: int) -> None:
+    def add_user(self, user: type_user_id) -> None:
         self._users.add(user)
         self.save()
 

@@ -15,6 +15,7 @@ from nonebot.plugin import PluginMetadata, on_regex
 from nonebot.rule import Rule
 
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna.uniseg import UniMessage
 
 from .config import APIKeyPool, Config, plugin_config
@@ -213,7 +214,7 @@ async def _(
     is_admin: AdminCheck,
     info: dict[str, Any] = RegexDict(),
 ):
-    group_usage: dict[int, Session] = session_container.get_group_usage(group_id)
+    group_usage: dict[int|str, Session] = session_container.get_group_usage(group_id)
     if event.user_id not in group_usage:
         await UniMessage("请先加入一个会话，再进行重命名").finish(at_sender=True)
     session = group_usage[event.user_id]
@@ -244,7 +245,7 @@ async def _(user_id: MsgAt, group_id: GroupId):
 
 @ChatWho.handle()
 async def _(event: MessageEvent, group_id: GroupId):
-    group_usage: dict[int, Session] = session_container.get_group_usage(group_id)
+    group_usage= session_container.get_group_usage(group_id)
     if event.user_id not in group_usage:
         text = "当前没有加入任何会话，请加入或创建一个会话"
         await UniMessage(text).finish(at_sender=True)
@@ -268,7 +269,7 @@ async def _(
     session_id = int(info.get("id", "").strip())
     user_id: int = event.user_id
     group_sessions: list[Session] = session_container.get_group_sessions(group_id)
-    group_usage: dict[int, Session] = session_container.get_group_usage(group_id)
+    group_usage = session_container.get_group_usage(group_id)
 
     if not group_sessions:
         text = f"本群尚未创建过会话!请用{menu_chat_str} new命令来创建会话!"
@@ -304,7 +305,7 @@ async def _(
     if not content:
         await UniMessage("输入不能为空!").finish(at_sender=True)
     user_id = event.user_id
-    group_usage: dict[int, Session] = session_container.get_group_usage(group_id)
+    group_usage = session_container.get_group_usage(group_id)
     if user_id not in group_usage:  # 若用户没有加入任何会话则先创建会话
         session = session_container.create_with_template("1", user_id, group_id)
         logger.info(f"{user_id} 自动创建并加入会话 '{session.name}'")
@@ -327,7 +328,7 @@ async def _(
 ):
     session_id: int = int(info.get("id", "").strip())
     group_sessions: list[Session] = session_container.get_group_sessions(group_id)
-    group_usage: dict[int, Session] = session_container.get_group_usage(group_id)
+    group_usage= session_container.get_group_usage(group_id)
     if not group_sessions:
         text = f"本群尚未创建过会话!请用{menu_chat_str} new命令来创建会话!"
         await UniMessage(text).finish(at_sender=True)
@@ -353,7 +354,7 @@ async def _():
 @DelSelf.handle(parameterless=[AuthCheck])
 async def _(event: MessageEvent, group_id: GroupId, is_admin: AdminCheck):
     user_id: int = int(event.get_user_id())
-    group_usage: dict[int, Session] = session_container.get_group_usage(group_id)
+    group_usage = session_container.get_group_usage(group_id)
     session = group_usage.pop(user_id, None)
     if not session:
         await UniMessage("当前不存在会话").finish(at_sender=True)

@@ -5,15 +5,14 @@ from nonebot.adapters.onebot.v11 import (
     GROUP_OWNER,
     Bot,
     GroupMessageEvent,
-    Message,
     MessageEvent,
     PrivateMessageEvent,
 )
 from nonebot.matcher import Matcher
-from nonebot.params import Depends, EventMessage
+from nonebot.params import Depends
 from nonebot.permission import SUPERUSER, Permission
 from nonebot.rule import Rule
-from nonebot_plugin_alconna import AlcMatches, At
+from nonebot_plugin_alconna import AlcMatches, At, UniMsg
 
 from .config import plugin_config
 from .session import get_group_id, session_container
@@ -49,12 +48,11 @@ def _GroupId():
 
 
 def _MsgAt():
-    async def msg_at(matcher: Matcher, message: Message = EventMessage()) -> int:
-        for seg in message.include("at"):
-            qq: str = seg.data.get("qq", "all")
-            if qq.isdigit():
-                return int(qq)
-        matcher.skip()
+
+    async def msg_at(message: UniMsg) -> str:
+        if message.has(At):
+            return message[At, 0].target
+        Matcher.skip()
 
     return Depends(msg_at)
 
@@ -74,5 +72,5 @@ AuthCheck = Depends(auth_check)
 AdminCheck = Annotated[bool, Depends(admin_check)]
 ALLOW_PRIVATE = Permission(allow_private)
 GroupId = Annotated[str, _GroupId()]
-MsgAt = Annotated[int, _MsgAt()]
-AtTarget = Annotated[int, _AtTarget()]
+MsgAt = Annotated[str, _MsgAt()]
+AtTarget = Annotated[str, _AtTarget()]

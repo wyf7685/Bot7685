@@ -1,12 +1,14 @@
 from typing import Literal
-
-from nonebot.adapters.onebot.v11 import MessageEvent
+from nonebot.permission import SUPERUSER
+from nonebot.adapters import Event
 from nonebot.adapters.onebot.v11.permission import GROUP
 from nonebot_plugin_alconna import Alconna, Args, At, Match, Subcommand, on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
+import nonebot_plugin_waiter as waiter
 
 from .depends import IS_ADMIN, AtTarget, AuthCheck, GroupId
 from .session import Session, session_container
+from .preset import presets_str
 
 __usage__ = ""
 
@@ -40,7 +42,7 @@ chat_group_admin = on_alconna(
     rule=IS_ADMIN,
 )
 
-chat_superuser = on_alconna(Alconna("chat", Subcommand("keys")))
+chat_superuser = on_alconna(Alconna("chat", Subcommand("keys")), permission=SUPERUSER)
 
 
 @chat.assign("help")
@@ -48,35 +50,56 @@ async def _():
     await UniMessage(__usage__).send(at_sender=True)
 
 
-chat_new = chat.dispatch("new")
+@chat.assign("new.prompt", parameterless=[AuthCheck])
+async def _(event: Event, group_id: GroupId, prompt: Match[str]):
+    session = session_container.create_with_str(
+        prompt.result,
+        event.get_user_id(),
+        group_id,
+        prompt.result[:5],
+    )
+    await UniMessage(f"成功创建并加入会话 '{session.name}' ").finish(at_sender=True)
 
 
-@chat_new.handle(parameterless=[AuthCheck])
-async def _(event: MessageEvent, group_id: GroupId, prompt: Match[str]):
-    if prompt.available:
-        custom_prompt = prompt.result
-        session = session_container.create_with_str(
-            custom_prompt,
-            event.user_id,
-            group_id,
-            custom_prompt[:5],
-        )
-        await UniMessage(f"成功创建并加入会话 '{session.name}' ").finish(at_sender=True)
+@chat.assign("new", parameterless=[AuthCheck])
+async def _(event: Event, group_id: GroupId):
+    msg = await waiter.prompt_until(
+        presets_str,
+        lambda m: m.extract_plain_text().isdigit(),
+        retry=3,
+        retry_prompt="输入ID无效，请重新输入！\n剩余次数：{count}",
+    )
+    if msg is None:
+        await UniMessage().finish()
+
+    template_id = msg.extract_plain_text()
+    session = session_container.create_with_template(
+        template_id,
+        event.get_user_id(),
+        group_id,
+    )
+    msg = UniMessage(f"使用模板 '{template_id}' 创建并加入会话 '{session.name}' 成功!")
+    await msg.finish(at_sender=True)
+
+
+@chat.assign("json")
+async def _():
+    pass
 
 
 @chat.assign("list.target")
 async def _(user_id: AtTarget, group_id: GroupId):
-    session_list: list[Session] = [
-        s
-        for s in session_container.sessions
-        if s.group == group_id and s.creator == user_id
+    sessions = [
+        session
+        for session in session_container.sessions
+        if session.group == group_id and session.creator == user_id
     ]
-    msg = UniMessage.at(str(user_id)).text(f" 在群中创建会话{len(session_list)}条: \n")
-    for session in session_list:
-        msg.text(
-            f" 名称: {session.name[:10]} "
-            f"创建者: {session.creator} "
-            f"时间: {session.creation_datetime}\n"
+    msg = UniMessage.at(user_id).text(f" 在群中创建会话{len(sessions)}条: \n\n")
+    for session in sessions:
+        msg = msg.text(
+            f"名称: {session.name[:10]}\n"
+            f"创建者: {session.creator}\n"
+            f"时间: {session.creation_datetime}\n\n"
         )
     await msg.finish(at_sender=True)
 
