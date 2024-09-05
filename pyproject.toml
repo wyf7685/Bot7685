@@ -54,6 +54,7 @@ plugins = [
     "nonebot_plugin_wordcloud",
     "nonebot_plugin_wordle",
     "nonebot_plugin_exe_code",
+    "nonebot_plugin_werewolf",
 ]
 plugin_dirs = ["src/plugins"]
 builtin_plugins = []
