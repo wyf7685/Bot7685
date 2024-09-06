@@ -59,18 +59,6 @@ plugins = [
 plugin_dirs = ["src/plugins"]
 builtin_plugins = []
 
-[tool.pdm]
-
-[tool.pdm.dev-dependencies]
-dev = [
-    "meme-generator>=0.1.2",
-    "ipykernel>=6.29.5",
-    "isort>=5.13.2",
-    "black>=24.8.0",
-    "pyright>=1.1.377",
-    "ruff>=0.6.2",
-]
-
 [tool.pdm.scripts]
 lint = { composite = ["isort .", "black .", "pyright .", "ruff check ."] }
 
@@ -121,3 +109,9 @@ pythonPlatform = "All"
 typeCheckingMode = "standard"
 reportShadowedImports = false
 disableBytesTypePromotions = true
+
+[tool.uv]
+dev-dependencies = [
+    "ipykernel>=6.29.5",
+    "meme-generator>=0.1.4",
+]
