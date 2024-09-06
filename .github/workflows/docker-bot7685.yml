@@ -14,14 +14,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PDM
-        uses: pdm-project/setup-pdm@v4
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v2
         with:
-          python-version: "3.12"
+          enable-cache: true
 
       - name: Export requirements.txt
         run: |
-          pdm export --no-hashes --prod -o docker/requirements.txt
+          uv export --no-dev --no-hashes > docker/requirements.txt
           cat docker/requirements.txt
 
       - name: Set up QEMU

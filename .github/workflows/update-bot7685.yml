@@ -15,13 +15,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PDM
-        uses: pdm-project/setup-pdm@v4
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v2
         with:
-          python-version: "3.12"
+          enable-cache: true
 
       - name: Update dependencies
-        run: pdm update
+        run: |
+          rm uv.lock
+          uv lock --no-cache
 
       - name: Configure git
         run: |
