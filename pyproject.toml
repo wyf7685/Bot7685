@@ -39,6 +39,7 @@ dependencies = [
     "websockets>=13.0",
     "nonebot-plugin-exe-code>=1.0.9",
     "nonebot-plugin-werewolf>=1.0.3",
+    "pydantic<2.9.0",  # tmp fix
 ]
 
 [tool.nonebot]
