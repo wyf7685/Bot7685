@@ -4,13 +4,18 @@ from datetime import datetime
 from typing import Annotated, Any, Self
 
 import aiofiles
+from async_lru import alru_cache
 from nonebot.params import Depends
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_datastore import get_plugin_data
+from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_session import SessionId, SessionIdType
 from pydantic import BaseModel
 
-from .render import render_markdown
+
+@alru_cache(1 << 4, ttl=120)
+async def render_markdown(md: str) -> bytes:
+    return await md_to_pic(md)
 
 
 class Todo(BaseModel):
