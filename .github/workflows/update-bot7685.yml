@@ -25,13 +25,8 @@ jobs:
           rm uv.lock
           uv lock --no-cache
 
-      - name: Configure git
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Commit changes
-        run: "git add -u && git commit -m 'Update Dependencies' || true"
-
-      - name: Push changes
-        run: git push --set-upstream --force origin
+      - name: Push to GitHub
+        uses: EndBug/add-and-commit@v9
+        with:
+          default_author: github_actions
+          message: 'Update Dependencies - [Skip GitHub Action]'
