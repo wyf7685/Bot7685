@@ -34,3 +34,5 @@ jobs:
 
       - name: Run Pyright
         uses: jakebailey/pyright-action@v2
+        with:
+          working-directory: ./src/plugins/
