@@ -34,8 +34,3 @@ jobs:
 
       - name: Run Pyright
         run: uv tool run pyright src/plugins --pythonpath ./.venv/bin/python
-
-      # - name: Run Pyright
-      #   uses: jakebailey/pyright-action@v2
-      #   with:
-      #     working-directory: ./src/plugins/
