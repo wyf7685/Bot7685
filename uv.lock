@@ -1314,7 +1314,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-exe-code"
-version = "1.0.9"
+version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nonebot-plugin-alconna" },
@@ -1325,9 +1325,9 @@ dependencies = [
     { name = "nonebot2" },
     { name = "pillow" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6a/30/81029b099c5deda2fc2f76967b73f188eb5861a58b8833313007b749e2fe/nonebot_plugin_exe_code-1.0.9.tar.gz", hash = "sha256:e9659a6e2efce1a4b07c43fec44f74d15749bdf9ea8024309f9f6549fe824b96", size = 36999 }
+sdist = { url = "https://files.pythonhosted.org/packages/3f/7e/8635717e694f02d184f35c736165b2f313a49b33cdf1439f3cf1b2012723/nonebot_plugin_exe_code-1.1.0.tar.gz", hash = "sha256:8859dbc4baf1ec4e4175ff9e79ab2bc533d7bcba3d49345443ffe1cf8433ba65", size = 37491 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/88/68/17b93aecb1baf744254b679e78df658944d33a7166d0ad31561b982a88ee/nonebot_plugin_exe_code-1.0.9-py3-none-any.whl", hash = "sha256:edec5932544cdb8695fb39e30a194d164deac83676310d2b4e6244bcf7878ba9", size = 31573 },
+    { url = "https://files.pythonhosted.org/packages/18/a4/0ecb312b99e3cfe97c65b90f1a2a3937d3adaf9fcc677adeb41bd3f53a79/nonebot_plugin_exe_code-1.1.0-py3-none-any.whl", hash = "sha256:074606b70e4016d18cd97383f2d01cdd7201bb89212ade189590620bed17c472", size = 32037 },
 ]
 
 [[package]]
@@ -1381,7 +1381,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-memes-api"
-version = "0.4.9"
+version = "0.4.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -1398,9 +1398,9 @@ dependencies = [
     { name = "pyyaml" },
     { name = "rapidfuzz" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/13/fe/d5130426e3dd74969f9bdc9929230235ab97ad65a91ced9040c9b8b037ed/nonebot_plugin_memes_api-0.4.9.tar.gz", hash = "sha256:83769110cd5091a5f229022739c27bce3dbf605c25a976693396e3ca119f1b71", size = 20722 }
+sdist = { url = "https://files.pythonhosted.org/packages/55/24/56c9fc7773ded4edf84893d9c0251d4d534424731ff24f743f8c3b76f923/nonebot_plugin_memes_api-0.4.10.tar.gz", hash = "sha256:3de5b135b44a63528b4aeb0814c41cacde882f6f3365365fd4619d34bffd89ad", size = 20713 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/0e/e1ba96c6f324939489298ebd4bc861369da09bdcb107ede9c5fa6f5bbfa9/nonebot_plugin_memes_api-0.4.9-py3-none-any.whl", hash = "sha256:3a6c5adc941549318145bf4eeb02460c67b4dbaf76b0422f9e3052cef1117592", size = 25501 },
+    { url = "https://files.pythonhosted.org/packages/0d/24/60108a64fc2939f728892e27a39351da73f93408890fc18fa909c5cc1e2e/nonebot_plugin_memes_api-0.4.10-py3-none-any.whl", hash = "sha256:d9276e85eb369d375760775d83b8850e2c0b64da4f026af5b1973b21b398e7f3", size = 25502 },
 ]
 
 [[package]]
@@ -1782,11 +1782,11 @@ wheels = [
 
 [[package]]
 name = "platformdirs"
-version = "4.2.2"
+version = "4.3.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f5/52/0763d1d976d5c262df53ddda8d8d4719eedf9594d046f117c25a27261a19/platformdirs-4.2.2.tar.gz", hash = "sha256:38b7b51f512eed9e84a22788b4bce1de17c0adb134d6becb09836e37d8654cd3", size = 20916 }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/b1/0d84052c168ca3a712ca01be2b8f55af8a3d5b644e02276e02c3a0ac2b90/platformdirs-4.3.1.tar.gz", hash = "sha256:63b79589009fa8159973601dd4563143396b35c5f93a58b36f9049ff046949b1", size = 21236 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/68/13/2aa1f0e1364feb2c9ef45302f387ac0bd81484e9c9a4c5688a322fbdfd08/platformdirs-4.2.2-py3-none-any.whl", hash = "sha256:2d7a1657e36a80ea911db832a8a6ece5ee53d8de21edd5cc5879af6530b1bfee", size = 18146 },
+    { url = "https://files.pythonhosted.org/packages/3a/7c/48b1ead4d3bea269c28e93be8762d82e2dba67a04ef9c051a3b4a82e1101/platformdirs-4.3.1-py3-none-any.whl", hash = "sha256:facaa5a3c57aa1e053e3da7b49e0cc31fe0113ca42a4659d5c2e98e545624afe", size = 18269 },
 ]
 
 [[package]]
