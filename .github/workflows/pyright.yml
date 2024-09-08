@@ -33,6 +33,9 @@ jobs:
         run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
 
       - name: Run Pyright
-        uses: jakebailey/pyright-action@v2
-        with:
-          working-directory: ./src/plugins/
+        run: uv tool run pyright src/plugins
+
+      # - name: Run Pyright
+      #   uses: jakebailey/pyright-action@v2
+      #   with:
+      #     working-directory: ./src/plugins/
