@@ -144,3 +144,4 @@ logs/
 .vscode/
 .env*
 .pdm-python
+shortcut.db*
