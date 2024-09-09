@@ -3,11 +3,17 @@ from typing import override
 
 from nonebot import get_driver, require
 from nonebot.adapters.onebot.utils import highlight_rich_message
-from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, PrivateMessageEvent
+from nonebot.adapters.onebot.v11 import (
+    Bot,
+    GroupMessageEvent,
+    PrivateMessageEvent,
+    NotifyEvent,
+)
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
+from nonebot.exception import NoLogException
 
 require("nonebot_plugin_apscheduler")
 from apscheduler.job import Job as SchedulerJob
@@ -104,10 +110,24 @@ def patch_group():
     logger.success("Patched <g>GroupMessageEvent</g>.<y>get_event_description</y>")
 
 
+def patch_input_status():
+    original = NotifyEvent.get_log_string
+
+    @override
+    def get_log_string(self: NotifyEvent) -> str:
+        if self.sub_type == "input_status":
+            raise NoLogException("OneBot V11")
+        return original(self)
+
+    NotifyEvent.get_log_string = get_log_string
+    logger.success("Patched <g>NotifyEvent</g>.<y>get_log_string</y>")
+
+
 @get_driver().on_startup
 def on_startup():
     patch_private()
     patch_group()
+    patch_input_status()
 
 
 @get_driver().on_bot_connect
