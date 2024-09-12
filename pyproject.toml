@@ -37,9 +37,9 @@ dependencies = [
     "tarina>=0.5.5",
     "uvicorn[standard]>=0.30.6",
     "websockets>=13.0",
-    "nonebot-plugin-exe-code>=1.0.9",
-    "nonebot-plugin-werewolf>=1.0.3",
-    "pydantic<2.9.0",  # tmp fix
+    "nonebot-plugin-exe-code>=1.1.0",
+    "nonebot-plugin-werewolf>=1.1.1",
+    "pydantic>=2.0.0,!=2.9.0,<3.0.0",
 ]
 
 [tool.nonebot]
