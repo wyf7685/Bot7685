@@ -1,11 +1,10 @@
+import importlib
+import pathlib
+import tomllib
+
 import nonebot
-from nonebot.adapters.onebot.v11 import Adapter as OB11Adapter
-from nonebot.log import logger
 
-# from nonebot.adapters.qq import Adapter as QQAdapter
-# from nonebot.adapters.telegram import Adapter as TelegramAdapter
-
-logger.add(
+nonebot.logger.add(
     "./logs/{time:YYYY-MM-DD}.log",
     rotation="00:00",
     level="DEBUG",
@@ -20,21 +19,24 @@ logger.add(
 )
 
 
-def custom_load():
-    import pathlib
-    import tomllib
+def custom_load() -> None:
+    nonebot_data: dict = (
+        tomllib.loads(pathlib.Path("pyproject.toml").read_text("utf-8"))
+        .get("tool", {})
+        .get("nonebot")
+    )
 
-    with open("pyproject.toml", encoding="utf-8") as f:
-        data = tomllib.loads(f.read())
-    nonebot_data = data.get("tool", {}).get("nonebot")
+    for item in nonebot_data.get("adapters", []):
+        module = importlib.import_module(item["module_name"])
+        nonebot.get_driver().register_adapter(getattr(module, "Adapter"))
+
     plugins: list[str] = nonebot_data.get("plugins", [])
-
     for p in pathlib.Path("src/dev").iterdir():
         if (p.is_dir() and (name := p.name) in plugins) or (
             p.is_file() and p.suffix == ".py" and (name := p.stem) in plugins
         ):
             plugins.remove(name)
-            logger.opt(colors=True).warning(
+            nonebot.logger.opt(colors=True).warning(
                 f'优先加载来自 "<m>src.dev.{name}</m>" 的插件 "<y>{name}</y>"'
             )
 
@@ -43,11 +45,6 @@ def custom_load():
 
 nonebot.init()
 app = nonebot.get_asgi()
-driver = nonebot.get_driver()
-driver.register_adapter(OB11Adapter)
-# driver.register_adapter(QQAdapter)
-# driver.register_adapter(TelegramAdapter)
-# nonebot.load_from_toml("pyproject.toml")
 custom_load()
 
 
