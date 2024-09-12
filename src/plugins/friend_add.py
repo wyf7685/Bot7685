@@ -8,7 +8,7 @@ from nonebot.permission import SUPERUSER
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_userinfo")
-from nonebot_plugin_alconna.uniseg import Reply, Target, UniMessage, UniMsg, Receipt
+from nonebot_plugin_alconna.uniseg import Receipt, Reply, Target, UniMessage, UniMsg
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 

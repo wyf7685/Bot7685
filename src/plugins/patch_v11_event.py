@@ -6,14 +6,14 @@ from nonebot.adapters.onebot.utils import highlight_rich_message
 from nonebot.adapters.onebot.v11 import (
     Bot,
     GroupMessageEvent,
-    PrivateMessageEvent,
     NotifyEvent,
+    PrivateMessageEvent,
 )
 from nonebot.compat import type_validate_python
+from nonebot.exception import NoLogException
 from nonebot.log import logger
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
-from nonebot.exception import NoLogException
 
 require("nonebot_plugin_apscheduler")
 from apscheduler.job import Job as SchedulerJob

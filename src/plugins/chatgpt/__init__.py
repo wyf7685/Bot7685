@@ -214,7 +214,7 @@ async def _(
     is_admin: AdminCheck,
     info: dict[str, Any] = RegexDict(),
 ):
-    group_usage: dict[int|str, Session] = session_container.get_group_usage(group_id)
+    group_usage: dict[int | str, Session] = session_container.get_group_usage(group_id)
     if event.user_id not in group_usage:
         await UniMessage("请先加入一个会话，再进行重命名").finish(at_sender=True)
     session = group_usage[event.user_id]
@@ -245,7 +245,7 @@ async def _(user_id: MsgAt, group_id: GroupId):
 
 @ChatWho.handle()
 async def _(event: MessageEvent, group_id: GroupId):
-    group_usage= session_container.get_group_usage(group_id)
+    group_usage = session_container.get_group_usage(group_id)
     if event.user_id not in group_usage:
         text = "当前没有加入任何会话，请加入或创建一个会话"
         await UniMessage(text).finish(at_sender=True)
@@ -328,7 +328,7 @@ async def _(
 ):
     session_id: int = int(info.get("id", "").strip())
     group_sessions: list[Session] = session_container.get_group_sessions(group_id)
-    group_usage= session_container.get_group_usage(group_id)
+    group_usage = session_container.get_group_usage(group_id)
     if not group_sessions:
         text = f"本群尚未创建过会话!请用{menu_chat_str} new命令来创建会话!"
         await UniMessage(text).finish(at_sender=True)

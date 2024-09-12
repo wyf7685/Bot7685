@@ -37,7 +37,9 @@ class Game:
             del running_game[self.group_id]
 
     async def _cleanup(self):
-        while datetime.now() - self.last_operation <= self.expire_time:
+        while (  # noqa: ASYNC110
+            datetime.now() - self.last_operation <= self.expire_time
+        ):
             await asyncio.sleep(1)
 
         if self.group_id in running_game and running_game[self.group_id] is self:

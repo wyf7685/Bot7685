@@ -60,7 +60,7 @@ def goldenglow_holdsign(images: list[BuildImage], texts: list[str], args: Model)
 
 add_meme(
     "goldenglow_holdsign",
-    goldenglow_holdsign,
+    goldenglow_holdsign,  # type: ignore
     min_texts=1,
     max_texts=1,
     default_texts=["YOU!"],

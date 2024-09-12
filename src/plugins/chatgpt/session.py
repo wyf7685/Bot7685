@@ -150,7 +150,7 @@ class SessionContainer:
         return session
 
     def create_with_template(
-        self, template_id: str, creator: int|str, group: int | str
+        self, template_id: str, creator: int | str, group: int | str
     ) -> "Session":
         deep_copy = copy.deepcopy(templateDict[template_id].preset)
         return self.create_with_chat_log(
