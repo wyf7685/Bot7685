@@ -502,16 +502,16 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.114.1"
+version = "0.114.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "starlette" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/92/601de32e6af54c29667785bb0bba0a3f7fd77ccffc85e65d038264bd61ff/fastapi-0.114.1.tar.gz", hash = "sha256:1d7bbbeabbaae0acb0c22f0ab0b040f642d3093ca3645f8c876b6f91391861d8", size = 295377 }
+sdist = { url = "https://files.pythonhosted.org/packages/d6/c7/cf41c991257e9babc429ae0c2c48f5315154e8b94c8ba475dc0247718741/fastapi-0.114.2.tar.gz", hash = "sha256:0adb148b62edb09e8c6eeefa3ea934e8f276dabc038c5a82989ea6346050c3da", size = 295481 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/51/7d/68b632b717938a50d59c800ecd1f889dc3c37e337a1eb2c8be80f164fbb9/fastapi-0.114.1-py3-none-any.whl", hash = "sha256:5d4746f6e4b7dff0b4f6b6c6d5445645285f662fe75886e99af7ee2d6b58bb3e", size = 94049 },
+    { url = "https://files.pythonhosted.org/packages/b6/2b/15ac29e524bf0dc8fcf8e90364c05709b3d4fa810a86421c6924ea18cccd/fastapi-0.114.2-py3-none-any.whl", hash = "sha256:44474a22913057b1acb973ab90f4b671ba5200482e7622816d79105dcece1ac5", size = 94049 },
 ]
 
 [[package]]
@@ -660,11 +660,11 @@ wheels = [
 
 [[package]]
 name = "idna"
-version = "3.8"
+version = "3.9"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e8/ac/e349c5e6d4543326c6883ee9491e3921e0d07b55fdf3cce184b40d63e72a/idna-3.8.tar.gz", hash = "sha256:d838c2c0ed6fced7693d5e8ab8e734d5f8fda53a039c0164afb0b82e771e3603", size = 189467 }
+sdist = { url = "https://files.pythonhosted.org/packages/00/6f/93e724eafe34e860d15d37a4f72a1511dd37c43a76a8671b22a15029d545/idna-3.9.tar.gz", hash = "sha256:e5c5dafde284f26e9e0f28f6ea2d6400abd5ca099864a67f576f3981c6476124", size = 191636 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/7e/d71db821f177828df9dea8c42ac46473366f191be53080e552e628aad991/idna-3.8-py3-none-any.whl", hash = "sha256:050b4e5baadcd44d760cedbd2b8e639f2ff89bbc7a5730fcc662954303377aac", size = 66894 },
+    { url = "https://files.pythonhosted.org/packages/6d/15/61933d1999bc5ad8cad612d67f02fa5b16a423076ea0816e39c2e797af12/idna-3.9-py3-none-any.whl", hash = "sha256:69297d5da0cc9281c77efffb4e730254dd45943f45bbfb461de5991713989b1e", size = 71671 },
 ]
 
 [[package]]
@@ -1193,16 +1193,16 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-cesaa"
-version = "0.4.0"
+version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nonebot-plugin-chatrecorder" },
     { name = "nonebot-plugin-send-anything-anywhere" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f9/e6/df1feef3b7fac0c638220f037a7f70c106312e943582745fa0fae52a22b8/nonebot_plugin_cesaa-0.4.0.tar.gz", hash = "sha256:572a5232262a8d3660a00a32f82041f791587e588046d14b0780fc7d908f1263", size = 4543 }
+sdist = { url = "https://files.pythonhosted.org/packages/94/01/3f371eada2f82df58eec462351ac319598171384d150938f766d54747ea2/nonebot_plugin_cesaa-0.4.1.tar.gz", hash = "sha256:1bb9150aa9eb766ce5b0e027308aa5ad4af9c1cd116f3a3d82ca7b83453cfd11", size = 6515 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/26/732a42520a89aea6d173dd07c28d236f58d2f35440732482a2f4154c666c/nonebot_plugin_cesaa-0.4.0-py3-none-any.whl", hash = "sha256:4ae34a7d5f023f614f3d3a7207e35f706ae964a203aa582b59f3e0b530a69360", size = 5205 },
+    { url = "https://files.pythonhosted.org/packages/4b/08/632d35e0df5e23f5043d53bef90a384c96522bc747d18d1990456bc1333a/nonebot_plugin_cesaa-0.4.1-py3-none-any.whl", hash = "sha256:87186d35178ced9b9629a02a26093826963b880274809a5f9a2ad90470de3ae4", size = 6011 },
 ]
 
 [[package]]
@@ -1350,7 +1350,7 @@ default = [
 
 [[package]]
 name = "nonebot-plugin-send-anything-anywhere"
-version = "0.6.1"
+version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1359,9 +1359,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "strenum" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8a/2d/300a2220249e02d7663ec77f9c0ee195268fcaa2e00934c4205c0eafbdcd/nonebot_plugin_send_anything_anywhere-0.6.1.tar.gz", hash = "sha256:89a695c5e356a423b8641f79082353b50ee431585988de2c2ae77f8ea00ac3e9", size = 30888 }
+sdist = { url = "https://files.pythonhosted.org/packages/67/73/821d35051fd98f7ccf499dec85c4b8a3e8d916aeef989371b8d793167abd/nonebot_plugin_send_anything_anywhere-0.7.1.tar.gz", hash = "sha256:ec9c7ba59c824238b812950146a894acc88ca8da98f500de15217feebcd5e868", size = 34304 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cc/f6/032af0428462e1393329c724de76cae788753bc5d08350a9bd767caff4ed/nonebot_plugin_send_anything_anywhere-0.6.1-py3-none-any.whl", hash = "sha256:d1ac0df520f950b61ff27d3abda39c4bb2023797f3b7df2a23517ad53f3a7f29", size = 42864 },
+    { url = "https://files.pythonhosted.org/packages/bd/de/39c3a1810c2b25239fe43ea68bced88a9ccadc693b132d5a42d6e25c9134/nonebot_plugin_send_anything_anywhere-0.7.1-py3-none-any.whl", hash = "sha256:b52044272be9a7bc77bd7a53ef700481c071fd4e889ae21a0411d0df22d13c16", size = 47405 },
 ]
 
 [[package]]
@@ -1437,7 +1437,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-wakatime"
-version = "0.2.4"
+version = "0.2.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "expiringdictx" },
@@ -1451,9 +1451,9 @@ dependencies = [
     { name = "nonebot-plugin-user" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2e/fc/b43a755c09b4bdbe85017e12a431641af625bbbcdab77e161c9137978f9b/nonebot_plugin_wakatime-0.2.4.tar.gz", hash = "sha256:168ab6f1469c3bfa6eeb0569d99fbef043d38d8f1474255af018ae4f8b1157d6", size = 2086436 }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/19/2624274bd8648cd62e5259f20e52c31663d4a7ee51f3a7f0a010dcab26a0/nonebot_plugin_wakatime-0.2.5.tar.gz", hash = "sha256:72b6cde1ed22ada60ea68d9abcf5a8341c8750eb319a3d556a4853a356f96969", size = 9764108 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/97/8d/156f71cf3194a2ad83deaabf752f4c7a7a7ca8d5a84077f4c7479c9e604b/nonebot_plugin_wakatime-0.2.4-py3-none-any.whl", hash = "sha256:56fb68f9be5bc6041541cbf7ea3094cf86f29c941c834229b1b94109e515b370", size = 1239978 },
+    { url = "https://files.pythonhosted.org/packages/d2/da/e74bbaaaceb7533da8305585f2b6b83ffbfca5cd29531893bdcaf98c6907/nonebot_plugin_wakatime-0.2.5-py3-none-any.whl", hash = "sha256:c18ad15dfc264cbd66b82f6ebe6d06292665b6b29cc24c71c4d03615ae5be225", size = 8986965 },
 ]
 
 [[package]]
@@ -1706,11 +1706,11 @@ wheels = [
 
 [[package]]
 name = "platformdirs"
-version = "4.3.2"
+version = "4.3.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/75/a0/d7cab8409cdc7d39b037c85ac46d92434fb6595432e069251b38e5c8dd0e/platformdirs-4.3.2.tar.gz", hash = "sha256:9e5e27a08aa095dd127b9f2e764d74254f482fef22b0970773bfba79d091ab8c", size = 21276 }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/19/f7bee3a71decedd8d7bc4d3edb7970b8e899f3caef257b0f0d623f2f7b11/platformdirs-4.3.3.tar.gz", hash = "sha256:d4e0b7d8ec176b341fb03cb11ca12d0276faa8c485f9cd218f613840463fc2c0", size = 21304 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/8b/d497999c4017b80678017ddce745cf675489c110681ad3c84a55eddfd3e7/platformdirs-4.3.2-py3-none-any.whl", hash = "sha256:eb1c8582560b34ed4ba105009a4badf7f6f85768b30126f351328507b2beb617", size = 18417 },
+    { url = "https://files.pythonhosted.org/packages/69/e6/7c8e8c326903bd97c6c0c47e0a3c5de815faaae986cab7defdeddf5fddcd/platformdirs-4.3.3-py3-none-any.whl", hash = "sha256:50a5450e2e84f44539718293cbb1da0a0885c9d14adf21b77bae4e66fc99d9b5", size = 18437 },
 ]
 
 [[package]]
@@ -1919,11 +1919,11 @@ wheels = [
 
 [[package]]
 name = "pypinyin"
-version = "0.52.0"
+version = "0.53.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/61/35/dc7be4309af9a205ff1b4f114a0f381cb35d92acc2ee5cf7ca14b8b86aea/pypinyin-0.52.0.tar.gz", hash = "sha256:2e7cc0911278e0db334c97f028aa7ccad535e028f57bc539296b04f475e04ecd", size = 823577 }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/2d/58c9e7d0825d834fc5ac62a340640953d39a80e78cba70eb73d3bad5b4be/pypinyin-0.53.0.tar.gz", hash = "sha256:a2d39ddc2bd31b55897bbb10d2e11a0c4d399988a97c00ad489c151afd9b106d", size = 824458 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/16/9231fcbad1298b72ec346c25f06805be6292e2f55d7e1dc2717909ea75b6/pypinyin-0.52.0-py2.py3-none-any.whl", hash = "sha256:203b2035c323957ff77189deb607c168577a888b6fb7248976b6d952b3fb77da", size = 833686 },
+    { url = "https://files.pythonhosted.org/packages/b1/af/a1f9ee31b860ea55985a743b53fc06e61fe156bc1a9d64d94a81afa80470/pypinyin-0.53.0-py2.py3-none-any.whl", hash = "sha256:a906768919da3c31771f2c5e0e5a759214dc38d0087e15e6ff67649e03df8097", size = 834720 },
 ]
 
 [[package]]
@@ -2557,9 +2557,9 @@ wheels = [
 
 [[package]]
 name = "zipp"
-version = "3.20.1"
+version = "3.20.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d3/8b/1239a3ef43a0d0ebdca623fb6413bc7702c321400c5fdd574f0b7aa0fbb4/zipp-3.20.1.tar.gz", hash = "sha256:c22b14cc4763c5a5b04134207736c107db42e9d3ef2d9779d465f5f1bcba572b", size = 23848 }
+sdist = { url = "https://files.pythonhosted.org/packages/54/bf/5c0000c44ebc80123ecbdddba1f5dcd94a5ada602a9c225d84b5aaa55e86/zipp-3.20.2.tar.gz", hash = "sha256:bc9eb26f4506fda01b81bcde0ca78103b6e62f991b381fec825435c836edbc29", size = 24199 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/9e/c96f7a4cd0bf5625bb409b7e61e99b1130dc63a98cb8b24aeabae62d43e8/zipp-3.20.1-py3-none-any.whl", hash = "sha256:9960cd8967c8f85a56f920d5d507274e74f9ff813a0ab8889a5b5be2daf44064", size = 8988 },
+    { url = "https://files.pythonhosted.org/packages/62/8b/5ba542fa83c90e09eac972fc9baca7a88e7e7ca4b221a89251954019308b/zipp-3.20.2-py3-none-any.whl", hash = "sha256:a817ac80d6cf4b23bf7f2828b7cabf326f15a001bea8b1f9b49631780ba28350", size = 9200 },
 ]
