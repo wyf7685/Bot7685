@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from nonebot_plugin_orm import Model, get_scoped_session
-from sqlalchemy import Integer, String, delete, insert, select, update, func
+from sqlalchemy import Integer, String, delete, func, insert, select, update
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -66,4 +66,3 @@ class ArkAccountDAO:
             statement = select(ArkAccount).where(ArkAccount.uid == uid)
             result = await self.session.execute(statement)
             return result.scalars().one()
-

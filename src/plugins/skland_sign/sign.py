@@ -3,14 +3,14 @@ import random
 from collections import defaultdict
 from queue import Queue
 
+import nonebot
 from apscheduler.triggers.cron import CronTrigger
-from nonebot import logger
 from nonebot_plugin_apscheduler import scheduler
 
 from .api import SklandAPI
 from .database import ArkAccount, ArkAccountDAO
 
-logger = logger.opt(colors=True)
+logger = nonebot.logger.opt(colors=True)
 
 
 async def sign(api: SklandAPI) -> None:

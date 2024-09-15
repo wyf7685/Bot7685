@@ -9,7 +9,14 @@ require("nonebot_plugin_orm")
 require("nonebot_plugin_user")
 require("nonebot_plugin_waiter")
 import nonebot_plugin_waiter as waiter
-from nonebot_plugin_alconna import Alconna, Args, Match, Subcommand, on_alconna
+from nonebot_plugin_alconna import (
+    Alconna,
+    Args,
+    CommandMeta,
+    Match,
+    Subcommand,
+    on_alconna,
+)
 from nonebot_plugin_alconna.uniseg import MsgTarget, UniMessage, UniMsg
 from nonebot_plugin_user import User, get_user_by_id
 
@@ -27,8 +34,14 @@ skland = on_alconna(
         ),
         Subcommand("revoke", alias={"解绑", "登出"}),
         Subcommand("sign", alias={"签到"}),
-        separators={"", " "},
+        meta=CommandMeta(
+            description="森空岛签到",
+            usage="森空岛 -h",
+            example="森空岛 绑定 12345678910 password\n森空岛 签到\n森空岛 解绑",
+            author="wyf7685",
+        ),
     ),
+    aliases={"skland"},
 )
 
 
@@ -38,7 +51,7 @@ async def _(target: MsgTarget) -> None:
         await UniMessage.text("请在私聊发送命令绑定账号！").finish(reply_to=True)
 
 
-def check_phone(phone: str):
+def check_phone(phone: str) -> bool:
     return phone.isdigit() and len(phone) == 11 and phone[0] == "1"
 
 
