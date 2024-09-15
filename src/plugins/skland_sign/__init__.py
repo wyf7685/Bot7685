@@ -7,6 +7,7 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_user")
+require("nonebot_plugin_waiter")
 import nonebot_plugin_waiter as waiter
 from nonebot_plugin_alconna import Alconna, Args, Match, Subcommand, on_alconna
 from nonebot_plugin_alconna.uniseg import MsgTarget, UniMessage, UniMsg
