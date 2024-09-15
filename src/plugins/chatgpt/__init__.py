@@ -317,7 +317,7 @@ async def _(
     answer = await session.ask_with_content(
         api_keys, base_url, content, "user", temperature, model, max_tokens
     )
-    await UniMessage(answer).finish(at_sender=at_sender)
+    await UniMessage(answer.strip()).finish(at_sender=at_sender)
 
 
 @Join.handle()
