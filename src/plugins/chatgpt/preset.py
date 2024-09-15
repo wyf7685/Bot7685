@@ -11,10 +11,11 @@ from .config import plugin_config
 PRESET_PROMPTS: dict[str, list[dict[str, str]]] = {
     "ChatGPT": [
         {
-            "role": "sysrem",
+            "role": "system",
             "content": (
-                "You are ChatGPT, a large language model trained by OpenAI, "
-                f"based on {plugin_config.gpt_model_name}.\n"
+                # "You are ChatGPT, a large language model trained by OpenAI, "
+                # f"based on {plugin_config.gpt_model_name}.\n"
+                f"You are an AI assistant, based on {plugin_config.gpt_model_name}.\n"
                 "Respond conversationally. Do not answer as the user.\n"
                 f"Current date: {date.today()}"
             ),
