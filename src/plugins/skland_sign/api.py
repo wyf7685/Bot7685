@@ -227,7 +227,12 @@ class SklandAPI:
         data = {"gameId": 1, "uid": self.uid}
         headers = deepcopy(self.client.headers)
         headers.update(self._sign_headers(URL_SIGN, json.dumps(data)))
-        resp = await self.client.post(url=URL_SIGN, json=data, headers=headers)
+
+        try:
+            resp = await self.client.post(url=URL_SIGN, json=data, headers=headers)
+            resp.raise_for_status()
+        except httpx.HTTPError as err:
+            return DailySignResult(status="failed", message=f"签到请求失败: {err}")
 
         try:
             res = resp.json()
