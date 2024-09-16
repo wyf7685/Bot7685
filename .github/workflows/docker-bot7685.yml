@@ -63,8 +63,7 @@ jobs:
       - name: Build CLI and Publish
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/.
-          file: Dockerfile.cli
+          file: ./docker/Dockerfile.cli
           push: true
           tags: ${{ steps.metadata-cli.outputs.tags }}
           labels: ${{ steps.metadata-cli.outputs.labels }}
