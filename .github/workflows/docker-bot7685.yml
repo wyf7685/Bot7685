@@ -52,3 +52,19 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Generate cli Tags
+        uses: docker/metadata-action@v5
+        id: metadata-cli
+        with:
+          images: wyf7685/bot7685
+          tags: type=raw,value=cli
+
+      - name: Build cli and Publish
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker/.
+          file: Dockerfile.cli
+          push: true
+          tags: ${{ steps.metadata-cli.outputs.tags }}
+          labels: ${{ steps.metadata-cli.outputs.labels }}

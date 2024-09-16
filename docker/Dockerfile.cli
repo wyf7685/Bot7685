@@ -1,0 +1,5 @@
+FROM wyf7685/bot7685:latest
+
+RUN pip install nb-cli
+
+CMD ["nb"]
