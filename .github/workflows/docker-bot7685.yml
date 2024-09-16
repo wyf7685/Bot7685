@@ -53,14 +53,14 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Generate cli Tags
+      - name: Generate CLI Tags
         uses: docker/metadata-action@v5
         id: metadata-cli
         with:
           images: wyf7685/bot7685
           tags: type=raw,value=cli
 
-      - name: Build cli and Publish
+      - name: Build CLI and Publish
         uses: docker/build-push-action@v6
         with:
           context: ./docker/.
