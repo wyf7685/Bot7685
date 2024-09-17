@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from typing import override
 
 from nonebot import get_driver, require
@@ -7,16 +8,18 @@ from nonebot.adapters.onebot.v11 import (
     Bot,
     GroupMessageEvent,
     NotifyEvent,
+    PokeNotifyEvent,
     PrivateMessageEvent,
 )
 from nonebot.compat import type_validate_python
-from nonebot.exception import NoLogException
+from nonebot.exception import ActionFailed, NoLogException
 from nonebot.log import logger
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
 require("nonebot_plugin_apscheduler")
 from apscheduler.job import Job as SchedulerJob
+from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
 
@@ -29,7 +32,8 @@ class GroupInfo(BaseModel):
 
 logger = logger.opt(colors=True)
 group_info_cache: dict[int, GroupInfo] = {}
-scheduler_job: dict[Bot, SchedulerJob] = {}
+user_card_cache: dict[tuple[int, int | None], str | None] = {}
+scheduler_job: dict[Bot, list[SchedulerJob]] = {}
 update_retry_id: dict[str, int] = {}
 
 
@@ -39,7 +43,7 @@ async def update_group_cache(
     _try_count: int = 1,
     _wait_secs: int = 0,
     _id: int = 0,
-):
+) -> None:
     key = repr(bot)
     if _id == 0:
         if key in update_retry_id:
@@ -60,7 +64,10 @@ async def update_group_cache(
         logger.warning(f"更新 {bot} 的群聊信息缓存时出错: {err!r}")
         if _try_count <= 3:
             coro = update_group_cache(
-                bot, _try_count=_try_count + 1, _wait_secs=30, _id=_id
+                bot,
+                _try_count=_try_count + 1,
+                _wait_secs=30,
+                _id=_id,
             )
             asyncio.get_running_loop().create_task(coro)
             logger.warning("<y>30</y>s 后重试...")
@@ -71,7 +78,24 @@ async def update_group_cache(
     del update_retry_id[key]
 
 
-def patch_private():
+async def update_user_card_cache(bot: Bot) -> None:
+    for (user_id, group_id), name in list(user_card_cache.items()):
+        if name is not None:
+            continue
+        if group_id is not None:
+            with contextlib.suppress(ActionFailed):
+                data = await bot.get_group_member_info(
+                    group_id=group_id, user_id=user_id
+                )
+                name = data.get("card") or data.get("nickname") or str(user_id)
+        else:
+            with contextlib.suppress(ActionFailed):
+                data = await bot.get_stranger_info(user_id=user_id)
+                name = data.get("nickname") or str(user_id)
+        user_card_cache[(user_id, group_id)] = name
+
+
+def patch_private() -> None:
     @override
     def get_event_description(self: PrivateMessageEvent) -> str:
         sender = (
@@ -88,7 +112,7 @@ def patch_private():
     logger.success("Patched <g>PrivateMessageEvent</g>.<y>get_event_description</y>")
 
 
-def patch_group():
+def patch_group() -> None:
     @override
     def get_event_description(self: GroupMessageEvent) -> str:
         sender = (
@@ -110,7 +134,7 @@ def patch_group():
     logger.success("Patched <g>GroupMessageEvent</g>.<y>get_event_description</y>")
 
 
-def patch_input_status():
+def patch_input_status() -> None:
     original = NotifyEvent.get_log_string
 
     @override
@@ -123,24 +147,69 @@ def patch_input_status():
     logger.success("Patched <g>NotifyEvent</g>.<y>get_log_string</y>")
 
 
+def patch_poke() -> None:
+    original = PokeNotifyEvent.get_event_description
+
+    @override
+    def get_event_description(self: PokeNotifyEvent) -> str:
+        raw_info = self.model_dump().get("raw_info")
+        if not raw_info:
+            return original(self)
+
+        text = ""
+        user = [self.user_id, self.target_id]
+
+        if self.group_id is not None:
+            text += (
+                f"[群:<y>{escape_tag(info.group_name)}</y>(<c>{self.group_id}</c>)] "
+                if (info := group_info_cache.get(self.group_id))
+                else f"[群:<c>{self.group_id}</c>] "
+            )
+
+        for item in raw_info:
+            if item["type"] == "qq":
+                text += f"<c>{user.pop(0)}</c> "
+            elif item["type"] == "nor":
+                text += f"{item['txt']} "
+
+        return text
+
+    PokeNotifyEvent.get_event_description = get_event_description
+    logger.success("Patched <g>PokeNotifyEvent</g>.<y>get_event_description</y>")
+
+
 @get_driver().on_startup
-def on_startup():
+def on_startup() -> None:
     patch_private()
     patch_group()
     patch_input_status()
+    patch_poke()
 
 
 @get_driver().on_bot_connect
-async def on_bot_connect(bot: Bot):
-    await update_group_cache(bot)
+async def on_bot_connect(bot: Bot) -> None:
+    scheduler_job[bot] = [
+        scheduler.add_job(
+            update_group_cache,
+            args=(bot,),
+            trigger=CronTrigger(hour="*", minute="0"),
+        ),
+        scheduler.add_job(
+            update_user_card_cache,
+            args=(bot,),
+            trigger=CronTrigger(minute="*"),
+        ),
+    ]
 
-    async def job():
-        await update_group_cache(bot)
+    async def update():
+        await asyncio.sleep(5)
+        if bot in scheduler_job:
+            await update_group_cache(bot)
 
-    scheduler_job[bot] = scheduler.add_job(job, trigger="cron", hour="*", minute="0")
+    asyncio.create_task(update()).add_done_callback(lambda _: None)
 
 
 @get_driver().on_bot_disconnect
-async def on_bot_disconnect(bot: Bot):
-    if bot in scheduler_job:
-        scheduler_job.pop(bot).remove()
+async def on_bot_disconnect(bot: Bot) -> None:
+    for job in scheduler_job.pop(bot, []):
+        job.remove()
