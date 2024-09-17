@@ -152,7 +152,7 @@ def patch_poke() -> None:
 
     @override
     def get_event_description(self: PokeNotifyEvent) -> str:
-        raw_info = self.model_dump().get("raw_info")
+        raw_info: list = self.model_dump().get("raw_info", [])
         if not raw_info:
             return original(self)
 
@@ -165,6 +165,9 @@ def patch_poke() -> None:
                 if (info := group_info_cache.get(self.group_id))
                 else f"[群:<c>{self.group_id}</c>] "
             )
+        else:
+            gen = (idx + 1 for idx, item in enumerate(raw_info) if item["type"] == "qq")
+            raw_info.insert(next(gen, 1), {"type": "nor", "txt": "戳了戳"})
 
         for item in raw_info:
             if item["type"] == "qq":
@@ -203,7 +206,7 @@ async def on_bot_connect(bot: Bot) -> None:
         scheduler.add_job(
             update_user_card_cache,
             args=(bot,),
-            trigger=CronTrigger(minute="*"),
+            trigger=CronTrigger(second="0/15"),
         ),
     ]
 
