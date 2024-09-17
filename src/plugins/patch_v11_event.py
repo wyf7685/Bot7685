@@ -169,9 +169,10 @@ def patch_poke() -> None:
         for item in raw_info:
             if item["type"] == "qq":
                 user_id = user.pop(0)
+                name = user_card_cache.setdefault((user_id, self.group_id), None)
                 text += (
                     f"<y>{escape_tag(name)}</y>(<c>{user_id}</c>) "
-                    if (name := user_card_cache.get((user_id, self.group_id)))
+                    if name is not None
                     else f"<c>{user_id}</c> "
                 )
             elif item["type"] == "nor":
