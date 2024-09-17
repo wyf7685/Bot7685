@@ -1,5 +1,7 @@
 import asyncio
+from collections.abc import Callable
 import contextlib
+import functools
 from typing import override
 
 from nonebot import get_driver, require
@@ -35,6 +37,7 @@ group_info_cache: dict[int, GroupInfo] = {}
 user_card_cache: dict[tuple[int, int | None], str | None] = {}
 scheduler_job: dict[Bot, list[SchedulerJob]] = {}
 update_retry_id: dict[str, int] = {}
+undo_call: dict[tuple[type, Callable], Callable[[], None]] = {}
 
 
 async def update_group_cache(
@@ -95,9 +98,35 @@ async def update_user_card_cache(bot: Bot) -> None:
         user_card_cache[(user_id, group_id)] = name
 
 
-def patch_private() -> None:
-    @override
-    def get_event_description(self: PrivateMessageEvent) -> str:
+type Patcher = Callable[[], Callable[[], None]]
+type PatcherFunc[**P, R] = Callable[[Callable[P, R]], Callable[P, R]]
+
+
+def patch[**P, R](
+    Class: type, original: Callable[P, R]
+) -> Callable[[PatcherFunc[P, R]], Patcher]:
+    def decorator(patcher_func: PatcherFunc[P, R]) -> Patcher:
+        name = original.__name__
+        patcher = functools.wraps(original)(patcher_func(original))
+
+        def undo() -> None:
+            if undo_call.pop((Class, original), None) is not None:
+                setattr(Class, name, original)
+
+        def patch() -> Callable[[], None]:
+            setattr(Class, name, override(patcher))
+            logger.success(f"patched <g>{Class.__name__}</g>.<y>{name}</y>")
+            return undo
+
+        undo_call[(Class, original)] = undo
+        return patch
+
+    return decorator
+
+
+@patch(PrivateMessageEvent, PrivateMessageEvent.get_event_description)
+def patch_private(_):
+    def patcher(self: PrivateMessageEvent) -> str:
         sender = (
             f"<y>{escape_tag(name)}</y>(<c>{self.user_id}</c>)"
             if (name := (self.sender.card or self.sender.nickname))
@@ -108,13 +137,12 @@ def patch_private() -> None:
             f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
         )
 
-    PrivateMessageEvent.get_event_description = get_event_description
-    logger.success("patched <g>PrivateMessageEvent</g>.<y>get_event_description</y>")
+    return patcher
 
 
-def patch_group() -> None:
-    @override
-    def get_event_description(self: GroupMessageEvent) -> str:
+@patch(GroupMessageEvent, GroupMessageEvent.get_event_description)
+def patch_group(_):
+    def patcher(self: GroupMessageEvent) -> str:
         sender = (
             f"<y>{escape_tag(name)}</y>(<c>{self.user_id}</c>)"
             if (name := (self.sender.card or self.sender.nickname))
@@ -130,28 +158,22 @@ def patch_group() -> None:
             f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
         )
 
-    GroupMessageEvent.get_event_description = get_event_description
-    logger.success("patched <g>GroupMessageEvent</g>.<y>get_event_description</y>")
+    return patcher
 
 
-def patch_input_status() -> None:
-    original = NotifyEvent.get_log_string
-
-    @override
-    def get_log_string(self: NotifyEvent) -> str:
+@patch(NotifyEvent, NotifyEvent.get_log_string)
+def patch_input_status(original: Callable[[NotifyEvent], str]):
+    def patcher(self: NotifyEvent) -> str:
         if self.sub_type == "input_status":
             raise NoLogException("OneBot V11")
         return original(self)
 
-    NotifyEvent.get_log_string = get_log_string
-    logger.success("patched <g>NotifyEvent</g>.<y>get_log_string</y>")
+    return patcher
 
 
-def patch_poke() -> None:
-    original = PokeNotifyEvent.get_event_description
-
-    @override
-    def get_event_description(self: PokeNotifyEvent) -> str:
+@patch(PokeNotifyEvent, PokeNotifyEvent.get_event_description)
+def patch_poke(original: Callable[[PokeNotifyEvent], str]):
+    def patcher(self: PokeNotifyEvent) -> str:
         raw_info: list = self.model_dump().get("raw_info", [])
         if not raw_info:
             return original(self)
@@ -183,8 +205,7 @@ def patch_poke() -> None:
 
         return text
 
-    PokeNotifyEvent.get_event_description = get_event_description
-    logger.success("patched <g>PokeNotifyEvent</g>.<y>get_event_description</y>")
+    return patcher
 
 
 @get_driver().on_startup
