@@ -109,7 +109,7 @@ def patch_private() -> None:
         )
 
     PrivateMessageEvent.get_event_description = get_event_description
-    logger.success("Patched <g>PrivateMessageEvent</g>.<y>get_event_description</y>")
+    logger.success("patched <g>PrivateMessageEvent</g>.<y>get_event_description</y>")
 
 
 def patch_group() -> None:
@@ -131,7 +131,7 @@ def patch_group() -> None:
         )
 
     GroupMessageEvent.get_event_description = get_event_description
-    logger.success("Patched <g>GroupMessageEvent</g>.<y>get_event_description</y>")
+    logger.success("patched <g>GroupMessageEvent</g>.<y>get_event_description</y>")
 
 
 def patch_input_status() -> None:
@@ -144,7 +144,7 @@ def patch_input_status() -> None:
         return original(self)
 
     NotifyEvent.get_log_string = get_log_string
-    logger.success("Patched <g>NotifyEvent</g>.<y>get_log_string</y>")
+    logger.success("patched <g>NotifyEvent</g>.<y>get_log_string</y>")
 
 
 def patch_poke() -> None:
@@ -168,14 +168,19 @@ def patch_poke() -> None:
 
         for item in raw_info:
             if item["type"] == "qq":
-                text += f"<c>{user.pop(0)}</c> "
+                user_id = user.pop(0)
+                text += (
+                    f"<y>{escape_tag(name)}</y>(<c>{user_id}</c>) "
+                    if (name := user_card_cache.get((user_id, self.group_id)))
+                    else f"<c>{user_id}</c> "
+                )
             elif item["type"] == "nor":
                 text += f"{item['txt']} "
 
         return text
 
     PokeNotifyEvent.get_event_description = get_event_description
-    logger.success("Patched <g>PokeNotifyEvent</g>.<y>get_event_description</y>")
+    logger.success("patched <g>PokeNotifyEvent</g>.<y>get_event_description</y>")
 
 
 @get_driver().on_startup
