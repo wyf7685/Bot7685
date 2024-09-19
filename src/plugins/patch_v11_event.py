@@ -1,8 +1,6 @@
 import asyncio
-from collections.abc import Callable
 import contextlib
-import functools
-from typing import override
+from typing import Protocol, override
 
 from nonebot import get_driver, require
 from nonebot.adapters.onebot.utils import highlight_rich_message
@@ -37,7 +35,6 @@ group_info_cache: dict[int, GroupInfo] = {}
 user_card_cache: dict[tuple[int, int | None], str | None] = {}
 scheduler_job: dict[Bot, list[SchedulerJob]] = {}
 update_retry_id: dict[str, int] = {}
-undo_call: dict[tuple[type, Callable], Callable[[], None]] = {}
 
 
 async def update_group_cache(
@@ -98,35 +95,42 @@ async def update_user_card_cache(bot: Bot) -> None:
         user_card_cache[(user_id, group_id)] = name
 
 
-type Patcher = Callable[[], Callable[[], None]]
-type PatcherFunc[**P, R] = Callable[[Callable[P, R]], Callable[P, R]]
+class Patcher[T: type](Protocol):
+    origin: T
+
+    def patch(self): ...
+    def undo(self): ...
 
 
-def patch[**P, R](
-    Class: type, original: Callable[P, R]
-) -> Callable[[PatcherFunc[P, R]], Patcher]:
-    def decorator(patcher_func: PatcherFunc[P, R]) -> Patcher:
-        name = original.__name__
-        patcher = functools.wraps(original)(patcher_func(original))
+def patcher[T: type](cls: T) -> Patcher[T]:
+    super_cls = cls.mro()[1]
+    patched = {
+        name: value
+        for name, value in cls.__dict__.items()
+        if callable(value) and getattr(super_cls, name, None) is not value
+    }
+    origin = {name: getattr(super_cls, name) for name in patched}
 
-        def undo() -> None:
-            if undo_call.pop((Class, original), None) is not None:
-                setattr(Class, name, original)
+    class Patcher:
+        origin = cls
 
-        def patch() -> Callable[[], None]:
-            setattr(Class, name, override(patcher))
-            logger.success(f"patched <g>{Class.__name__}</g>.<y>{name}</y>")
-            return undo
+        def patch(self) -> None:
+            for name, value in patched.items():
+                setattr(super_cls, name, value)
+                logger.success(f"patched <g>{super_cls.__name__}</g>.<y>{name}</y>")
 
-        undo_call[(Class, original)] = undo
-        return patch
+        def undo(self) -> None:
+            for name, value in origin.items():
+                setattr(super_cls, name, value)
+                logger.success(f"unpatched <g>{super_cls.__name__}</g>.<y>{name}</y>")
 
-    return decorator
+    return Patcher()
 
 
-@patch(PrivateMessageEvent, PrivateMessageEvent.get_event_description)
-def patch_private(_):
-    def patcher(self: PrivateMessageEvent) -> str:
+@patcher
+class PatchPrivateMessageEvent(PrivateMessageEvent):
+    @override
+    def get_event_description(self) -> str:
         sender = (
             f"<y>{escape_tag(name)}</y>(<c>{self.user_id}</c>)"
             if (name := (self.sender.card or self.sender.nickname))
@@ -137,12 +141,11 @@ def patch_private(_):
             f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
         )
 
-    return patcher
 
-
-@patch(GroupMessageEvent, GroupMessageEvent.get_event_description)
-def patch_group(_):
-    def patcher(self: GroupMessageEvent) -> str:
+@patcher
+class PatchGroupMessageEvent(GroupMessageEvent):
+    @override
+    def get_event_description(self) -> str:
         sender = (
             f"<y>{escape_tag(name)}</y>(<c>{self.user_id}</c>)"
             if (name := (self.sender.card or self.sender.nickname))
@@ -158,25 +161,23 @@ def patch_group(_):
             f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
         )
 
-    return patcher
 
-
-@patch(NotifyEvent, NotifyEvent.get_log_string)
-def patch_input_status(original: Callable[[NotifyEvent], str]):
-    def patcher(self: NotifyEvent) -> str:
+@patcher
+class PatchNotifyEvent(NotifyEvent):
+    @override
+    def get_log_string(self) -> str:
         if self.sub_type == "input_status":
             raise NoLogException("OneBot V11")
-        return original(self)
-
-    return patcher
+        return super().get_log_string()
 
 
-@patch(PokeNotifyEvent, PokeNotifyEvent.get_event_description)
-def patch_poke(original: Callable[[PokeNotifyEvent], str]):
-    def patcher(self: PokeNotifyEvent) -> str:
+@patcher
+class PatchPokeNotifyEvent(PokeNotifyEvent):
+    @override
+    def get_event_description(self) -> str:
         raw_info: list = self.model_dump().get("raw_info", [])
         if not raw_info:
-            return original(self)
+            return super().get_event_description()
 
         text = ""
         user = [self.user_id, self.target_id]
@@ -205,15 +206,13 @@ def patch_poke(original: Callable[[PokeNotifyEvent], str]):
 
         return text
 
-    return patcher
-
 
 @get_driver().on_startup
 def on_startup() -> None:
-    patch_private()
-    patch_group()
-    patch_input_status()
-    patch_poke()
+    PatchPrivateMessageEvent.patch()
+    PatchGroupMessageEvent.patch()
+    PatchNotifyEvent.patch()
+    PatchPokeNotifyEvent.patch()
 
 
 @get_driver().on_bot_connect
