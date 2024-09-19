@@ -1,6 +1,6 @@
 import asyncio
 import contextlib
-from typing import Protocol, override
+from typing import Protocol, override, cast
 
 from nonebot import get_driver, require
 from nonebot.adapters.onebot.utils import highlight_rich_message
@@ -103,31 +103,26 @@ class Patcher[T: type](Protocol):
 
 
 def patcher[T: type](cls: T) -> Patcher[T]:
-    super_cls = cls.mro()[1]
-    patched = {
-        name: value
-        for name, value in cls.__dict__.items()
-        if callable(value) and getattr(super_cls, name, None) is not value
-    }
-    origin = {name: getattr(super_cls, name) for name in patched}
-
-    class sub(super_cls): ...
-
-    for name in patched:
-        setattr(sub, name, getattr(super_cls, name))
-
     class Patcher:
-        origin = sub
+        def __init__(self) -> None:
+            self._super = _super = cls.mro()[1]
+            self._patched = {
+                name: value
+                for name, value in cls.__dict__.items()
+                if callable(value) and getattr(_super, name, None) is not value
+            }
+            self._origin = {name: getattr(_super, name) for name in self._patched}
+            self.origin = cast("T", type(_super.__name__, (_super,), self._origin))
 
         def patch(self) -> None:
-            for name, value in patched.items():
-                setattr(super_cls, name, value)
-                logger.success(f"patched <g>{super_cls.__name__}</g>.<y>{name}</y>")
+            for name, value in self._patched.items():
+                setattr(self._super, name, value)
+                logger.success(f"patched <g>{self._super.__name__}</g>.<y>{name}</y>")
 
         def undo(self) -> None:
-            for name, value in origin.items():
-                setattr(super_cls, name, value)
-                logger.success(f"unpatched <g>{super_cls.__name__}</g>.<y>{name}</y>")
+            for name, value in self._origin.items():
+                setattr(self._super, name, value)
+                logger.success(f"unpatched <g>{self._super.__name__}</g>.<y>{name}</y>")
 
     return Patcher()
 
@@ -135,13 +130,14 @@ def patcher[T: type](cls: T) -> Patcher[T]:
 @patcher
 class PatchPrivateMessageEvent(PrivateMessageEvent):
     @override
-    def get_event_description(self) -> str:
+    def get_log_string(self) -> str:
         sender = (
             f"<y>{escape_tag(name)}</y>(<c>{self.user_id}</c>)"
             if (name := (self.sender.card or self.sender.nickname))
             else f"<c>{self.user_id}</c>"
         )
         return (
+            f"[{self.get_event_name()}]: "
             f"Message <c>{self.message_id}</c> from {sender} "
             f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
         )
@@ -150,7 +146,7 @@ class PatchPrivateMessageEvent(PrivateMessageEvent):
 @patcher
 class PatchGroupMessageEvent(GroupMessageEvent):
     @override
-    def get_event_description(self) -> str:
+    def get_log_string(self) -> str:
         sender = (
             f"<y>{escape_tag(name)}</y>(<c>{self.user_id}</c>)"
             if (name := (self.sender.card or self.sender.nickname))
@@ -162,6 +158,7 @@ class PatchGroupMessageEvent(GroupMessageEvent):
             else f"<c>{self.group_id}</c>"
         )
         return (
+            f"[{self.get_event_name()}]: "
             f"Message <c>{self.message_id}</c> from [群:{group}]@{sender} "
             f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
         )
@@ -179,12 +176,12 @@ class PatchNotifyEvent(NotifyEvent):
 @patcher
 class PatchPokeNotifyEvent(PokeNotifyEvent):
     @override
-    def get_event_description(self) -> str:
+    def get_log_string(self) -> str:
         raw_info: list = self.model_dump().get("raw_info", [])
         if not raw_info:
-            return PatchPokeNotifyEvent.origin.get_event_description(self)
+            return PatchPokeNotifyEvent.origin.get_log_string(self)
 
-        text = ""
+        text = f"[{self.get_event_name()}]: "
         user = [self.user_id, self.target_id]
 
         if self.group_id is not None:
