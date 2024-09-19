@@ -111,8 +111,13 @@ def patcher[T: type](cls: T) -> Patcher[T]:
     }
     origin = {name: getattr(super_cls, name) for name in patched}
 
+    class sub(super_cls): ...
+
+    for name in patched:
+        setattr(sub, name, getattr(super_cls, name))
+
     class Patcher:
-        origin = cls
+        origin = sub
 
         def patch(self) -> None:
             for name, value in patched.items():
@@ -168,7 +173,7 @@ class PatchNotifyEvent(NotifyEvent):
     def get_log_string(self) -> str:
         if self.sub_type == "input_status":
             raise NoLogException("OneBot V11")
-        return super().get_log_string()
+        return PatchNotifyEvent.origin.get_log_string(self)
 
 
 @patcher
@@ -177,7 +182,7 @@ class PatchPokeNotifyEvent(PokeNotifyEvent):
     def get_event_description(self) -> str:
         raw_info: list = self.model_dump().get("raw_info", [])
         if not raw_info:
-            return super().get_event_description()
+            return PatchPokeNotifyEvent.origin.get_event_description(self)
 
         text = ""
         user = [self.user_id, self.target_id]
