@@ -20,7 +20,6 @@ def _MsgId():
 
 
 def _LotsTarget():
-
     async def lots_target(event: Event, result: AlcMatches) -> str:
         uin = event.get_user_id()
         if target := result.query[At]("target"):

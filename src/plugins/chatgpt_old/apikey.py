@@ -24,7 +24,6 @@ class APIKey(UserString):
 
 
 class APIKeyPool(UserList):
-
     def __init__(self, api_keys: str | list):
         if not api_keys or not (isinstance(api_keys, str | list)):
             raise Exception("请输入正确的 API KEY")

@@ -11,7 +11,6 @@ from .database import user_has_perm
 
 
 def _EventImage():
-
     async def event_image(msg: UniMsg) -> Image:
         if msg.has(Image):
             return msg[Image, 0]
@@ -25,7 +24,6 @@ def _EventImage():
 
 
 def _EventImageRaw():
-
     async def event_image_raw(
         event: Event,
         bot: Bot,

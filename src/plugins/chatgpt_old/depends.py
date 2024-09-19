@@ -48,7 +48,6 @@ def _GroupId():
 
 
 def _MsgAt():
-
     async def msg_at(message: UniMsg) -> str:
         if message.has(At):
             return message[At, 0].target
@@ -58,7 +57,6 @@ def _MsgAt():
 
 
 def _AtTarget():
-
     async def at_target(result: AlcMatches) -> str:
         if target := result.query[At]("target"):
             return target.target

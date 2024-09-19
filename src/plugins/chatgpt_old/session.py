@@ -41,7 +41,6 @@ def get_group_id(event: MessageEvent) -> str:
 
 
 class SessionContainer:
-
     def __init__(self) -> None:
         self.api_keys: APIKeyPool = plugin_config.api_key_pool
         self.base_url: str = plugin_config.openai_api_base
@@ -186,7 +185,6 @@ class SessionContainer:
 
 
 class Session:
-
     def __init__(
         self,
         chat_log: list[dict[str, str]],

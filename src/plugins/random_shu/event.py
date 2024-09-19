@@ -11,7 +11,6 @@ class Like(BaseModel):
 
 
 class GroupMsgEmojiLikeEvent(NoticeEvent):
-
     notice_type: Literal["group_msg_emoji_like"]  # type: ignore
     user_id: int
     group_id: int
