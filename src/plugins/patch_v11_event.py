@@ -99,33 +99,33 @@ class Patcher[T: type](Protocol):
     origin: T
 
     def patch(self): ...
-    def undo(self): ...
+    def restore(self): ...
 
 
 def patcher[T: type](cls: T) -> Patcher[T]:
     class Patcher:
         def __init__(self) -> None:
-            self._super = _super = cls.mro()[1]
-            self._patched = {
+            self.target = target = cls.mro()[1]
+            self.patched = {
                 name: value
                 for name, value in cls.__dict__.items()
-                if callable(value) and getattr(_super, name, None) is not value
+                if callable(value) and getattr(target, name, None) is not value
             }
-            self._origin = {name: getattr(_super, name) for name in self._patched}
-            self.origin = cast("T", type(_super.__name__, (_super,), self._origin))
+            self.original = {name: getattr(target, name) for name in self.patched}
+            self.origin = cast("T", type(target.__name__, (target,), self.original))
 
         def patch(self) -> None:
-            for name, value in self._patched.items():
-                setattr(self._super, name, value)
-                logger.success(f"patched <g>{self._super.__name__}</g>.<y>{name}</y>")
+            for name, value in self.patched.items():
+                setattr(self.target, name, value)
+                logger.success(f"Patch <g>{self.target.__name__}</g>.<y>{name}</y>")
 
-        def undo(self) -> None:
-            for name, value in self._origin.items():
-                setattr(self._super, name, value)
-                logger.success(f"unpatched <g>{self._super.__name__}</g>.<y>{name}</y>")
+        def restore(self) -> None:
+            for name, value in self.original.items():
+                setattr(self.target, name, value)
+                logger.success(f"Restore <g>{self.target.__name__}</g>.<y>{name}</y>")
 
     patcher = Patcher()
-    get_driver().on_startup(lambda: patcher.patch())
+    get_driver().on_startup(patcher.patch)
     return patcher
 
 
