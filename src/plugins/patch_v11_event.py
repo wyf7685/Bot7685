@@ -1,6 +1,6 @@
 import asyncio
 import contextlib
-from typing import Literal, Protocol, cast, override
+from typing import Literal, cast, override
 
 from nonebot import get_driver, require
 from nonebot.adapters.onebot.utils import highlight_rich_message
@@ -97,41 +97,33 @@ async def update_user_card_cache(bot: Bot) -> None:
         user_card_cache[(user_id, group_id)] = name
 
 
-class Patcher[T: type](Protocol):
+class Patcher[T: type]:
     origin: T
 
-    def patch(self): ...
-    def restore(self): ...
+    def __init__(self, cls: T) -> None:
+        self.target = target = cls.mro()[1]
+        self.name = target.__name__
+        self.patched = {
+            name: value
+            for name, value in cls.__dict__.items()
+            if callable(value) and getattr(target, name, ...) is not value
+        }
+        self.original = {name: getattr(target, name) for name in self.patched}
+        self.origin = cast("T", type(self.name, (target,), self.original.copy()))
+        get_driver().on_startup(self.patch)
+
+    def patch(self) -> None:
+        for name, value in self.patched.items():
+            setattr(self.target, name, value)
+            logger.success(f"Patch <g>{self.name}</g>.<y>{name}</y>")
+
+    def restore(self) -> None:
+        for name, value in self.original.items():
+            setattr(self.target, name, value)
+            logger.success(f"Restore <g>{self.name}</g>.<y>{name}</y>")
 
 
-def patcher[T: type](cls: T) -> Patcher[T]:
-    class Patcher:
-        def __init__(self) -> None:
-            self.target = target = cls.mro()[1]
-            self.patched = {
-                name: value
-                for name, value in cls.__dict__.items()
-                if callable(value) and getattr(target, name, None) is not value
-            }
-            self.original = {name: getattr(target, name) for name in self.patched}
-            self.origin = cast("T", type(target.__name__, (target,), self.original))
-
-        def patch(self) -> None:
-            for name, value in self.patched.items():
-                setattr(self.target, name, value)
-                logger.success(f"Patch <g>{self.target.__name__}</g>.<y>{name}</y>")
-
-        def restore(self) -> None:
-            for name, value in self.original.items():
-                setattr(self.target, name, value)
-                logger.success(f"Restore <g>{self.target.__name__}</g>.<y>{name}</y>")
-
-    patcher = Patcher()
-    get_driver().on_startup(patcher.patch)
-    return patcher
-
-
-@patcher
+@Patcher
 class PatchPrivateMessageEvent(PrivateMessageEvent):
     @override
     def get_log_string(self) -> str:
@@ -147,7 +139,7 @@ class PatchPrivateMessageEvent(PrivateMessageEvent):
         )
 
 
-@patcher
+@Patcher
 class PatchGroupMessageEvent(GroupMessageEvent):
     @override
     def get_log_string(self) -> str:
@@ -163,12 +155,12 @@ class PatchGroupMessageEvent(GroupMessageEvent):
         )
         return (
             f"[{self.get_event_name()}]: "
-            f"Message <c>{self.message_id}</c> from [群:{group}]@{sender} "
+            f"Message <c>{self.message_id}</c> from {sender}@[群:{group}] "
             f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
         )
 
 
-@patcher
+@Patcher
 class PatchNotifyEvent(NotifyEvent):
     @override
     def get_log_string(self) -> str:
@@ -177,7 +169,7 @@ class PatchNotifyEvent(NotifyEvent):
         return PatchNotifyEvent.origin.get_log_string(self)
 
 
-@patcher
+@Patcher
 class PatchPokeNotifyEvent(PokeNotifyEvent):
     @override
     def get_log_string(self) -> str:
