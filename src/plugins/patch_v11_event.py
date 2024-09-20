@@ -1,15 +1,17 @@
 import asyncio
 import contextlib
-from typing import Protocol, override, cast
+from typing import Literal, Protocol, cast, override
 
 from nonebot import get_driver, require
 from nonebot.adapters.onebot.utils import highlight_rich_message
-from nonebot.adapters.onebot.v11 import (
-    Bot,
+from nonebot.adapters.onebot.v11 import Adapter, Bot, Message
+from nonebot.adapters.onebot.v11.event import (
+    Event,
     GroupMessageEvent,
     NotifyEvent,
     PokeNotifyEvent,
     PrivateMessageEvent,
+    Sender,
 )
 from nonebot.compat import type_validate_python
 from nonebot.exception import ActionFailed, NoLogException
@@ -209,6 +211,78 @@ class PatchPokeNotifyEvent(PokeNotifyEvent):
                 text += f"{item['txt']} "
 
         return text
+
+
+class MessageSentEvent(Event):
+    post_type: Literal["message_sent"]  # pyright: ignore[reportIncompatibleVariableOverride]
+    message_type: str
+    sub_type: str
+    message_sent_type: str
+    message_id: int
+    user_id: int  # self_id
+    sender: Sender
+    message: Message
+    raw_message: str
+    font: int
+    target_id: int
+
+    @override
+    def get_event_name(self) -> str:
+        return f"{self.post_type}.{self.message_type}.{self.sub_type}"
+
+    @override
+    def get_message(self) -> Message:
+        return self.message
+
+    @override
+    def get_session_id(self) -> str:
+        return f"send_{self.target_id}"
+
+
+class PrivateMessageSentEvent(MessageSentEvent):
+    message_type: Literal["private"]  # pyright: ignore[reportIncompatibleVariableOverride]
+
+    @override
+    def get_log_string(self) -> str:
+        user = (
+            f"<y>{escape_tag(name)}</y>(<c>{self.target_id}</c>)"
+            if (name := user_card_cache.setdefault((self.target_id, None), None))
+            else f"<c>{self.target_id}</c>"
+        )
+        return (
+            f"[{self.get_event_name()}]: "
+            f"Message <c>{self.message_id}</c> to {user} "
+            f"{''.join(highlight_rich_message(repr(self.message.to_rich_text())))}"
+        )
+
+
+class GroupMessageSentEvent(MessageSentEvent):
+    message_type: Literal["group"]  # pyright: ignore[reportIncompatibleVariableOverride]
+    group_id: int
+
+    @override
+    def get_log_string(self) -> str:
+        group = (
+            f"<y>{escape_tag(name.group_name)}</y>(<c>{self.group_id}</c>)"
+            if (name := group_info_cache.get(self.group_id))
+            else f"<c>{self.group_id}</c>"
+        )
+        return (
+            f"[{self.get_event_name()}]: "
+            f"Message <c>{self.message_id}</c> to [群:{group}] "
+            f"{''.join(highlight_rich_message(repr(self.message.to_rich_text())))}"
+        )
+
+    @override
+    def get_session_id(self) -> str:
+        return f"send_group_{self.group_id}_{self.target_id}"
+
+
+@get_driver().on_startup
+async def on_startup() -> None:
+    for e in {MessageSentEvent, PrivateMessageSentEvent, GroupMessageSentEvent}:
+        Adapter.add_custom_model(e)
+        logger.success(f"Register custom model: <g>{e.__name__}</g>")
 
 
 @get_driver().on_bot_connect
