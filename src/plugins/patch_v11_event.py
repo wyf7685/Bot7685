@@ -1,6 +1,6 @@
 import asyncio
 import contextlib
-from typing import Literal, cast, override
+from typing import Any, Literal, cast, override
 
 from nonebot import get_driver, require
 from nonebot.adapters.onebot.utils import highlight_rich_message
@@ -98,6 +98,10 @@ async def update_user_card_cache(bot: Bot) -> None:
 
 
 class Patcher[T: type]:
+    target: type
+    name: str
+    patched: dict[str, Any]
+    original: dict[str, Any]
     origin: T
 
     def __init__(self, cls: T) -> None:
@@ -109,7 +113,7 @@ class Patcher[T: type]:
             if callable(value) and getattr(target, name, ...) is not value
         }
         self.original = {name: getattr(target, name) for name in self.patched}
-        self.origin = cast("T", type(self.name, (target,), self.original.copy()))
+        self.origin = cast(T, type(self.name, (target,), self.original.copy()))
         get_driver().on_startup(self.patch)
 
     def patch(self) -> None:
@@ -292,12 +296,12 @@ async def on_bot_connect(bot: Bot) -> None:
         ),
     ]
 
-    async def update():
+    async def update() -> None:
         await asyncio.sleep(5)
         if bot in scheduler_job:
             await update_group_cache(bot)
 
-    asyncio.create_task(update()).add_done_callback(lambda _: None)
+    asyncio.create_task(update())  # noqa: RUF006
 
 
 @get_driver().on_bot_disconnect
