@@ -124,7 +124,9 @@ def patcher[T: type](cls: T) -> Patcher[T]:
                 setattr(self._super, name, value)
                 logger.success(f"unpatched <g>{self._super.__name__}</g>.<y>{name}</y>")
 
-    return Patcher()
+    patcher = Patcher()
+    get_driver().on_startup(lambda: patcher.patch())
+    return patcher
 
 
 @patcher
@@ -207,14 +209,6 @@ class PatchPokeNotifyEvent(PokeNotifyEvent):
                 text += f"{item['txt']} "
 
         return text
-
-
-@get_driver().on_startup
-def on_startup() -> None:
-    PatchPrivateMessageEvent.patch()
-    PatchGroupMessageEvent.patch()
-    PatchNotifyEvent.patch()
-    PatchPokeNotifyEvent.patch()
 
 
 @get_driver().on_bot_connect
