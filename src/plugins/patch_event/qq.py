@@ -14,11 +14,14 @@ from .patcher import Patcher
 
 
 def highlight_event_type(type_: EventType) -> str:
-    return f"<g>EventType</g>.<e>{type_.value}</e>"
+    return f"<b><g>EventType</g></b>.<b><e>{type_.value}</e></b>"
 
 
-def color_repr(value: Any, color: str, /) -> str:
-    return f"<{color}>{escape_tag(repr(value))}</{color}>"
+def color_repr(value: Any, /, *color: str) -> str:
+    text = escape_tag(repr(value))
+    for c in reversed(color):
+        text = f"<{c}>{text}</{c}>"
+    return text
 
 
 def highlight_list(data: list[Any]) -> str:
@@ -29,7 +32,7 @@ def highlight_list(data: list[Any]) -> str:
         elif isinstance(item, list):
             result.append(highlight_list(item))
         else:
-            result.append(color_repr(item, "e"))
+            result.append(escape_tag(repr(item)))
     return "[" + ", ".join(result) + "]"
 
 
@@ -41,8 +44,8 @@ def highlight_dict(data: dict[str, Any]) -> str:
         elif isinstance(value, list):
             text = highlight_list(value)
         else:
-            text = color_repr(value, "e")
-        result.append(f"{color_repr(key, 'g')}: {text}")
+            text = escape_tag(repr(value))
+        result.append(f"{color_repr(key, 'b', 'c')}: {text}")
     return "{" + ", ".join(result) + "}"
 
 
