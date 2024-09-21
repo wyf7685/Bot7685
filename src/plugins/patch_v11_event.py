@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 from typing import Any, Literal, cast, override
+from collections.abc import Callable
 
 from nonebot import get_driver, require
 from nonebot.adapters.onebot.utils import highlight_rich_message
@@ -100,31 +101,47 @@ async def update_user_card_cache(bot: Bot) -> None:
 class Patcher[T: type]:
     target: type
     name: str
-    patched: dict[str, Any]
-    original: dict[str, Any]
+    patched: dict[str, tuple[Callable[..., Any], Callable[..., Any]]]
     origin: T
 
     def __init__(self, cls: T) -> None:
         self.target = target = cls.mro()[1]
         self.name = target.__name__
         self.patched = {
-            name: value
-            for name, value in cls.__dict__.items()
-            if callable(value) and getattr(target, name, ...) is not value
+            name: (patched, original)
+            for name, patched in cls.__dict__.items()
+            if callable(patched)
+            and (original := getattr(target, name, ...)) is not ...
+            and callable(original)
+            and original is not patched
         }
-        self.original = {name: getattr(target, name) for name in self.patched}
-        self.origin = cast(T, type(self.name, (target,), self.original.copy()))
+        origin = type(
+            self.name,
+            (target,),
+            {name: original for name, (_, original) in self.patched.items()},
+        )
+        self.origin = cast(T, origin)
         get_driver().on_startup(self.patch)
 
     def patch(self) -> None:
-        for name, value in self.patched.items():
-            setattr(self.target, name, value)
-            logger.success(f"Patch <g>{self.name}</g>.<y>{name}</y>")
+        for name, (patched, _) in self.patched.items():
+            colored = f"<g>{self.name}</g>.<y>{name}</y>"
+            try:
+                setattr(self.target, name, patched)
+                logger.success(f"Patch {colored}")
+            except Exception as err:
+                err = f"<r>{escape_tag(repr(err))}</r>"
+                logger.warning(f"Patch {colored} failed: {err}")
 
     def restore(self) -> None:
-        for name, value in self.original.items():
-            setattr(self.target, name, value)
-            logger.success(f"Restore <g>{self.name}</g>.<y>{name}</y>")
+        for name, (_, original) in self.patched.items():
+            colored = f"<g>{self.name}</g>.<y>{name}</y>"
+            try:
+                setattr(self.target, name, original)
+                logger.success(f"Restore {colored}")
+            except Exception as err:
+                err = f"<r>{escape_tag(repr(err))}</r>"
+                logger.warning(f"Restore {colored} failed: {err}")
 
 
 @Patcher
