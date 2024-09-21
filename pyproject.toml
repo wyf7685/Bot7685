@@ -112,7 +112,4 @@ reportShadowedImports = false
 disableBytesTypePromotions = true
 
 [tool.uv]
-dev-dependencies = [
-    "ipykernel>=6.29.5",
-    "meme-generator>=0.1.4",
-]
+dev-dependencies = ["ipykernel>=6.29.5", "meme-generator>=0.1.4"]
