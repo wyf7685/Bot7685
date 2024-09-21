@@ -45,7 +45,7 @@ def highlight_dict(data: dict[str, Any]) -> str:
             text = highlight_list(value)
         else:
             text = escape_tag(repr(value))
-        result.append(f"{color_repr(key, 'b', 'c')}: {text}")
+        result.append(f"{color_repr(key, 'c')}: {text}")
     return "{" + ", ".join(result) + "}"
 
 
@@ -104,6 +104,6 @@ class PatchReadyEvent(ReadyEvent):
         return (
             f"[{highlight_event_type(self.__type__)}] "
             f"Bot {name} ready: "
-            f"session={color_repr(self.session_id, 'e')}, "
-            f"shard={color_repr(self.shard, 'e')}"
+            f"session={color_repr(self.session_id,'b','e')}, "
+            f"shard={color_repr(self.shard,'b','e')}"
         )
