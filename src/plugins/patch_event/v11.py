@@ -1,7 +1,6 @@
 import asyncio
 import contextlib
-from typing import Any, Literal, cast, override
-from collections.abc import Callable
+from typing import Literal, override
 
 from nonebot import get_driver, require
 from nonebot.adapters.onebot.utils import highlight_rich_message
@@ -24,6 +23,8 @@ require("nonebot_plugin_apscheduler")
 from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
+
+from .patcher import Patcher
 
 
 class GroupInfo(BaseModel):
@@ -76,7 +77,7 @@ async def update_group_cache(
             logger.warning("<y>30</y>s 后重试...")
         return
 
-    logger.success(f"更新 {bot} 的 <y>{len(update)}</y> 条群聊信息缓存")
+    logger.debug(f"更新 {bot} 的 <y>{len(update)}</y> 条群聊信息缓存")
     group_info_cache.update(update)
     del update_retry_id[key]
 
@@ -96,52 +97,6 @@ async def update_user_card_cache(bot: Bot) -> None:
                 data = await bot.get_stranger_info(user_id=user_id)
                 name = data.get("nickname") or str(user_id)
         user_card_cache[(user_id, group_id)] = name
-
-
-class Patcher[T: type]:
-    target: type
-    name: str
-    patched: dict[str, tuple[Callable[..., Any], Callable[..., Any]]]
-    origin: T
-
-    def __init__(self, cls: T) -> None:
-        self.target = target = cls.mro()[1]
-        self.name = target.__name__
-        self.patched = {
-            name: (patched, original)
-            for name, patched in cls.__dict__.items()
-            if callable(patched)
-            and (original := getattr(target, name, ...)) is not ...
-            and callable(original)
-            and original is not patched
-        }
-        origin = type(
-            self.name,
-            (target,),
-            {name: original for name, (_, original) in self.patched.items()},
-        )
-        self.origin = cast(T, origin)
-        get_driver().on_startup(self.patch)
-
-    def patch(self) -> None:
-        for name, (patched, _) in self.patched.items():
-            colored = f"<g>{self.name}</g>.<y>{name}</y>"
-            try:
-                setattr(self.target, name, patched)
-                logger.success(f"Patch {colored}")
-            except Exception as err:
-                err = f"<r>{escape_tag(repr(err))}</r>"
-                logger.warning(f"Patch {colored} failed: {err}")
-
-    def restore(self) -> None:
-        for name, (_, original) in self.patched.items():
-            colored = f"<g>{self.name}</g>.<y>{name}</y>"
-            try:
-                setattr(self.target, name, original)
-                logger.success(f"Restore {colored}")
-            except Exception as err:
-                err = f"<r>{escape_tag(repr(err))}</r>"
-                logger.warning(f"Restore {colored} failed: {err}")
 
 
 @Patcher
@@ -176,7 +131,7 @@ class PatchGroupMessageEvent(GroupMessageEvent):
         )
         return (
             f"[{self.get_event_name()}]: "
-            f"Message <c>{self.message_id}</c> from {sender}@[群:{group}] "
+            f"Message <c>{self.message_id}</c> from {sender}@[Group:{group}] "
             f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
         )
 
@@ -282,7 +237,7 @@ class GroupMessageSentEvent(MessageSentEvent):
         )
         return (
             f"[{self.get_event_name()}]: "
-            f"Message <c>{self.message_id}</c> to [群:{group}] "
+            f"Message <c>{self.message_id}</c> to [Group:{group}] "
             f"{''.join(highlight_rich_message(repr(self.message.to_rich_text())))}"
         )
 
@@ -295,7 +250,7 @@ class GroupMessageSentEvent(MessageSentEvent):
 async def on_startup() -> None:
     for e in {MessageSentEvent, PrivateMessageSentEvent, GroupMessageSentEvent}:
         Adapter.add_custom_model(e)
-        logger.success(f"Register custom model: <g>{e.__name__}</g>")
+        logger.success(f"Register v11 model: <g>{e.__name__}</g>")
 
 
 @get_driver().on_bot_connect
