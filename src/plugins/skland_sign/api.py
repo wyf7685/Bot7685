@@ -7,7 +7,7 @@ import json
 import time
 import urllib.parse
 from copy import deepcopy
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 import httpx
 from nonebot import logger
@@ -28,6 +28,9 @@ from .const import (
 )
 from .database import ArkAccount, ArkAccountDAO
 from .model import ArkUserInfo, BindInfo, DailySignAward, DailySignResult
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 logger = logger.opt(colors=True)
 
@@ -93,7 +96,12 @@ class SklandAPI:
     async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, exc_type, exc_value, traceback) -> tuple[Any, Any, Any]:  # noqa: ANN001
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> tuple[Any, Any, Any]:
         await self.destroy()
         return exc_type, exc_value, traceback
 
