@@ -1,3 +1,5 @@
+# ruff: noqa
+
 class Error(Exception):
     def __init__(self, ErrorInfo):
         self.ErrorInfo = ErrorInfo

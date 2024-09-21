@@ -15,7 +15,7 @@ lots = on_alconna(Alconna("御神签", Args["target?", At]))
 
 
 @lots.handle()
-async def _(bot: Bot, target: LotsTarget, msgid: MsgId):
+async def _(bot: Bot, target: LotsTarget, msgid: MsgId) -> None:
     msg, emoji = get_lots_msg(target)
     await UniMessage.text(msg).send(reply_to=True)
 

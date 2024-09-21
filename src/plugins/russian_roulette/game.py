@@ -31,12 +31,12 @@ class Game:
         self.last_operation = datetime.now()
         return result
 
-    def stop(self):
+    def stop(self) -> None:
         self._cleanup_task.cancel()
         if self.group_id in running_game and running_game[self.group_id] is self:
             del running_game[self.group_id]
 
-    async def _cleanup(self):
+    async def _cleanup(self) -> None:
         while (  # noqa: ASYNC110
             datetime.now() - self.last_operation <= self.expire_time
         ):

@@ -4,7 +4,7 @@ DATA_DIR = get_plugin_data_dir()
 DATABASE_URL = f"sqlite+aiosqlite:///{DATA_DIR / 'data.db'}"
 
 
-URL_TOKEN_PASSWORD = "https://as.hypergryph.com/user/auth/v1/token_by_phone_password"
+URL_TOKEN_PASSWORD = "https://as.hypergryph.com/user/auth/v1/token_by_phone_password"  # noqa: S105
 URL_GRANT_CODE = "https://as.hypergryph.com/user/oauth2/v2/grant"
 URL_GEN_CRED = "https://zonai.skland.com/api/v1/user/auth/generate_cred_by_code"
 URL_SIGN = "https://zonai.skland.com/api/v1/game/attendance"

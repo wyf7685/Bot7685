@@ -1,3 +1,5 @@
+from typing import NoReturn
+
 from nonebot import on_fullmatch
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, MessageSegment
 from nonebot.rule import to_me
@@ -11,7 +13,7 @@ game_stop = on_fullmatch("游戏结束", rule=to_me() & GameRunning)
 
 
 @game_start.handle()
-async def _(bot: Bot, event: GroupMessageEvent):
+async def _(bot: Bot, event: GroupMessageEvent) -> NoReturn:
     game = Game(bot, event.group_id)
     running_game[event.group_id] = game
     msg = MessageSegment.reply(event.message_id) + (
@@ -23,7 +25,7 @@ async def _(bot: Bot, event: GroupMessageEvent):
 
 
 @game_shoot.handle()
-async def _(event: GroupMessageEvent):
+async def _(event: GroupMessageEvent) -> None:
     game = running_game[event.group_id]
     result = game.shoot()
     msg = (
@@ -40,6 +42,6 @@ async def _(event: GroupMessageEvent):
 
 
 @game_stop.handle()
-async def _(event: GroupMessageEvent):
+async def _(event: GroupMessageEvent) -> None:
     running_game[event.group_id].stop()
     await game_stop.send("已中止当前群俄罗斯轮盘")

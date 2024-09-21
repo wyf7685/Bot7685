@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 from nonebot.adapters import Event
 from nonebot.params import Depends
@@ -6,20 +6,21 @@ from nonebot_plugin_alconna import AlcMatches
 from nonebot_plugin_alconna.uniseg import At
 
 
-def _MsgId():
+def _msg_id() -> Any:
     try:
         from nonebot.adapters.onebot.v11 import MessageEvent
     except ImportError:
-        MessageEvent = None
+        MessageEvent = None  # noqa: N806
 
     def msg_id(event: Event) -> int | None:
         if MessageEvent is not None and isinstance(event, MessageEvent):
             return event.message_id
+        return None
 
     return Depends(msg_id)
 
 
-def _LotsTarget():
+def _lots_target() -> Any:
     async def lots_target(event: Event, result: AlcMatches) -> str:
         uin = event.get_user_id()
         if target := result.query[At]("target"):
@@ -29,5 +30,5 @@ def _LotsTarget():
     return Depends(lots_target)
 
 
-MsgId = Annotated[int | None, _MsgId()]
-LotsTarget = Annotated[str, _LotsTarget()]
+MsgId = Annotated[int | None, _msg_id()]
+LotsTarget = Annotated[str, _lots_target()]

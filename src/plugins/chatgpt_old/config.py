@@ -1,3 +1,5 @@
+# ruff: noqa
+
 from pathlib import Path
 
 from nonebot import get_plugin_config

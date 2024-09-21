@@ -1,4 +1,5 @@
 import random
+from io import BytesIO
 from pathlib import Path
 
 from meme_generator import MemeArgsModel, MemeArgsType, ParserOption, add_meme
@@ -10,12 +11,18 @@ from pydantic import Field
 img_dir = Path(__file__).parent / "images"
 total_num = len(list(img_dir.iterdir()))
 
-help = f"图片编号，范围为 1~{total_num}"
-parser_options = [ParserOption(names=["-n", "--number"], default=0, help_text=help)]
+help_text = f"图片编号，范围为 1~{total_num}"
+parser_options = [
+    ParserOption(
+        names=["-n", "--number"],
+        default=0,
+        help_text=help_text,
+    )
+]
 
 
 class Model(MemeArgsModel):
-    number: int = Field(0, description=help)
+    number: int = Field(0, description=help_text)
 
 
 params: list[tuple[PosTypeInt, SizeType, PointsType]] = [
@@ -29,12 +36,13 @@ params: list[tuple[PosTypeInt, SizeType, PointsType]] = [
 ]
 
 
-def goldenglow_holdsign(images: list[BuildImage], texts: list[str], args: Model):
+def goldenglow_holdsign(
+    _: list[BuildImage],
+    texts: list[str],
+    args: Model,
+) -> BytesIO:
     text = texts[0]
-    if 1 <= args.number <= total_num:
-        num = args.number
-    else:
-        num = random.randint(1, total_num)
+    num = args.number if 1 <= args.number <= total_num else random.randint(1, total_num)
 
     loc, (width, height), points = params[num - 1]
     frame = BuildImage.open(img_dir / f"{num}.png")
@@ -60,7 +68,7 @@ def goldenglow_holdsign(images: list[BuildImage], texts: list[str], args: Model)
 
 add_meme(
     "goldenglow_holdsign",
-    goldenglow_holdsign,  # type: ignore
+    goldenglow_holdsign,  # pyright:ignore[reportArgumentType]
     min_texts=1,
     max_texts=1,
     default_texts=["YOU!"],

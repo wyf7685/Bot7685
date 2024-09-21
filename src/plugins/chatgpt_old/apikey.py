@@ -1,3 +1,5 @@
+# ruff: noqa
+
 import random
 from collections import UserList, UserString
 

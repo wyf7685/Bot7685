@@ -1,3 +1,5 @@
+# ruff: noqa: N801, N815
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field

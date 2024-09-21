@@ -1,3 +1,5 @@
+# ruff: noqa
+
 from typing import Annotated
 
 from nonebot.adapters.onebot.v11 import (

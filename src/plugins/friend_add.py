@@ -13,7 +13,10 @@ from nonebot_plugin_userinfo import EventUserInfo, UserInfo
 
 
 @on_type(FriendRequestEvent).handle()
-async def _(event: FriendRequestEvent, info: Annotated[UserInfo, EventUserInfo()]):
+async def _(
+    event: FriendRequestEvent,
+    info: Annotated[UserInfo, EventUserInfo()],
+) -> None:
     message = UniMessage.text(f"收到好友申请: {info.user_name}({info.user_id})\n")
     if avatar := info.user_avatar:
         message.image(raw=await avatar.get_image())
@@ -27,7 +30,7 @@ async def _(event: FriendRequestEvent, info: Annotated[UserInfo, EventUserInfo()
     if not receipts:
         return
 
-    async def rule(event: PrivateMessageEvent, msg: UniMsg):
+    async def rule(event: PrivateMessageEvent, msg: UniMsg) -> bool:
         return (
             (receipt := receipts.get(event.get_user_id())) is not None
             and (reply := receipt.get_reply()) is not None
@@ -40,7 +43,7 @@ async def _(event: FriendRequestEvent, info: Annotated[UserInfo, EventUserInfo()
     task = asyncio.create_task(asyncio.sleep(10 * 60))
 
     @matcher.handle()
-    async def _(bot: Bot, msg: UniMsg):
+    async def _(bot: Bot, msg: UniMsg) -> None:
         await (
             event.approve
             if (text := msg.extract_plain_text()) == "接受"

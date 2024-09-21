@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
@@ -10,20 +10,20 @@ from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, imag
 from .database import user_has_perm
 
 
-def _EventImage():
+def _event_image() -> Any:
     async def event_image(msg: UniMsg) -> Image:
         if msg.has(Image):
             return msg[Image, 0]
-        elif msg.has(Reply):
+        if msg.has(Reply):
             reply_msg = msg[Reply, 0].msg
             if isinstance(reply_msg, Message):
                 return await event_image(await UniMessage.generate(message=reply_msg))
-        Matcher.skip()
+        Matcher.skip()  # noqa: RET503
 
     return Depends(event_image)
 
 
-def _EventImageRaw():
+def _event_image_raw() -> Any:
     async def event_image_raw(
         event: Event,
         bot: Bot,
@@ -32,15 +32,15 @@ def _EventImageRaw():
     ) -> bytes:
         if isinstance(raw := await image_fetch(event, bot, state, image), bytes):
             return raw
-        Matcher.skip()
+        Matcher.skip()  # noqa: RET503
 
     return Depends(event_image_raw)
 
 
-async def _allow_upload(event: Event):
+async def _allow_upload(event: Event) -> bool:
     return await user_has_perm(event.get_user_id())
 
 
-EventImage = Annotated[Image, _EventImage()]
-EventImageRaw = Annotated[bytes, _EventImageRaw()]
+EventImage = Annotated[Image, _event_image()]
+EventImageRaw = Annotated[bytes, _event_image_raw()]
 ALLOW_UPLOAD = SUPERUSER | _allow_upload

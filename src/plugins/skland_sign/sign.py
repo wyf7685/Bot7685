@@ -54,9 +54,8 @@ async def sign_all() -> None:
         account = que.get()
         try:
             api = await SklandAPI.from_account(account)
-        except Exception as e:
+        except Exception:
             logger.exception(f"加载森空岛账号 <c>{account.uid}</c> 错误")
-            logger.exception(f"<r>{e.__class__.__name__}: {e}</r>")
             fail_count[account] += 1
             que.put(account)
             continue
@@ -71,9 +70,8 @@ async def sign_all() -> None:
         try:
             await sign(api)
             await api.destroy()
-        except Exception as e:
+        except Exception:
             logger.exception(f"森空岛账号 <c>{account.uid}</c> 签到出错")
-            logger.exception(f"<r>{e.__class__.__name__}: {e}</r>")
             fail_count[account] += 1
             que.put(account)
             continue

@@ -1,3 +1,5 @@
+# ruff: noqa
+
 import json
 import re
 from json import JSONDecodeError

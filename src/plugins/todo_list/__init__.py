@@ -1,3 +1,5 @@
+from typing import NoReturn
+
 from nonebot import require
 from nonebot.params import Depends
 from nonebot.typing import T_State
@@ -45,7 +47,7 @@ alc = Alconna(
 todo = on_alconna(alc, use_cmd_start=True)
 
 
-async def send_todo(user_todo: TodoList):
+async def send_todo(user_todo: TodoList) -> NoReturn:
     msg = (
         UniMessage.image(raw=await user_todo.render())
         if user_todo.todo
@@ -55,11 +57,11 @@ async def send_todo(user_todo: TodoList):
 
 
 @todo.assign("list")
-async def handle_todo_list(user_todo: UserTodo):
+async def handle_todo_list(user_todo: UserTodo) -> NoReturn:
     await send_todo(user_todo)
 
 
-async def _todo_add_content(content: Match[str], state: T_State):
+async def _todo_add_content(content: Match[str], state: T_State) -> None:
     if content.available:
         state["content"] = content.result
         return
@@ -71,36 +73,36 @@ async def _todo_add_content(content: Match[str], state: T_State):
 
 
 @todo.assign("add", parameterless=[Depends(_todo_add_content)])
-async def handle_todo_add(user_todo: UserTodo, state: T_State):
+async def handle_todo_add(user_todo: UserTodo, state: T_State) -> None:
     state["todo"] = await user_todo.add(state["content"])
 
 
 @todo.assign("add.pin")
-async def handle_todo_add_pin(user_todo: UserTodo, state: T_State):
+async def handle_todo_add_pin(user_todo: UserTodo, state: T_State) -> None:
     todo: Todo = state["todo"]
     todo.pinned = True
     await user_todo.save()
 
 
 @todo.assign("add")
-async def handle_todo_add_send(user_todo: UserTodo):
+async def handle_todo_add_send(user_todo: UserTodo) -> NoReturn:
     await send_todo(user_todo)
 
 
 @todo.assign("remove")
-async def handle_todo_remove(user_todo: UserTodo, index: Match[int]):
+async def handle_todo_remove(user_todo: UserTodo, index: Match[int]) -> NoReturn:
     await user_todo.remove(index.result)
     await send_todo(user_todo)
 
 
 @todo.assign("get")
-async def handle_todo_get(user_todo: UserTodo, index: Match[int]):
+async def handle_todo_get(user_todo: UserTodo, index: Match[int]) -> NoReturn:
     todo = await user_todo.get(index.result)
     await UniMessage.text(todo.content).finish()
 
 
 @todo.assign("set")
-async def handle_todo_set(user_todo: UserTodo, index: Match[int]):
+async def handle_todo_set(user_todo: UserTodo, index: Match[int]) -> NoReturn:
     todo = await user_todo.get(index.result)
     await UniMessage.text(f"当前选中的 todo:\n{todo.content}").send()
     text = await prompt("请输入新的 todo 内容")
@@ -112,31 +114,31 @@ async def handle_todo_set(user_todo: UserTodo, index: Match[int]):
 
 
 @todo.assign("check")
-async def handle_todo_check(user_todo: UserTodo, index: Match[int]):
+async def handle_todo_check(user_todo: UserTodo, index: Match[int]) -> NoReturn:
     await user_todo.check(index.result)
     await send_todo(user_todo)
 
 
 @todo.assign("uncheck")
-async def handle_todo_uncheck(user_todo: UserTodo, index: Match[int]):
+async def handle_todo_uncheck(user_todo: UserTodo, index: Match[int]) -> NoReturn:
     await user_todo.uncheck(index.result)
     await send_todo(user_todo)
 
 
 @todo.assign("pin")
-async def handle_todo_pin(user_todo: UserTodo, index: Match[int]):
+async def handle_todo_pin(user_todo: UserTodo, index: Match[int]) -> NoReturn:
     await user_todo.pin(index.result)
     await send_todo(user_todo)
 
 
 @todo.assign("unpin")
-async def handle_todo_unpin(user_todo: UserTodo, index: Match[int]):
+async def handle_todo_unpin(user_todo: UserTodo, index: Match[int]) -> NoReturn:
     await user_todo.unpin(index.result)
     await send_todo(user_todo)
 
 
 @todo.assign("purge")
-async def handle_todo_purge(user_todo: UserTodo):
+async def handle_todo_purge(user_todo: UserTodo) -> NoReturn:
     prompt = await (
         UniMessage.text("将要删除的待办事项:\n")
         .image(raw=await user_todo.render(user_todo.checked()))

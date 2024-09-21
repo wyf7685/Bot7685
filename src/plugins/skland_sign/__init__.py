@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 from nonebot import require
 from nonebot.params import Depends
@@ -90,13 +90,14 @@ async def _(user: User, phone: Match[str], password: Match[str]) -> None:
 
     name = await api.get_doctor_name(full=True)
 
-    if account := await ArkAccountDAO().load_account_by_uid(api.uid):
-        if account.user_id != user.id:
-            await api.destroy()
-            another = await get_user_by_id(account.user_id)
-            await UniMessage(
-                f"账号 {name} 已经被 {another.name}({another.id}) 绑定了"
-            ).finish(reply_to=True)
+    if (
+        account := await ArkAccountDAO().load_account_by_uid(api.uid)
+    ) and account.user_id != user.id:
+        await api.destroy()
+        another = await get_user_by_id(account.user_id)
+        await UniMessage(
+            f"账号 {name} 已经被 {another.name}({another.id}) 绑定了"
+        ).finish(reply_to=True)
 
     await api.save_account()
     await api.destroy()
@@ -104,15 +105,14 @@ async def _(user: User, phone: Match[str], password: Match[str]) -> None:
 
 
 async def get_account(user: User) -> ArkAccount | None:
-    if accounts := await ArkAccountDAO().get_accounts(user.id):
-        return accounts[0]
+    return next(iter(await ArkAccountDAO().get_accounts(user.id)), None)
 
 
 UserAccount = Annotated[ArkAccount | None, Depends(get_account)]
 
 
 @skland.assign("revoke")
-async def _(account: UserAccount):
+async def _(account: UserAccount) -> NoReturn:
     if not account:
         await UniMessage("你还没有绑定过森空岛账号").finish()
 
@@ -127,7 +127,7 @@ async def _(account: UserAccount):
 
 
 @skland.assign("sign")
-async def _(account: UserAccount):
+async def _(account: UserAccount) -> NoReturn:
     if not account:
         await UniMessage("你还没有绑定过森空岛账号").finish()
 

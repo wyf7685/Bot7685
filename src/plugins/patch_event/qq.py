@@ -1,6 +1,5 @@
 from typing import Any, override
 
-from nonebot.adapters.qq.message import Message
 from nonebot.adapters.qq.event import (
     C2CMessageCreateEvent,
     Event,
@@ -8,6 +7,7 @@ from nonebot.adapters.qq.event import (
     GroupAtMessageCreateEvent,
     ReadyEvent,
 )
+from nonebot.adapters.qq.message import Message
 from nonebot.utils import escape_tag
 
 from .patcher import Patcher
@@ -50,14 +50,16 @@ def highlight_dict(data: dict[str, Any]) -> str:
 
 
 def highlight_message(message: Message) -> str:
-    result = []
-    for seg in message:
-        result.append(
+    return (
+        "["
+        + ", ".join(
             f"<g>{escape_tag(seg.__class__.__name__)}</g>"
             f"(type={color_repr(seg.type, 'y')}, "
             f"data={highlight_dict(seg.data)})"
+            for seg in message
         )
-    return "[" + ", ".join(result) + "]"
+        + "]"
+    )
 
 
 @Patcher

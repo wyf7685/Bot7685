@@ -66,3 +66,4 @@ class ArkAccountDAO:
             statement = select(ArkAccount).where(ArkAccount.uid == uid)
             result = await self.session.execute(statement)
             return result.scalars().one()
+        return None

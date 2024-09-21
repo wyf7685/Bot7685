@@ -49,11 +49,11 @@ class SklandAPI:
         self.token = token
 
         if await self.get_code_by_token(self.token) is None:
-            return
+            return None
         if await self.get_cred_by_code(self.code) is None:
-            return
+            return None
         if (uid := await self.get_uid()) is None:
-            return
+            return None
         self.uid = uid
         return self
 
@@ -72,11 +72,11 @@ class SklandAPI:
 
         if not resp.is_success:
             logger.warning(f"获取 token({phone}) 失败: {resp} - {resp.text}")
-            return
+            return None
 
         res = resp.json()
         if res["status"] != 0:
-            return
+            return None
 
         return await cls.from_token(user_id, res["data"]["token"])
 
@@ -87,13 +87,13 @@ class SklandAPI:
         if not self.client.is_closed:
             await self.client.aclose()
 
-    def __del__(self, *_) -> None:
+    def __del__(self, *_) -> None:  # noqa: ANN002
         asyncio.create_task(self.destroy())  # noqa: RUF006
 
     async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, exc_type, exc_value, traceback):
+    async def __aexit__(self, exc_type, exc_value, traceback) -> tuple[Any, Any, Any]:  # noqa: ANN001
         await self.destroy()
         return exc_type, exc_value, traceback
 
@@ -109,7 +109,7 @@ class SklandAPI:
 
         key = self.sign_token.encode("utf-8")
         sig = hmac.new(key, s.encode("utf-8"), hashlib.sha256).hexdigest()
-        md5 = hashlib.md5(sig.encode("utf-8")).hexdigest()
+        md5 = hashlib.md5(sig.encode("utf-8")).hexdigest()  # noqa: S324
         headers["sign"] = md5
         logger.debug(f"签名md5: <y>{md5}</y>")
 
@@ -132,7 +132,7 @@ class SklandAPI:
 
         if not resp.is_success:
             logger.warning(f"获取 code 失败: {resp} - {resp.text}")
-            return
+            return None
 
         self.code = resp.json()["data"]["code"]
         return self.code
@@ -144,7 +144,7 @@ class SklandAPI:
 
         if not resp.is_success:
             logger.warning(f"获取 cred 失败: {resp} - {resp.text}")
-            return
+            return None
 
         res = resp.json()
         self.cred = res["data"]["cred"]
@@ -160,17 +160,18 @@ class SklandAPI:
 
         if not resp.is_success:
             logger.warning(f"获取用户绑定信息失败: {resp.text}")
-            return
+            return None
 
         j = resp.json()
         if j["code"] != 0:
             logger.warning(f"获取用户绑定信息失败: {j['message']}")
-            return
+            return None
 
         if data := j["data"]["list"]:
             return [
                 BindInfo.model_validate(i) for i in data if i["appCode"] == "arknights"
             ]
+        return None
 
     async def get_user_info(self) -> ArkUserInfo | None:
         headers = deepcopy(self.client.headers)
@@ -179,7 +180,7 @@ class SklandAPI:
 
         if not resp.is_success:
             logger.warning(f"获取用户信息失败: {resp.text}")
-            return
+            return None
 
         return ArkUserInfo.model_validate((resp.json())["data"])
 
@@ -189,14 +190,14 @@ class SklandAPI:
                 return uid
             if items := bind[0].bindingList:
                 return items[0].uid
+        return None
 
-    async def get_doctor_name(self, full: bool = False) -> str:
-        if bind := await self.get_bind_info():
-            if items := bind[0].bindingList:
-                name = items[0].nickName
-                if not full:
-                    name = name.partition("#")[0]
-                return name
+    async def get_doctor_name(self, *, full: bool = False) -> str:
+        if (bind := await self.get_bind_info()) and (items := bind[0].bindingList):
+            name = items[0].nickName
+            if not full:
+                name = name.partition("#")[0]
+            return name
         return "<获取失败>"
 
     async def get_phone(self) -> str | None:
@@ -205,6 +206,7 @@ class SklandAPI:
 
         if resp.is_success:
             return resp.json()["data"]["phone"]
+        return None
 
     async def get_sign_data(self) -> dict[str, Any] | None:
         data = {"gameId": 1, "uid": self.uid}
@@ -216,10 +218,10 @@ class SklandAPI:
             res = resp.json()
         except Exception as err:
             logger.warning(f"json 序列化 sign 返回值时出现错误: {err}")
-            return
+            return None
 
         if res["code"] != 0:
-            return
+            return None
 
         return res["data"]
 
@@ -253,10 +255,10 @@ class SklandAPI:
             ],
         )
 
-    async def exchange_code(self, giftCode: str):
+    async def exchange_code(self, gift_code: str) -> bool:
         data = {
             "token": self.token,
-            "giftCode": giftCode,
+            "giftCode": gift_code,
             "channelId": 1,
         }
         headers = deepcopy(HEADERS_EXCHANGE_CODE)

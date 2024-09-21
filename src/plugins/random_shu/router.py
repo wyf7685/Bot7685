@@ -21,9 +21,9 @@ async def handle(request: Request) -> Response:
     )
 
 
-def setup_router():
+def setup_router() -> URL:
     driver = get_driver()
-    assert isinstance(driver, ASGIMixin)
+    assert isinstance(driver, ASGIMixin)  # noqa: S101
     driver.setup_http_server(
         HTTPServerSetup(
             path=URL(router_path),

@@ -7,7 +7,7 @@ disabled_group: set[int] = {429379849}
 
 
 @run_preprocessor
-async def hook_memes(event: GroupMessageEvent, matcher: Matcher):
+async def hook_memes(event: GroupMessageEvent, matcher: Matcher) -> None:
     if (
         matcher.plugin_name == "nonebot_plugin_memes_api"
         and event.group_id in disabled_group

@@ -31,7 +31,7 @@ async def get_url(api: str) -> str:
     return resp.json()["imageUrl"]
 
 
-async def read60s():
+async def read60s() -> None:
     for api in api_url:
         with contextlib.suppress(Exception):
             url = await get_url(api)

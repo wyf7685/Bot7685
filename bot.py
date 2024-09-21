@@ -28,7 +28,7 @@ def custom_load() -> None:
 
     for item in nonebot_data.get("adapters", []):
         module = importlib.import_module(item["module_name"])
-        nonebot.get_driver().register_adapter(getattr(module, "Adapter"))
+        nonebot.get_driver().register_adapter(module.Adapter)
 
     plugins: list[str] = nonebot_data.get("plugins", [])
     for p in pathlib.Path("src/dev").iterdir():

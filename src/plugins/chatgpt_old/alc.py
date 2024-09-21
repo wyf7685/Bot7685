@@ -1,3 +1,5 @@
+# ruff: noqa
+
 from typing import Literal
 
 import nonebot_plugin_waiter as waiter

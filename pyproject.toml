@@ -81,27 +81,70 @@ extra_standard_library = ["typing_extensions"]
 line-length = 88
 target-version = "py312"
 
+
 [tool.ruff.lint]
 select = [
     "F",     # Pyflakes
     "W",     # pycodestyle warnings
     "E",     # pycodestyle errors
     "UP",    # pyupgrade
+    "RUF",   # Ruff-specific rules
+    "ERA",   # eradicate
+    "FLY",   # flynt
+    "FURB",  # refurb
+    "I",     # isort
+    "N",     # PEP8-naming
+    "PD",    # pandas-vet
+    "PERF",  # Perflint
+    "PGH",   # pygrep-hooks
+    "TRY",   # tryceratops
     "ASYNC", # flake8-async
+    "ANN",   # flake8-annotations
+    "S",     # flake8-bandit
+    "FBT",   # flake8-boolean-trap
+    "A",     # flake8-builtins
+    "B",     # flake8-bugbear
+    "COM",   # flake8-commas
     "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
     "T10",   # flake8-debugger
+    "EM",    # flake8-errmsg
+    "FA",    # flake8-future-annotations
+    "ISC",   # flake8-implicit-str-concat
+    "ICN",   # flake8-import-conventions
+    "PIE",   # flake8-pie
     "T20",   # flake8-print
     "PYI",   # flake8-pyi
     "PT",    # flake8-pytest-style
     "Q",     # flake8-quotes
-    "RUF",   # Ruff-specific rules
+    "RSE",   # flake8-raise
+    "RET",   # flake8-return
+    "SLF",   # flake8-self
+    "SIM",   # flake8-simplify
+    "SLOT",  # flake8-slots
+    "TID",   # flake8-tidy-imports
+    "ARG",   # flake8-unused-arguments
+    "PTH",   # flake8-use-pathlib
+    "TCH",   # flake8-type-checking
+    "YTT",   # flake8-2020
 ]
 ignore = [
     "E402",   # module-import-not-at-top-of-file
-    "UP037",  # quoted-annotation
     "RUF001", # ambiguous-unicode-character-string
     "RUF002", # ambiguous-unicode-character-docstring
     "RUF003", # ambiguous-unicode-character-comment
+    "ANN101", # missing-type-self
+    "ANN102", # missing-type-cls
+    "ANN401", # any-type
+    "TRY003", # raise-vanilla-args
+    "EM102",  # f-string-in-exception
+    "COM812", # missing-trailing-comma
+    "ERA001", # commented-out-code
+    "EM101",  # raw-string-in-exception
+    "TID252", # relative-imports
+    "ISC001", # single-line-implicit-string-concatenation
+    "DTZ005", # call-datetime-now-without-tzinfo
+    "S311",   # suspicious-non-cryptographic-random-usage
 ]
 
 [tool.pyright]

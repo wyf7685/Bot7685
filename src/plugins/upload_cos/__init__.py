@@ -33,8 +33,8 @@ logger = logger.opt(colors=True)
 
 
 @upload_cos.handle()
-async def _(event: Event, raw: EventImageRaw):
-    digest = hashlib.md5(raw).hexdigest()
+async def _(event: Event, raw: EventImageRaw) -> None:
+    digest = hashlib.md5(raw).hexdigest()  # noqa: S324
     key = f"{digest[:2]}/{digest}.{fleep.get(raw).extensions[0]}"
     try:
         await put_file(raw, key)
@@ -54,7 +54,7 @@ async def _(event: Event, raw: EventImageRaw):
 
 
 @update_perm.handle()
-async def _(target: Match[At], expired: Match[int]):
+async def _(target: Match[At], expired: Match[int]) -> None:
     if not target.available:
         return
     user_id = target.result.target
@@ -64,7 +64,7 @@ async def _(target: Match[At], expired: Match[int]):
 
 
 @scheduler.scheduled_job("cron", minute="*/10")
-async def _():
+async def _() -> None:
     await remove_expired_perm()
     async for key in pop_expired_keys():
         await delete_file(key)

@@ -51,10 +51,7 @@ class Data(BaseModel):
 
     @classmethod
     async def find(cls, name: str) -> Self | None:
-        data = await cls._load()
-        for item in data:
-            if item.name == name:
-                return item
+        return next((item for item in await cls._load() if item.name == name), None)
 
     async def add_weight(self, w: int) -> None:
         self.weight = max(self.weight + w, 10)

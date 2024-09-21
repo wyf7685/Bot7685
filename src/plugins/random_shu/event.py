@@ -11,7 +11,7 @@ class Like(BaseModel):
 
 
 class GroupMsgEmojiLikeEvent(NoticeEvent):
-    notice_type: Literal["group_msg_emoji_like"]  # type: ignore
+    notice_type: Literal["group_msg_emoji_like"]  # pyright: ignore[reportIncompatibleVariableOverride]
     user_id: int
     group_id: int
     message_id: int
