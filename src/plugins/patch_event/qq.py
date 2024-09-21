@@ -14,7 +14,7 @@ from .patcher import Patcher
 
 
 def highlight_event_type(type_: EventType) -> str:
-    return f"<b><g>EventType</g></b>.<b><e>{type_.value}</e></b>"
+    return f"<lg>EventType</lg>.<b><e>{type_.value}</e></b>"
 
 
 def color_repr(value: Any, /, *color: str) -> str:
@@ -87,7 +87,7 @@ class PatchGroupAtMessageCreateEvent(GroupAtMessageCreateEvent):
             f"[{highlight_event_type(self.__type__)}] "
             f"Message <c>{escape_tag(self.id)}</c> from "
             f"<c>{self.author.member_openid}</c>"
-            f"@[<y>Group</y>:<c>{self.group_openid}</c>]: "
+            f"@[Group:<c>{self.group_openid}</c>]: "
             f"{highlight_message(self.get_message())}"
         )
 
