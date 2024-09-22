@@ -52,6 +52,6 @@ with contextlib.suppress(ImportError):
             return (
                 f"Message <c>{self.msg_id}</c> from "
                 f"<y>{escape_tag(nick)}</y>(<c>{self.user.id}</c>)"
-                f"@[<y>{self.channel.name or ''}</y>:<c>{self.channel.id}</c>]: "
+                f"@[Group:<y>{self.channel.name or ''}</y>(<c>{self.channel.id}</c>)]: "
                 f"{highlight_message(self.get_message())}"
             )
