@@ -205,7 +205,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27.2" },
     { name = "nonebot-adapter-onebot", specifier = ">=2.4.5" },
     { name = "nonebot-adapter-qq", specifier = ">=1.5.1" },
-    { name = "nonebot-adapter-satori", specifier = ">=0.12.5" },
+    { name = "nonebot-adapter-satori", specifier = ">=0.12.6" },
     { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b17" },
     { name = "nonebot-plugin-alconna", specifier = ">=0.52.2" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
@@ -1134,14 +1134,14 @@ wheels = [
 
 [[package]]
 name = "nonebot-adapter-satori"
-version = "0.12.5"
+version = "0.12.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/94/cb/983a3fe3f8bdece7b4baf4e3010968b0d99f304aa97a90a19dc8c1848b8e/nonebot_adapter_satori-0.12.5.tar.gz", hash = "sha256:e5b03737f4821f90c2a9d4bc1a49137f595868533d33c8a198b51bc966be17c4", size = 28371 }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/21/1a86c70fd8622a658a6a92c8ba3eeb04571c843b7de192d02507994d4046/nonebot_adapter_satori-0.12.6.tar.gz", hash = "sha256:afce9c5ded45ca302b8c42c5ad13c675ca956d00dc47dc99e0bc5acf7e62d093", size = 28423 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/f4/16c53d84b45646c39a5711bfc6893725f75dad2e7b40deb7433208e0db8a/nonebot_adapter_satori-0.12.5-py3-none-any.whl", hash = "sha256:09082f176c79a69196be8ef027113705a84a17dfafd69767b9dc2cf71e095afc", size = 27137 },
+    { url = "https://files.pythonhosted.org/packages/8d/f8/3ac0075f00711e0a8a655feb4deb05de35aa16f8e64a7d5e6acc42c637bb/nonebot_adapter_satori-0.12.6-py3-none-any.whl", hash = "sha256:b15d9a8d90e0ceb9a133d6443b505c9e3e1df65a5ae77719022a1c20b1d96f83", size = 27424 },
 ]
 
 [[package]]
