@@ -83,6 +83,11 @@ with contextlib.suppress(ImportError):
         del update_retry_id[key]
 
     async def update_user_card_cache(bot: Bot) -> None:
+        loop = asyncio.get_event_loop()
+
+        def reset(user_id: int, group_id: int | None) -> None:
+            user_card_cache[(user_id, group_id)] = None
+
         for (user_id, group_id), name in list(user_card_cache.items()):
             if name is not None:
                 continue
@@ -97,6 +102,7 @@ with contextlib.suppress(ImportError):
                     data = await bot.get_stranger_info(user_id=user_id)
                     name = data.get("nickname") or str(user_id)
             user_card_cache[(user_id, group_id)] = name
+            loop.call_later(5 * 60, reset, user_id, group_id)
 
     def colored_user_card(user_id: int, group_id: int | None = None) -> str:
         name = user_card_cache.setdefault((user_id, group_id), None)
