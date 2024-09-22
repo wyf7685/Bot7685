@@ -148,7 +148,7 @@ wheels = [
 
 [[package]]
 name = "bot7685"
-version = "1.2.3"
+version = "1.2.4"
 source = { virtual = "." }
 dependencies = [
     { name = "aiofiles" },
