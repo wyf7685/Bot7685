@@ -8,7 +8,7 @@ from nonebot_plugin_alconna import Command, UniMessage
 
 images = list((Path(__file__).parent / "images").iterdir())
 matcher = (
-    Command("测试 [...args]")
+    Command("黍泡泡 [...args]")
     .action(lambda: UniMessage.image(raw=random.choice(images).read_bytes()))
     .build(priority=2)
 )
