@@ -98,8 +98,13 @@ with contextlib.suppress(ImportError):
                     name = data.get("nickname") or str(user_id)
             user_card_cache[(user_id, group_id)] = name
 
-    def get_user_card(user_id: int, group_id: int | None = None) -> str | None:
-        return user_card_cache.setdefault((user_id, group_id), None)
+    def colored_user_card(user_id: int, group_id: int | None = None) -> str:
+        name = user_card_cache.setdefault((user_id, group_id), None)
+        return (
+            f"<y>{escape_tag(name)}</y>(<c>{user_id}</c>)"
+            if name is not None
+            else f"<c>{user_id}</c>"
+        )
 
     @Patcher
     class PatchPrivateMessageEvent(PrivateMessageEvent):
@@ -140,30 +145,16 @@ with contextlib.suppress(ImportError):
     class PatchFriendRecallNoticeEvent(FriendRecallNoticeEvent):
         @override
         def get_log_string(self) -> str:
-            user = (
-                f"<y>{escape_tag(name)}</y>(<c>{self.user_id}</c>)"
-                if (name := get_user_card(self.user_id)) is not None
-                else f"<c>{self.user_id}</c>"
-            )
             return (
                 f"[{self.get_event_name()}]: "
-                f"{user} recalled message <c>{self.message_id}</c>"
+                f"Message <c>{self.message_id}</c> from "
+                f"{colored_user_card(self.user_id)} deleted"
             )
 
     @Patcher
     class PatchGroupRecallNoticeEvent(GroupRecallNoticeEvent):
         @override
         def get_log_string(self) -> str:
-            operator = (
-                f"<y>{escape_tag(name)}</y>(<c>{self.operator_id}</c>)"
-                if (name := get_user_card(self.operator_id, self.group_id)) is not None
-                else f"<c>{self.operator_id}</c>"
-            )
-            user = (
-                f"<y>{escape_tag(name)}</y>(<c>{self.user_id}</c>)"
-                if (name := get_user_card(self.user_id, self.group_id)) is not None
-                else f"<c>{self.user_id}</c>"
-            )
             group = (
                 f"<y>{escape_tag(info.group_name)}</y>(<c>{self.group_id}</c>)"
                 if (info := group_info_cache.get(self.group_id))
@@ -171,8 +162,9 @@ with contextlib.suppress(ImportError):
             )
             return (
                 f"[{self.get_event_name()}]: "
-                f"{operator}@[Group:{group}] recalled "
-                f"{user}'s message <c>{self.message_id}</c>"
+                f"Message <c>{self.message_id}</c> from "
+                f"{colored_user_card(self.user_id, self.group_id)}@[Group:{group}] "
+                f"deleted by {colored_user_card(self.operator_id, self.group_id)}"
             )
 
     @Patcher
@@ -211,13 +203,7 @@ with contextlib.suppress(ImportError):
 
             for item in raw_info:
                 if item["type"] == "qq":
-                    user_id = user.pop(0)
-                    name = user_card_cache.setdefault((user_id, self.group_id), None)
-                    text += (
-                        f"<y>{escape_tag(name)}</y>(<c>{user_id}</c>) "
-                        if name is not None
-                        else f"<c>{user_id}</c> "
-                    )
+                    text += colored_user_card(user.pop(0), self.group_id) + " "
                 elif item["type"] == "nor":
                     text += f"{item['txt']} "
 
