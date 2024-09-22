@@ -10,7 +10,8 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Self
 
 import httpx
-from nonebot import logger
+import nonebot
+from nonebot.utils import escape_tag
 
 from .const import (
     HEADERS,
@@ -32,7 +33,11 @@ from .model import ArkUserInfo, BindInfo, DailySignAward, DailySignResult
 if TYPE_CHECKING:
     from types import TracebackType
 
-logger = logger.opt(colors=True)
+logger = nonebot.logger.opt(colors=True)
+
+
+def escape_resp_text(resp: httpx.Response) -> str:
+    return f"{escape_tag(str(resp))} - {escape_tag(resp.text)}"
 
 
 class SklandAPI:
@@ -74,7 +79,7 @@ class SklandAPI:
             resp = await client.post(URL_TOKEN_PASSWORD, json=data)
 
         if not resp.is_success:
-            logger.warning(f"获取 token({phone}) 失败: {resp} - {resp.text}")
+            logger.warning(f"获取 token({phone}) 失败: {escape_resp_text(resp)}")
             return None
 
         res = resp.json()
@@ -106,30 +111,33 @@ class SklandAPI:
         return exc_type, exc_value, traceback
 
     def _generate_signature(self, path: str, body: str) -> dict[str, str]:
-        logger.debug(f"生成签名: path=<y>{path}</y>, body=<y>{body}</y>")
+        logger.debug(
+            f"生成签名: path=<y>{escape_tag(path)}</y>, "
+            f"body=<y>{escape_tag(body)}</y>"
+        )
         timestamp = str(int(time.time()))
-        logger.debug(f"签名时间戳: <c>{timestamp}</c>")
+        logger.debug(f"签名时间戳: <c>{escape_tag(timestamp)}</c>")
 
         headers = deepcopy(HEADERS_SIGN)
         headers["timestamp"] = timestamp
         s = path + body + timestamp + json.dumps(headers, separators=(",", ":"))
-        logger.debug(f"签名字符串: <y>{s}</y>")
+        logger.debug(f"签名字符串: <y>{escape_tag(s)}</y>")
 
         key = self.sign_token.encode("utf-8")
         sig = hmac.new(key, s.encode("utf-8"), hashlib.sha256).hexdigest()
         md5 = hashlib.md5(sig.encode("utf-8")).hexdigest()  # noqa: S324
         headers["sign"] = md5
-        logger.debug(f"签名md5: <y>{md5}</y>")
+        logger.debug(f"签名md5: <y>{escape_tag(md5)}</y>")
 
         return headers
 
     def _sign_headers(self, url: str, data: str | None) -> dict[str, str]:
         headers = deepcopy(HEADERS)
-        del headers["cred"]
-        urlp = urllib.parse.urlparse(url)
+        headers.pop("cred", None)
+        parsed = urllib.parse.urlparse(url)
         if data is None:
-            data = urlp.query
-        headers.update(self._generate_signature(urlp.path, data))
+            data = parsed.query
+        headers.update(self._generate_signature(parsed.path, data))
         return headers
 
     async def get_code_by_token(self, token: str) -> str | None:
@@ -139,7 +147,7 @@ class SklandAPI:
             resp = await client.post(URL_GRANT_CODE, json=data)
 
         if not resp.is_success:
-            logger.warning(f"获取 code 失败: {resp} - {resp.text}")
+            logger.warning(f"获取 code 失败: {escape_resp_text(resp)}")
             return None
 
         self.code = resp.json()["data"]["code"]
@@ -151,7 +159,7 @@ class SklandAPI:
         resp = await self.client.post(URL_GEN_CRED, json=data)
 
         if not resp.is_success:
-            logger.warning(f"获取 cred 失败: {resp} - {resp.text}")
+            logger.warning(f"获取 cred 失败: {escape_resp_text(resp)}")
             return None
 
         res = resp.json()
@@ -167,7 +175,7 @@ class SklandAPI:
             resp = await client.get(url=URL_BINDING, headers=headers)
 
         if not resp.is_success:
-            logger.warning(f"获取用户绑定信息失败: {resp.text}")
+            logger.warning(f"获取用户绑定信息失败: {escape_resp_text(resp)}")
             return None
 
         j = resp.json()
@@ -187,7 +195,7 @@ class SklandAPI:
         resp = await self.client.get(url=URL_USER_INFO, headers=headers)
 
         if not resp.is_success:
-            logger.warning(f"获取用户信息失败: {resp.text}")
+            logger.warning(f"获取用户信息失败: {escape_resp_text(resp)}")
             return None
 
         return ArkUserInfo.model_validate((resp.json())["data"])
@@ -240,8 +248,7 @@ class SklandAPI:
 
         try:
             resp = await self.client.post(url=URL_SIGN, json=data, headers=headers)
-            resp.raise_for_status()
-        except httpx.HTTPError as err:
+        except Exception as err:
             return DailySignResult(status="failed", message=f"签到请求失败: {err}")
 
         try:
