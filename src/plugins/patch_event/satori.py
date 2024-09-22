@@ -1,30 +1,34 @@
 import contextlib
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from nonebot.utils import escape_tag
 
 from .patcher import Patcher
 from .utils import color_repr, highlight_dict, highlight_list
 
-with contextlib.suppress(ImportError):
+if TYPE_CHECKING:
     from nonebot.adapters.satori import Message
+
+
+def highlight_message(message: "Message") -> str:
+    return (
+        "["
+        + ", ".join(
+            f"<g>{escape_tag(seg.__class__.__name__)}</g>"
+            f"(type={color_repr(seg.type, 'y')}, "
+            f"data={highlight_dict(seg.data)}, "
+            f"children={highlight_list(seg.children)})"
+            for seg in message
+        )
+        + "]"
+    )
+
+
+with contextlib.suppress(ImportError):
     from nonebot.adapters.satori.event import (
         PrivateMessageCreatedEvent,
         PublicMessageCreatedEvent,
     )
-
-    def highlight_message(message: Message) -> str:
-        return (
-            "["
-            + ", ".join(
-                f"<g>{escape_tag(seg.__class__.__name__)}</g>"
-                f"(type={color_repr(seg.type, 'y')}, "
-                f"data={highlight_dict(seg.data)}, "
-                f"children={highlight_list(seg.children)})"
-                for seg in message
-            )
-            + "]"
-        )
 
     @Patcher
     class PatchPrivateMessageCreatedEvent(PrivateMessageCreatedEvent):
