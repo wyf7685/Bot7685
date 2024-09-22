@@ -27,7 +27,9 @@ def highlight_message(message: "Message") -> str:
 with contextlib.suppress(ImportError):
     from nonebot.adapters.satori.event import (
         PrivateMessageCreatedEvent,
+        PrivateMessageDeletedEvent,
         PublicMessageCreatedEvent,
+        PublicMessageDeletedEvent,
     )
 
     @Patcher
@@ -43,19 +45,42 @@ with contextlib.suppress(ImportError):
             )
 
     @Patcher
+    class PatchPrivateMessageDeletedEvent(PrivateMessageDeletedEvent):
+        @override
+        def get_log_string(self) -> str:
+            return (
+                f"[{self.get_event_name()}]: "
+                f"Message <c>{escape_tag(self.msg_id)}</c> from "
+                f"<y>{escape_tag(self.user.name or self.user.nick or '')}</y>"
+                f"(<c>{escape_tag(self.channel.id)}</c>) deleted"
+            )
+
+    @Patcher
     class PatchPublicMessageCreatedEvent(PublicMessageCreatedEvent):
         @override
         def get_log_string(self) -> str:
-            nick = (
-                self.member
-                and self.member.nick
-                or self.user.name
-                or self.user.nick
-                or ""
+            nick = (self.member.nick if self.member else None) or (
+                self.user.name or self.user.nick or ""
             )
             return (
+                f"[{self.get_event_name()}]: "
                 f"Message <c>{self.msg_id}</c> from "
                 f"<y>{escape_tag(nick)}</y>(<c>{self.user.id}</c>)"
                 f"@[Group:<y>{self.channel.name or ''}</y>(<c>{self.channel.id}</c>)]: "
                 f"{highlight_message(self.get_message())}"
+            )
+
+    @Patcher
+    class PatchPublicMessageDeletedEvent(PublicMessageDeletedEvent):
+        @override
+        def get_log_string(self) -> str:
+            nick = (self.member.nick if self.member else None) or (
+                self.user.name or self.user.nick or ""
+            )
+            return (
+                f"[{self.get_event_name()}]: "
+                f"Message <c>{self.msg_id}</c> from "
+                f"<y>{escape_tag(nick)}</y>(<c>{self.user.id}</c>)"
+                f"@[Group:<y>{self.channel.name or ''}</y>(<c>{self.channel.id}</c>)] "
+                "deleted"
             )
