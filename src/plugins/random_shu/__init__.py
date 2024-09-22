@@ -7,6 +7,7 @@ from nonebot import require
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import Command, UniMessage
 
+# 图源: Bilibili@鱼烤箱
 images = list((Path(__file__).parent / "images").iterdir())
 matcher = Command("黍泡泡 [...args]").build(priority=2)
 
