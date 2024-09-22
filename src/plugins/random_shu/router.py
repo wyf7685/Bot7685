@@ -34,7 +34,7 @@ def setup_router() -> URL:
     )
     return URL.build(
         scheme="http",
-        host="nbv2",
+        host="bot7685",
         port=driver.config.port,
         path=router_path,
     )
