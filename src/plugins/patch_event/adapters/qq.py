@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING, override
 
 from nonebot.utils import escape_tag
 
-from .patcher import Patcher
-from .utils import color_repr, highlight_dict
+from ..patcher import Patcher
+from ..utils import color_repr, highlight_dict
 
 if TYPE_CHECKING:
     from nonebot.adapters.qq.event import EventType

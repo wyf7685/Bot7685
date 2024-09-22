@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING, override
 
 from nonebot.utils import escape_tag
 
-from .patcher import Patcher
-from .utils import color_repr, highlight_dict, highlight_list
+from ..patcher import Patcher
+from ..utils import color_repr, highlight_dict, highlight_list
 
 if TYPE_CHECKING:
     from nonebot.adapters.satori import Message

@@ -38,17 +38,19 @@ class Patcher[T: type]:
             colored = f"<g>{self.name}</g>.<y>{name}</y>"
             try:
                 setattr(self.target, name, patched)
-                logger.success(f"Patch {colored}")
             except Exception as err:
                 err = f"<r>{escape_tag(repr(err))}</r>"
                 logger.warning(f"Patch {colored} failed: {err}")
+            else:
+                logger.success(f"Patch {colored}")
 
     def restore(self) -> None:
         for name, (_, original) in self.patched.items():
             colored = f"<g>{self.name}</g>.<y>{name}</y>"
             try:
                 setattr(self.target, name, original)
-                logger.success(f"Restore {colored}")
             except Exception as err:
                 err = f"<r>{escape_tag(repr(err))}</r>"
                 logger.warning(f"Restore {colored} failed: {err}")
+            else:
+                logger.success(f"Restore {colored}")
