@@ -14,7 +14,6 @@ dependencies = [
     "nonebot-plugin-apscheduler>=0.5.0",
     "nonebot-plugin-chatrecorder>=0.6.1",
     "nonebot-plugin-datastore>=1.3.0",
-    "nonebot-plugin-genshinuid>=4.0.2",
     "nonebot-plugin-htmlrender>=0.3.5",
     "nonebot-plugin-kawaii-status>=0.1.9",
     "nonebot-plugin-localstore>=0.7.1",
@@ -52,12 +51,12 @@ adapters = [
 ]
 plugins = [
     "nonebot_plugin_chatrecorder",
-    "GenshinUID",
     "nonebot_plugin_kawaii_status",
     "nonebot_plugin_memes_api",
     "nonebot_plugin_wakatime",
     "nonebot_plugin_wordcloud",
     "nonebot_plugin_wordle",
+    "GenshinUID",
     "nonebot_plugin_exe_code",
     "nonebot_plugin_werewolf",
 ]
