@@ -42,7 +42,7 @@ with contextlib.suppress(ImportError):
         def get_log_string(self) -> str:
             return (
                 f"[{highlight_event_type(self.__type__)}] "
-                f"{self.get_event_description()}"
+                f"{highlight_dict(self.model_dump())}"
             )
 
     @Patcher

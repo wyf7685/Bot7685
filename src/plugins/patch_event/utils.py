@@ -10,26 +10,36 @@ def color_repr(value: Any, /, *color: str) -> str:
     return text
 
 
-def highlight_list(data: list[Any]) -> str:
-    result = []
-    for item in data:
-        if isinstance(item, dict):
-            result.append(highlight_dict(item))
-        elif isinstance(item, list):
-            result.append(highlight_list(item))
-        else:
-            result.append(escape_tag(repr(item)))
-    return "[" + ", ".join(result) + "]"
+def highlight_object(value: Any, /, *color: str) -> str:
+    if isinstance(value, dict):
+        return highlight_dict(value, *color)
+    if isinstance(value, list):
+        return highlight_list(value, *color)
+    if isinstance(value, set):
+        return highlight_set(value, *color)
+    if isinstance(value, tuple):
+        return highlight_tuple(value, *color)
+    return color_repr(value, *color)
 
 
-def highlight_dict(data: dict[str, Any]) -> str:
-    result = []
-    for key, value in data.items():
-        if isinstance(value, dict):
-            text = highlight_dict(value)
-        elif isinstance(value, list):
-            text = highlight_list(value)
-        else:
-            text = escape_tag(repr(value))
-        result.append(f"{color_repr(key, 'c')}: {text}")
-    return "{" + ", ".join(result) + "}"
+def highlight_dict(data: dict[str, Any], /, *color: str) -> str:
+    return (
+        "{"
+        + ", ".join(
+            f"{color_repr(key, 'c')}: {highlight_object(value, *color)}"
+            for key, value in data.items()
+        )
+        + "}"
+    )
+
+
+def highlight_list(data: list[Any], /, *color: str) -> str:
+    return "[" + ", ".join(highlight_object(item, *color) for item in data) + "]"
+
+
+def highlight_set(data: set[Any], /, *color: str) -> str:
+    return "{" + ", ".join(highlight_object(item, *color) for item in data) + "}"
+
+
+def highlight_tuple(data: tuple[Any], /, *color: str) -> str:
+    return "(" + ", ".join(highlight_object(item, *color) for item in data) + ")"

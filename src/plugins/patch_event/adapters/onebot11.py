@@ -2,14 +2,14 @@ import asyncio
 import contextlib
 from typing import Literal, override
 
-from nonebot import get_driver, require
+import nonebot
+from nonebot import get_driver
 from nonebot.compat import type_validate_python
 from nonebot.exception import ActionFailed, NoLogException
-from nonebot.log import logger
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
-require("nonebot_plugin_apscheduler")
+nonebot.require("nonebot_plugin_apscheduler")
 from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
@@ -36,7 +36,7 @@ with contextlib.suppress(ImportError):
         member_count: int
         max_member_count: int
 
-    logger = logger.opt(colors=True)
+    logger = nonebot.logger.opt(colors=True)
     group_info_cache: dict[int, GroupInfo] = {}
     user_card_cache: dict[tuple[int, int | None], str | None] = {}
     scheduler_job: dict[Bot, list[SchedulerJob]] = {}
@@ -281,7 +281,7 @@ with contextlib.suppress(ImportError):
     async def on_startup() -> None:
         for e in {MessageSentEvent, PrivateMessageSentEvent, GroupMessageSentEvent}:
             Adapter.add_custom_model(e)
-            logger.success(f"Register v11 model: <g>{e.__name__}</g>")
+            logger.debug(f"Register v11 model: <g>{e.__name__}</g>")
 
     @get_driver().on_bot_connect
     async def on_bot_connect(bot: Bot) -> None:
