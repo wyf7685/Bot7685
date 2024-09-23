@@ -121,9 +121,9 @@ with contextlib.suppress(ImportError):
 
     def colored_group(group: int) -> str:
         return (
-            f"[Group:<y>{escape_tag(info.group_name)}</y>(<c>{group}</c>)] "
+            f"[Group:<y>{escape_tag(info.group_name)}</y>(<c>{group}</c>)]"
             if (info := group_info_cache.get(group))
-            else f"[Group:<c>{group}</c>] "
+            else f"[Group:<c>{group}</c>]"
         )
 
     @Patcher
@@ -196,7 +196,7 @@ with contextlib.suppress(ImportError):
             user = [self.user_id, self.target_id]
 
             if self.group_id is not None:
-                text += colored_group(self.group_id)
+                text += colored_group(self.group_id) + " "
             else:
                 gen = (
                     idx + 1 for idx, item in enumerate(raw_info) if item["type"] == "qq"
