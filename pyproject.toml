@@ -52,6 +52,7 @@ adapters = [
 ]
 plugins = [
     "nonebot_plugin_chatrecorder",
+    "nonebot_plugin_genshinuid",
     "nonebot_plugin_kawaii_status",
     "nonebot_plugin_memes_api",
     "nonebot_plugin_wakatime",
