@@ -15,6 +15,7 @@ from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
 from ..patcher import Patcher
+from ..utils import highlight_dict
 
 with contextlib.suppress(ImportError):
     from nonebot.adapters.onebot.utils import highlight_rich_message
@@ -104,26 +105,41 @@ with contextlib.suppress(ImportError):
             user_card_cache[(user_id, group_id)] = name
             loop.call_later(5 * 60, reset, user_id, group_id)
 
-    def colored_user_card(user_id: int, group_id: int | None = None) -> str:
-        name = user_card_cache.setdefault((user_id, group_id), None)
+    def colored_user_card(user: int | Sender, group: int | None = None) -> str:
+        if isinstance(user, Sender):
+            return (
+                f"<y>{escape_tag(name)}</y>(<c>{user.user_id}</c>)"
+                if (name := (user.card or user.nickname))
+                else f"<c>{user.user_id}</c>"
+            )
+
         return (
-            f"<y>{escape_tag(name)}</y>(<c>{user_id}</c>)"
-            if name is not None
-            else f"<c>{user_id}</c>"
+            f"<y>{escape_tag(name)}</y>(<c>{user}</c>)"
+            if (name := user_card_cache.setdefault((user, group), None)) is not None
+            else f"<c>{user}</c>"
         )
+
+    def colored_group(group: int) -> str:
+        return (
+            f"[Group:<y>{escape_tag(info.group_name)}</y>(<c>{group}</c>)] "
+            if (info := group_info_cache.get(group))
+            else f"[Group:<c>{group}</c>] "
+        )
+
+    @Patcher
+    class PatchEvent(Event):
+        @override
+        def get_log_string(self) -> str:
+            return f"[{self.get_event_name()}]: {highlight_dict(self.model_dump())}"
 
     @Patcher
     class PatchPrivateMessageEvent(PrivateMessageEvent):
         @override
         def get_log_string(self) -> str:
-            sender = (
-                f"<y>{escape_tag(name)}</y>(<c>{self.user_id}</c>)"
-                if (name := (self.sender.card or self.sender.nickname))
-                else f"<c>{self.user_id}</c>"
-            )
             return (
                 f"[{self.get_event_name()}]: "
-                f"Message <c>{self.message_id}</c> from {sender} "
+                f"Message <c>{self.message_id}</c> from "
+                f"{colored_user_card(self.sender)} "
                 f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
             )
 
@@ -131,19 +147,11 @@ with contextlib.suppress(ImportError):
     class PatchGroupMessageEvent(GroupMessageEvent):
         @override
         def get_log_string(self) -> str:
-            sender = (
-                f"<y>{escape_tag(name)}</y>(<c>{self.user_id}</c>)"
-                if (name := (self.sender.card or self.sender.nickname))
-                else f"<c>{self.user_id}</c>"
-            )
-            group = (
-                f"<y>{escape_tag(info.group_name)}</y>(<c>{self.group_id}</c>)"
-                if (info := group_info_cache.get(self.group_id))
-                else f"<c>{self.group_id}</c>"
-            )
             return (
                 f"[{self.get_event_name()}]: "
-                f"Message <c>{self.message_id}</c> from {sender}@[Group:{group}] "
+                f"Message <c>{self.message_id}</c> from "
+                f"{colored_user_card(self.sender)}"
+                f"@{colored_group(self.group_id)} "
                 f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
             )
 
@@ -161,15 +169,11 @@ with contextlib.suppress(ImportError):
     class PatchGroupRecallNoticeEvent(GroupRecallNoticeEvent):
         @override
         def get_log_string(self) -> str:
-            group = (
-                f"<y>{escape_tag(info.group_name)}</y>(<c>{self.group_id}</c>)"
-                if (info := group_info_cache.get(self.group_id))
-                else f"<c>{self.group_id}</c>"
-            )
             return (
                 f"[{self.get_event_name()}]: "
                 f"Message <c>{self.message_id}</c> from "
-                f"{colored_user_card(self.user_id, self.group_id)}@[Group:{group}] "
+                f"{colored_user_card(self.user_id, self.group_id)}"
+                f"@{colored_group(self.group_id)} "
                 f"deleted by {colored_user_card(self.operator_id, self.group_id)}"
             )
 
@@ -183,24 +187,16 @@ with contextlib.suppress(ImportError):
 
     @Patcher
     class PatchPokeNotifyEvent(PokeNotifyEvent):
-        @override
-        def get_log_string(self) -> str:
-            raw_info: list = self.model_dump().get("raw_info", [])
-            if not raw_info:
-                return PatchPokeNotifyEvent.origin.get_log_string(self)
-
+        @staticmethod
+        def napcat(
+            self: PokeNotifyEvent,  # pyright:ignore[reportSelfClsParameterName]
+            raw_info: list,
+        ) -> str:
             text = f"[{self.get_event_name()}]: "
             user = [self.user_id, self.target_id]
 
             if self.group_id is not None:
-                text += (
-                    (
-                        f"[Group:<y>{escape_tag(info.group_name)}</y>"
-                        f"(<c>{self.group_id}</c>)] "
-                    )
-                    if (info := group_info_cache.get(self.group_id))
-                    else f"[Group:<c>{self.group_id}</c>] "
-                )
+                text += colored_group(self.group_id)
             else:
                 gen = (
                     idx + 1 for idx, item in enumerate(raw_info) if item["type"] == "qq"
@@ -214,6 +210,28 @@ with contextlib.suppress(ImportError):
                     text += f"{item['txt']} "
 
             return text
+
+        @staticmethod
+        def lagrange(
+            self: PokeNotifyEvent,  # pyright:ignore[reportSelfClsParameterName]
+            action: str,
+            suffix: str,
+        ) -> str:
+            return (
+                f"[{self.get_event_name()}]: "
+                f"{(colored_group(self.group_id) + ' ') if self.group_id else ''}"
+                f"{colored_user_card(self.user_id, self.group_id)} {action} "
+                f"{colored_user_card(self.target_id, self.group_id)} {suffix}"
+            )
+
+        @override
+        def get_log_string(self) -> str:
+            data = self.model_dump()
+            if raw_info := data.get("raw_info"):
+                return PatchPokeNotifyEvent.patcher.napcat(self, raw_info)
+            if (action := data.get("action")) and (suffix := data.get("suffix")):
+                return PatchPokeNotifyEvent.patcher.lagrange(self, action, suffix)
+            return PatchPokeNotifyEvent.origin.get_log_string(self)
 
     class MessageSentEvent(Event):
         post_type: Literal["message_sent"]  # pyright: ignore[reportIncompatibleVariableOverride]
@@ -245,14 +263,10 @@ with contextlib.suppress(ImportError):
 
         @override
         def get_log_string(self) -> str:
-            user = (
-                f"<y>{escape_tag(name)}</y>(<c>{self.target_id}</c>)"
-                if (name := user_card_cache.setdefault((self.target_id, None), None))
-                else f"<c>{self.target_id}</c>"
-            )
             return (
                 f"[{self.get_event_name()}]: "
-                f"Message <c>{self.message_id}</c> to {user} "
+                f"Message <c>{self.message_id}</c> to "
+                f"{colored_user_card(self.target_id)} "
                 f"{''.join(highlight_rich_message(repr(self.message.to_rich_text())))}"
             )
 
@@ -262,14 +276,9 @@ with contextlib.suppress(ImportError):
 
         @override
         def get_log_string(self) -> str:
-            group = (
-                f"<y>{escape_tag(name.group_name)}</y>(<c>{self.group_id}</c>)"
-                if (name := group_info_cache.get(self.group_id))
-                else f"<c>{self.group_id}</c>"
-            )
             return (
                 f"[{self.get_event_name()}]: "
-                f"Message <c>{self.message_id}</c> to [Group:{group}] "
+                f"Message <c>{self.message_id}</c> to {colored_group(self.group_id)} "
                 f"{''.join(highlight_rich_message(repr(self.message.to_rich_text())))}"
             )
 

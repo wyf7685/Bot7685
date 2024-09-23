@@ -12,6 +12,7 @@ class Patcher[T: type]:
     __name: str
     __patched: dict[str, tuple[Callable[..., Any], Callable[..., Any]]]
     origin: T
+    patcher: T
 
     def __init__(self, cls: T) -> None:
         self.__target = cast(T, cls.mro()[1])
@@ -31,6 +32,7 @@ class Patcher[T: type]:
             {name: original for name, (_, original) in self.__patched.items()},
         )
         self.origin = cast(T, origin)
+        self.patcher = cls
         nonebot.get_driver().on_startup(self.patch)
 
     def patch(self) -> None:
