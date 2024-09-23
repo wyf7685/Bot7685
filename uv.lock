@@ -91,16 +91,16 @@ wheels = [
 
 [[package]]
 name = "arclet-alconna"
-version = "1.8.29"
+version = "1.8.30"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nepattern" },
     { name = "tarina" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/16/48/e9af8499bc56b20f221867ab70091c0db4b887bc24d937176f6c57d1fb7c/arclet_alconna-1.8.29.tar.gz", hash = "sha256:99bd65c509050909fc5e3ae5948daa3c8238dd7665b7090fe4632c63ee2eac11", size = 79683 }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/1b/d6935d0aaf4b6502c61ea539d7f064bea7dbde5de59b6a25d8db37cbf948/arclet_alconna-1.8.30.tar.gz", hash = "sha256:cdc064446c0db31285fd2cd4573d7fabe59b81e00e816b9f20f395f1c214b4ac", size = 79759 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/0f/71a390ff61271f4077485432f9a15da60cf85eb3f39dc273c4b64536e18a/arclet_alconna-1.8.29-py3-none-any.whl", hash = "sha256:8f71a129ff55f8ffb017bd1ad87d1f709df44e483bf8b851a83332bcb052f7ff", size = 76269 },
+    { url = "https://files.pythonhosted.org/packages/8d/7c/3985d6f854111f6d4ff2896d1031119f3d5c1ad64f1fcf29bcbc335e715a/arclet_alconna-1.8.30-py3-none-any.whl", hash = "sha256:835bf4e8d5deeb78ced2687d49e958a28fe19e39d0fb0fc30d767143d3e41329", size = 76567 },
 ]
 
 [[package]]
@@ -1923,15 +1923,15 @@ wheels = [
 
 [[package]]
 name = "pymdown-extensions"
-version = "10.10"
+version = "10.10.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/9f/0b1ab3c194eb81e78fecf6c3887719bfa4a6dec273d1acb28a54271a6938/pymdown_extensions-10.10.tar.gz", hash = "sha256:13899c05c2d3cd486e9f57963f7154d2fed2c57530c50a7774fc13041610e82a", size = 828386 }
+sdist = { url = "https://files.pythonhosted.org/packages/d7/e6/51b83b93b74014ebc415f26de4b60320ccdb4802b6d6e37d4b4070619e20/pymdown_extensions-10.10.1.tar.gz", hash = "sha256:ad277ee4739ced051c3b6328d22ce782358a3bec39bc6ca52815ccbf44f7acdc", size = 828448 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/94/a9f7de359b1b465e64b6dee43655618353cb990e08ee89a0a83ed414ba68/pymdown_extensions-10.10-py3-none-any.whl", hash = "sha256:5593c49032dc674c30c8382591324de92049520e6c3dd332bfba7f696d55ec34", size = 258786 },
+    { url = "https://files.pythonhosted.org/packages/f5/08/56121d5a6746c192172766c18be90c790018b632ff94598ad3fa39935b73/pymdown_extensions-10.10.1-py3-none-any.whl", hash = "sha256:6c74ea6c2e2285186a241417480fc2d3cc52941b3ec2dced4014c84dc78c5493", size = 258809 },
 ]
 
 [[package]]
@@ -2258,14 +2258,14 @@ wheels = [
 
 [[package]]
 name = "starlette"
-version = "0.38.5"
+version = "0.38.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/13/aa/57975da16ca0c368bbb5687daa6ad79561c2328a44667a1d6802e94df3e5/starlette-0.38.5.tar.gz", hash = "sha256:04a92830a9b6eb1442c766199d62260c3d4dc9c4f9188360626b1e0273cb7077", size = 2569511 }
+sdist = { url = "https://files.pythonhosted.org/packages/42/b4/e25c3b688ef703d85e55017c6edd0cbf38e5770ab748234363d54ff0251a/starlette-0.38.6.tar.gz", hash = "sha256:863a1588f5574e70a821dadefb41e4881ea451a47a3cd1b4df359d4ffefe5ead", size = 2569491 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/90/1a/8853ba4cea1ec99535ac9be5795a50ca92cddd04d57bbaa56e866cb7548c/starlette-0.38.5-py3-none-any.whl", hash = "sha256:632f420a9d13e3ee2a6f18f437b0a9f1faecb0bc42e1942aa2ea0e379a4c4206", size = 71447 },
+    { url = "https://files.pythonhosted.org/packages/b7/9c/93f7bc03ff03199074e81974cc148908ead60dcf189f68ba1761a0ee35cf/starlette-0.38.6-py3-none-any.whl", hash = "sha256:4517a1409e2e73ee4951214ba012052b9e16f60e90d73cfb06192c19203bbb05", size = 71451 },
 ]
 
 [[package]]
