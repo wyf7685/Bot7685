@@ -56,7 +56,6 @@ plugins = [
     "nonebot_plugin_wakatime",
     "nonebot_plugin_wordcloud",
     "nonebot_plugin_wordle",
-    "GenshinUID",
     "nonebot_plugin_exe_code",
     "nonebot_plugin_werewolf",
 ]
