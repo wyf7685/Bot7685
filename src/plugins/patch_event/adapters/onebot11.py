@@ -229,7 +229,9 @@ with contextlib.suppress(ImportError):
             data = self.model_dump()
             if raw_info := data.get("raw_info"):
                 return PatchPokeNotifyEvent.patcher.napcat(self, raw_info)
-            if (action := data.get("action")) and (suffix := data.get("suffix")):
+            if ((action := data.get("action")) is not None) and (
+                (suffix := data.get("suffix")) is not None
+            ):
                 return PatchPokeNotifyEvent.patcher.lagrange(self, action, suffix)
             return PatchPokeNotifyEvent.origin.get_log_string(self)
 
