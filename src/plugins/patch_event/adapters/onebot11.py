@@ -187,16 +187,12 @@ with contextlib.suppress(ImportError):
 
     @Patcher
     class PatchPokeNotifyEvent(PokeNotifyEvent):
-        @staticmethod
-        def napcat(
-            self: PokeNotifyEvent,  # pyright:ignore[reportSelfClsParameterName]
-            raw_info: list,
-        ) -> str:
+        def napcat(self: PokeNotifyEvent, raw_info: list[dict[str, str]]) -> str:
             text = f"[{self.get_event_name()}]: "
             user = [self.user_id, self.target_id]
 
             if self.group_id is not None:
-                text += colored_group(self.group_id) + " "
+                text += f"{colored_group(self.group_id)} "
             else:
                 gen = (
                     idx + 1 for idx, item in enumerate(raw_info) if item["type"] == "qq"
@@ -205,18 +201,13 @@ with contextlib.suppress(ImportError):
 
             for item in raw_info:
                 if item["type"] == "qq":
-                    text += colored_user_card(user.pop(0), self.group_id) + " "
+                    text += f"{colored_user_card(user.pop(0), self.group_id)} "
                 elif item["type"] == "nor":
                     text += f"{item['txt']} "
 
             return text
 
-        @staticmethod
-        def lagrange(
-            self: PokeNotifyEvent,  # pyright:ignore[reportSelfClsParameterName]
-            action: str,
-            suffix: str,
-        ) -> str:
+        def lagrange(self: PokeNotifyEvent, action: str, suffix: str) -> str:
             return (
                 f"[{self.get_event_name()}]: "
                 f"{(colored_group(self.group_id) + ' ') if self.group_id else ''}"

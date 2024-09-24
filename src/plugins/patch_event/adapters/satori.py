@@ -26,11 +26,18 @@ def highlight_message(message: "Message") -> str:
 
 with contextlib.suppress(ImportError):
     from nonebot.adapters.satori.event import (
+        Event,
         PrivateMessageCreatedEvent,
         PrivateMessageDeletedEvent,
         PublicMessageCreatedEvent,
         PublicMessageDeletedEvent,
     )
+
+    @Patcher
+    class PatchEvent(Event):
+        @override
+        def get_log_string(self) -> str:
+            return f"[{self.get_event_name()}]: {highlight_dict(self.model_dump())}"
 
     @Patcher
     class PatchPrivateMessageCreatedEvent(PrivateMessageCreatedEvent):
