@@ -4,7 +4,7 @@ from typing import Literal, override
 
 import nonebot
 from nonebot import get_driver
-from nonebot.compat import type_validate_python
+from nonebot.compat import model_dump, type_validate_python
 from nonebot.exception import ActionFailed, NoLogException
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
@@ -130,7 +130,7 @@ with contextlib.suppress(ImportError):
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return f"[{self.get_event_name()}]: {highlight_dict(self.model_dump())}"
+            return f"[{self.get_event_name()}]: {highlight_dict(model_dump(self))}"
 
     @Patcher
     class PatchPrivateMessageEvent(PrivateMessageEvent):
@@ -217,7 +217,7 @@ with contextlib.suppress(ImportError):
 
         @override
         def get_log_string(self) -> str:
-            data = self.model_dump()
+            data = model_dump(self)
             if raw_info := data.get("raw_info"):
                 return PatchPokeNotifyEvent.patcher.napcat(self, raw_info)
             if ((action := data.get("action")) is not None) and (

@@ -1,6 +1,7 @@
 import contextlib
 from typing import TYPE_CHECKING, override
 
+from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
@@ -37,7 +38,7 @@ with contextlib.suppress(ImportError):
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return f"[{self.get_event_name()}]: {highlight_dict(self.model_dump())}"
+            return f"[{self.get_event_name()}]: {highlight_dict(model_dump(self))}"
 
     @Patcher
     class PatchPrivateMessageCreatedEvent(PrivateMessageCreatedEvent):
