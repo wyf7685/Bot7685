@@ -161,7 +161,6 @@ dependencies = [
     { name = "nonebot-adapter-onebot" },
     { name = "nonebot-adapter-qq" },
     { name = "nonebot-adapter-satori" },
-    { name = "nonebot-adapter-telegram" },
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-apscheduler" },
     { name = "nonebot-plugin-chatrecorder" },
@@ -206,7 +205,6 @@ requires-dist = [
     { name = "nonebot-adapter-onebot", specifier = ">=2.4.5" },
     { name = "nonebot-adapter-qq", specifier = ">=1.5.1" },
     { name = "nonebot-adapter-satori", specifier = ">=0.12.6" },
-    { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b17" },
     { name = "nonebot-plugin-alconna", specifier = ">=0.52.2" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", specifier = ">=0.6.1" },
@@ -1142,20 +1140,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/dc/21/1a86c70fd8622a658a6a92c8ba3eeb04571c843b7de192d02507994d4046/nonebot_adapter_satori-0.12.6.tar.gz", hash = "sha256:afce9c5ded45ca302b8c42c5ad13c675ca956d00dc47dc99e0bc5acf7e62d093", size = 28423 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8d/f8/3ac0075f00711e0a8a655feb4deb05de35aa16f8e64a7d5e6acc42c637bb/nonebot_adapter_satori-0.12.6-py3-none-any.whl", hash = "sha256:b15d9a8d90e0ceb9a133d6443b505c9e3e1df65a5ae77719022a1c20b1d96f83", size = 27424 },
-]
-
-[[package]]
-name = "nonebot-adapter-telegram"
-version = "0.1.0b18"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "nonebot2" },
-    { name = "pydantic" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/fb/7c/0c6424b20fe08288ddb3bf77411e81a615419f7c4183ea07b6e20dfed91d/nonebot-adapter-telegram-0.1.0b18.tar.gz", hash = "sha256:233225f4d2fed8d720e10b631a761598dc23e6f51c2d2c4b1181b5f786f9d9db", size = 28894 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/f2/3af5a929ccc8c81f13d248a083ad6ff653e65522f3bc29a92abc82e523c4/nonebot_adapter_telegram-0.1.0b18-py3-none-any.whl", hash = "sha256:1d0291c677ab8c90a83636955d51d376904fa59e8f6afbb709492443d6e70ba1", size = 29369 },
 ]
 
 [[package]]
