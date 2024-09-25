@@ -5,7 +5,7 @@ from typing import Literal, override
 import nonebot
 from nonebot import get_driver
 from nonebot.compat import model_dump, type_validate_python
-from nonebot.exception import ActionFailed, NoLogException
+from nonebot.exception import ActionFailed
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
@@ -30,6 +30,7 @@ with contextlib.suppress(ImportError):
         PrivateMessageEvent,
         Sender,
     )
+    from nonebot.adapters.onebot.v11.exception import NoLogException
 
     class GroupInfo(BaseModel):
         group_id: int
@@ -182,7 +183,7 @@ with contextlib.suppress(ImportError):
         @override
         def get_log_string(self) -> str:
             if self.sub_type == "input_status":
-                raise NoLogException("OneBot V11")
+                raise NoLogException
             return PatchNotifyEvent.origin.get_log_string(self)
 
     @Patcher
