@@ -3,12 +3,7 @@ set -e
 
 
 if [ ! -f /bot7685.initialize.flag ]; then
-  BOT7685_UID=${BOT7685_UID:=911}
-  BOT7685_GID=${BOT7685_GID:=1001}
-  usermod -o -u ${BOT7685_UID} bot7685
-  groupmod -o -g ${BOT7685_GID} bot7685
-  usermod -g ${BOT7685_GID} bot7685
-  chown -R ${BOT7685_UID}:${BOT7685_GID} /app
+  chown -R ${UID}:${GID} /app
   touch /bot7685.initialize.flag
 fi
 

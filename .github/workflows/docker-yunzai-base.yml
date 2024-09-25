@@ -32,7 +32,8 @@ jobs:
       - name: Build and Publish
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/yunzai/base/.
+          context: ./docker/yunzai/.
+          file: ./docker/yunzai/Dockerfile.base
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}

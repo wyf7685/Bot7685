@@ -1,9 +1,7 @@
 name: Docker Bot7685
 
 on:
-  push:
-    tags:
-      - "v*"
+  workflow_dispatch:
 
 jobs:
   docker:
@@ -41,7 +39,7 @@ jobs:
         id: metadata
         with:
           images: wyf7685/bot7685
-          tags: type=semver,pattern={{version}}
+          tags: type=raw,value=latest
 
       - name: Build and Publish
         uses: docker/build-push-action@v6
@@ -63,6 +61,7 @@ jobs:
       - name: Build CLI and Publish
         uses: docker/build-push-action@v6
         with:
+          context: ./docker/.
           file: ./docker/Dockerfile.cli
           push: true
           tags: ${{ steps.metadata-cli.outputs.tags }}
