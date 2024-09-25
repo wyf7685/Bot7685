@@ -25,7 +25,8 @@ RUN apt-get update && \
     chmod +x /start.sh && \
     playwright install chromium && playwright install-deps &&\
     apt-get purge -y --auto-remove && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    useradd --no-log-init -d /app bot7685
 
 VOLUME [ "/app" ]
 CMD [ "/start.sh" ]
