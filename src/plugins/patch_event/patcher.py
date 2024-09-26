@@ -8,14 +8,14 @@ logger = nonebot.logger.opt(colors=True)
 
 
 class Patcher[T: type]:
-    __target: T
+    __target: type
     __name: str
     __patched: dict[str, tuple[Callable[..., Any], Callable[..., Any]]]
     origin: T
     patcher: T
 
     def __init__(self, cls: T) -> None:
-        self.__target = cast(T, cls.mro()[1])
+        self.__target = cls.mro()[1]
         self.__name = self.__target.__name__
         self.__patched = {
             name: (patched, original)

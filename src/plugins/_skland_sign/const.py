@@ -14,8 +14,7 @@ URL_BASIC_INFO = "https://as.hypergryph.com/user/info/v1/basic"
 URL_EXCHANGE_CODE = "https://ak.hypergryph.com/user/api/gift/exchange"
 
 USER_AGENT = (
-    "Skland/1.0.1 (com.hypergryph.skland; build:100001014; Android 31; ) "
-    "Okhttp/4.11.0 wyf7685/1.0.1"
+    "Skland/1.0.1 (com.hypergryph.skland; build:100001014; Android 31; ) Okhttp/4.11.0"
 )
 
 
