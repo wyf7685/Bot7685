@@ -13,4 +13,4 @@ RUN git clone https://github.com/TimeRainStarSky/Yunzai /app \
 VOLUME [ "/app/config", "/app/data", "/app/logs" ]
 VOLUME [ "/app/plugins/Yunzai-Kuro-Plugin/config", "/app/plugins/Yunzai-Kuro-Plugin/data" ]
 
-CMD ["/start.sh"]
+CMD ["bash", "/start.sh"]
