@@ -23,8 +23,12 @@ with contextlib.suppress(ImportError):
     from nonebot.adapters.onebot.v11.event import (
         Event,
         FriendRecallNoticeEvent,
+        FriendRequestEvent,
+        GroupDecreaseNoticeEvent,
+        GroupIncreaseNoticeEvent,
         GroupMessageEvent,
         GroupRecallNoticeEvent,
+        GroupRequestEvent,
         NotifyEvent,
         PokeNotifyEvent,
         PrivateMessageEvent,
@@ -226,6 +230,55 @@ with contextlib.suppress(ImportError):
             ):
                 return PatchPokeNotifyEvent.patcher.lagrange(self, action, suffix)
             return PatchPokeNotifyEvent.origin.get_log_string(self)
+
+    @Patcher
+    class PatchGroupDecreaseNoticeEvent(GroupDecreaseNoticeEvent):
+        @override
+        def get_log_string(self) -> str:
+            result = (
+                f"[{self.get_event_name()}]: "
+                f"GroupDecrease[{self.sub_type}] "
+                f"{colored_user_card(self.user_id, self.group_id)}"
+                f"@{colored_group(self.group_id)} "
+                f"by {colored_user_card(self.operator_id, self.group_id)}"
+            )
+            if (key := (self.user_id, self.group_id)) in user_card_cache:
+                del user_card_cache[key]
+            return result
+
+    @Patcher
+    class PatchGroupIncreaseNoticeEvent(GroupIncreaseNoticeEvent):
+        @override
+        def get_log_string(self) -> str:
+            return (
+                f"[{self.get_event_name()}]: "
+                f"GroupIncrease[{self.sub_type}] "
+                f"{colored_user_card(self.user_id, self.group_id)}"
+                f"@{colored_group(self.group_id)} "
+                f"by {colored_user_card(self.operator_id, self.group_id)}"
+            )
+
+    @Patcher
+    class PatchFriendRequestEvent(FriendRequestEvent):
+        @override
+        def get_log_string(self) -> str:
+            return (
+                f"[{self.get_event_name()}]: "
+                f"FriendRequest {colored_user_card(self.user_id)} "
+                f"with flag=<c>{escape_tag(self.flag)}</c>"
+            )
+
+    @Patcher
+    class PatchGroupRequestEvent(GroupRequestEvent):
+        @override
+        def get_log_string(self) -> str:
+            return (
+                f"[{self.get_event_name()}]: "
+                f"GroupRequest[{self.sub_type}] "
+                f"{colored_user_card(self.user_id, self.group_id)}"
+                f"@{colored_group(self.group_id)} "
+                f"with flag=<c>{escape_tag(self.flag)}</c>"
+            )
 
     class MessageSentEvent(Event):
         post_type: Literal["message_sent"]  # pyright: ignore[reportIncompatibleVariableOverride]
