@@ -358,7 +358,7 @@ with contextlib.suppress(ImportError):
         def get_log_string(self) -> str:
             return (
                 f"[{self.get_event_name()}]: "
-                f"Reaction added to <c>{self.message_id}</c> "
+                f"Reaction <y>{self.code}</y> added to <c>{self.message_id}</c> "
                 f"(current <y>{self.count}</y>) "
                 f"by {colored_user_card(self.operator_id, self.group_id)}"
                 f"@{colored_group(self.group_id)}"
@@ -371,7 +371,7 @@ with contextlib.suppress(ImportError):
         def get_log_string(self) -> str:
             return (
                 f"[{self.get_event_name()}]: "
-                f"Reaction removed from <c>{self.message_id}</c> "
+                f"Reaction <y>{self.code}</y> removed from <c>{self.message_id}</c> "
                 f"(current <y>{self.count}</y>) "
                 f"by {colored_user_card(self.operator_id, self.group_id)}"
                 f"@{colored_group(self.group_id)}"

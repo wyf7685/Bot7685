@@ -103,7 +103,7 @@ with contextlib.suppress(ImportError):
                 f"[{self.get_event_name()}] "
                 f"Reaction added to <c>{escape_tag(self.msg_id)} "
                 f"by <y>{escape_tag(str(self.user.name))}</y>"
-                f"(<c>{escape_tag(self.channel.id)}</c>)"
+                f"(<c>{escape_tag((self.channel or self.guild).id)}</c>)"
             )
 
     @Patcher
@@ -114,5 +114,5 @@ with contextlib.suppress(ImportError):
                 f"[{self.get_event_name()}] "
                 f"Reaction removed from <c>{escape_tag(self.msg_id)} "
                 f"by <y>{escape_tag(str(self.user.name))}</y>"
-                f"(<c>{escape_tag(self.channel.id)}</c>)"
+                f"(<c>{escape_tag((self.channel or self.guild).id)}</c>)"
             )
