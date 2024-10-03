@@ -101,7 +101,7 @@ with contextlib.suppress(ImportError):
         def get_log_string(self) -> str:
             return (
                 f"[{self.get_event_name()}] "
-                f"Reaction added to <c>{escape_tag(self.msg_id)} "
+                f"Reaction added to <c>{escape_tag(self.msg_id)}</c> "
                 f"by <y>{escape_tag(str(self.user.name))}</y>"
                 f"(<c>{escape_tag((self.channel or self.guild).id)}</c>)"
             )
@@ -112,7 +112,7 @@ with contextlib.suppress(ImportError):
         def get_log_string(self) -> str:
             return (
                 f"[{self.get_event_name()}] "
-                f"Reaction removed from <c>{escape_tag(self.msg_id)} "
+                f"Reaction removed from <c>{escape_tag(self.msg_id)}</c> "
                 f"by <y>{escape_tag(str(self.user.name))}</y>"
                 f"(<c>{escape_tag((self.channel or self.guild).id)}</c>)"
             )
