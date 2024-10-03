@@ -99,26 +99,18 @@ with contextlib.suppress(ImportError):
     class PatchReactionAddedEvent(ReactionAddedEvent):
         @override
         def get_log_string(self) -> str:
-            nick = (self.member.nick if self.member else None) or (
-                self.user.name or self.user.nick or ""
-            )
             return (
                 f"[{self.get_event_name()}] "
                 f"Reaction added to <c>{escape_tag(self.msg_id)}</c> "
-                f"by <y>{escape_tag(nick)}</y>(<c>{self.user.id}</c>)"
-                f"@[Group:<y>{self.guild.name or ''}</y>(<c>{self.guild.id}</c>)]"
+                f"by <c>{self.user.id}</c>@[Group:<c>{self.guild.id}</c>]"
             )
 
     @Patcher
     class PatchReactionRemovedEvent(ReactionRemovedEvent):
         @override
         def get_log_string(self) -> str:
-            nick = (self.member.nick if self.member else None) or (
-                self.user.name or self.user.nick or ""
-            )
             return (
                 f"[{self.get_event_name()}] "
                 f"Reaction removed from <c>{escape_tag(self.msg_id)}</c> "
-                f"by <y>{escape_tag(nick)}</y>(<c>{self.user.id}</c>)"
-                f"@[Group:<y>{self.guild.name or ''}</y>(<c>{self.guild.id}</c>)]"
+                f"by <c>{self.user.id}</c>@[Group:<c>{self.guild.id}</c>]"
             )
