@@ -32,6 +32,8 @@ with contextlib.suppress(ImportError):
         PrivateMessageDeletedEvent,
         PublicMessageCreatedEvent,
         PublicMessageDeletedEvent,
+        ReactionAddedEvent,
+        ReactionRemovedEvent,
     )
 
     @Patcher
@@ -91,4 +93,26 @@ with contextlib.suppress(ImportError):
                 f"<y>{escape_tag(nick)}</y>(<c>{self.user.id}</c>)"
                 f"@[Group:<y>{self.channel.name or ''}</y>(<c>{self.channel.id}</c>)] "
                 "deleted"
+            )
+
+    @Patcher
+    class PatchReactionAddedEvent(ReactionAddedEvent):
+        @override
+        def get_log_string(self) -> str:
+            return (
+                f"[{self.get_event_name()}] "
+                f"Reaction added to <c>{escape_tag(self.msg_id)} "
+                f"by <y>{escape_tag(str(self.user.name))}</y>"
+                f"(<c>{escape_tag(self.channel.id)}</c>)"
+            )
+
+    @Patcher
+    class PatchReactionRemovedEvent(ReactionRemovedEvent):
+        @override
+        def get_log_string(self) -> str:
+            return (
+                f"[{self.get_event_name()}] "
+                f"Reaction removed from <c>{escape_tag(self.msg_id)} "
+                f"by <y>{escape_tag(str(self.user.name))}</y>"
+                f"(<c>{escape_tag(self.channel.id)}</c>)"
             )

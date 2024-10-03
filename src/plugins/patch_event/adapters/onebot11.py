@@ -29,6 +29,7 @@ with contextlib.suppress(ImportError):
         GroupMessageEvent,
         GroupRecallNoticeEvent,
         GroupRequestEvent,
+        NoticeEvent,
         NotifyEvent,
         PokeNotifyEvent,
         PrivateMessageEvent,
@@ -280,7 +281,7 @@ with contextlib.suppress(ImportError):
                 f"with flag=<c>{escape_tag(self.flag)}</c>"
             )
 
-    class MessageSentEvent(Event):
+    class MessageSentEvent(Event):  # NapCat
         post_type: Literal["message_sent"]  # pyright: ignore[reportIncompatibleVariableOverride]
         message_type: str
         sub_type: str
@@ -305,7 +306,7 @@ with contextlib.suppress(ImportError):
         def get_session_id(self) -> str:
             return f"send_{self.target_id}"
 
-    class PrivateMessageSentEvent(MessageSentEvent):
+    class PrivateMessageSentEvent(MessageSentEvent):  # NapCat
         message_type: Literal["private"]  # pyright: ignore[reportIncompatibleVariableOverride]
 
         @override
@@ -317,7 +318,7 @@ with contextlib.suppress(ImportError):
                 f"{''.join(highlight_rich_message(repr(self.message.to_rich_text())))}"
             )
 
-    class GroupMessageSentEvent(MessageSentEvent):
+    class GroupMessageSentEvent(MessageSentEvent):  # NapCat
         message_type: Literal["group"]  # pyright: ignore[reportIncompatibleVariableOverride]
         group_id: int
 
@@ -333,9 +334,59 @@ with contextlib.suppress(ImportError):
         def get_session_id(self) -> str:
             return f"send_group_{self.group_id}_{self.target_id}"
 
+    class ReactionNoticeEvent(NoticeEvent):  # Lagrange
+        notice_type: Literal["reaction"]  # pyright: ignore[reportIncompatibleVariableOverride]
+        sub_type: str
+        group_id: int
+        message_id: int
+        operator_id: int
+        code: str
+        count: int
+
+        @override
+        def get_event_name(self) -> str:
+            return f"notice.reaction.{self.sub_type}"
+
+        @override
+        def get_session_id(self) -> str:
+            return f"reaction_{self.group_id}_{self.operator_id}"
+
+    class ReactionAddNoticeEvent(ReactionNoticeEvent):  # Lagrange
+        sub_type: Literal["add"]  # pyright: ignore[reportIncompatibleVariableOverride]
+
+        @override
+        def get_log_string(self) -> str:
+            return (
+                f"[{self.get_event_name()}]: "
+                f"Reaction added to <c>{self.message_id}</c> "
+                f"(current <y>{self.count}</y>) "
+                f"by {colored_user_card(self.operator_id, self.group_id)}"
+                f"@{colored_group(self.group_id)}"
+            )
+
+    class ReactionRemoveNoticeEvent(ReactionNoticeEvent):  # Lagrange
+        sub_type: Literal["remove"]  # pyright: ignore[reportIncompatibleVariableOverride]
+
+        @override
+        def get_log_string(self) -> str:
+            return (
+                f"[{self.get_event_name()}]: "
+                f"Reaction removed from <c>{self.message_id}</c> "
+                f"(current <y>{self.count}</y>) "
+                f"by {colored_user_card(self.operator_id, self.group_id)}"
+                f"@{colored_group(self.group_id)}"
+            )
+
     @get_driver().on_startup
     async def on_startup() -> None:
-        for e in {MessageSentEvent, PrivateMessageSentEvent, GroupMessageSentEvent}:
+        for e in {
+            MessageSentEvent,
+            PrivateMessageSentEvent,
+            GroupMessageSentEvent,
+            ReactionNoticeEvent,
+            ReactionAddNoticeEvent,
+            ReactionRemoveNoticeEvent,
+        }:
             Adapter.add_custom_model(e)
             logger.debug(f"Register v11 model: <g>{e.__name__}</g>")
 
