@@ -4,7 +4,7 @@ WORKDIR /wheel
 COPY ./requirements.txt /wheel/
 RUN python -m pip wheel --wheel-dir=/wheel --no-cache-dir --requirement ./requirements.txt
 
-FROM wyf7685/bot7685:base AS APP
+FROM wyf7685/bot7685:base AS app
 
 WORKDIR /app
 

@@ -19,6 +19,7 @@ dependencies = [
     "nonebot-plugin-memes-api>=0.4.11",
     "nonebot-plugin-orm[default]>=0.7.6",
     "nonebot-plugin-session>=0.3.2",
+    "nonebot-plugin-skland-arksign[sm-local]>=0.8.0",
     "nonebot-plugin-userinfo>=0.2.6",
     "nonebot-plugin-wakatime>=0.2.6",
     "nonebot-plugin-wordcloud>=0.8.0",
@@ -39,7 +40,6 @@ dependencies = [
     "websockets>=13.0.1",
     "nonebot-plugin-exe-code>=1.1.0",
     "nonebot-plugin-werewolf>=1.1.2",
-    "nonebot-plugin-skland-arksign[sm-local]>=0.8.0",
 ]
 
 [tool.nonebot]
