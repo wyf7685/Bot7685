@@ -17,7 +17,6 @@ RUN apt-get update && \
     chown -R ${UID}:${GID} /home/bot7685 && \
     python -m pip install --no-cache-dir playwright && \
     gosu bot7685 playwright install chromium && playwright install-deps && \
-    python -m pip uninstall playwright && \
     apt-get purge -y --auto-remove && \
     rm -rf /var/lib/apt/lists/*
 
