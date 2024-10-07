@@ -39,6 +39,7 @@ dependencies = [
     "websockets>=13.0.1",
     "nonebot-plugin-exe-code>=1.1.0",
     "nonebot-plugin-werewolf>=1.1.2",
+    "nonebot-plugin-skland-arksign[sm-local]>=0.8.0",
 ]
 
 [tool.nonebot]
