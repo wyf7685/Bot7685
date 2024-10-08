@@ -40,7 +40,7 @@ dependencies = [
     "websockets>=13.0.1",
     "nonebot-plugin-exe-code>=1.1.0",
     "nonebot-plugin-werewolf>=1.1.2",
-    "playwright>=1.47.0",  # fix?
+    "playwright>=1.47.0",  # fix nonebot-plugin-htmlrender
 ]
 
 [tool.nonebot]
