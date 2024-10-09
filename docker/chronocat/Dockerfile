@@ -28,6 +28,10 @@ RUN curl -L -o /tmp/chronocat.zip https://github.com/chrononeko/chronocat/releas
     && unzip /tmp/chronocat.zip -d /opt/QQ/resources/app/LiteLoader/plugins/ \
     && rm /tmp/chronocat.zip
 
+RUN curl -L -o /tmp/chronocat.zip https://github.com/chrononeko/chronocat/releases/download/v0.2.19/chronocat-llqqnt-engine-chronocat-event-v0.2.19.zip \
+    && unzip /tmp/chronocat.zip -d /opt/QQ/resources/app/LiteLoader/plugins/ \
+    && rm /tmp/chronocat.zip
+
 RUN curl -L -o /tmp/chronocat.zip https://github.com/chrononeko/chronocat/releases/download/v0.2.19/chronocat-llqqnt-engine-crychiccat-v0.2.19.zip \
     && unzip /tmp/chronocat.zip -d /opt/QQ/resources/app/LiteLoader/plugins/ \
     && rm /tmp/chronocat.zip
