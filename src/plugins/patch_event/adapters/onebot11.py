@@ -119,9 +119,13 @@ with contextlib.suppress(ImportError):
                 else f"<c>{user.user_id}</c>"
             )
 
+        name = user_card_cache.setdefault((user, group), None)
+        if name is None and (user, None) in user_card_cache:
+            name = user_card_cache[(user, None)]
+
         return (
             f"<y>{escape_tag(name)}</y>(<c>{user}</c>)"
-            if (name := user_card_cache.setdefault((user, group), None)) is not None
+            if name is not None
             else f"<c>{user}</c>"
         )
 
