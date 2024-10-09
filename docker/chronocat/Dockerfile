@@ -14,15 +14,27 @@ RUN curl -o /root/linuxqq.deb https://dldir1.qq.com/qqfile/qq/QQNT/f60e8252/linu
 
 RUN curl -L -o /tmp/LiteLoaderQQNT.zip https://github.com/LiteLoaderQQNT/LiteLoaderQQNT/releases/download/1.2.2/LiteLoaderQQNT.zip \
     && unzip /tmp/LiteLoaderQQNT.zip -d /opt/QQ/resources/app/LiteLoader/ \
+    && mkdir -p /opt/QQ/resources/app/LiteLoader/plugins \
     && rm /tmp/LiteLoaderQQNT.zip
 
 RUN echo 'require("/opt/QQ/resources/app/LiteLoader");' > /opt/QQ/resources/app/app_launcher/llqqnt.js \
     && sed -i 's|"main": "[^"]*"|"main": "./app_launcher/llqqnt.js"|' /opt/QQ/resources/app/package.json
 
-RUN curl -L -o /tmp/chronocat-llqqnt.zip https://github.com/chrononeko/chronocat/releases/download/v0.2.19/chronocat-llqqnt-v0.2.19.zip \
-    && mkdir -p /opt/QQ/resources/app/LiteLoader/plugins \
-    && unzip /tmp/chronocat-llqqnt.zip -d /opt/QQ/resources/app/LiteLoader/plugins/ \
-    && rm /tmp/chronocat-llqqnt.zip
+RUN curl -L -o /tmp/chronocat.zip https://github.com/chrononeko/chronocat/releases/download/v0.2.19/chronocat-llqqnt-v0.2.19.zip \
+    && unzip /tmp/chronocat.zip -d /opt/QQ/resources/app/LiteLoader/plugins/ \
+    && rm /tmp/chronocat.zip
+
+RUN curl -L -o /tmp/chronocat.zip https://github.com/chrononeko/chronocat/releases/download/v0.2.19/chronocat-llqqnt-engine-chronocat-api-v0.2.19.zip \
+    && unzip /tmp/chronocat.zip -d /opt/QQ/resources/app/LiteLoader/plugins/ \
+    && rm /tmp/chronocat.zip
+
+RUN curl -L -o /tmp/chronocat.zip https://github.com/chrononeko/chronocat/releases/download/v0.2.19/chronocat-llqqnt-engine-crychiccat-v0.2.19.zip \
+    && unzip /tmp/chronocat.zip -d /opt/QQ/resources/app/LiteLoader/plugins/ \
+    && rm /tmp/chronocat.zip
+
+RUN curl -L -o /tmp/chronocat.zip https://github.com/chrononeko/chronocat/releases/download/v0.2.19/chronocat-llqqnt-engine-media-v0.2.19.zip \
+    && unzip /tmp/chronocat.zip -d /opt/QQ/resources/app/LiteLoader/plugins/ \
+    && rm /tmp/chronocat.zip
 
 RUN mkdir -p ~/.vnc
 
