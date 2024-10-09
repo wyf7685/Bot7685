@@ -6,7 +6,7 @@ ENV VNC_PASSWD=vncpasswd
 RUN git config --global http.sslVerify false && git config --global http.postBuffer 1048576000 \
     && cd /opt && git clone https://github.com/novnc/noVNC.git \
     && cd /opt/noVNC/utils && git clone https://github.com/novnc/websockify.git \
-    && cp /opt/noVNC/vnc.html /opt/noVNC/index.html     
+    && cp /opt/noVNC/vnc.html /opt/noVNC/index.html
 
 RUN curl -o /root/linuxqq.deb https://dldir1.qq.com/qqfile/qq/QQNT/f60e8252/linuxqq_3.2.12-28327_amd64.deb \
     && dpkg -i /root/linuxqq.deb \
