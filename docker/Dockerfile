@@ -16,7 +16,7 @@ COPY ./gunicorn_conf.py ./start.sh /
 RUN chmod +x /start.sh
 
 COPY --from=wheels /wheel /wheel
-RUN python -m pip install --no-cache-dir --no-index --force-reinstall --root-user-action --find-links=/wheel -r /wheel/requirements.txt && \
+RUN python -m pip install --no-cache-dir --no-index --force-reinstall --root-user-action ignore --find-links=/wheel -r /wheel/requirements.txt && \
     rm -rf /wheel
 
 VOLUME [ "/app" ]
