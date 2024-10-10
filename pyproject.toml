@@ -17,7 +17,7 @@ dependencies = [
     "nonebot-plugin-kawaii-status>=0.1.9",
     "nonebot-plugin-localstore>=0.7.1",
     "nonebot-plugin-memes-api>=0.4.11",
-    "nonebot-plugin-orm[default]>=0.7.6",
+    "nonebot-plugin-orm[postgresql]>=0.7.6",
     "nonebot-plugin-session>=0.3.2",
     "nonebot-plugin-skland-arksign[sm-local]>=0.8.0",
     "nonebot-plugin-userinfo>=0.2.6",
@@ -40,7 +40,8 @@ dependencies = [
     "websockets>=13.0.1",
     "nonebot-plugin-exe-code>=1.1.0",
     "nonebot-plugin-werewolf>=1.1.2",
-    "playwright>=1.47.0",  # fix nonebot-plugin-htmlrender
+    "playwright>=1.47.0",
+    # fix nonebot-plugin-htmlrender
 ]
 
 [tool.nonebot]
