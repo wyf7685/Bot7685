@@ -138,6 +138,22 @@ wheels = [
 ]
 
 [[package]]
+name = "asyncpg"
+version = "0.29.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c1/11/7a6000244eaeb6b8ed2238bf33477c486515d6133f2c295913aca3ba4a00/asyncpg-0.29.0.tar.gz", hash = "sha256:d1c49e1f44fffafd9a55e1a9b101590859d881d639ea2922516f5d9c512d354e", size = 820455 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/b7/38b7c195f66a5598413c538da499b3f8119ba5764ded6fff620f7eb84c65/asyncpg-0.29.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:6011b0dc29886ab424dc042bf9eeb507670a3b40aece3439944006aafe023178", size = 636282 },
+    { url = "https://files.pythonhosted.org/packages/eb/0b/d128b57f7e994a6d71253d0a6a8c949fc50c969785010d46b87d8491be24/asyncpg-0.29.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b544ffc66b039d5ec5a7454667f855f7fec08e0dfaf5a5490dfafbb7abbd2cfb", size = 618024 },
+    { url = "https://files.pythonhosted.org/packages/49/ac/0396e559e1e7ab23787f790ae96b22affe2d66acebb084d6fc42293d12b8/asyncpg-0.29.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d84156d5fb530b06c493f9e7635aa18f518fa1d1395ef240d211cb563c4e2364", size = 3196465 },
+    { url = "https://files.pythonhosted.org/packages/99/38/0bfb00e9b828513bd759174860fd2b1c5e36d0b33985c90ff4ed6f96814c/asyncpg-0.29.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:54858bc25b49d1114178d65a88e48ad50cb2b6f3e475caa0f0c092d5f527c106", size = 3275564 },
+    { url = "https://files.pythonhosted.org/packages/16/1b/bb42784e9895832bf460ee6643f818bd53e4d6a6308cca5984c581a51845/asyncpg-0.29.0-cp312-cp312-musllinux_1_1_aarch64.whl", hash = "sha256:bde17a1861cf10d5afce80a36fca736a86769ab3579532c03e45f83ba8a09c59", size = 3164724 },
+    { url = "https://files.pythonhosted.org/packages/d5/d1/7ed5169e30e80573c942f5a6f29b2f87d5b8379bdd9bd916f0ed136c874e/asyncpg-0.29.0-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:37a2ec1b9ff88d8773d3eb6d3784dc7e3fee7756a5317b67f923172a4748a175", size = 3252834 },
+    { url = "https://files.pythonhosted.org/packages/91/2e/20e024608c57c2099531ba492c761b12fdd80891a67e58c92de44d05d57e/asyncpg-0.29.0-cp312-cp312-win32.whl", hash = "sha256:bb1292d9fad43112a85e98ecdc2e051602bce97c199920586be83254d9dafc02", size = 487254 },
+    { url = "https://files.pythonhosted.org/packages/71/86/7a18e1a457afb73991e5e5586e2341af09a31c91d8f65cc003f0b4553252/asyncpg-0.29.0-cp312-cp312-win_amd64.whl", hash = "sha256:2245be8ec5047a605e0b454c894e54bf2ec787ac04b1cb7e0d3c67aa1e32f0fe", size = 530253 },
+]
+
+[[package]]
 name = "bbcode"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -170,7 +186,7 @@ dependencies = [
     { name = "nonebot-plugin-kawaii-status" },
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-memes-api" },
-    { name = "nonebot-plugin-orm", extra = ["postgresql"] },
+    { name = "nonebot-plugin-orm", extra = ["asyncpg", "postgresql"] },
     { name = "nonebot-plugin-session" },
     { name = "nonebot-plugin-skland-arksign", extra = ["sm-local"] },
     { name = "nonebot-plugin-userinfo" },
@@ -216,7 +232,7 @@ requires-dist = [
     { name = "nonebot-plugin-kawaii-status", specifier = ">=0.1.9" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.1" },
     { name = "nonebot-plugin-memes-api", specifier = ">=0.4.11" },
-    { name = "nonebot-plugin-orm", extras = ["postgresql"], specifier = ">=0.7.6" },
+    { name = "nonebot-plugin-orm", extras = ["asyncpg", "postgresql"], specifier = ">=0.7.6" },
     { name = "nonebot-plugin-session", specifier = ">=0.3.2" },
     { name = "nonebot-plugin-skland-arksign", extras = ["sm-local"], specifier = ">=0.8.0" },
     { name = "nonebot-plugin-userinfo", specifier = ">=0.2.6" },
@@ -1389,6 +1405,9 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+asyncpg = [
+    { name = "sqlalchemy", extra = ["postgresql-asyncpg"] },
+]
 default = [
     { name = "sqlalchemy", extra = ["aiosqlite"] },
 ]
@@ -2378,6 +2397,10 @@ aiosqlite = [
     { name = "aiosqlite" },
     { name = "greenlet" },
     { name = "typing-extensions" },
+]
+postgresql-asyncpg = [
+    { name = "asyncpg" },
+    { name = "greenlet" },
 ]
 postgresql-psycopgbinary = [
     { name = "psycopg", extra = ["binary"] },
