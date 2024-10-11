@@ -1,7 +1,9 @@
+import contextlib
 from typing import TYPE_CHECKING
 
 from nonebot import get_plugin_config, on_keyword, on_message, require
 from nonebot.adapters import Bot, Event
+from nonebot.exception import ActionFailed
 from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
@@ -35,7 +37,8 @@ bubble = on_keyword({"冒泡"}, _rule_bubble)
 async def handle_bubble(bot: Bot, event: Event, session: EventSession) -> None:
     api = get_api_class(bot)(bot, event, session, {})
     if set_reaction := getattr(api, "set_reaction", None):
-        await set_reaction(38, api.mid)
+        with contextlib.suppress(ActionFailed):
+            await set_reaction(38, api.mid)
 
 
 def _rule(event: Event, target: MsgTarget) -> bool:
@@ -49,5 +52,6 @@ matcher = on_message(rule=_rule, block=False)
 async def _(bot: Bot, event: Event, session: EventSession) -> None:
     api = get_api_class(bot)(bot, event, session, {})
     if set_reaction := getattr(api, "set_reaction", None):
-        await set_reaction(424, api.mid)
-        await set_reaction(38, api.mid)
+        with contextlib.suppress(ActionFailed):
+            await set_reaction(424, api.mid)
+            await set_reaction(38, api.mid)
