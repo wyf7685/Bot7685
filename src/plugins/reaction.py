@@ -15,9 +15,7 @@ if TYPE_CHECKING:
     from nonebot_plugin_exe_code.interface import get_api_class
 else:
     require("src.dev.nonebot_plugin_exe_code")
-    from src.dev.nonebot_plugin_exe_code.interface import (  # pyright:ignore[reportMissingImports]
-        get_api_class,
-    )
+    from src.dev.nonebot_plugin_exe_code.interface import get_api_class
 
 class Config(BaseModel):
     reaction_users: set[str] = set()
