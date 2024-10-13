@@ -1,23 +1,16 @@
-FROM python:3.12 AS wheels
-
-WORKDIR /wheel
-COPY ./requirements.txt /wheel/
-RUN python -m pip wheel --wheel-dir=/wheel --no-cache-dir --requirement ./requirements.txt
-
-FROM wyf7685/bot7685:base AS app
+FROM wyf7685/bot7685:base
 
 WORKDIR /app
 
 ENV PYTHONPATH=/app
 ENV APP_MODULE=bot:app
-ENV MAX_WORKERS=1
+ENV MAX_WORKERS=2
+
+COPY ./requirements.txt /
+RUN python -m pip install --no-cache-dir --force-reinstall --root-user-action ignore -r /requirements.txt
 
 COPY ./gunicorn_conf.py ./start.sh /
 RUN chmod +x /start.sh
-
-COPY --from=wheels /wheel /wheel
-RUN python -m pip install --no-cache-dir --no-index --force-reinstall --root-user-action ignore --find-links=/wheel -r /wheel/requirements.txt && \
-    rm -rf /wheel
 
 VOLUME [ "/app" ]
 CMD [ "bash", "/start.sh" ]
