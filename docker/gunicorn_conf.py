@@ -1,6 +1,5 @@
 # ruff: noqa
 
-import json
 import multiprocessing
 import os
 
@@ -64,21 +63,3 @@ logconfig_dict = {
         },
     },
 }
-
-# For debugging and testing
-log_data = {
-    "loglevel": loglevel,
-    "workers": workers,
-    "bind": bind,
-    "graceful_timeout": graceful_timeout,
-    "timeout": timeout,
-    "keepalive": keepalive,
-    "errorlog": errorlog,
-    "accesslog": accesslog,
-    # Additional, non-gunicorn variables
-    "workers_per_core": workers_per_core,
-    "use_max_workers": use_max_workers,
-    "host": host,
-    "port": port,
-}
-print(json.dumps(log_data))  # noqa: T201
