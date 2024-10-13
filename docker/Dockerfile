@@ -4,7 +4,7 @@ WORKDIR /app
 
 ENV PYTHONPATH=/app
 ENV APP_MODULE=bot:app
-ENV MAX_WORKERS=2
+ENV MAX_WORKERS=1
 
 COPY ./requirements.txt /
 RUN python -m pip install --no-cache-dir --force-reinstall --root-user-action ignore -r /requirements.txt
