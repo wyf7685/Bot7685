@@ -13,4 +13,4 @@ COPY ./gunicorn_conf.py ./start.sh /
 RUN chmod +x /start.sh
 
 VOLUME [ "/app" ]
-CMD [ "bash", "/start.sh" ]
+CMD [ "/bin/bash", "-c", "/start.sh" ]

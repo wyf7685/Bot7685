@@ -52,4 +52,4 @@ RUN mkdir -p ~/.vnc \
     && echo "[program:x11vnc]" >> /etc/supervisor/supervisord.conf \
     && echo "command=/usr/bin/x11vnc -display :1 -noxrecord -noxfixes -noxdamage -forever -rfbauth ~/.vnc/passwd" >> /etc/supervisor/supervisord.conf
 
-CMD ["/bin/bash", "-c", "/root/start.sh"]
+CMD [ "/bin/bash", "-c", "/root/start.sh" ]
