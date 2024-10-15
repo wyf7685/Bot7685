@@ -11,8 +11,6 @@ RUN git clone https://github.com/TimeRainStarSky/Yunzai /app && \
     rm -rf /app/plugins/example /app/plugins/other /app/plugins/system && \
     chown ${UID}:${GID} /app && \
     chown -R ${UID}:${GID} /app/config && \
-    chown -R ${UID}:${GID} /app/data && \
-    chown -R ${UID}:${GID} /app/logs && \
     chown -R ${UID}:${GID} /app/plugins/Yunzai-Kuro-Plugin/config && \
     chown -R ${UID}:${GID} /app/plugins/Yunzai-Kuro-Plugin/data
 
