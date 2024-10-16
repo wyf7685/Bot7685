@@ -39,7 +39,9 @@ dependencies = [
     "websockets>=13.1",
     "nonebot-plugin-exe-code>=1.1.4",
     "nonebot-plugin-werewolf>=1.1.3",
-    "playwright>=1.47.0",                             # fix nonebot-plugin-htmlrender
+    "playwright>=1.47.0",
+    "nonebot-adapter-discord>=0.1.8",
+    # fix nonebot-plugin-htmlrender
 ]
 
 [tool.nonebot]
@@ -47,6 +49,7 @@ adapters = [
     { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" },
     { name = "QQ", module_name = "nonebot.adapters.qq" },
     { name = "Satori", module_name = "nonebot.adapters.satori" },
+    { name = "Discord", module_name = "nonebot.adapters.discord" },
 ]
 plugins = [
     "nonebot_plugin_chatrecorder",

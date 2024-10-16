@@ -174,6 +174,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "gunicorn" },
     { name = "httpx" },
+    { name = "nonebot-adapter-discord" },
     { name = "nonebot-adapter-onebot" },
     { name = "nonebot-adapter-qq" },
     { name = "nonebot-adapter-satori" },
@@ -219,6 +220,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.2" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "httpx", specifier = ">=0.27.2" },
+    { name = "nonebot-adapter-discord", specifier = ">=0.1.8" },
     { name = "nonebot-adapter-onebot", specifier = ">=2.4.5" },
     { name = "nonebot-adapter-qq", specifier = ">=1.5.2" },
     { name = "nonebot-adapter-satori", specifier = ">=0.13.0rc3" },
@@ -1206,6 +1208,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/83/f8/51569ac65d696c8ecbee95938f89d4abf00f47d58d48f6fbabfe8f0baefe/nest_asyncio-1.6.0.tar.gz", hash = "sha256:6f172d5449aca15afd6c646851f4e31e02c598d553a667e38cafa997cfec55fe", size = 7418 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/c4/c2971a3ba4c6103a3d10c4b0f24f461ddc027f0f09763220cf35ca1401b3/nest_asyncio-1.6.0-py3-none-any.whl", hash = "sha256:87af6efd6b5e897c81050477ef65c62e2b2f35d51703cae01aff2905b1852e1c", size = 5195 },
+]
+
+[[package]]
+name = "nonebot-adapter-discord"
+version = "0.1.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "nonebot2" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/46/fc/2834ee3648ea7dae98417ff022bc7c1fe9a00160a07f9f9c0619541d3709/nonebot_adapter_discord-0.1.8.tar.gz", hash = "sha256:5d3a7a8e0ab23b7ae84551b479c40c5d09733b15d09538d64765c5af54721781", size = 75182 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/af/67716a868ee65c4dd7ab0f0cd24181dce6c856786efd3837c2274afb884d/nonebot_adapter_discord-0.1.8-py3-none-any.whl", hash = "sha256:d063bf524f6a75c5c123f2d04227e0ec62c2433f56b28fb92fa5eb2aebef1c16", size = 78480 },
 ]
 
 [[package]]
