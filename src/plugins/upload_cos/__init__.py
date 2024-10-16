@@ -8,7 +8,7 @@ from nonebot.permission import SUPERUSER
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
-require("nonebot_plugin_datastore")
+require("nonebot_plugin_localstore")
 require("nonebot_plugin_orm")
 from nonebot_plugin_alconna import Alconna, Args, Match, on_alconna
 from nonebot_plugin_alconna.uniseg import At, UniMessage

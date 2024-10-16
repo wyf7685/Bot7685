@@ -1,7 +1,7 @@
 import asyncio
 from pathlib import Path
 
-from nonebot_plugin_datastore import get_plugin_data
+from nonebot_plugin_localstore import get_plugin_cache_dir
 from qcloud_cos import CosConfig, CosS3Client
 
 from .config import config
@@ -23,7 +23,7 @@ def new_client(retry: int = 1) -> CosS3Client:
 
 
 async def put_file(data: bytes, key: str, retry: int = 3) -> None:
-    cache = get_plugin_data().cache_dir / str(id(data))
+    cache = get_plugin_cache_dir() / str(id(data))
     await asyncio.to_thread(cache.write_bytes, data=data)
 
     try:

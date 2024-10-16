@@ -7,8 +7,8 @@ import aiofiles
 from async_lru import alru_cache
 from nonebot.params import Depends
 from nonebot_plugin_alconna.uniseg import UniMessage
-from nonebot_plugin_datastore import get_plugin_data
 from nonebot_plugin_htmlrender import md_to_pic
+from nonebot_plugin_localstore import get_plugin_data_dir
 from nonebot_plugin_session import SessionId, SessionIdType
 from pydantic import BaseModel
 
@@ -46,7 +46,7 @@ class TodoList:
     async def load(
         cls, session_id: Annotated[str, SessionId(SessionIdType.USER)]
     ) -> Self:
-        fp = get_plugin_data().data_dir / f"{session_id}.json"
+        fp = get_plugin_data_dir() / f"{session_id}.json"
         if not fp.exists():
             fp.write_text("[]")
             return cls(session_id, [])
@@ -61,7 +61,7 @@ class TodoList:
 
     async def save(self) -> None:
         self.sort()
-        fp = get_plugin_data().data_dir / f"{self.session_id}.json"
+        fp = get_plugin_data_dir() / f"{self.session_id}.json"
         data = json.dumps(
             [i.model_dump(mode="json") for i in self.todo],
             ensure_ascii=False,

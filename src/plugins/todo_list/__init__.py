@@ -5,8 +5,8 @@ from nonebot.params import Depends
 from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
-require("nonebot_plugin_datastore")
 require("nonebot_plugin_htmlrender")
+require("nonebot_plugin_localstore")
 require("nonebot_plugin_session")
 require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import (
