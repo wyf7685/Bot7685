@@ -8,19 +8,17 @@ from ..utils import highlight_object
 
 
 def exclude_unset_none(data: dict[str, Any] | list[Any]) -> dict[str, Any] | list[Any]:
-    return (
-        {
+    if isinstance(data, dict):
+        return {
             k: (exclude_unset_none(v) if isinstance(v, dict | list) else v)
             for k, v in data.items()
             if v is not UNSET and v is not None
         }
-        if isinstance(data, dict)
-        else [
-            (exclude_unset_none(i) if isinstance(i, dict | list) else i)
-            for i in data
-            if i is not UNSET and i is not None
-        ]
-    )
+    return [
+        (exclude_unset_none(i) if isinstance(i, dict | list) else i)
+        for i in data
+        if i is not UNSET and i is not None
+    ]
 
 
 with contextlib.suppress(ImportError):
