@@ -49,7 +49,7 @@ adapters = [
     { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" },
     { name = "QQ", module_name = "nonebot.adapters.qq" },
     { name = "Satori", module_name = "nonebot.adapters.satori" },
-    # { name = "Discord", module_name = "nonebot.adapters.discord" },
+    { name = "Discord", module_name = "nonebot.adapters.discord" },
 ]
 plugins = [
     "nonebot_plugin_chatrecorder",
