@@ -13,6 +13,7 @@ dependencies = [
     "nonebot-plugin-alconna>=0.53.0",
     "nonebot-plugin-apscheduler>=0.5.0",
     "nonebot-plugin-chatrecorder>=0.6.2",
+    "nonebot-plugin-emojimix>=0.4.0",
     "nonebot-plugin-htmlrender>=0.3.5",
     "nonebot-plugin-kawaii-status>=0.1.9",
     "nonebot-plugin-localstore>=0.7.1",
@@ -48,10 +49,11 @@ adapters = [
     { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" },
     { name = "QQ", module_name = "nonebot.adapters.qq" },
     { name = "Satori", module_name = "nonebot.adapters.satori" },
-    { name = "Discord", module_name = "nonebot.adapters.discord" },
+    # { name = "Discord", module_name = "nonebot.adapters.discord" },
 ]
 plugins = [
     "nonebot_plugin_chatrecorder",
+    "nonebot_plugin_emojimix",
     "nonebot_plugin_kawaii_status",
     "nonebot_plugin_memes_api",
     "nonebot_plugin_skland_arksign",

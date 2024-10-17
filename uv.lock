@@ -181,6 +181,7 @@ dependencies = [
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-apscheduler" },
     { name = "nonebot-plugin-chatrecorder" },
+    { name = "nonebot-plugin-emojimix" },
     { name = "nonebot-plugin-exe-code" },
     { name = "nonebot-plugin-htmlrender" },
     { name = "nonebot-plugin-kawaii-status" },
@@ -227,6 +228,7 @@ requires-dist = [
     { name = "nonebot-plugin-alconna", specifier = ">=0.53.0" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", specifier = ">=0.6.2" },
+    { name = "nonebot-plugin-emojimix" },
     { name = "nonebot-plugin-exe-code", specifier = ">=1.1.4" },
     { name = "nonebot-plugin-htmlrender", specifier = ">=0.3.5" },
     { name = "nonebot-plugin-kawaii-status", specifier = ">=0.1.9" },
@@ -1354,6 +1356,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0d/63/896c034e84f6ef0a1f3dc75690fcdfca635ebebc4b18eb5b52dea8f2424b/nonebot_plugin_datastore-1.3.0.tar.gz", hash = "sha256:0e5e54968daeb5a12287e0b509f0b991cd0cc081928cd5ce5bd6815b78305207", size = 22055 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d6/e1/a0e4b1214dfda937e6c2da90a077b388b37148559f2455a74d763653923e/nonebot_plugin_datastore-1.3.0-py3-none-any.whl", hash = "sha256:68c74686a71f3f3c48f2b5f9860282d3a4f31faf97a3252859be919975f0a385", size = 26130 },
+]
+
+[[package]]
+name = "nonebot-plugin-emojimix"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "emoji" },
+    { name = "httpx" },
+    { name = "nonebot-plugin-alconna" },
+    { name = "nonebot2" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/11/23ce6bad06660af9e36b28671572f5aad72ca99c4e8c6f314a163df5a5f9/nonebot_plugin_emojimix-0.4.0.tar.gz", hash = "sha256:a4aa00a3dbc320d4792b6f63d5cd5dce18f1fe604f37e9fc54905fe3c6e2eba5", size = 6741 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/aa/f4b34908c56f819fcb41efa2ec0d74330ab62404015e807a8182a12be47a/nonebot_plugin_emojimix-0.4.0-py3-none-any.whl", hash = "sha256:b49a779d0c9e411d2a0c2737311d75c7a3456bdee102b3c9865e07676c40f02d", size = 7644 },
 ]
 
 [[package]]
