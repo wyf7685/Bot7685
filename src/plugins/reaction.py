@@ -58,3 +58,4 @@ async def _(bot: Bot, event: Event, session: EventSession) -> None:
         with contextlib.suppress(ActionFailed):
             await set_reaction(424, api.mid)
             await set_reaction(38, api.mid)
+            await set_reaction(285, api.mid)
