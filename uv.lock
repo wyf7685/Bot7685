@@ -1575,20 +1575,20 @@ sm-local = [
 
 [[package]]
 name = "nonebot-plugin-uninfo"
-version = "0.4.1"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "importlib-metadata" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ec/ba/588e0edfea553221ab5110cac87140cc0ba20ebbb5f5ea824df82007eb65/nonebot_plugin_uninfo-0.4.1.tar.gz", hash = "sha256:8c36d62684029d813dd01acd2cc759f07163923b8274935250dcd3e9293ef560", size = 32582 }
+sdist = { url = "https://files.pythonhosted.org/packages/db/19/aded38657f026075626d438f5e3651c5a7a732bb9c01c0faa9706887c137/nonebot_plugin_uninfo-0.5.0.tar.gz", hash = "sha256:79cb1a1ed19d8cbfe96019cf6ee28ac7be4bd6b71eae0a127047736f97a8f7f6", size = 33230 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/43/3e9253586884cfe299c825f7b0c4328afd0f32981ecaf295c604312997a6/nonebot_plugin_uninfo-0.4.1-py3-none-any.whl", hash = "sha256:2075874a540f27cb650ff5e64482324121c39e4374b850df323482744910beac", size = 51585 },
+    { url = "https://files.pythonhosted.org/packages/7b/2b/e4edb63ab1c0ac41f2d3af03ef2297f1bbc1cc92d6359cc17bb0c7597a32/nonebot_plugin_uninfo-0.5.0-py3-none-any.whl", hash = "sha256:5e9bd0edcaf90ed6cc063a0f8a05127a7f1a9de9e7fc516bc71e4064c9515e68", size = 52589 },
 ]
 
 [[package]]
 name = "nonebot-plugin-user"
-version = "0.4.3"
+version = "0.4.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "expiringdictx" },
@@ -1597,9 +1597,9 @@ dependencies = [
     { name = "nonebot-plugin-session" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/1a/d72306b8cdaac02ad4f771303675a48c66f2afb235f50d419e9140aba8ec/nonebot_plugin_user-0.4.3.tar.gz", hash = "sha256:f7cf4102d3e0a511b49e4822d7c1d0f1e860abd53f596dbfe73339964c9f6c39", size = 9855 }
+sdist = { url = "https://files.pythonhosted.org/packages/87/50/c3959b3b84685f6421571e89236392ac192f586ee331ee8622dcefa37db9/nonebot_plugin_user-0.4.4.tar.gz", hash = "sha256:9066ac63aa3ef9b1c895bdc08aa313b355f942b4d2f214e3d1d4d87e9261d626", size = 9829 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/8e/afae325a705e6d879672cb8f9de5c54b33709c853975fd5725e9efbd3b38/nonebot_plugin_user-0.4.3-py3-none-any.whl", hash = "sha256:a9e90644238a89abbbd99c5ec2df1a750d33c5f8e2fe6f8ee9348868a6632ab7", size = 12618 },
+    { url = "https://files.pythonhosted.org/packages/3a/95/7f8369d71d02033c4b9e8a205c063e488728b8e3f95c7c56806a99bf0349/nonebot_plugin_user-0.4.4-py3-none-any.whl", hash = "sha256:cab16b9cf581f80ddb29d6339cb782945a8d12de2f3189ed0d3726415c778062", size = 12589 },
 ]
 
 [[package]]
