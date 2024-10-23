@@ -1677,17 +1677,18 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-werewolf"
-version = "1.1.3"
+version = "1.1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "anyio" },
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-uninfo" },
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/60/b3/549bcc60f2e75bdfb24eca26560555bd920f7bb0a88e5d028baabec47c56/nonebot_plugin_werewolf-1.1.3.tar.gz", hash = "sha256:3f8eddbc2c74b03dc691117923d12175e3a17d981e60e73bfc75ddad21e9f231", size = 26532 }
+sdist = { url = "https://files.pythonhosted.org/packages/10/73/fb74ead9dcec6c902d84cc4ef73cbea3a382b2709ce2995d3e56128f14b4/nonebot_plugin_werewolf-1.1.5.tar.gz", hash = "sha256:f7a364bb42eff3a6c84fadefb2d3cb3049fa2a66cc450484a43969b5fa10a644", size = 28916 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7a/ba/56ba4f0deb451990e8451da6c99119aeeeee5d146d5b6b93a65d4fbf4523/nonebot_plugin_werewolf-1.1.3-py3-none-any.whl", hash = "sha256:a5ec32694541b3d8b7d3884f5e04d17b835743844490a0a3d1ee5da401bc9e7d", size = 31831 },
+    { url = "https://files.pythonhosted.org/packages/74/54/8dfb6f2428aa443b20fe5efafd1213acde4c022f3fd4d2a43a00dee6ba0d/nonebot_plugin_werewolf-1.1.5-py3-none-any.whl", hash = "sha256:3c489cce08096cbc62277d09874b1034b6ccb79189486f9c0c8bdc53ac1b898f", size = 34660 },
 ]
 
 [[package]]
@@ -1791,7 +1792,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "1.52.1"
+version = "1.52.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1803,9 +1804,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/80/ac/54c76352d493866637756b7c0ecec44f0b5bafb8fe753d98472cf6cfe4ce/openai-1.52.1.tar.gz", hash = "sha256:383b96c7e937cbec23cad5bf5718085381e4313ca33c5c5896b54f8e1b19d144", size = 310069 }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/78/1c4658043cdbb7faf7f388cbb3902d5f8b9a307e10f2021b1a8a4b0b8b15/openai-1.52.2.tar.gz", hash = "sha256:87b7d0f69d85f5641678d414b7ee3082363647a5c66a462ed7f3ccb59582da0d", size = 310119 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ad/31/28a83e124e9f9dd04c83b5aeb6f8b1770f45addde4dd3d34d9a9091590ad/openai-1.52.1-py3-none-any.whl", hash = "sha256:f23e83df5ba04ee0e82c8562571e8cb596cd88f9a84ab783e6c6259e5ffbfb4a", size = 386945 },
+    { url = "https://files.pythonhosted.org/packages/55/4c/906b5b32c4c01402ac3b4c3fc28f601443ac5c6f13c84a95dd178c8d545d/openai-1.52.2-py3-none-any.whl", hash = "sha256:57e9e37bc407f39bb6ec3a27d7e8fb9728b2779936daa1fcf95df17d3edfaccc", size = 386947 },
 ]
 
 [[package]]
