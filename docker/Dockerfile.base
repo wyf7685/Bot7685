@@ -16,13 +16,8 @@ RUN mkdir /home/bot && useradd --no-log-init -d /home/bot bot && \
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends locales locales-all fonts-noto libnss3-dev libxss1 libasound2 libxrandr2 libatk1.0-0 libgtk-3-0 libgbm-dev libxshmfence1 git gosu nano && \
-    apt-get purge -y --auto-remove && \
-    python -m pip install --no-cache-dir playwright
-
-USER bot
-RUN playwright install chromium --with-deps
-
-USER root
-RUN apt-get purge -y --auto-remove
+    python -m pip install --no-cache-dir playwright && \
+    playwright install chromium --with-deps && \
+    apt-get purge -y --auto-remove
 
 CMD [ "bash" ]
