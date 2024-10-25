@@ -15,7 +15,7 @@ RUN mkdir /home/bot && useradd --no-log-init -d /home/bot bot && \
     chown -R ${UID}:${GID} /home/bot
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends locales locales-all fonts-noto libnss3-dev libxss1 libasound2 libxrandr2 libatk1.0-0 libgtk-3-0 libgbm-dev libxshmfence1 git gosu nano && \
+    apt-get install -y --no-install-recommends locales locales-all fonts-noto libnss3-dev libxss1 libasound2 libxrandr2 libatk1.0-0 libgtk-3-0 libgbm-dev libxshmfence1 git gosu nano gcc g++ python3-dev build-essential && \
     apt-get purge -y --auto-remove
 
 RUN python -m pip install --no-cache-dir playwright && \
