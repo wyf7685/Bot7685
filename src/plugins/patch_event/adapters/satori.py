@@ -1,11 +1,10 @@
 import contextlib
 from typing import TYPE_CHECKING, override
 
-from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
-from ..utils import color_repr, highlight_dict, highlight_list
+from ..utils import color_repr, highlight_object
 
 if TYPE_CHECKING:
     from nonebot.adapters.satori import Message
@@ -17,8 +16,8 @@ def highlight_message(message: "Message") -> str:
         + ", ".join(
             f"<g>{escape_tag(seg.__class__.__name__)}</g>"
             f"(type={color_repr(seg.type, 'y')}, "
-            f"data={highlight_dict(seg.data)}, "
-            f"children={highlight_list(seg.children)})"
+            f"data={highlight_object(seg.data)}, "
+            f"children={highlight_object(seg.children)})"
             for seg in message
         )
         + "]"
@@ -40,7 +39,7 @@ with contextlib.suppress(ImportError):
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return f"[{self.get_event_name()}]: {highlight_dict(model_dump(self))}"
+            return f"[{self.get_event_name()}]: {highlight_object(self)}"
 
     @Patcher
     class PatchPrivateMessageCreatedEvent(PrivateMessageCreatedEvent):

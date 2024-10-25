@@ -15,7 +15,7 @@ from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
 from ..patcher import Patcher
-from ..utils import highlight_dict
+from ..utils import highlight_object
 
 with contextlib.suppress(ImportError):
     from nonebot.adapters.onebot.utils import highlight_rich_message
@@ -140,7 +140,7 @@ with contextlib.suppress(ImportError):
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return f"[{self.get_event_name()}]: {highlight_dict(model_dump(self))}"
+            return f"[{self.get_event_name()}]: {highlight_object(model_dump(self))}"
 
     @Patcher
     class PatchPrivateMessageEvent(PrivateMessageEvent):

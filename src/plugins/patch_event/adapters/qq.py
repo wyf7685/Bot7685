@@ -5,7 +5,7 @@ from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
-from ..utils import color_repr, highlight_dict
+from ..utils import color_repr, highlight_object
 
 if TYPE_CHECKING:
     from nonebot.adapters.qq.event import EventType
@@ -22,7 +22,7 @@ def highlight_message(message: "Message") -> str:
         + ", ".join(
             f"<g>{escape_tag(seg.__class__.__name__)}</g>"
             f"(type={color_repr(seg.type, 'y')}, "
-            f"data={highlight_dict(seg.data)})"
+            f"data={highlight_object(seg.data)})"
             for seg in message
         )
         + "]"
@@ -43,7 +43,7 @@ with contextlib.suppress(ImportError):
         def get_log_string(self) -> str:
             return (
                 f"[{highlight_event_type(self.__type__)}] "
-                f"{highlight_dict(model_dump(self))}"
+                f"{highlight_object(model_dump(self))}"
             )
 
     @Patcher
