@@ -10,16 +10,16 @@ ENV LC_ALL=zh_CN.UTF-8
 ENV UID=1002
 ENV GID=1002
 
-RUN mkdir /home/bot7685 && useradd --no-log-init -d /home/bot7685 bot7685 && \
-    usermod -o -u ${UID} bot7685 && groupmod -o -g ${GID} bot7685 && usermod -g ${GID} bot7685 && \
-    chown -R ${UID}:${GID} /home/bot7685
+RUN mkdir /home/bot && useradd --no-log-init -d /home/bot bot && \
+    usermod -o -u ${UID} bot && groupmod -o -g ${GID} bot && usermod -g ${GID} bot && \
+    chown -R ${UID}:${GID} /home/bot
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends locales locales-all fonts-noto libnss3-dev libxss1 libasound2 libxrandr2 libatk1.0-0 libgtk-3-0 libgbm-dev libxshmfence1 git gosu nano && \
     apt-get purge -y --auto-remove
 
 RUN python -m pip install --no-cache-dir playwright && \
-    gosu bot7685 playwright install chromium --with-deps && \
+    gosu bot playwright install chromium --with-deps && \
     apt-get purge -y --auto-remove
 
 CMD [ "bash" ]

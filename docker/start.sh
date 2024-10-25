@@ -7,4 +7,4 @@ if [ ! -f /bot7685.initialize.flag ]; then
 fi
 
 # Start Gunicorn
-gosu bot7685 gunicorn -k "uvicorn.workers.UvicornWorker" -c "/gunicorn_conf.py" "bot:app"
+gosu bot gunicorn -k "uvicorn.workers.UvicornWorker" -c "/gunicorn_conf.py" "bot:app"
