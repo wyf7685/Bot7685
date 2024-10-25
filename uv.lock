@@ -213,7 +213,7 @@ dependencies = [
     { name = "websockets" },
 ]
 
-[package.dev-dependencies]
+[package.dependency-groups]
 dev = [
     { name = "ipykernel" },
     { name = "meme-generator" },
@@ -259,7 +259,7 @@ requires-dist = [
     { name = "websockets", specifier = ">=13.1" },
 ]
 
-[package.metadata.requires-dev]
+[package.metadata.dependency-groups]
 dev = [
     { name = "ipykernel", specifier = ">=6.29.5" },
     { name = "meme-generator", specifier = ">=0.1.4" },
