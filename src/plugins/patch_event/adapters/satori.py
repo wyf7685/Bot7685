@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, override
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
-from ..utils import color_repr, highlight_object
+from ..utils import highlight_object
 
 if TYPE_CHECKING:
     from nonebot.adapters.satori import Message
@@ -14,10 +14,10 @@ def highlight_message(message: "Message") -> str:
     return (
         "["
         + ", ".join(
-            f"<g>{escape_tag(seg.__class__.__name__)}</g>"
-            f"(type={color_repr(seg.type, 'y')}, "
-            f"data={highlight_object(seg.data)}, "
-            f"children={highlight_object(seg.children)})"
+            f"<m>{escape_tag(seg.__class__.__name__)}</m>"
+            f"(<y>type</y>={highlight_object(seg.type)}, "
+            f"<y>data</y>={highlight_object(seg.data)}, "
+            f"<y>children</y>={highlight_message(seg.children)})"
             for seg in message
         )
         + "]"
