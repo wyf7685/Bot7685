@@ -8,7 +8,7 @@ RUN git clone https://github.com/TimeRainStarSky/Yunzai /app && \
     git clone https://github.com/TomyJan/Yunzai-Kuro-Plugin.git /app/plugins/Yunzai-Kuro-Plugin && \
     pnpm install -P && \
     chmod +x /start.sh && \
-    rm -rf /app/plugins/example /app/plugins/other /app/plugins/system && \
+    rm -rf /app/plugins/example /app/plugins/other /app/plugins/system /app/plugins/Yunzai-Kuro-Plugin/apps/toy.js && \
     chown ${UID}:${GID} /app && \
     chown -R ${UID}:${GID} /app/config && \
     chown -R ${UID}:${GID} /app/plugins/Yunzai-Kuro-Plugin/config && \
