@@ -19,8 +19,8 @@ jobs:
 
       - name: Export requirements.txt
         run: |
-          uv export --no-dev --no-hashes > docker/requirements.txt
-          cat docker/requirements.txt
+          uv export --no-dev --no-hashes > docker/bot7685/assets/requirements.txt
+          cat docker/bot7685/assets/requirements.txt
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -44,7 +44,7 @@ jobs:
       - name: Build and Publish
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/.
+          context: ./docker/bot7685/.
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
@@ -61,7 +61,7 @@ jobs:
       - name: Build CLI and Publish
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/.
+          context: ./docker/bot7685/.
           file: ./docker/Dockerfile.cli
           push: true
           tags: ${{ steps.metadata-cli.outputs.tags }}

@@ -1,4 +1,4 @@
-name: Docker bot7685-base
+name: Docker Bot7685-base
 
 on:
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
       - name: Build and Publish
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/.
+          context: ./docker/bot7685/.
           file: ./docker/Dockerfile.base
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
