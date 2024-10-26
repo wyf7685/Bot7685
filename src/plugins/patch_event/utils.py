@@ -43,10 +43,6 @@ def _(data: bool) -> str:  # noqa: FBT001
 
 
 @_register(int)
-def _(data: int) -> str:
-    return color_repr(data, "c")
-
-
 @_register(float)
 def _(data: float) -> str:
     return color_repr(data, "c")
@@ -98,9 +94,8 @@ def _(data: datetime.datetime) -> str:
 
 @_register(BaseModel)
 def _(data: BaseModel) -> str:
-    model_name = type(data).__name__
     return (
-        f"<m>{model_name}</m>("
+        f"<m>{type(data).__name__}</m>("
         + ", ".join(
             f"<y>{k}</y>={highlight_object(v)}" for k, v in model_dump(data).items()
         )
