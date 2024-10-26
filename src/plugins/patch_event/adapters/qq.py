@@ -1,7 +1,6 @@
 import contextlib
 from typing import TYPE_CHECKING, override
 
-from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
@@ -9,24 +8,23 @@ from ..utils import color_repr, highlight_object
 
 if TYPE_CHECKING:
     from nonebot.adapters.qq.event import EventType
-    from nonebot.adapters.qq.message import Message
+    from nonebot.adapters.qq.message import Message, MessageSegment
 
 
 def highlight_event_type(type_: "EventType") -> str:
     return f"<lg>EventType</lg>.<b><e>{type_.value}</e></b>"
 
 
-def highlight_message(message: "Message") -> str:
+def highlight_segment(segment: "MessageSegment") -> str:
     return (
-        "["
-        + ", ".join(
-            f"<g>{escape_tag(seg.__class__.__name__)}</g>"
-            f"(type={color_repr(seg.type, 'y')}, "
-            f"data={highlight_object(seg.data)})"
-            for seg in message
-        )
-        + "]"
+        f"<g>{escape_tag(segment.__class__.__name__)}</g>"
+        f"(type={color_repr(segment.type, 'y')}, "
+        f"data={highlight_object(segment.data)})"
     )
+
+
+def highlight_message(message: "Message") -> str:
+    return f"[{', '.join(map(highlight_segment, message))}]"
 
 
 with contextlib.suppress(ImportError):
@@ -41,10 +39,7 @@ with contextlib.suppress(ImportError):
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return (
-                f"[{highlight_event_type(self.__type__)}] "
-                f"{highlight_object(model_dump(self))}"
-            )
+            return f"[{highlight_event_type(self.__type__)}] {highlight_object(self)}"
 
     @Patcher
     class PatchC2CMessageCreateEvent(C2CMessageCreateEvent):

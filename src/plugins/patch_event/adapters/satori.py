@@ -7,21 +7,20 @@ from ..patcher import Patcher
 from ..utils import highlight_object
 
 if TYPE_CHECKING:
-    from nonebot.adapters.satori import Message
+    from nonebot.adapters.satori import Message, MessageSegment
+
+
+def highlight_segment(segment: "MessageSegment") -> str:
+    return (
+        f"<m>{escape_tag(segment.__class__.__name__)}</m>"
+        f"(<y>type</y>={highlight_object(segment.type)}, "
+        f"<y>data</y>={highlight_object(segment.data)}, "
+        f"<y>children</y>={highlight_message(segment.children)})"
+    )
 
 
 def highlight_message(message: "Message") -> str:
-    return (
-        "["
-        + ", ".join(
-            f"<m>{escape_tag(seg.__class__.__name__)}</m>"
-            f"(<y>type</y>={highlight_object(seg.type)}, "
-            f"<y>data</y>={highlight_object(seg.data)}, "
-            f"<y>children</y>={highlight_message(seg.children)})"
-            for seg in message
-        )
-        + "]"
-    )
+    return f"[{', '.join(map(highlight_segment, message))}]"
 
 
 with contextlib.suppress(ImportError):
