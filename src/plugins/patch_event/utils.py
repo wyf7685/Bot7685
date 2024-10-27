@@ -1,8 +1,9 @@
 import datetime
 import functools
+import inspect
 from collections.abc import Callable
 from enum import Enum
-from typing import Any
+from typing import Any, get_origin
 
 from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
@@ -16,18 +17,18 @@ def color_repr(value: Any, /, *color: str) -> str:
     return text
 
 
-_registry: dict[type[Any], Callable[[Any], str]] = {}
+_registry: dict[type, Callable[[Any], str]] = {}
 
 
-def _register[T](type_: type[T]) -> Callable[[Callable[[T], str]], Callable[[T], str]]:
-    def decorator(call: Callable[[T], str]) -> Callable[[T], str]:
-        _registry[type_] = call
-        return call
+def _register[T](call: Callable[[T], str]) -> Callable[[T], str]:
+    type_ = inspect.signature(call).parameters["data"].annotation
+    if origin := get_origin(type_):
+        type_ = origin
+    _registry[type_] = call
+    return call
 
-    return decorator
 
-
-@_register(Enum)
+@_register
 @functools.cache
 def _(data: Enum) -> str:
     return (
@@ -36,25 +37,29 @@ def _(data: Enum) -> str:
     )
 
 
-@_register(bool)
+@_register
 @functools.cache
 def _(data: bool) -> str:  # noqa: FBT001
     return color_repr(data, "g")
 
 
-@_register(int)
-@_register(float)
+@_register
+def _(data: int) -> str:
+    return color_repr(data, "c")
+
+
+@_register
 def _(data: float) -> str:
     return color_repr(data, "c")
 
 
-@_register(str)
+@_register
 def _(data: str) -> str:
     text = escape_tag(repr(data))
     return f"{text[0]}<c>{text[1:-1]}</c>{text[-1]}"
 
 
-@_register(dict)
+@_register
 def _(data: dict[str, Any]) -> str:
     return (
         "{"
@@ -66,33 +71,33 @@ def _(data: dict[str, Any]) -> str:
     )
 
 
-@_register(list)
+@_register
 def _(data: list[Any]) -> str:
     return "[" + ", ".join(highlight_object(item) for item in data) + "]"
 
 
-@_register(set)
+@_register
 def _(data: set[Any]) -> str:
     return "{" + ", ".join(highlight_object(item) for item in data) + "}"
 
 
-@_register(tuple)
+@_register
 def _(data: tuple[Any]) -> str:
     return "(" + ", ".join(highlight_object(item) for item in data) + ")"
 
 
-@_register(datetime.datetime)
+@_register
 def _(data: datetime.datetime) -> str:
     attrs = [
         highlight_object(getattr(data, name))
         for name in ["year", "month", "day", "hour", "minute", "second", "microsecond"]
     ]
     if data.tzinfo is not None:
-        attrs.append(f"<y>tzinfo</y>=<m>{data.tzinfo}</m>")
+        attrs.append(f"<m>{data.tzinfo}</m>")
     return "<m>datetime</m>.<m>datetime</m>(" + ", ".join(attrs) + ")"
 
 
-@_register(BaseModel)
+@_register
 def _(data: BaseModel) -> str:
     return (
         f"<m>{type(data).__name__}</m>("
