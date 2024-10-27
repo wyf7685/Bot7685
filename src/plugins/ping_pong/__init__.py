@@ -96,8 +96,9 @@ alc = Alconna(
     Option("-p", help_text="Ping Hyper-V 网络虚拟化提供程序地址。"),
     Option("-4", help_text="强制使用 IPv4。"),
     Option("-6", help_text="强制使用 IPv6。"),
+    Args["target_name?", str],
     meta=CommandMeta(
-        description="ping",
+        description="Command: ping",
         usage="ping [-t] [-a] [-n count] [-l size] [-f] [-i TTL] [-v TOS] "
         "[-r count] [-s count] [[-j host-list] | [-k host-list]] "
         "[-w timeout] [-R] [-S srcaddr] [-c compartment] [-p] "
