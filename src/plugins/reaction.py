@@ -1,6 +1,7 @@
 import contextlib
 from typing import TYPE_CHECKING
 
+import anyio
 from nonebot import get_plugin_config, on_keyword, on_message, require
 from nonebot.adapters import Bot, Event
 from nonebot.exception import ActionFailed
@@ -57,5 +58,7 @@ async def _(bot: Bot, event: Event, session: EventSession) -> None:
     if set_reaction := getattr(api, "set_reaction", None):
         with contextlib.suppress(ActionFailed):
             await set_reaction(424, api.mid)
+            await anyio.sleep(0.5)
             await set_reaction(38, api.mid)
+            await anyio.sleep(0.5)
             await set_reaction(285, api.mid)
