@@ -1,5 +1,5 @@
 import pathlib
-import random
+import secrets
 
 from nonebot import require
 
@@ -108,9 +108,13 @@ alc = Alconna(
 )
 ping = on_alconna(alc, priority=10)
 root = pathlib.Path(__file__).resolve().parent
+images = list(root.glob("*.jpg"))
 
 
 @ping.handle()
 async def _() -> None:
-    file = random.choice(list(root.glob("*.jpg")))
-    await UniMessage.text("pong").image(raw=file.read_bytes()).send(reply_to=True)
+    await (
+        UniMessage.text("pong")
+        .image(raw=secrets.choice(images).read_bytes())
+        .send(reply_to=True)
+    )
