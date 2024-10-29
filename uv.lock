@@ -186,6 +186,7 @@ dependencies = [
     { name = "nonebot-adapter-onebot" },
     { name = "nonebot-adapter-qq" },
     { name = "nonebot-adapter-satori" },
+    { name = "nonebot-adapter-telegram" },
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-apscheduler" },
     { name = "nonebot-plugin-chatrecorder" },
@@ -232,6 +233,7 @@ requires-dist = [
     { name = "nonebot-adapter-onebot", specifier = ">=2.4.5" },
     { name = "nonebot-adapter-qq", specifier = ">=1.5.2" },
     { name = "nonebot-adapter-satori", specifier = ">=0.13.0rc3" },
+    { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b19" },
     { name = "nonebot-plugin-alconna", specifier = ">=0.53.1" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", specifier = ">=0.6.2" },
@@ -1289,6 +1291,20 @@ wheels = [
 ]
 
 [[package]]
+name = "nonebot-adapter-telegram"
+version = "0.1.0b19"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "nonebot2" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/74/5d/ea54bba615c402e5ad981d12c62ff5e8db0a62cfb44c1a3a0936d68d9147/nonebot-adapter-telegram-0.1.0b19.tar.gz", hash = "sha256:b741027a1b4828d69d2191e880b6e7919a342071e9bac0dcf5db58b44884b33f", size = 29303 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/79/2a/0a4531ff62beae184e29bf025d0c7775bd77e9c04ad0f6dc11168082aea1/nonebot_adapter_telegram-0.1.0b19-py3-none-any.whl", hash = "sha256:59d0f63a49487c9558c99709958c9392243c2fb27b8032b830afb63b775f0a54", size = 30006 },
+]
+
+[[package]]
 name = "nonebot-plugin-alconna"
 version = "0.53.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2214,15 +2230,15 @@ wheels = [
 
 [[package]]
 name = "pymdown-extensions"
-version = "10.11.2"
+version = "10.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f4/71/2730a20e9e3752393d78998347f8b1085ef9c417646ea9befbeef221e3c4/pymdown_extensions-10.11.2.tar.gz", hash = "sha256:bc8847ecc9e784a098efd35e20cba772bc5a1b529dfcef9dc1972db9021a1049", size = 830241 }
+sdist = { url = "https://files.pythonhosted.org/packages/d8/0b/32f05854cfd432e9286bb41a870e0d1a926b72df5f5cdb6dec962b2e369e/pymdown_extensions-10.12.tar.gz", hash = "sha256:b0ee1e0b2bef1071a47891ab17003bfe5bf824a398e13f49f8ed653b699369a7", size = 840790 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/35/c0edf199257ef0a7d407d29cd51c4e70d1dad4370a5f44deb65a7a5475e2/pymdown_extensions-10.11.2-py3-none-any.whl", hash = "sha256:41cdde0a77290e480cf53892f5c5e50921a7ee3e5cd60ba91bf19837b33badcf", size = 259044 },
+    { url = "https://files.pythonhosted.org/packages/53/32/95a164ddf533bd676cbbe878e36e89b4ade3efde8dd61d0148c90cbbe57e/pymdown_extensions-10.12-py3-none-any.whl", hash = "sha256:49f81412242d3527b8b4967b990df395c89563043bc51a3d2d7d500e52123b77", size = 263448 },
 ]
 
 [[package]]
