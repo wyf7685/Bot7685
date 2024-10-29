@@ -1,9 +1,11 @@
 import importlib
+import logging
 import pathlib
 import tomllib
 
 import nonebot
 
+logging.getLogger("httpx").setLevel(logging.WARNING)
 nonebot.logger.add(
     "./logs/{time:YYYY-MM-DD}.log",
     rotation="00:00",
