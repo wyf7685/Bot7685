@@ -3,6 +3,7 @@ import contextlib
 from nonebot import require
 from nonebot.adapters import Bot
 from nonebot.log import logger
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
@@ -10,6 +11,14 @@ from nonebot_plugin_alconna.uniseg import At, UniMessage
 
 from .depends import LotsTarget, MsgId
 from .lots_data import get_lots_msg
+
+__plugin_meta__ = PluginMetadata(
+    name="lots",
+    description="御神签",
+    usage="提供御神签功能",
+    type="application",
+    supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
+)
 
 lots = on_alconna(Alconna("御神签", Args["target?", At]))
 

@@ -1,4 +1,13 @@
 from nonebot import get_driver
+from nonebot.plugin import PluginMetadata
+
+__plugin_meta__ = PluginMetadata(
+    name="on_driver_startup",
+    description="Start jobs on driver startup",
+    usage="None",
+    type="application",
+    supported_adapters=None,
+)
 
 
 @get_driver().on_startup

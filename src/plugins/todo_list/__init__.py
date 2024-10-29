@@ -2,6 +2,7 @@ from typing import NoReturn
 
 from nonebot import require
 from nonebot.params import Depends
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
@@ -22,6 +23,20 @@ from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_waiter import prompt, suggest
 
 from .todo_list import Todo, TodoList, UserTodo
+
+__plugin_meta__ = PluginMetadata(
+    name="todo_list",
+    description="待办事项",
+    usage="todo --help",
+    type="application",
+    supported_adapters=inherit_supported_adapters(
+        "nonebot_plugin_alconna",
+        "nonebot_plugin_htmlrender",
+        "nonebot_plugin_localstore",
+        "nonebot_plugin_session",
+        "nonebot_plugin_waiter",
+    ),
+)
 
 arg_index = Args["index#todo序号", int]
 arg_content = Args["content?#todo内容", str]

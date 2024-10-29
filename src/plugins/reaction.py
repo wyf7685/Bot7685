@@ -5,6 +5,7 @@ import anyio
 from nonebot import get_plugin_config, on_keyword, on_message, require
 from nonebot.adapters import Bot, Event
 from nonebot.exception import ActionFailed
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
@@ -21,6 +22,18 @@ else:
     except Exception:
         require("nonebot_plugin_exe_code")
         from nonebot_plugin_exe_code.interface import get_api_class
+
+
+__plugin_meta__ = PluginMetadata(
+    name="reaction",
+    description="自动回应",
+    usage="自动回应",
+    type="application",
+    supported_adapters=inherit_supported_adapters(
+        "nonebot_plugin_alconna",
+        "nonebot_plugin_session",
+    ),
+)
 
 
 class Config(BaseModel):

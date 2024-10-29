@@ -5,11 +5,20 @@ from typing import Annotated
 from nonebot import get_driver, on_message, on_type, require
 from nonebot.adapters.onebot.v11 import Bot, FriendRequestEvent, PrivateMessageEvent
 from nonebot.permission import SUPERUSER
+from nonebot.plugin import PluginMetadata
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_userinfo")
 from nonebot_plugin_alconna.uniseg import Receipt, Reply, Target, UniMessage, UniMsg
 from nonebot_plugin_userinfo import EventUserInfo, UserInfo
+
+__plugin_meta__ = PluginMetadata(
+    name="friend_add",
+    description="好友申请处理",
+    usage="自动处理好友申请",
+    type="application",
+    supported_adapters={"~onebot.v11"},
+)
 
 
 @on_type(FriendRequestEvent).handle()

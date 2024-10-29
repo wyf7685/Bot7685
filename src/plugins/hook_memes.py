@@ -2,6 +2,15 @@ from nonebot.adapters.onebot.v11.event import GroupMessageEvent
 from nonebot.exception import IgnoredException
 from nonebot.matcher import Matcher
 from nonebot.message import run_preprocessor
+from nonebot.plugin import PluginMetadata
+
+__plugin_meta__ = PluginMetadata(
+    name="hook_memes",
+    description="Hook memes plugin",
+    usage="None",
+    type="application",
+    supported_adapters={"~onebot.v11"},
+)
 
 disabled_group: set[int] = {429379849}
 

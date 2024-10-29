@@ -5,6 +5,7 @@ from nonebot import on_startswith, require
 from nonebot.adapters import Event
 from nonebot.log import logger
 from nonebot.permission import SUPERUSER
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
@@ -23,6 +24,14 @@ from .database import (
     update_permission,
 )
 from .depends import ALLOW_UPLOAD, EventImageRaw
+
+__plugin_meta__ = PluginMetadata(
+    name="upload_cos",
+    description="上传图片到 COS",
+    usage="cos上传",
+    type="application",
+    supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
+)
 
 upload_cos = on_startswith("cos上传", permission=ALLOW_UPLOAD)
 update_perm = on_alconna(

@@ -2,10 +2,19 @@ from typing import NoReturn
 
 from nonebot import on_fullmatch
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, MessageSegment
+from nonebot.plugin import PluginMetadata
 from nonebot.rule import to_me
 
 from .depends import GameNotRunning, GameRunning
 from .game import Game, running_game
+
+__plugin_meta__ = PluginMetadata(
+    name="russian_roulette",
+    description="俄罗斯轮盘",
+    usage="发送 *装弹* 开始游戏，发送 *开枪* 参与游戏",
+    type="application",
+    supported_adapters=None,
+)
 
 game_start = on_fullmatch("装弹", rule=to_me() & GameNotRunning)
 game_shoot = on_fullmatch("开枪", rule=GameRunning)
