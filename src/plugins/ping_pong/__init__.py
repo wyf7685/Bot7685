@@ -115,7 +115,7 @@ alc = Alconna(
         example="ping -n 4 -w 1000 www.baidu.com",
     ),
 )
-ping = on_alconna(alc, priority=10)
+ping = on_alconna(alc, priority=10, use_cmd_start=True)
 root = pathlib.Path(__file__).resolve().parent
 images = list(root.glob("*.jpg"))
 
