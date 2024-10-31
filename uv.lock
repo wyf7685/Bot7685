@@ -248,7 +248,7 @@ requires-dist = [
     { name = "nonebot-plugin-skland-arksign", extras = ["sm-local"], specifier = ">=0.8.0" },
     { name = "nonebot-plugin-userinfo", specifier = ">=0.2.6" },
     { name = "nonebot-plugin-wakatime", specifier = ">=0.2.6" },
-    { name = "nonebot-plugin-werewolf", specifier = ">=1.1.6" },
+    { name = "nonebot-plugin-werewolf", specifier = ">=1.1.7" },
     { name = "nonebot-plugin-wordcloud", specifier = ">=0.8.0" },
     { name = "nonebot-plugin-wordle", specifier = ">=0.4.3" },
     { name = "nonebot2", specifier = ">=2.4.0" },
@@ -1701,7 +1701,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-werewolf"
-version = "1.1.6"
+version = "1.1.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1711,9 +1711,9 @@ dependencies = [
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/72/fa/bbf747b6d6f1bbfe3026d53c707c9632b324f5652f8f898584c3f3e8c840/nonebot_plugin_werewolf-1.1.6.tar.gz", hash = "sha256:5bc3250720123d0d1987f475626b89e5f12d294c5f5a496287c54050ea626481", size = 32789 }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/1e/ee55598b93fd305d647154e480cef3f197d200833f8b7188dcbb613ed605/nonebot_plugin_werewolf-1.1.7.tar.gz", hash = "sha256:3b7e4d0a501b971b2ee082af85e02423b1d20d2d7dc1db61d00265d9ac48fcc0", size = 32846 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/7a/d0088074bd02a160e60bd305a35f10d57f29d6d9186112243bcdba8424a6/nonebot_plugin_werewolf-1.1.6-py3-none-any.whl", hash = "sha256:124e3d8b2870ec987de665dc33332fa7165eeceb46286d063a487e393f98a930", size = 39576 },
+    { url = "https://files.pythonhosted.org/packages/ce/17/445c1e5f6852625eeaec427429d780305e572505caa27b0cff37fd6c5569/nonebot_plugin_werewolf-1.1.7-py3-none-any.whl", hash = "sha256:08affa65271d7bf33892ec07e4a846783f386724ea0f671f2e16496db5e95c52", size = 39635 },
 ]
 
 [[package]]
