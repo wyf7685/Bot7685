@@ -34,7 +34,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: ./docker/bot7685/.
-          file: ./docker/Dockerfile.base
+          file: ./docker/bot7685/Dockerfile.base
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
