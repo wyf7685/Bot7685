@@ -21,12 +21,11 @@ def color_repr(value: Any, /, *color: str) -> str:
 _registry: dict[type, Callable[[Any], str]] = {}
 
 
-def _register[T](call: Callable[[T], str]) -> Callable[[T], str]:
+def _register[T](call: Callable[[T], str]) -> None:
     type_ = inspect.signature(call).parameters["data"].annotation
     if origin := get_origin(type_):
         type_ = origin
     _registry[type_] = call
-    return call
 
 
 @_register
@@ -117,16 +116,23 @@ def highlight_object(value: Any) -> str:
         return color_repr(value)
 
 
-def highlight_segment(segment: MessageSegment) -> str:
-    return (
-        f"<m>{escape_tag(segment.__class__.__name__)}</m>"
-        f"(<y>type</y>={highlight_object(segment.type)}, "
-        f"<y>data</y>={highlight_object(segment.data)})"
-    )
+class Highlight[MS: MessageSegment]:
+    @classmethod
+    def repr(cls, value: Any, /, *color: str) -> str:
+        return color_repr(value, *color)
 
+    @classmethod
+    def object(cls, value: Any) -> str:
+        return highlight_object(value)
 
-def highlight_message[MS: MessageSegment](
-    message: Message[MS],
-    highlight_segment: Callable[[MS], str] = highlight_segment,
-) -> str:
-    return f"[{', '.join(map(highlight_segment, message))}]"
+    @classmethod
+    def segment(cls, segment: MS) -> str:
+        return (
+            f"<m>{escape_tag(segment.__class__.__name__)}</m>"
+            f"(<y>type</y>={cls.object(segment.type)}, "
+            f"<y>data</y>={cls.object(segment.data)})"
+        )
+
+    @classmethod
+    def message(cls, message: Message) -> str:
+        return f"[{', '.join(map(cls.segment, message))}]"

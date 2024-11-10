@@ -6,7 +6,7 @@ from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
-from ..utils import highlight_message, highlight_object
+from ..utils import Highlight
 
 
 def exclude_unset_none(data: dict[str, Any] | list[Any]) -> dict[str, Any] | list[Any]:
@@ -53,7 +53,7 @@ with contextlib.suppress(ImportError):
         def get_log_string(self) -> str:
             return (
                 f"[{self.get_event_name()}] "
-                f"{highlight_object(exclude_unset_none(model_dump(self)))}"
+                f"{Highlight.object(exclude_unset_none(model_dump(self)))}"
             )
 
     @Patcher
@@ -65,7 +65,7 @@ with contextlib.suppress(ImportError):
                 f"Message <c>{self.id}</c> from "
                 f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
                 f"(<c>{self.author.id}</c>) "
-                f"{highlight_message(self.get_message())}"
+                f"{Highlight.message(self.get_message())}"
             )
 
     @Patcher
@@ -85,7 +85,7 @@ with contextlib.suppress(ImportError):
                 f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
                 f"(<c>{self.author.id}</c>)"
                 f"@[Guild:{guild} Channel:{channel}] "
-                f"{highlight_message(self.get_message())}"
+                f"{Highlight.message(self.get_message())}"
             )
 
     @nonebot.on_type(GuildCreateEvent).handle()

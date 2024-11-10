@@ -4,11 +4,13 @@ from typing import override
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
-from ..utils import color_repr, highlight_message, highlight_object
+from ..utils import Highlight as _Highlight
 
 
-def highlight_event_type(type_: "EventType") -> str:
-    return f"<lg>EventType</lg>.<b><e>{type_.value}</e></b>"
+class Highlight(_Highlight):
+    @classmethod
+    def event_type(cls, type_: "EventType") -> str:
+        return f"<lg>EventType</lg>.<b><e>{type_.value}</e></b>"
 
 
 with contextlib.suppress(ImportError):
@@ -24,17 +26,17 @@ with contextlib.suppress(ImportError):
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return f"[{highlight_event_type(self.__type__)}] {highlight_object(self)}"
+            return f"[{Highlight.event_type(self.__type__)}] {Highlight.object(self)}"
 
     @Patcher
     class PatchC2CMessageCreateEvent(C2CMessageCreateEvent):
         @override
         def get_log_string(self) -> str:
             return (
-                f"[{highlight_event_type(self.__type__)}] "
+                f"[{Highlight.event_type(self.__type__)}] "
                 f"Message <c>{escape_tag(self.id)}</c> from "
                 f"<c>{self.author.id}</c>: "
-                f"{highlight_message(self.get_message())}"
+                f"{Highlight.message(self.get_message())}"
             )
 
     @Patcher
@@ -42,11 +44,11 @@ with contextlib.suppress(ImportError):
         @override
         def get_log_string(self) -> str:
             return (
-                f"[{highlight_event_type(self.__type__)}] "
+                f"[{Highlight.event_type(self.__type__)}] "
                 f"Message <c>{escape_tag(self.id)}</c> from "
                 f"<c>{self.author.member_openid}</c>"
                 f"@[Group:<c>{self.group_openid}</c>]: "
-                f"{highlight_message(self.get_message())}"
+                f"{Highlight.message(self.get_message())}"
             )
 
     @Patcher
@@ -59,8 +61,8 @@ with contextlib.suppress(ImportError):
                 else f"<c>{self.user.id}</c>"
             )
             return (
-                f"[{highlight_event_type(self.__type__)}] "
+                f"[{Highlight.event_type(self.__type__)}] "
                 f"Bot {name} ready: "
-                f"session={color_repr(self.session_id,'b','e')}, "
-                f"shard={color_repr(self.shard,'b','e')}"
+                f"session={Highlight.repr(self.session_id,'b','e')}, "
+                f"shard={Highlight.repr(self.shard,'b','e')}"
             )

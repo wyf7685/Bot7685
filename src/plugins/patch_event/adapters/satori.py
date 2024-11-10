@@ -4,24 +4,21 @@ from typing import TYPE_CHECKING, override
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
-from ..utils import highlight_message as _hm
-from ..utils import highlight_object
+from ..utils import Highlight as _Highlight
 
 if TYPE_CHECKING:
-    from nonebot.adapters.satori import Message, MessageSegment
+    from nonebot.adapters.satori import MessageSegment
 
 
-def highlight_segment(segment: "MessageSegment") -> str:
-    return (
-        f"<m>{escape_tag(segment.__class__.__name__)}</m>"
-        f"(<y>type</y>={highlight_object(segment.type)}, "
-        f"<y>data</y>={highlight_object(segment.data)}, "
-        f"<y>children</y>={highlight_message(segment.children)})"
-    )
-
-
-def highlight_message(message: "Message") -> str:
-    return _hm(message, highlight_segment)
+class Highlight(_Highlight["MessageSegment"]):
+    @classmethod
+    def segment(cls, segment: "MessageSegment") -> str:
+        return (
+            f"<m>{escape_tag(segment.__class__.__name__)}</m>"
+            f"(<y>type</y>={cls.object(segment.type)}, "
+            f"<y>data</y>={cls.object(segment.data)}, "
+            f"<y>children</y>={cls.message(segment.children)})"
+        )
 
 
 with contextlib.suppress(ImportError):
@@ -39,7 +36,7 @@ with contextlib.suppress(ImportError):
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return f"[{self.get_event_name()}]: {highlight_object(self)}"
+            return f"[{self.get_event_name()}]: {Highlight.object(self)}"
 
     @Patcher
     class PatchPrivateMessageCreatedEvent(PrivateMessageCreatedEvent):
@@ -50,7 +47,7 @@ with contextlib.suppress(ImportError):
                 f"Message <c>{escape_tag(self.msg_id)}</c> from "
                 f"<y>{escape_tag(self.user.name or self.user.nick or '')}</y>"
                 f"(<c>{escape_tag(self.channel.id)}</c>): "
-                f"{highlight_message(self.get_message())}"
+                f"{Highlight.message(self.get_message())}"
             )
 
     @Patcher
@@ -76,7 +73,7 @@ with contextlib.suppress(ImportError):
                 f"Message <c>{self.msg_id}</c> from "
                 f"<y>{escape_tag(nick)}</y>(<c>{self.user.id}</c>)"
                 f"@[Group:<y>{self.channel.name or ''}</y>(<c>{self.channel.id}</c>)]: "
-                f"{highlight_message(self.get_message())}"
+                f"{Highlight.message(self.get_message())}"
             )
 
     @Patcher
