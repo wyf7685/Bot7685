@@ -1,36 +1,21 @@
 import contextlib
-from typing import TYPE_CHECKING, override
+from typing import override
 
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
-from ..utils import color_repr, highlight_object
-
-if TYPE_CHECKING:
-    from nonebot.adapters.qq.event import EventType
-    from nonebot.adapters.qq.message import Message, MessageSegment
+from ..utils import color_repr, highlight_message, highlight_object
 
 
 def highlight_event_type(type_: "EventType") -> str:
     return f"<lg>EventType</lg>.<b><e>{type_.value}</e></b>"
 
 
-def highlight_segment(segment: "MessageSegment") -> str:
-    return (
-        f"<g>{escape_tag(segment.__class__.__name__)}</g>"
-        f"(type={color_repr(segment.type, 'y')}, "
-        f"data={highlight_object(segment.data)})"
-    )
-
-
-def highlight_message(message: "Message") -> str:
-    return f"[{', '.join(map(highlight_segment, message))}]"
-
-
 with contextlib.suppress(ImportError):
     from nonebot.adapters.qq.event import (
         C2CMessageCreateEvent,
         Event,
+        EventType,
         GroupAtMessageCreateEvent,
         ReadyEvent,
     )

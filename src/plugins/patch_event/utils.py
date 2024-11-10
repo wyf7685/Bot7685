@@ -5,6 +5,7 @@ from collections.abc import Callable
 from enum import Enum
 from typing import Any, get_origin
 
+from nonebot.adapters import Message, MessageSegment
 from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
@@ -114,3 +115,18 @@ def highlight_object(value: Any) -> str:
             return call(value)
     else:
         return color_repr(value)
+
+
+def highlight_segment(segment: MessageSegment) -> str:
+    return (
+        f"<m>{escape_tag(segment.__class__.__name__)}</m>"
+        f"(<y>type</y>={highlight_object(segment.type)}, "
+        f"<y>data</y>={highlight_object(segment.data)})"
+    )
+
+
+def highlight_message[MS: MessageSegment](
+    message: Message[MS],
+    highlight_segment: Callable[[MS], str] = highlight_segment,
+) -> str:
+    return f"[{', '.join(map(highlight_segment, message))}]"

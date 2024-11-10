@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, override
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
+from ..utils import highlight_message as _hm
 from ..utils import highlight_object
 
 if TYPE_CHECKING:
@@ -20,7 +21,7 @@ def highlight_segment(segment: "MessageSegment") -> str:
 
 
 def highlight_message(message: "Message") -> str:
-    return f"[{', '.join(map(highlight_segment, message))}]"
+    return _hm(message, highlight_segment)
 
 
 with contextlib.suppress(ImportError):

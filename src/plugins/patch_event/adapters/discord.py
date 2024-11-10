@@ -6,19 +6,7 @@ from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
 from ..patcher import Patcher
-from ..utils import highlight_object
-
-
-def highlight_segment(segment: "MessageSegment") -> str:
-    return (
-        f"<m>{escape_tag(segment.__class__.__name__)}</m>"
-        f"(<y>type</y>={highlight_object(segment.type)}, "
-        f"<y>data</y>={highlight_object(segment.data)})"
-    )
-
-
-def highlight_message(message: "Message") -> str:
-    return f"[{', '.join(map(highlight_segment, message))}]"
+from ..utils import highlight_message, highlight_object
 
 
 def exclude_unset_none(data: dict[str, Any] | list[Any]) -> dict[str, Any] | list[Any]:
@@ -51,7 +39,7 @@ def find_channel_name(guild: int, channel: int) -> str | None:
 
 
 with contextlib.suppress(ImportError):
-    from nonebot.adapters.discord import Event, Message, MessageSegment
+    from nonebot.adapters.discord import Event
     from nonebot.adapters.discord.api import UNSET, Channel
     from nonebot.adapters.discord.event import (
         DirectMessageCreateEvent,
