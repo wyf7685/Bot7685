@@ -36,13 +36,12 @@ class Highlight(_Highlight["MessageSegment"]):
             for k, v in segment.data.items()
             if v is not None
         )
-        return f"<le>[<e>{segment.type}</e>{':' if params else ''}{params}]</le>"
+        return f"<le>[<u>{segment.type}</u>{':' if params else ''}{params}]</le>"
 
     @classmethod
     @override
     def message(cls, message: BaseMessage["MessageSegment"]) -> str:
-        text = repr("".join(map(cls.segment, message)))
-        return f"{text[0]}<c>{text[1:-1]}</c>{text[-1]}"
+        return repr("".join(map(cls.segment, message)))
 
 
 with contextlib.suppress(ImportError):

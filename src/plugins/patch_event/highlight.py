@@ -75,7 +75,7 @@ class Highlight[MS: MessageSegment]:
     @classmethod
     def _(cls, data: dict[str, Any]) -> str:
         kv = [
-            f"{cls.repr(key, 'e', 'i')}: {cls.apply(value)}"
+            f"{cls.repr(key, 'le', 'i')}: {cls.apply(value)}"
             for key, value in data.items()
             if value not in cls.exclude_value
         ]
