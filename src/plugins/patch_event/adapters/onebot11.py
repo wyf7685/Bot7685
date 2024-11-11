@@ -204,10 +204,8 @@ with contextlib.suppress(ImportError):
             if self.group_id is not None:
                 text += f"{colored_group(self.group_id)} "
             else:
-                gen = (
-                    idx + 1 for idx, item in enumerate(raw_info) if item["type"] == "qq"
-                )
-                raw_info.insert(next(gen, 1), {"type": "nor", "txt": "戳了戳"})
+                gen = (idx for idx, item in enumerate(raw_info) if item["type"] == "qq")
+                raw_info.insert(next(gen, 0) + 1, {"type": "nor", "txt": "戳了戳"})
 
             for item in raw_info:
                 if item["type"] == "qq":
