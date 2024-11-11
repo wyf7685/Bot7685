@@ -40,10 +40,10 @@ class Highlight[MS: MessageSegment]:
     def apply(cls, data: Any, /) -> str:
         return cls._handle(data)
 
-    @register(Enum)
+    # @register(Enum)
     @classmethod
     @functools.cache
-    def _(cls, data: Enum) -> str:
+    def enum(cls, data: Enum) -> str:
         return (
             f"<<m>{type(data).__name__}</m>.<m>{data.name}</m>: "
             f"{cls.apply(data.value)}>"
@@ -58,6 +58,8 @@ class Highlight[MS: MessageSegment]:
     @register(int)
     @classmethod
     def _(cls, data: int) -> str:
+        if isinstance(data, Enum):
+            return cls.enum(data)
         return cls.repr(data, "c")
 
     @register(float)
@@ -68,6 +70,8 @@ class Highlight[MS: MessageSegment]:
     @register(str)
     @classmethod
     def _(cls, data: str) -> str:
+        if isinstance(data, Enum):
+            return cls.enum(data)
         text = escape_tag(repr(data))
         return f"{text[0]}<c>{text[1:-1]}</c>{text[-1]}"
 
