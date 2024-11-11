@@ -3,8 +3,8 @@ from typing import override
 
 from nonebot.utils import escape_tag
 
+from ..highlight import Highlight as _Highlight
 from ..patcher import Patcher
-from ..utils import Highlight as _Highlight
 
 
 class Highlight(_Highlight):

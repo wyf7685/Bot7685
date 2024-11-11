@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING, override
 
 from nonebot.utils import escape_tag
 
+from ..highlight import Highlight as _Highlight
 from ..patcher import Patcher
-from ..utils import Highlight as _Highlight
 
 if TYPE_CHECKING:
     from nonebot.adapters.satori import MessageSegment
@@ -12,12 +12,13 @@ if TYPE_CHECKING:
 
 class Highlight(_Highlight["MessageSegment"]):
     @classmethod
+    @override
     def segment(cls, segment: "MessageSegment") -> str:
         return (
             f"<m>{escape_tag(segment.__class__.__name__)}</m>"
-            f"(<y>type</y>={cls.object(segment.type)}, "
-            f"<y>data</y>={cls.object(segment.data)}, "
-            f"<y>children</y>={cls.message(segment.children)})"
+            f"(<i><y>type</y></i>={cls.object(segment.type)},"
+            f" <i><y>data</y></i>={cls.object(segment.data)},"
+            f" <i><y>children</y></i>={cls.message(segment.children)})"
         )
 
 

@@ -5,8 +5,8 @@ import nonebot
 from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
+from ..highlight import Highlight
 from ..patcher import Patcher
-from ..utils import Highlight
 
 
 def exclude_unset_none(data: dict[str, Any] | list[Any]) -> dict[str, Any] | list[Any]:

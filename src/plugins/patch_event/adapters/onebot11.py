@@ -14,8 +14,8 @@ from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
+from ..highlight import Highlight
 from ..patcher import Patcher
-from ..utils import Highlight
 
 with contextlib.suppress(ImportError):
     from nonebot.adapters.onebot.utils import highlight_rich_message

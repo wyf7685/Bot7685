@@ -3,8 +3,8 @@ from typing import override
 
 from nonebot.utils import escape_tag
 
+from ..highlight import Highlight
 from ..patcher import Patcher
-from ..utils import Highlight
 
 with contextlib.suppress(ImportError):
     from nonebot.adapters.telegram.event import (
