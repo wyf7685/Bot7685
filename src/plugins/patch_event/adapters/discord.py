@@ -1,27 +1,12 @@
 import contextlib
-from typing import Any, override
+from typing import override
 
 import nonebot
 from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
-from ..highlight import Highlight
+from ..highlight import Highlight as _Highlight
 from ..patcher import Patcher
-
-
-def exclude_unset_none(data: dict[str, Any] | list[Any]) -> dict[str, Any] | list[Any]:
-    if isinstance(data, dict):
-        return {
-            k: (exclude_unset_none(v) if isinstance(v, dict | list) else v)
-            for k, v in data.items()
-            if v is not UNSET and v is not None
-        }
-    return [
-        (exclude_unset_none(i) if isinstance(i, dict | list) else i)
-        for i in data
-        if i is not UNSET and i is not None
-    ]
-
 
 guild_name_cache: dict[int, str] = {}
 guild_channel_cache: dict[int, list["Channel"]] = {}
@@ -39,13 +24,18 @@ def find_channel_name(guild: int, channel: int) -> str | None:
 
 
 with contextlib.suppress(ImportError):
-    from nonebot.adapters.discord import Event
+    from nonebot.adapters.discord import Event, Message
     from nonebot.adapters.discord.api import UNSET, Channel
     from nonebot.adapters.discord.event import (
         DirectMessageCreateEvent,
+        DirectMessageUpdateEvent,
         GuildCreateEvent,
         GuildMessageCreateEvent,
+        GuildMessageUpdateEvent,
     )
+
+    class Highlight(_Highlight):
+        exclude_value = UNSET, None
 
     @Patcher
     class PatchEvent(Event):
@@ -53,7 +43,7 @@ with contextlib.suppress(ImportError):
         def get_log_string(self) -> str:
             return (
                 f"[{self.get_event_name()}] "
-                f"{Highlight.object(exclude_unset_none(model_dump(self)))}"
+                f"{Highlight.apply(model_dump(self))}"
             )
 
     @Patcher
@@ -65,7 +55,19 @@ with contextlib.suppress(ImportError):
                 f"Message <c>{self.id}</c> from "
                 f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
                 f"(<c>{self.author.id}</c>) "
-                f"{Highlight.message(self.get_message())}"
+                f"{Highlight.apply(self.get_message())}"
+            )
+
+    @Patcher
+    class PatchDirectMessageUpdateEvent(DirectMessageUpdateEvent):
+        @override
+        def get_log_string(self) -> str:
+            return (
+                f"[{self.get_event_name()}] "
+                f"Message <c>{self.id}</c> from "
+                f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
+                f"(<c>{self.author.id}</c>) updated to "
+                f"{Highlight.apply(Message.from_guild_message(self))}"
             )
 
     @Patcher
@@ -85,7 +87,27 @@ with contextlib.suppress(ImportError):
                 f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
                 f"(<c>{self.author.id}</c>)"
                 f"@[Guild:{guild} Channel:{channel}] "
-                f"{Highlight.message(self.get_message())}"
+                f"{Highlight.apply(self.get_message())}"
+            )
+
+    @Patcher
+    class PatchGuildMessageUpdateEvent(GuildMessageUpdateEvent):
+        @override
+        def get_log_string(self) -> str:
+            guild = f"<c>{self.guild_id}</c>"
+            if name := find_guild_name(self.guild_id):
+                guild = f"<y>{escape_tag(name)}</y>({guild})"
+            channel = f"<c>{self.channel_id}</c>"
+            if name := find_channel_name(self.guild_id, self.channel_id):
+                channel = f"<y>{escape_tag(name)}</y>({channel})"
+
+            return (
+                f"[{self.get_event_name()}] "
+                f"Message <c>{self.id}</c> from "
+                f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
+                f"(<c>{self.author.id}</c>)"
+                f"@[Guild:{guild} Channel:{channel}] updated to "
+                f"{Highlight.apply(Message.from_guild_message(self))}"
             )
 
     @nonebot.on_type(GuildCreateEvent).handle()

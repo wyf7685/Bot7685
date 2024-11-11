@@ -6,13 +6,6 @@ from nonebot.utils import escape_tag
 from ..highlight import Highlight as _Highlight
 from ..patcher import Patcher
 
-
-class Highlight(_Highlight):
-    @classmethod
-    def event_type(cls, type_: "EventType") -> str:
-        return f"<lg>EventType</lg>.<b><e>{type_.value}</e></b>"
-
-
 with contextlib.suppress(ImportError):
     from nonebot.adapters.qq.event import (
         C2CMessageCreateEvent,
@@ -22,21 +15,27 @@ with contextlib.suppress(ImportError):
         ReadyEvent,
     )
 
+    class Highlight(_Highlight):
+        @_Highlight.register(EventType)
+        @classmethod
+        def event_type(cls, data: EventType) -> str:
+            return f"<lg>EventType</lg>.<b><e>{data.value}</e></b>"
+
     @Patcher
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return f"[{Highlight.event_type(self.__type__)}] {Highlight.object(self)}"
+            return f"[{Highlight.apply(self.__type__)}] {Highlight.apply(self)}"
 
     @Patcher
     class PatchC2CMessageCreateEvent(C2CMessageCreateEvent):
         @override
         def get_log_string(self) -> str:
             return (
-                f"[{Highlight.event_type(self.__type__)}] "
+                f"[{Highlight.apply(self.__type__)}] "
                 f"Message <c>{escape_tag(self.id)}</c> from "
                 f"<c>{self.author.id}</c>: "
-                f"{Highlight.message(self.get_message())}"
+                f"{Highlight.apply(self.get_message())}"
             )
 
     @Patcher
@@ -44,11 +43,11 @@ with contextlib.suppress(ImportError):
         @override
         def get_log_string(self) -> str:
             return (
-                f"[{Highlight.event_type(self.__type__)}] "
+                f"[{Highlight.apply(self.__type__)}] "
                 f"Message <c>{escape_tag(self.id)}</c> from "
                 f"<c>{self.author.member_openid}</c>"
                 f"@[Group:<c>{self.group_openid}</c>]: "
-                f"{Highlight.message(self.get_message())}"
+                f"{Highlight.apply(self.get_message())}"
             )
 
     @Patcher
@@ -61,7 +60,7 @@ with contextlib.suppress(ImportError):
                 else f"<c>{self.user.id}</c>"
             )
             return (
-                f"[{Highlight.event_type(self.__type__)}] "
+                f"[{Highlight.apply(self.__type__)}] "
                 f"Bot {name} ready: "
                 f"session={Highlight.repr(self.session_id,'b','e')}, "
                 f"shard={Highlight.repr(self.shard,'b','e')}"

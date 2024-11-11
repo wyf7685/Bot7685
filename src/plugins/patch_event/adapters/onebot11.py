@@ -4,6 +4,7 @@ from typing import Literal, override
 
 import nonebot
 from nonebot import get_driver
+from nonebot.adapters import Message as BaseMessage
 from nonebot.compat import model_dump, type_validate_python
 from nonebot.exception import ActionFailed
 from nonebot.utils import escape_tag
@@ -14,12 +15,39 @@ from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
-from ..highlight import Highlight
+from ..highlight import Highlight as _Highlight
 from ..patcher import Patcher
 
+
+class Highlight(_Highlight["MessageSegment"]):
+    @classmethod
+    @override
+    def segment(cls, segment: "MessageSegment") -> str:
+        if segment.is_text():
+            return escape_tag(
+                rich_escape(
+                    segment.data.get("text", ""),
+                    escape_comma=False,
+                )
+            )
+
+        params = ",".join(
+            f"<i>{escape_tag(k)}</i>={escape_tag(rich_escape(truncate(str(v))))}"
+            for k, v in segment.data.items()
+            if v is not None
+        )
+        return f"<le>[<e>{segment.type}</e>{':' if params else ''}{params}]</le>"
+
+    @classmethod
+    @override
+    def message(cls, message: BaseMessage["MessageSegment"]) -> str:
+        text = repr("".join(map(cls.segment, message)))
+        return f"{text[0]}<c>{text[1:-1]}</c>{text[-1]}"
+
+
 with contextlib.suppress(ImportError):
-    from nonebot.adapters.onebot.utils import highlight_rich_message
-    from nonebot.adapters.onebot.v11 import Adapter, Bot, Message
+    from nonebot.adapters.onebot.utils import rich_escape, truncate
+    from nonebot.adapters.onebot.v11 import Adapter, Bot, Message, MessageSegment
     from nonebot.adapters.onebot.v11.event import (
         Event,
         FriendRecallNoticeEvent,
@@ -140,7 +168,7 @@ with contextlib.suppress(ImportError):
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return f"[{self.get_event_name()}]: {Highlight.object(model_dump(self))}"
+            return f"[{self.get_event_name()}]: {Highlight.apply(model_dump(self))}"
 
     @Patcher
     class PatchPrivateMessageEvent(PrivateMessageEvent):
@@ -150,7 +178,7 @@ with contextlib.suppress(ImportError):
                 f"[{self.get_event_name()}]: "
                 f"Message <c>{self.message_id}</c> from "
                 f"{colored_user_card(self.sender)} "
-                f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
+                f"{Highlight.apply(self.original_message)}"
             )
 
     @Patcher
@@ -162,7 +190,7 @@ with contextlib.suppress(ImportError):
                 f"Message <c>{self.message_id}</c> from "
                 f"{colored_user_card(self.sender)}"
                 f"@{colored_group(self.group_id)} "
-                f"{''.join(highlight_rich_message(repr(self.original_message.to_rich_text())))}"
+                f"{Highlight.apply(self.original_message)}"
             )
 
     @Patcher
@@ -317,7 +345,7 @@ with contextlib.suppress(ImportError):
                 f"[{self.get_event_name()}]: "
                 f"Message <c>{self.message_id}</c> to "
                 f"{colored_user_card(self.target_id)} "
-                f"{''.join(highlight_rich_message(repr(self.message.to_rich_text())))}"
+                f"{Highlight.apply(self.message)}"
             )
 
     class GroupMessageSentEvent(MessageSentEvent):  # NapCat
@@ -329,7 +357,7 @@ with contextlib.suppress(ImportError):
             return (
                 f"[{self.get_event_name()}]: "
                 f"Message <c>{self.message_id}</c> to {colored_group(self.group_id)} "
-                f"{''.join(highlight_rich_message(repr(self.message.to_rich_text())))}"
+                f"{Highlight.apply(self.message)}"
             )
 
         @override

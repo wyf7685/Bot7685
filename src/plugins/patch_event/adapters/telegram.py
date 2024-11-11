@@ -28,7 +28,7 @@ with contextlib.suppress(ImportError):
                 f"[{self.get_event_name()}]: "
                 f"Message <c>{self.message_id}</c> from "
                 f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>)@[Chat {chat}]: "
-                f"{Highlight.message(self.get_message())}"
+                f"{Highlight.apply(self.get_message())}"
             )
 
     @Patcher
@@ -42,7 +42,7 @@ with contextlib.suppress(ImportError):
                 f"[{self.get_event_name()}]: "
                 f"Message <c>{self.message_id}</c> from "
                 f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>): "
-                f"{Highlight.message(self.get_message())}"
+                f"{Highlight.apply(self.get_message())}"
             )
 
     @Patcher
@@ -59,7 +59,7 @@ with contextlib.suppress(ImportError):
                 f"[{self.get_event_name()}]: "
                 f"EditedMessage <c>{self.message_id}</c> from "
                 f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>)@[Chat {chat}]: "
-                f"{Highlight.message(self.get_message())}"
+                f"{Highlight.apply(self.get_message())}"
             )
 
     @Patcher
@@ -73,5 +73,5 @@ with contextlib.suppress(ImportError):
                 f"[{self.get_event_name()}]: "
                 f"EditedMessage <c>{self.message_id}</c> from "
                 f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>): "
-                f"{Highlight.message(self.get_message())}"
+                f"{Highlight.apply(self.get_message())}"
             )

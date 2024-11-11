@@ -16,9 +16,9 @@ class Highlight(_Highlight["MessageSegment"]):
     def segment(cls, segment: "MessageSegment") -> str:
         return (
             f"<m>{escape_tag(segment.__class__.__name__)}</m>"
-            f"(<i><y>type</y></i>={cls.object(segment.type)},"
-            f" <i><y>data</y></i>={cls.object(segment.data)},"
-            f" <i><y>children</y></i>={cls.message(segment.children)})"
+            f"(<i><y>type</y></i>={cls.apply(segment.type)},"
+            f" <i><y>data</y></i>={cls.apply(segment.data)},"
+            f" <i><y>children</y></i>={cls.apply(segment.children)})"
         )
 
 
@@ -37,7 +37,7 @@ with contextlib.suppress(ImportError):
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return f"[{self.get_event_name()}]: {Highlight.object(self)}"
+            return f"[{self.get_event_name()}]: {Highlight.apply(self)}"
 
     @Patcher
     class PatchPrivateMessageCreatedEvent(PrivateMessageCreatedEvent):
@@ -48,7 +48,7 @@ with contextlib.suppress(ImportError):
                 f"Message <c>{escape_tag(self.msg_id)}</c> from "
                 f"<y>{escape_tag(self.user.name or self.user.nick or '')}</y>"
                 f"(<c>{escape_tag(self.channel.id)}</c>): "
-                f"{Highlight.message(self.get_message())}"
+                f"{Highlight.apply(self.get_message())}"
             )
 
     @Patcher
@@ -74,7 +74,7 @@ with contextlib.suppress(ImportError):
                 f"Message <c>{self.msg_id}</c> from "
                 f"<y>{escape_tag(nick)}</y>(<c>{self.user.id}</c>)"
                 f"@[Group:<y>{self.channel.name or ''}</y>(<c>{self.channel.id}</c>)]: "
-                f"{Highlight.message(self.get_message())}"
+                f"{Highlight.apply(self.get_message())}"
             )
 
     @Patcher

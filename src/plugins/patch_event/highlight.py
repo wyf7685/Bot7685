@@ -20,6 +20,8 @@ DATETIME_FIELDS = [
 
 
 class Highlight[MS: MessageSegment]:
+    exclude_value: tuple[Any, ...] = ()
+
     @classmethod
     def repr(cls, data: Any, /, *color: str) -> str:
         text = escape_tag(repr(data))
@@ -29,86 +31,107 @@ class Highlight[MS: MessageSegment]:
 
     @functools.singledispatchmethod
     @classmethod
-    def object(cls, data: Any) -> str:
+    def _handle(cls, data: Any) -> str:
         return cls.repr(data)
 
-    @object.register(Enum)
+    register = _handle.register
+
+    @classmethod
+    def apply(cls, data: Any, /) -> str:
+        return cls._handle(data)
+
+    @register(Enum)
     @classmethod
     @functools.cache
     def _(cls, data: Enum) -> str:
         return (
             f"<<m>{type(data).__name__}</m>.<m>{data.name}</m>: "
-            f"{cls.object(data.value)}>"
+            f"{cls.apply(data.value)}>"
         )
 
-    @object.register(bool)
+    @register(bool)
     @classmethod
     @functools.cache
     def _(cls, data: bool) -> str:  # noqa: FBT001
         return cls.repr(data, "g")
 
-    @object.register(int)
+    @register(int)
     @classmethod
     def _(cls, data: int) -> str:
         return cls.repr(data, "c")
 
-    @object.register(float)
+    @register(float)
     @classmethod
     def _(cls, data: float) -> str:
         return cls.repr(data, "c")
 
-    @object.register(str)
+    @register(str)
     @classmethod
     def _(cls, data: str) -> str:
         text = escape_tag(repr(data))
         return f"{text[0]}<c>{text[1:-1]}</c>{text[-1]}"
 
-    @object.register(dict)
+    @register(dict)
     @classmethod
     def _(cls, data: dict[str, Any]) -> str:
         kv = [
-            f"{cls.repr(key, 'e', 'i')}: {cls.object(value)}"
+            f"{cls.repr(key, 'e', 'i')}: {cls.apply(value)}"
             for key, value in data.items()
+            if value not in cls.exclude_value
         ]
         return f"{{{', '.join(kv)}}}"
 
-    @object.register(list)
+    @register(list)
     @classmethod
     def _(cls, data: list[Any]) -> str:
-        return f"[{', '.join(cls.object(item) for item in data)}]"
+        return f"[{', '.join(cls.apply(item) for item in data)}]"
 
-    @object.register(set)
+    @register(set)
     @classmethod
     def _(cls, data: set[Any]) -> str:
-        return f"{{{', '.join(cls.object(item) for item in data)}}}"
+        return f"{{{', '.join(cls.apply(item) for item in data)}}}"
 
-    @object.register(tuple)
+    @register(tuple)
     @classmethod
     def _(cls, data: tuple[Any]) -> str:
-        return f"({', '.join(cls.object(item) for item in data)})"
+        return f"({', '.join(cls.apply(item) for item in data)})"
 
-    @object.register(datetime.datetime)
+    @register(datetime.datetime)
     @classmethod
     def _(cls, data: datetime.datetime) -> str:
-        attrs = [cls.object(getattr(data, name)) for name in DATETIME_FIELDS]
+        attrs = [cls.apply(getattr(data, name)) for name in DATETIME_FIELDS]
         if data.tzinfo is not None:
             attrs.append(f"<m>{data.tzinfo}</m>")
         return f"<m>datetime</m>.<m>datetime</m>({', '.join(attrs)})"
 
-    @object.register(BaseModel)
+    @register(BaseModel)
     @classmethod
     def _(cls, data: BaseModel) -> str:
-        kv = [f"<i><y>{k}</y></i>={cls.object(v)}" for k, v in model_dump(data).items()]
+        kv = [
+            f"<i><y>{key}</y></i>={cls.apply(value)}"
+            for key, value in model_dump(data).items()
+            if value not in cls.exclude_value
+        ]
         return f"<m>{type(data).__name__}</m>({', '.join(kv)})"
 
     @classmethod
     def segment(cls, segment: MS) -> str:
         return (
             f"<m>{escape_tag(segment.__class__.__name__)}</m>"
-            f"(<y>type</y>={cls.object(segment.type)}, "
-            f"<y>data</y>={cls.object(segment.data)})"
+            f"(<i><y>type</y></i>={cls.apply(segment.type)},"
+            f" <i><y>data</y></i>={cls.apply(segment.data)})"
         )
 
     @classmethod
     def message(cls, message: Message[MS]) -> str:
         return f"[{', '.join(map(cls.segment, message))}]"
+
+    @register(MessageSegment)
+    @classmethod
+    def _(cls, data: MS) -> str:
+        return cls.segment(data)
+
+    @register(Message)
+    @classmethod
+    def _(cls, data: Message[MS]) -> str:
+        return cls.message(data)
