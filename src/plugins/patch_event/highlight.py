@@ -20,7 +20,7 @@ DATETIME_FIELDS = [
 
 
 class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
-    exclude_value: ClassVar[tuple[Any, ...]] = ()
+    exclude_value: ClassVar[tuple[object, ...]] = ()
 
     @classmethod
     def repr(cls, data: Any, /, *color: str) -> str:

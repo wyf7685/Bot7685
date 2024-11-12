@@ -1,5 +1,5 @@
 import contextlib
-from typing import override
+from typing import ClassVar, override
 
 import nonebot
 from nonebot.compat import model_dump
@@ -35,7 +35,7 @@ with contextlib.suppress(ImportError):
     )
 
     class Highlight(BaseHighlight):
-        exclude_value = UNSET, None
+        exclude_value: ClassVar[tuple[object, ...]] = (UNSET, None)
 
     @Patcher
     class PatchEvent(Event):
