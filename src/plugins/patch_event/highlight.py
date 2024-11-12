@@ -4,7 +4,6 @@ from enum import Enum
 from typing import Any, ClassVar
 
 from nonebot.adapters import Message, MessageSegment
-from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
@@ -44,7 +43,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     @functools.cache
     def enum(cls, data: Enum) -> str:
         return (
-            f"<<m>{type(data).__name__}</m>.<m>{data.name}</m>: "
+            f"<<g>{type(data).__name__}</g>.<le>{data.name}</le>: "
             f"{cls.apply(data.value)}>"
         )
 
@@ -52,19 +51,19 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     @classmethod
     @functools.cache
     def _(cls, data: bool) -> str:  # noqa: FBT001
-        return cls.repr(data, "g")
+        return cls.repr(data, "lg")
 
     @register(int)
     @classmethod
     def _(cls, data: int) -> str:
         if isinstance(data, Enum):
             return cls.enum(data)
-        return cls.repr(data, "c")
+        return cls.repr(data, "lc", "i")
 
     @register(float)
     @classmethod
     def _(cls, data: float) -> str:
-        return cls.repr(data, "c")
+        return cls.repr(data, "lc", "i")
 
     @register(str)
     @classmethod
@@ -104,23 +103,23 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     def _(cls, data: datetime.datetime) -> str:
         attrs = [cls.apply(getattr(data, name)) for name in DATETIME_FIELDS]
         if data.tzinfo is not None:
-            attrs.append(f"<m>{data.tzinfo}</m>")
-        return f"<m>datetime</m>.<m>datetime</m>({', '.join(attrs)})"
+            attrs.append(f"<lm>{data.tzinfo}</lm>")
+        return f"<g>datetime</g>({', '.join(attrs)})"
 
     @register(BaseModel)
     @classmethod
     def _(cls, data: BaseModel) -> str:
         kv = [
-            f"<i><y>{key}</y></i>={cls.apply(value)}"
-            for key, value in model_dump(data).items()
-            if value not in cls.exclude_value
+            f"<i><y>{name}</y></i>={cls.apply(value)}"
+            for name in data.model_fields
+            if (value := getattr(data, name)) not in cls.exclude_value
         ]
-        return f"<m>{type(data).__name__}</m>({', '.join(kv)})"
+        return f"<lm>{type(data).__name__}</lm>({', '.join(kv)})"
 
     @classmethod
     def segment(cls, segment: TMS) -> str:
         return (
-            f"<m>{escape_tag(segment.__class__.__name__)}</m>"
+            f"<g>{escape_tag(segment.__class__.__name__)}</g>"
             f"(<i><y>type</y></i>={cls.apply(segment.type)},"
             f" <i><y>data</y></i>={cls.apply(segment.data)})"
         )
