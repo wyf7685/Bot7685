@@ -5,7 +5,7 @@ import nonebot
 from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
-from ..highlight import Highlight as _Highlight
+from ..highlight import Highlight as BaseHighlight
 from ..patcher import Patcher
 
 guild_name_cache: dict[int, str] = {}
@@ -34,17 +34,14 @@ with contextlib.suppress(ImportError):
         GuildMessageUpdateEvent,
     )
 
-    class Highlight(_Highlight):
+    class Highlight(BaseHighlight):
         exclude_value = UNSET, None
 
     @Patcher
     class PatchEvent(Event):
         @override
         def get_log_string(self) -> str:
-            return (
-                f"[{self.get_event_name()}] "
-                f"{Highlight.apply(model_dump(self))}"
-            )
+            return f"[{self.get_event_name()}] " f"{Highlight.apply(model_dump(self))}"
 
     @Patcher
     class PatchDirectMessageCreateEvent(DirectMessageCreateEvent):

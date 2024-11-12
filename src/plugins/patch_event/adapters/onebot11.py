@@ -4,7 +4,6 @@ from typing import Literal, override
 
 import nonebot
 from nonebot import get_driver
-from nonebot.adapters import Message as BaseMessage
 from nonebot.compat import model_dump, type_validate_python
 from nonebot.exception import ActionFailed
 from nonebot.utils import escape_tag
@@ -15,34 +14,8 @@ from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
-from ..highlight import Highlight as _Highlight
+from ..highlight import Highlight as BaseHighlight
 from ..patcher import Patcher
-
-
-class Highlight(_Highlight["MessageSegment"]):
-    @classmethod
-    @override
-    def segment(cls, segment: "MessageSegment") -> str:
-        if segment.is_text():
-            return escape_tag(
-                rich_escape(
-                    segment.data.get("text", ""),
-                    escape_comma=False,
-                )
-            )
-
-        params = ",".join(
-            f"<i>{escape_tag(k)}</i>={escape_tag(rich_escape(truncate(str(v))))}"
-            for k, v in segment.data.items()
-            if v is not None
-        )
-        return f"<le>[<u>{segment.type}</u>{':' if params else ''}{params}]</le>"
-
-    @classmethod
-    @override
-    def message(cls, message: BaseMessage["MessageSegment"]) -> str:
-        return repr("".join(map(cls.segment, message)))
-
 
 with contextlib.suppress(ImportError):
     from nonebot.adapters.onebot.utils import rich_escape, truncate
@@ -63,6 +36,33 @@ with contextlib.suppress(ImportError):
         Sender,
     )
     from nonebot.adapters.onebot.v11.exception import NoLogException
+
+    class Highlight(BaseHighlight[MessageSegment, Message]):
+        @classmethod
+        @override
+        def segment(cls, segment: MessageSegment) -> str:
+            if segment.is_text():
+                return escape_tag(
+                    rich_escape(
+                        segment.data.get("text", ""),
+                        escape_comma=False,
+                    )
+                )
+
+            data = list(filter(lambda x: x[1] is not None, segment.data.items()))
+            if not data:
+                return f"<le>[<u>{segment.type}</u>]</le>"
+
+            params = ",".join(
+                f"<i>{escape_tag(k)}</i>={escape_tag(rich_escape(truncate(str(v))))}"
+                for k, v in data
+            )
+            return f"<le>[<u>{segment.type}</u>:{params}]</le>"
+
+        @classmethod
+        @override
+        def message(cls, message: Message) -> str:
+            return repr("".join(map(cls.segment, message)))
 
     class GroupInfo(BaseModel):
         group_id: int

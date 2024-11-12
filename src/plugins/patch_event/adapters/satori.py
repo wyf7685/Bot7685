@@ -3,26 +3,15 @@ from typing import TYPE_CHECKING, override
 
 from nonebot.utils import escape_tag
 
-from ..highlight import Highlight as _Highlight
+from ..highlight import Highlight as BaseHighlight
 from ..patcher import Patcher
 
 if TYPE_CHECKING:
     from nonebot.adapters.satori import MessageSegment
 
 
-class Highlight(_Highlight["MessageSegment"]):
-    @classmethod
-    @override
-    def segment(cls, segment: "MessageSegment") -> str:
-        return (
-            f"<m>{escape_tag(segment.__class__.__name__)}</m>"
-            f"(<i><y>type</y></i>={cls.apply(segment.type)},"
-            f" <i><y>data</y></i>={cls.apply(segment.data)},"
-            f" <i><y>children</y></i>={cls.apply(segment.children)})"
-        )
-
-
 with contextlib.suppress(ImportError):
+    from nonebot.adapters.satori import MessageSegment
     from nonebot.adapters.satori.event import (
         Event,
         PrivateMessageCreatedEvent,
@@ -32,6 +21,17 @@ with contextlib.suppress(ImportError):
         ReactionAddedEvent,
         ReactionRemovedEvent,
     )
+
+    class Highlight(BaseHighlight[MessageSegment]):
+        @classmethod
+        @override
+        def segment(cls, segment: MessageSegment) -> str:
+            return (
+                f"<m>{escape_tag(segment.__class__.__name__)}</m>"
+                f"(<i><y>type</y></i>={cls.apply(segment.type)},"
+                f" <i><y>data</y></i>={cls.apply(segment.data)},"
+                f" <i><y>children</y></i>={cls.apply(segment.children)})"
+            )
 
     @Patcher
     class PatchEvent(Event):

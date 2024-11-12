@@ -1,7 +1,7 @@
 import datetime
 import functools
 from enum import Enum
-from typing import Any
+from typing import Any, ClassVar
 
 from nonebot.adapters import Message, MessageSegment
 from nonebot.compat import model_dump
@@ -19,8 +19,8 @@ DATETIME_FIELDS = [
 ]
 
 
-class Highlight[MS: MessageSegment]:
-    exclude_value: tuple[Any, ...] = ()
+class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
+    exclude_value: ClassVar[tuple[Any, ...]] = ()
 
     @classmethod
     def repr(cls, data: Any, /, *color: str) -> str:
@@ -40,7 +40,6 @@ class Highlight[MS: MessageSegment]:
     def apply(cls, data: Any, /) -> str:
         return cls._handle(data)
 
-    # @register(Enum)
     @classmethod
     @functools.cache
     def enum(cls, data: Enum) -> str:
@@ -119,7 +118,7 @@ class Highlight[MS: MessageSegment]:
         return f"<m>{type(data).__name__}</m>({', '.join(kv)})"
 
     @classmethod
-    def segment(cls, segment: MS) -> str:
+    def segment(cls, segment: TMS) -> str:
         return (
             f"<m>{escape_tag(segment.__class__.__name__)}</m>"
             f"(<i><y>type</y></i>={cls.apply(segment.type)},"
@@ -127,15 +126,17 @@ class Highlight[MS: MessageSegment]:
         )
 
     @classmethod
-    def message(cls, message: Message[MS]) -> str:
+    def message(cls, message: TM) -> str:
         return f"[{', '.join(map(cls.segment, message))}]"
 
     @register(MessageSegment)
     @classmethod
-    def _(cls, data: MS) -> str:
+    def _(cls, data: TMS) -> str:
         return cls.segment(data)
 
     @register(Message)
     @classmethod
-    def _(cls, data: Message[MS]) -> str:
+    def _(cls, data: TM) -> str:
         return cls.message(data)
+
+    del _

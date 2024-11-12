@@ -3,7 +3,7 @@ from typing import override
 
 from nonebot.utils import escape_tag
 
-from ..highlight import Highlight as _Highlight
+from ..highlight import Highlight as BaseHighlight
 from ..patcher import Patcher
 
 with contextlib.suppress(ImportError):
@@ -15,10 +15,10 @@ with contextlib.suppress(ImportError):
         ReadyEvent,
     )
 
-    class Highlight(_Highlight):
-        @_Highlight.register(EventType)
+    class Highlight(BaseHighlight):
+        @BaseHighlight.register(EventType)
         @classmethod
-        def event_type(cls, data: EventType) -> str:
+        def _(cls, data: EventType) -> str:
             return f"<lg>EventType</lg>.<b><e>{data.value}</e></b>"
 
     @Patcher

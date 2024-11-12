@@ -3,7 +3,7 @@ name = "Bot7685"
 version = "0.1.0"
 description = "Bot7685"
 readme = "README.md"
-requires-python = ">=3.12, <4.0"
+requires-python = ">=3.13, <4.0"
 dependencies = [
     "nonebot2>=2.4.0",
     "nonebot-adapter-discord>=0.1.8",
@@ -86,7 +86,7 @@ extra_standard_library = ["typing_extensions"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py312"
+target-version = "py313"
 
 
 [tool.ruff.lint]
@@ -155,7 +155,7 @@ ignore = [
 ]
 
 [tool.pyright]
-pythonVersion = "3.12"
+pythonVersion = "3.13"
 pythonPlatform = "All"
 typeCheckingMode = "standard"
 reportShadowedImports = false
