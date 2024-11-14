@@ -1,5 +1,6 @@
 import pathlib
 import secrets
+from typing import Any
 
 from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
@@ -13,6 +14,7 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
+from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 
 __plugin_meta__ = PluginMetadata(
     name="ping",
@@ -105,7 +107,7 @@ alc = Alconna(
     Option("-p", help_text="Ping Hyper-V 网络虚拟化提供程序地址。"),
     Option("-4", help_text="强制使用 IPv4。"),
     Option("-6", help_text="强制使用 IPv6。"),
-    Args["target_name?", str],
+    Args["target_name?", Any],
     meta=CommandMeta(
         description="Command: ping",
         usage="ping [-t] [-a] [-n count] [-l size] [-f] [-i TTL] [-v TOS] "
@@ -115,8 +117,13 @@ alc = Alconna(
         example="ping -n 4 -w 1000 www.baidu.com",
     ),
 )
-ping = on_alconna(alc, priority=10, use_cmd_start=True)
-root = pathlib.Path(__file__).resolve().parent
+ping = on_alconna(
+    alc,
+    priority=10,
+    use_cmd_start=True,
+    extensions=[TelegramSlashExtension()],
+)
+root = pathlib.Path(__file__).resolve().parent / "images"
 images = list(root.glob("*.jpg"))
 
 

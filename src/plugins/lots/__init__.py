@@ -7,6 +7,7 @@ from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
+from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import At, UniMessage
 
 from .depends import LotsTarget, MsgId
@@ -20,7 +21,10 @@ __plugin_meta__ = PluginMetadata(
     supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
 )
 
-lots = on_alconna(Alconna("御神签", Args["target?", At]))
+lots = on_alconna(
+    Alconna("御神签", Args["target?", At]),
+    extensions=[TelegramSlashExtension()],
+)
 
 
 @lots.handle()

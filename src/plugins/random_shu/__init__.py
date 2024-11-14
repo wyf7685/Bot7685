@@ -7,6 +7,7 @@ from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import Command, UniMessage
+from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 
 __plugin_meta__ = PluginMetadata(
     name="random_shu",
@@ -18,7 +19,10 @@ __plugin_meta__ = PluginMetadata(
 
 # 图源: Bilibili@鱼烤箱
 images = list((Path(__file__).parent / "images").iterdir())
-matcher = Command("黍泡泡 [...args]").build(priority=2)
+matcher = Command("黍泡泡 [...args]").build(
+    priority=2,
+    extensions=[TelegramSlashExtension()],
+)
 
 
 @matcher.handle()

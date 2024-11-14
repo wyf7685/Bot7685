@@ -19,6 +19,7 @@ from nonebot_plugin_alconna import (
     Subcommand,
     on_alconna,
 )
+from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_waiter import prompt, suggest
 
@@ -59,7 +60,11 @@ alc = Alconna(
         author="wyf7685",
     ),
 )
-todo = on_alconna(alc, use_cmd_start=True)
+todo = on_alconna(
+    alc,
+    use_cmd_start=True,
+    extensions=[TelegramSlashExtension()],
+)
 
 
 async def send_todo(user_todo: TodoList) -> NoReturn:
