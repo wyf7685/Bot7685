@@ -48,7 +48,7 @@ setu = on_alconna(
 @setu.handle()
 async def _(arp: Arparma) -> None:
     base_url = "https://api.lolicon.app/setu/v2"
-    params = {"r18": int("r18" in arp.options), "noai": "noai" in arp.options}
+    params = {"r18": int("r18" in arp.options), "excludeAI": "noai" in arp.options}
 
     async with httpx.AsyncClient() as client:
         try:
