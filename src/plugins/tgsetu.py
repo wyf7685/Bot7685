@@ -51,7 +51,11 @@ async def _(arp: Arparma) -> None:
     params = {"r18": int("r18" in arp.options), "noai": "noai" in arp.options}
 
     async with httpx.AsyncClient() as client:
-        resp = await client.post(base_url, json=params)
+        try:
+            resp = await client.post(base_url, json=params)
+        except Exception as err:
+            await UniMessage.text(f"接口请求出错: {err}").finish(reply_to=True)
+
         if resp.status_code != 200:
             await UniMessage.text("接口请求失败").finish(reply_to=True)
 
@@ -69,11 +73,14 @@ async def _(arp: Arparma) -> None:
             img_raw = resp.read()
             img = Image(raw=img_raw)
 
+    r18 = "是" if img_data["r18"] else "否"
+    ai_type = {0: "未知", 1: "否", 2: "是"}.get(img_data["aiType"])
     description = (
         f"PID: {img_data['pid']}\n"
         f"标题: {img_data['title']}\n"
         f"作者: {img_data['author']}\n"
-        f"R18: {'是' if img_data['r18'] else '否'}\n"
-        f"Tags: {', '.join(img_data['tags'])}\n"
+        f"R18: {r18}\n"
+        f"AI: {ai_type}\n"
+        f"标签: {', '.join(img_data['tags'])}\n"
     )
     await (UniMessage.text(description) + img).finish(reply_to=True)
