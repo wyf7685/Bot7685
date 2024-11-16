@@ -2,12 +2,12 @@ import httpx
 from nonebot import require
 from nonebot.adapters import Bot
 from nonebot.plugin import PluginMetadata
+from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import (
     Alconna,
     CommandMeta,
-    Match,
     Option,
     UniMessage,
     on_alconna,
@@ -28,7 +28,8 @@ async def _check(bot: Bot) -> bool:
 setu = on_alconna(
     Alconna(
         "setu",
-        Option("r18"),
+        Option("r18", help_text="启用 R18"),
+        Option("noai", help_text="排除 AI 作品"),
         meta=CommandMeta(
             "涩图",
             "setu [r18]",
@@ -42,21 +43,47 @@ setu = on_alconna(
 
 
 @setu.handle()
-async def _(r18: Match) -> None:
-    base_url = "https://api.lolicon.app/setu"
-    params = {"r18": int(r18.available)}
+async def _(state: T_State) -> None:
+    state["params"] = {"r18": 0, "noai": False}
+
+
+@setu.assign("r18")
+async def _(state: T_State) -> None:
+    state["params"]["r18"] = 1
+
+
+@setu.assign("noai")
+async def _(state: T_State) -> None:
+    state["params"]["noai"] = True
+
+
+@setu.handle()
+async def _(state: T_State) -> None:
+    base_url = "https://api.lolicon.app/setu/v2"
 
     async with httpx.AsyncClient() as client:
-        resp = await client.get(base_url, params=params)
+        resp = await client.get(base_url, params=state["params"])
         if resp.status_code != 200:
             await UniMessage.text("接口请求失败").finish(reply_to=True)
+
         data = resp.json()
         if data["code"] != 0:
             await UniMessage.text(f"接口错误: {data["msg"]}").finish(reply_to=True)
 
-        resp = await client.get(data["data"][0]["url"])
+        img_data = data["data"][0]
+        img_url = img_data["urls"]["original"]
+
+        resp = await client.get(img_url)
         if resp.status_code != 200:
             await UniMessage.text("图片获取失败").finish(reply_to=True)
-        data = resp.read()
+        img_raw = resp.read()
 
-    await UniMessage.image(raw=data).finish(reply_to=True)
+    await (
+        UniMessage.text(f"PID: {img_data['pid']}\n")
+        .text(f"标题: {img_data['title']}\n")
+        .text(f"作者: {img_data['author']}")
+        .text(f"R18: {'是' if img_data['r18'] else '否'}\n")
+        .text(f"Tags: {', '.join(img_data['tags'])}\n")
+        .image(raw=img_raw)
+        .finish(reply_to=True)
+    )
