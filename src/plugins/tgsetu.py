@@ -1,13 +1,16 @@
+import contextlib
+
 import httpx
 from nonebot import require
 from nonebot.adapters import Bot
 from nonebot.plugin import PluginMetadata
-from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import (
     Alconna,
+    Arparma,
     CommandMeta,
+    Image,
     Option,
     UniMessage,
     on_alconna,
@@ -43,26 +46,12 @@ setu = on_alconna(
 
 
 @setu.handle()
-async def _(state: T_State) -> None:
-    state["params"] = {"r18": 0, "noai": False}
-
-
-@setu.assign("r18")
-async def _(state: T_State) -> None:
-    state["params"]["r18"] = 1
-
-
-@setu.assign("noai")
-async def _(state: T_State) -> None:
-    state["params"]["noai"] = True
-
-
-@setu.handle()
-async def _(state: T_State) -> None:
+async def _(arp: Arparma) -> None:
     base_url = "https://api.lolicon.app/setu/v2"
+    params = {"r18": int("r18" in arp.options), "noai": "noai" in arp.options}
 
     async with httpx.AsyncClient() as client:
-        resp = await client.post(base_url, json=state["params"])
+        resp = await client.post(base_url, json=params)
         if resp.status_code != 200:
             await UniMessage.text("接口请求失败").finish(reply_to=True)
 
@@ -71,19 +60,20 @@ async def _(state: T_State) -> None:
             await UniMessage.text(f"接口错误: {data['error']}").finish(reply_to=True)
 
         img_data = data["data"][0]
-        img_url = img_data["urls"]["original"]
+        img = str(img_data["urls"]["original"])
 
-        resp = await client.get(img_url)
-        if resp.status_code != 200:
-            await UniMessage.text("图片获取失败").finish(reply_to=True)
-        img_raw = resp.read()
+        with contextlib.suppress(Exception):
+            resp = await client.get(img)
+            if resp.status_code != 200:
+                await UniMessage.text("图片获取失败").finish(reply_to=True)
+            img_raw = resp.read()
+            img = Image(raw=img_raw)
 
-    await (
-        UniMessage.text(f"PID: {img_data['pid']}\n")
-        .text(f"标题: {img_data['title']}\n")
-        .text(f"作者: {img_data['author']}")
-        .text(f"R18: {'是' if img_data['r18'] else '否'}\n")
-        .text(f"Tags: {', '.join(img_data['tags'])}\n")
-        .image(raw=img_raw)
-        .finish(reply_to=True)
+    description = (
+        f"PID: {img_data['pid']}\n"
+        f"标题: {img_data['title']}\n"
+        f"作者: {img_data['author']}\n"
+        f"R18: {'是' if img_data['r18'] else '否'}\n"
+        f"Tags: {', '.join(img_data['tags'])}\n"
     )
+    await (UniMessage.text(description) + img).finish(reply_to=True)
