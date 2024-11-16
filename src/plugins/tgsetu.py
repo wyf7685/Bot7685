@@ -62,7 +62,7 @@ async def _(state: T_State) -> None:
     base_url = "https://api.lolicon.app/setu/v2"
 
     async with httpx.AsyncClient() as client:
-        resp = await client.get(base_url, params=state["params"])
+        resp = await client.post(base_url, json=state["params"])
         if resp.status_code != 200:
             await UniMessage.text("接口请求失败").finish(reply_to=True)
 
