@@ -67,8 +67,8 @@ async def _(state: T_State) -> None:
             await UniMessage.text("接口请求失败").finish(reply_to=True)
 
         data = resp.json()
-        if data["code"] != 0:
-            await UniMessage.text(f"接口错误: {data["msg"]}").finish(reply_to=True)
+        if data["error"]:
+            await UniMessage.text(f"接口错误: {data['error']}").finish(reply_to=True)
 
         img_data = data["data"][0]
         img_url = img_data["urls"]["original"]
