@@ -11,10 +11,10 @@ async def create_image_seg(url: str) -> Image:
     async with httpx.AsyncClient() as client:
         resp = await client.get(url)
         if resp.status_code != 200:
-            return Image(url=url)
+            return Image(id=str(hash(url)), url=url)
         data = resp.read()
     ext = fleep.get(data).extensions[0]
-    return Image(id=f"{hash(url)}.{ext}", raw=data)
+    return Image(name=f"{hash(url)}.{ext}", raw=data)
 
 
 class MessageProcessor(BaseMessageProcessor):
