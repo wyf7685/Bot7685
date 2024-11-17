@@ -3,7 +3,7 @@ from collections.abc import Sequence
 
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_orm import Model, get_scoped_session
-from sqlalchemy import JSON, Integer, delete, insert, select
+from sqlalchemy import JSON, Integer, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -71,22 +71,18 @@ class PipeDAO:
         return listen_pipes, target_pipes
 
     async def create_pipe(self, listen: Target, target: Target) -> None:
-        statement = insert(Pipe).values(
-            listen=make_key(listen),
-            target=make_key(target),
-            listen_t=listen.dump(),
-            target_t=target.dump(),
+        self.session.add(
+            Pipe(
+                listen=make_key(listen),
+                target=make_key(target),
+                listen_t=listen.dump(),
+                target_t=target.dump(),
+            )
         )
-        await self.session.execute(statement)
         await self.session.commit()
 
-    async def delete_pipe(self, listen: Target, target: Target) -> None:
-        statement = (
-            delete(Pipe)
-            .where(Pipe.listen == make_key(listen))
-            .where(Pipe.target == make_key(target))
-        )
-        await self.session.execute(statement)
+    async def delete_pipe(self, pipe: Pipe) -> None:
+        await self.session.delete(pipe)
         await self.session.commit()
 
 

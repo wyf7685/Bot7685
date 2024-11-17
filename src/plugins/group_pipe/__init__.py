@@ -149,7 +149,7 @@ async def assign_remove(target: MsgTarget, idx: Match[int]) -> None:
     pipe = pipes[idx.result - 1]
 
     listen, target = pipe.get_listen(), pipe.get_target()
-    await PipeDAO().delete_pipe(listen, target)
+    await PipeDAO().delete_pipe(pipe)
     msg = f"管道删除成功:\n{display_pipe(listen, target)}"
     await UniMessage.text(msg).finish(reply_to=True)
 
