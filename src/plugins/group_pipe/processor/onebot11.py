@@ -12,9 +12,9 @@ async def create_image_seg(url: str) -> Image:
         resp = await client.get(url)
         if resp.status_code != 200:
             return Image(url=url)
-        data = resp.content
+        data = resp.read()
     ext = fleep.get(data).extensions[0]
-    return Image(id=f"{hash(url)}.{ext}", url=url)
+    return Image(id=f"{hash(url)}.{ext}", raw=data)
 
 
 class MessageProcessor(BaseMessageProcessor):
