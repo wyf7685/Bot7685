@@ -1,7 +1,7 @@
 from typing import override
 
 import httpx
-from nonebot_plugin_alconna.uniseg import At, Image, Reply, Text, UniMessage
+from nonebot_plugin_alconna.uniseg import At, Hyper, Image, Reply, Text, UniMessage
 from nonebot_plugin_alconna.uniseg.utils import fleep
 
 from .common import MessageProcessor as BaseMessageProcessor
@@ -9,10 +9,14 @@ from .common import MessageProcessor as BaseMessageProcessor
 
 async def create_image_seg(url: str) -> Image:
     async with httpx.AsyncClient() as client:
-        resp = await client.get(url)
-        if resp.status_code != 200:
+        try:
+            resp = await client.get(url)
+            resp.raise_for_status()
+        except (httpx.ConnectError, httpx.HTTPError):
             return Image(url=url)
+
         data = resp.read()
+
     ext = fleep.get(data).extensions[0]
     name = f"{hash(url)}.{ext}"
     return Image(raw=data, name=name)
@@ -30,5 +34,7 @@ class MessageProcessor(BaseMessageProcessor):
                 seg = Text(f"[at:{seg.target}]")
             elif isinstance(seg, Reply):
                 continue
+            elif isinstance(seg, Hyper):
+                seg = Text(f"[{seg.type}消息:{seg.content}]")
             result.append(seg)
         return result
