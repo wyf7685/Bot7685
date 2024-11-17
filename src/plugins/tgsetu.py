@@ -1,5 +1,3 @@
-import contextlib
-
 import httpx
 from nonebot import require
 from nonebot.adapters import Bot
@@ -31,11 +29,11 @@ async def _check(bot: Bot) -> bool:
 setu = on_alconna(
     Alconna(
         "setu",
-        Option("r18", help_text="启用 R18"),
-        Option("noai", help_text="排除 AI 作品"),
+        Option("r18|--r18", help_text="启用 R18"),
+        Option("noai|--noai", help_text="排除 AI 作品"),
         meta=CommandMeta(
             "涩图",
-            "setu [r18]",
+            "setu [--r18] [--noai]",
             "setu\nsetu r18",
         ),
     ),
@@ -66,12 +64,17 @@ async def _(arp: Arparma) -> None:
         img_data = data["data"][0]
         img = str(img_data["urls"]["original"])
 
-        with contextlib.suppress(Exception):
+        try:
             resp = await client.get(img)
-            if resp.status_code != 200:
-                await UniMessage.text("图片获取失败").finish(reply_to=True)
-            img_raw = resp.read()
-            img = Image(raw=img_raw)
+        except Exception as err:
+            await UniMessage.text(f"图片请求出错: {err}").finish(reply_to=True)
+
+        if resp.status_code == 200:
+            img = Image(raw=resp.read())
+        else:
+            await UniMessage.text(f"图片获取失败: {resp.status_code}").finish(
+                reply_to=True
+            )
 
     r18 = "是" if img_data["r18"] else "否"
     ai_type = {0: "未知", 1: "否", 2: "是"}.get(img_data["aiType"])
