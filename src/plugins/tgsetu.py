@@ -50,7 +50,7 @@ async def _(arp: Arparma) -> None:
 
     async with httpx.AsyncClient() as client:
         try:
-            resp = await client.post(base_url, json=params)
+            resp = await client.get(base_url, params=params)
         except Exception as err:
             await UniMessage.text(f"接口请求出错: {err}").finish(reply_to=True)
 
