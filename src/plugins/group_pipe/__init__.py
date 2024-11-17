@@ -27,6 +27,7 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_uninfo import Uninfo
 
 from .database import Pipe, PipeDAO, display_pipe
+from .processor import get_processor
 
 __plugin_meta__ = PluginMetadata(
     name="group_pipe",
@@ -186,6 +187,7 @@ async def handle_pipe_msg(
     group_name = (g := info.group or info.guild) and g.name or listen.id
     user_name = info.user.nick or info.user.name or info.user.id
     msg = UniMessage.text(f"{user_name} @ {group_name}\n\n") + msg
+    msg = await get_processor(listen.adapter).process(msg)
 
     for pipe in cast(Sequence[Pipe], state["pipes"]):
         target = pipe.get_target()
