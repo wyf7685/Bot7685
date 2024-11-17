@@ -15,7 +15,7 @@ async def create_image_seg(url: str) -> Image:
         data = resp.read()
     ext = fleep.get(data).extensions[0]
     name = f"{hash(url)}.{ext}"
-    return Image(id=name, raw=data, name=name)
+    return Image(raw=data, name=name)
 
 
 class MessageProcessor(BaseMessageProcessor):
