@@ -19,7 +19,7 @@ def make_key(target: Target) -> int:
     for i in key:
         result = (result << 5) - result + i
         result &= 0xFFFFFFFFFFFF
-    return result
+    return result % (1 << 31)
 
 
 class Pipe(Model):
