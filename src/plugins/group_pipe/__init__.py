@@ -42,11 +42,25 @@ alc = Alconna(
         "list",
         Subcommand("listen", help_text="仅列出监听当前群组的管道"),
         Subcommand("target", help_text="仅列出目标为当前群组的管道"),
+        alias={"ls"},
         help_text="列出当前群组的所有管道",
     ),
-    Subcommand("create", help_text="创建一个监听当前群组的管道"),
-    Subcommand("link", Args["code#链接码", int], help_text="将一个管道链接到当前群组"),
-    Subcommand("remove", Args["idx#管道序号", int], help_text="删除一个当前群组管道"),
+    Subcommand(
+        "create",
+        alias={"c"},
+        help_text="创建一个监听当前群组的管道",
+    ),
+    Subcommand(
+        "link",
+        Args["code#链接码", int],
+        help_text="将一个管道链接到当前群组",
+    ),
+    Subcommand(
+        "remove",
+        Args["idx#管道序号", int],
+        alias={"r"},
+        help_text="删除一个当前群组管道",
+    ),
     meta=CommandMeta(
         description="群组管道",
         usage="pipe --help",
