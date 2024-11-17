@@ -163,3 +163,6 @@ disableBytesTypePromotions = true
 
 [tool.uv]
 dev-dependencies = ["ipykernel>=6.29.5", "meme-generator>=0.1.6"]
+
+[tool.uv.sources]
+nonebot-adapter-telegram = { git = "https://github.com/nonebot/adapter-telegram.git", rev = "beta" }
