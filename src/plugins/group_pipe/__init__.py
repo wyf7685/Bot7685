@@ -183,12 +183,8 @@ async def handle_pipe_msg(
     msg: UniMsg,
     state: T_State,
 ) -> None:
-    group_name = listen.id
-    if (g := info.group or info.guild) and g.name:
-        group_name = f"{g.name}({group_name})"
-    user_name = info.user.id
-    if name := info.user.nick or info.user.name:
-        user_name = f"{name}({user_name})"
+    group_name = (g := info.group or info.guild) and g.name or listen.id
+    user_name = info.user.nick or info.user.name or info.user.id
     msg = UniMessage.text(f"{user_name}@[{group_name}]:\n\n") + msg
 
     for pipe in cast(Sequence[Pipe], state["pipes"]):
