@@ -182,8 +182,13 @@ async def handle_pipe_msg(
         display = display_pipe(listen, target)
         logger.debug(f"发送管道消息: {display}")
         m = UniMessage.text(f"{display}\n") + msg
+
         try:
-            await m.send(target, fallback=FallbackStrategy.ignore)
+            await m.send(
+                target=target,
+                bot=await target.select(),
+                fallback=FallbackStrategy.ignore,
+            )
         except Exception as err:
             logger.warning(f"发送管道消息失败: {err}")
             logger.warning(f"管道: {display_pipe(listen,target)}")
