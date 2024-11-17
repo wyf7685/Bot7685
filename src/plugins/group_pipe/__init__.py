@@ -185,7 +185,7 @@ async def handle_pipe_msg(
 ) -> None:
     group_name = (g := info.group or info.guild) and g.name or listen.id
     user_name = info.user.nick or info.user.name or info.user.id
-    msg = UniMessage.text(f"{user_name}@[{group_name}]:\n\n") + msg
+    msg = UniMessage.text(f"{user_name} @ {group_name}\n\n") + msg
 
     for pipe in cast(Sequence[Pipe], state["pipes"]):
         target = pipe.get_target()
