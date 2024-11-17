@@ -181,10 +181,9 @@ async def handle_pipe_msg(
         target = pipe.get_target()
         display = display_pipe(listen, target)
         logger.debug(f"发送管道消息: {display}")
-        m = UniMessage.text(f"{display}\n") + msg
 
         try:
-            await m.send(
+            await msg.send(
                 target=target,
                 bot=await target.select(),
                 fallback=FallbackStrategy.ignore,
