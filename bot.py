@@ -10,6 +10,19 @@ nonebot.logger.add(
     "./logs/{time:YYYY-MM-DD}.log",
     rotation="00:00",
     level="DEBUG",
+    format=(
+        "<g>{time:HH:mm:ss}</g> "
+        "[<lvl>{level}</lvl>] "
+        "<c><u>{name}</u></c> | "
+        "<c>{function}:{line}</c>| "
+        "{message}"
+    ),
+)
+nonebot.logger.add(
+    "./logs/{time:YYYY-MM-DD}.colorize.log",
+    rotation="00:00",
+    level="DEBUG",
+    colorize=True,
     diagnose=True,
     format=(
         "<g>{time:HH:mm:ss}</g> "
