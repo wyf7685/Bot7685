@@ -14,7 +14,7 @@ nonebot.logger.add(
         "<g>{time:HH:mm:ss}</g> "
         "[<lvl>{level}</lvl>] "
         "<c><u>{name}</u></c> | "
-        "<c>{function}:{line}</c>| "
+        "<c>{function}:{line}</c> | "
         "{message}"
     ),
 )
@@ -28,7 +28,7 @@ nonebot.logger.add(
         "<g>{time:HH:mm:ss}</g> "
         "[<lvl>{level}</lvl>] "
         "<c><u>{name}</u></c> | "
-        "<c>{function}:{line}</c>| "
+        "<c>{function}:{line}</c> | "
         "{message}"
     ),
 )
