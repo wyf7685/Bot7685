@@ -9,6 +9,15 @@ from .common import download_file
 
 
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot]):
+    @classmethod
+    async def get_file_content(cls, file_id: str) -> bytes:
+        bot = cls.get_bot()
+        file = await bot.get_file(file_id)
+        url = (
+            f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"
+        )
+        return await download_file(url)
+
     @override
     @classmethod
     async def process_segment(
@@ -17,12 +26,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot]):
         match segment.type:
             case "mention":
                 yield Text(segment.data["text"])
-            case "sticker":
-                file_id = segment.data["file"]
-                bot = cls.get_bot()
-                file = await bot.get_file(file_id)
-                url = f"https://api.telegram.org/file/bot{bot.bot_config.token}/{file.file_path}"
-                if raw := await download_file(url):
+            case "sticker" | "photo":
+                if raw := await cls.get_file_content(segment.data["file"]):
                     yield Image(raw=raw)
             case _:
                 async for seg in super().process_segment(segment):
