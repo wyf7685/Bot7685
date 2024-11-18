@@ -204,8 +204,10 @@ async def handle_pipe_msg(
             logger.warning(f"管道选择目标 Bot 失败: {err}")
             continue
 
-        m = f"[{group_name} - {user_name}]\n" + await processor(bot_.type).process(msg)
-        logger.debug(f"发送管道消息: {display}")
+        m = UniMessage.text(f"[ {group_name} - {user_name} ]\n")
+        m.extend(await processor(bot_.type).process(msg))
+        logger.debug(f"发送管道: {display}")
+        logger.debug(f"消息: {m}")
 
         try:
             receipt = await m.send(
