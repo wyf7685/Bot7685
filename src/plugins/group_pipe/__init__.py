@@ -59,7 +59,7 @@ alc = Alconna(
     Subcommand(
         "remove",
         Args["idx#管道序号", int],
-        alias={"r"},
+        alias={"r", "rm"},
         help_text="删除一个当前群组管道",
     ),
     meta=CommandMeta(
