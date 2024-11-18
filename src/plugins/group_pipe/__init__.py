@@ -174,7 +174,7 @@ async def _rule_is_listen_pipe(listen: MsgTarget, state: T_State) -> bool:
     return bool(pipes)
 
 
-pipe_msg = on_message(_rule_is_listen_pipe)
+pipe_msg = on_message(_rule_is_listen_pipe, priority=100)
 
 
 @pipe_msg.handle()
