@@ -18,6 +18,7 @@ from nonebot_plugin_alconna import (
     CommandMeta,
     FallbackStrategy,
     Match,
+    MsgId,
     Subcommand,
     Target,
     UniMessage,
@@ -25,7 +26,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_uninfo import Uninfo
 
-from .database import Pipe, PipeDAO, display_pipe
+from .database import MsgIdCacheDAO, Pipe, PipeDAO, display_pipe
 from .processor import get_processor
 
 __plugin_meta__ = PluginMetadata(
@@ -178,28 +179,47 @@ pipe_msg = on_message(_rule_is_listen_pipe, priority=100)
 
 @pipe_msg.handle()
 async def handle_pipe_msg(
+    bot: Bot,
     event: Event,
     listen: MsgTarget,
+    msg_id: MsgId,
     info: Uninfo,
     state: T_State,
 ) -> None:
-    msg = await get_processor(listen.adapter).process(event.get_message())
-
+    processor = get_processor(listen.adapter)
     group_name = (g := info.group or info.guild) and g.name or listen.id
     user_name = info.user.nick or info.user.name or info.user.id
-    msg = f"{user_name} @ {group_name}\n\n" + msg
+    msg = processor.get_message(event)
 
     for pipe in cast(Sequence[Pipe], state["pipes"]):
         target = pipe.get_target()
         display = display_pipe(listen, target)
+
+        try:
+            bot_ = await target.select()
+        except Exception as err:
+            logger.warning(f"管道: {display}")
+            logger.warning(f"管道选择目标 Bot 失败: {err}")
+            continue
+
+        m = f"{user_name} @ {group_name}\n\n" + await processor(bot_.type).process(msg)
         logger.debug(f"发送管道消息: {display}")
 
         try:
-            await msg.send(
+            receipt = await m.send(
                 target=target,
-                bot=await target.select(),
+                bot=bot_,
                 fallback=FallbackStrategy.ignore,
             )
         except Exception as err:
+            logger.warning(f"管道: {display}")
             logger.warning(f"发送管道消息失败: {err}")
-            logger.warning(f"管道: {display_pipe(listen,target)}")
+            continue
+
+        dst_id = await get_processor(bot_.type).extract_msg_id(receipt.msg_ids)
+        await MsgIdCacheDAO().set_dst_id(
+            src_adapter=bot.type,
+            src_id=msg_id,
+            dst_adapter=bot_.type,
+            dst_id=dst_id,
+        )

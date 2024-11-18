@@ -1,18 +1,29 @@
 from collections.abc import AsyncGenerator
-from typing import override
+from typing import Any, override
 
-from nonebot.adapters.onebot.v11 import MessageSegment
-from nonebot_plugin_alconna.uniseg import Image, Segment, Text
+from nonebot.adapters import Event
+from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
+from nonebot_plugin_alconna.uniseg import Image, Reply, Segment, Text
 
 from .common import MessageProcessor as BaseMessageProcessor
 from .common import download_file
 
 
-class MessageProcessor(BaseMessageProcessor[MessageSegment]):
+class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @override
-    @classmethod
+    @staticmethod
+    def get_message(event: Event) -> Message:
+        assert isinstance(event, MessageEvent)  # noqa: S101
+        return event.original_message
+
+    @override
+    @staticmethod
+    async def extract_msg_id(msg_ids: list[dict[str, Any]]) -> str:
+        return str(msg_ids[0]["message_id"]) if msg_ids else ""
+
+    @override
     async def process_segment(
-        cls, segment: MessageSegment
+        self, segment: MessageSegment
     ) -> AsyncGenerator[Segment, None]:
         match segment.type:
             case "at":
@@ -25,8 +36,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment]):
                         else Image(url=url)
                     )
             case "reply":
-                # todo
-                pass
+                if dst_id := await self.get_dst_id(segment.data["id"]):
+                    yield Reply(dst_id)
             case "json":
                 yield Text(f"[json消息:{segment.data['data']}]")
             case _:

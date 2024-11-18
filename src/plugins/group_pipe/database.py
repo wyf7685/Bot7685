@@ -1,9 +1,10 @@
+import datetime
 import functools
 from collections.abc import Sequence
 
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_orm import Model, get_scoped_session
-from sqlalchemy import JSON, Integer, select
+from sqlalchemy import JSON, Integer, String, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -88,3 +89,66 @@ class PipeDAO:
 
 def display_pipe(listen: Target, target: Target) -> str:
     return f"<{listen.adapter}: {listen.id}> ==> <{target.adapter}: {target.id}>"
+
+
+class MsgIdCache(Model):
+    src_adapter: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)
+    """ 源消息适配器 """
+    src_id: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)
+    """ 源消息 ID """
+    dst_adapter: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)
+    """ 目标消息适配器 """
+    dst_id: Mapped[str] = mapped_column(String(), nullable=True)
+    """ 目标消息 ID """
+    created_at: Mapped[int] = mapped_column(Integer(), nullable=False)
+    """ 创建时间 """
+
+
+class MsgIdCacheDAO:
+    expire_secs: int = 30 * 24 * 60 * 60
+
+    def __init__(self) -> None:
+        self.session = get_scoped_session()
+        self.now = int(datetime.datetime.now().timestamp())
+
+    async def clean_expired(self) -> None:
+        statement = select(MsgIdCache).where(
+            MsgIdCache.created_at < self.now - self.expire_secs
+        )
+        result = await self.session.execute(statement)
+        for cache in result.scalars().all():
+            await self.session.delete(cache)
+        await self.session.commit()
+
+    async def set_dst_id(
+        self,
+        src_adapter: str,
+        src_id: str,
+        dst_adapter: str,
+        dst_id: str,
+    ) -> None:
+        await self.clean_expired()
+
+        self.session.add(
+            MsgIdCache(
+                src_adapter=src_adapter,
+                src_id=src_id,
+                dst_adapter=dst_adapter,
+                dst_id=dst_id,
+                created_at=self.now,
+            )
+        )
+        await self.session.commit()
+
+    async def get_dst_id(
+        self, src_adapter: str, src_id: str, dst_adapter: str
+    ) -> str | None:
+        await self.clean_expired()
+
+        statement = select(MsgIdCache.dst_id).where(
+            MsgIdCache.src_adapter == src_adapter,
+            MsgIdCache.src_id == src_id,
+            MsgIdCache.dst_adapter == dst_adapter,
+        )
+        result = await self.session.execute(statement)
+        return result.scalar()
