@@ -87,4 +87,4 @@ class PipeDAO:
 
 
 def display_pipe(listen: Target, target: Target) -> str:
-    return f"<{listen.adapter}: {listen.id} ==> <{target.adapter}: {target.id}>"
+    return f"<{listen.adapter}: {listen.id}> ==> <{target.adapter}: {target.id}>"
