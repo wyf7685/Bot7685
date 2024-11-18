@@ -39,7 +39,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         return await download_file(url)
 
     @override
-    async def process_segment(
+    async def convert_segment(
         self, segment: MessageSegment
     ) -> AsyncGenerator[Segment, None]:
         match segment.type:
@@ -52,5 +52,5 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 if dst_id := await self.get_dst_id(str(segment.data["message_id"])):
                     yield Reply(dst_id)
             case _:
-                async for seg in super().process_segment(segment):
+                async for seg in super().convert_segment(segment):
                     yield seg

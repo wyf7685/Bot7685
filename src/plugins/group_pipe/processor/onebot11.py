@@ -22,7 +22,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         return str(msg_ids[0]["message_id"]) if msg_ids else ""
 
     @override
-    async def process_segment(
+    async def convert_segment(
         self, segment: MessageSegment
     ) -> AsyncGenerator[Segment, None]:
         match segment.type:
@@ -41,5 +41,5 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case "json":
                 yield Text(f"[json消息:{segment.data['data']}]")
             case _:
-                async for seg in super().process_segment(segment):
+                async for seg in super().convert_segment(segment):
                     yield seg

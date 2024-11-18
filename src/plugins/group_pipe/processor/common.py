@@ -47,7 +47,7 @@ class MessageProcessor[
             dst_adapter=self.dst_adapter,
         )
 
-    async def process_segment(self, segment: TMS) -> AsyncGenerator[Segment, None]:
+    async def convert_segment(self, segment: TMS) -> AsyncGenerator[Segment, None]:
         if fn := get_builder(self.get_bot()):
             result = fn.convert(segment)
             if isinstance(result, list):
@@ -62,7 +62,7 @@ class MessageProcessor[
             msg = cast(TM, fn.preprocess(msg))
 
         for segment in msg:
-            async for seg in self.process_segment(segment):
+            async for seg in self.convert_segment(segment):
                 result.append(seg)
 
         return result
