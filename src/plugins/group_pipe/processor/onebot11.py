@@ -1,40 +1,34 @@
+from collections.abc import AsyncGenerator
 from typing import override
 
-import httpx
-from nonebot_plugin_alconna.uniseg import At, Hyper, Image, Reply, Text, UniMessage
-from nonebot_plugin_alconna.uniseg.utils import fleep
+from nonebot.adapters.onebot.v11 import MessageSegment
+from nonebot_plugin_alconna.uniseg import Image, Segment, Text
 
 from .common import MessageProcessor as BaseMessageProcessor
+from .common import download_file
 
 
-async def create_image_seg(url: str) -> Image:
-    async with httpx.AsyncClient() as client:
-        try:
-            resp = await client.get(url)
-            resp.raise_for_status()
-        except (httpx.ConnectError, httpx.HTTPError):
-            return Image(url=url)
-
-        data = resp.read()
-
-    ext = fleep.get(data).extensions[0]
-    name = f"{hash(url)}.{ext}"
-    return Image(raw=data, name=name)
-
-
-class MessageProcessor(BaseMessageProcessor):
+class MessageProcessor(BaseMessageProcessor[MessageSegment]):
     @override
     @classmethod
-    async def process(cls, msg: UniMessage) -> UniMessage:
-        result = UniMessage()
-        for seg in msg:
-            if isinstance(seg, Image) and seg.url is not None:
-                seg = await create_image_seg(seg.url)
-            elif isinstance(seg, At):
-                seg = Text(f"[at:{seg.target}]")
-            elif isinstance(seg, Reply):
-                continue
-            elif isinstance(seg, Hyper):
-                seg = Text(f"[{seg.type}消息:{seg.content}]")
-            result.append(seg)
-        return result
+    async def process_segment(
+        cls, segment: MessageSegment
+    ) -> AsyncGenerator[Segment, None]:
+        match segment.type:
+            case "at":
+                yield Text(f"[at:{segment.data['qq']}]")
+            case "image":
+                if url := segment.data.get("url"):
+                    yield (
+                        Image(raw=raw)
+                        if (raw := await download_file(url))
+                        else Image(url=url)
+                    )
+            case "reply":
+                # todo
+                pass
+            case "json":
+                yield Text(f"[json消息:{segment.data['data']}]")
+            case _:
+                async for seg in super().process_segment(segment):
+                    yield seg

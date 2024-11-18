@@ -6,5 +6,5 @@ processors = {
 }
 
 
-def get_processor(adapter: str | None) -> common.MessageProcessor:
-    return processors.get(adapter, common.MessageProcessor)()
+def get_processor(adapter: str | None) -> type[common.MessageProcessor]:
+    return processors.get(adapter, common.MessageProcessor)

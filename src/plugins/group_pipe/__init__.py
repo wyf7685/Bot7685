@@ -21,7 +21,6 @@ from nonebot_plugin_alconna import (
     Subcommand,
     Target,
     UniMessage,
-    UniMsg,
     on_alconna,
 )
 from nonebot_plugin_uninfo import Uninfo
@@ -179,15 +178,16 @@ pipe_msg = on_message(_rule_is_listen_pipe, priority=100)
 
 @pipe_msg.handle()
 async def handle_pipe_msg(
+    event: Event,
     listen: MsgTarget,
     info: Uninfo,
-    msg: UniMsg,
     state: T_State,
 ) -> None:
+    msg = await get_processor(listen.adapter).process(event.get_message())
+
     group_name = (g := info.group or info.guild) and g.name or listen.id
     user_name = info.user.nick or info.user.name or info.user.id
-    msg = UniMessage.text(f"{user_name} @ {group_name}\n\n") + msg
-    msg = await get_processor(listen.adapter).process(msg)
+    msg = f"{user_name} @ {group_name}\n\n" + msg
 
     for pipe in cast(Sequence[Pipe], state["pipes"]):
         target = pipe.get_target()
