@@ -161,8 +161,10 @@ async def assign_link(target: MsgTarget, code: Match[int]) -> None:
 async def assign_remove(target: MsgTarget, idx: Match[int]) -> None:
     listen_pipes, target_pipes = await PipeDAO().get_linked_pipes(target)
     pipes = [*listen_pipes, *target_pipes]
-    pipe = pipes[idx.result - 1]
+    if idx.result < 1 or idx.result > len(pipes):
+        await UniMessage.text("管道序号无效").finish(reply_to=True)
 
+    pipe = pipes[idx.result - 1]
     listen, target = pipe.get_listen(), pipe.get_target()
     await PipeDAO().delete_pipe(pipe)
     msg = f"管道删除成功:\n{display_pipe(listen, target)}"
@@ -202,7 +204,7 @@ async def handle_pipe_msg(
             logger.warning(f"管道选择目标 Bot 失败: {err}")
             continue
 
-        m = f"{user_name} @ {group_name}\n\n" + await processor(bot_.type).process(msg)
+        m = f"[{group_name} - {user_name}]\n" + await processor(bot_.type).process(msg)
         logger.debug(f"发送管道消息: {display}")
 
         try:

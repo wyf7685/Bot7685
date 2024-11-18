@@ -37,8 +37,8 @@ class MessageProcessor[
         return cast(TM, event.get_message())
 
     @staticmethod
-    async def extract_msg_id(msg_ids: list[Any]) -> str:
-        return str(msg_ids[0]) if msg_ids else ""
+    async def extract_msg_id(msg_ids: list[Any]) -> str:  # noqa: ARG004
+        return ""
 
     async def get_dst_id(self, src_id: str) -> str | None:
         return await MsgIdCacheDAO().get_dst_id(
