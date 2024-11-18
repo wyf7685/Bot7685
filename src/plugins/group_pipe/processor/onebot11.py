@@ -36,7 +36,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                         else Image(url=url)
                     )
             case "reply":
-                if dst_id := await self.get_dst_id(segment.data["id"]):
+                if dst_id := await self.get_dst_id(str(segment.data["id"])):
                     yield Reply(dst_id)
             case "json":
                 yield Text(f"[json消息:{segment.data['data']}]")

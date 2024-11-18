@@ -49,7 +49,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 if raw := await self.get_file_content(segment.data["file"]):
                     yield Image(raw=raw)
             case "reply":
-                if dst_id := await self.get_dst_id(segment.data["message_id"]):
+                if dst_id := await self.get_dst_id(str(segment.data["message_id"])):
                     yield Reply(dst_id)
             case _:
                 async for seg in super().process_segment(segment):
