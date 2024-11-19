@@ -179,6 +179,9 @@ async def handle_pipe_msg(
     msg_id: MsgId,
     info: Uninfo,
 ) -> None:
+    if event.get_type() != "message":
+        return
+
     pipes = await PipeDAO().get_pipes(listen=listen)
     if not pipes:
         return
