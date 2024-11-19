@@ -1,8 +1,8 @@
 """update
 
-迁移 ID: 2296bc681ee5
-父迁移: 2e39fdc3f6b1
-创建时间: 2024-11-19 11:03:37.471331
+迁移 ID: 0c96e0e74726
+父迁移: 7c9dbbd5d73d
+创建时间: 2024-11-19 11:19:41.159856
 
 """
 
@@ -11,7 +11,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "2296bc681ee5"
+revision: str = "0c96e0e74726"
 down_revision: str | Sequence[str] | None = "7c9dbbd5d73d"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -32,6 +32,7 @@ def upgrade(name: str = "") -> None:
             "src_adapter",
             "src_id",
             "dst_adapter",
+            "dst_id",
             name=op.f("pk_group_pipe_msgidcache"),
         ),
         info={"bind_key": "group_pipe"},

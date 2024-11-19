@@ -99,7 +99,7 @@ class MsgIdCache(Model):
     """ 源消息 ID """
     dst_adapter: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)
     """ 目标消息适配器 """
-    dst_id: Mapped[str] = mapped_column(String(), nullable=False)
+    dst_id: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)
     """ 目标消息 ID """
     created_at: Mapped[int] = mapped_column(Integer(), nullable=False)
     """ 创建时间 """
