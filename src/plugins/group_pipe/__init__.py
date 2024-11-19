@@ -18,13 +18,12 @@ from nonebot_plugin_alconna import (
     CommandMeta,
     FallbackStrategy,
     Match,
-    MsgId,
     Subcommand,
     Target,
     UniMessage,
     on_alconna,
 )
-from nonebot_plugin_uninfo import Uninfo
+from nonebot_plugin_uninfo import get_session
 
 from .database import MsgIdCacheDAO, PipeDAO, display_pipe
 from .processor import get_processor
@@ -172,14 +171,18 @@ async def assign_remove(target: MsgTarget, idx: Match[int]) -> None:
 
 
 @run_postprocessor
-async def handle_pipe_msg(
-    bot: Bot,
-    event: Event,
-    listen: MsgTarget,
-    msg_id: MsgId,
-    info: Uninfo,
-) -> None:
+async def handle_pipe_msg(bot: Bot, event: Event) -> None:
     if event.get_type() != "message":
+        return
+
+    try:
+        listen = UniMessage.get_target(event, bot)
+        msg_id = UniMessage.get_message_id(event, bot)
+        info = await get_session(bot, event)
+    except Exception:
+        return
+
+    if info is None:
         return
 
     pipes = await PipeDAO().get_pipes(listen=listen)
