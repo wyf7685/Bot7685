@@ -6,6 +6,7 @@ from nonebot import logger, on_message, require
 from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
+from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot.typing import T_State
 
@@ -86,7 +87,7 @@ async def _rule_is_group(target: MsgTarget) -> bool:
     return not target.private
 
 
-pipe_cmd = on_alconna(alc, _rule_is_group, use_cmd_start=True)
+pipe_cmd = on_alconna(alc, _rule_is_group, permission=SUPERUSER, use_cmd_start=True)
 
 
 @pipe_cmd.assign("list.listen")
