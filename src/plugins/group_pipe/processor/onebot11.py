@@ -21,6 +21,10 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     async def extract_msg_id(msg_ids: list[dict[str, Any]]) -> str:
         return str(msg_ids[0]["message_id"]) if msg_ids else ""
 
+    def handle_json_msg(self, data: dict[str, Any]) -> Segment:
+        # todo: solve card share
+        return Text(f"[json消息:{data}]")
+
     @override
     async def convert_segment(
         self, segment: MessageSegment
@@ -39,8 +43,10 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 msg_id = str(segment.data["id"])
                 if reply_id := await self.get_reply_id(msg_id):
                     yield Reply(reply_id)
+            case "forward":
+                yield Text(f"[合并转发:{segment.data['id']}]")
             case "json":
-                yield Text(f"[json消息:{segment.data['data']}]")
+                yield self.handle_json_msg(segment.data)
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg
