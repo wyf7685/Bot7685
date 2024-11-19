@@ -226,10 +226,12 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         return
 
     if info is None:
+        logger.debug("消息信息为空")
         return
 
     pipes = await PipeDAO().get_pipes(listen=listen)
     if not pipes:
+        logger.trace("没有监听当前群组的管道")
         return
 
     group_name = (g := info.group or info.guild) and g.name or listen.id
