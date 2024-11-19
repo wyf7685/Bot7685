@@ -2,7 +2,7 @@ import asyncio
 from typing import Annotated
 
 from nonebot import logger, require
-from nonebot.adapters import Bot, Event
+from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.message import run_postprocessor
 from nonebot.params import Depends
@@ -25,7 +25,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_uninfo import get_session
 
-from .database import MsgIdCacheDAO, PipeDAO, display_pipe
+from .database import MsgIdCacheDAO, Pipe, PipeDAO, display_pipe
 from .processor import get_processor
 
 __plugin_meta__ = PluginMetadata(
@@ -170,6 +170,49 @@ async def assign_remove(target: MsgTarget, idx: Match[int]) -> None:
     await UniMessage.text(msg).finish(reply_to=True)
 
 
+async def send_pipe_msg(
+    bot: Bot,
+    listen: Target,
+    msg_id: str,
+    msg_head: str,
+    msg: Message,
+    pipe: Pipe,
+) -> None:
+    target = pipe.get_target()
+    display = display_pipe(listen, target)
+
+    try:
+        bot_ = await target.select()
+    except Exception as err:
+        logger.warning(f"管道: {display}")
+        logger.warning(f"管道选择目标 Bot 失败: {err}")
+        return
+
+    m = UniMessage.text(msg_head)
+    m.extend(await get_processor(listen.adapter)(bot_.type).process(msg))
+    logger.debug(f"发送管道: {display}")
+    logger.debug(f"消息: {m}")
+
+    try:
+        receipt = await m.send(
+            target=target,
+            bot=bot_,
+            fallback=FallbackStrategy.ignore,
+        )
+    except Exception as err:
+        logger.warning(f"管道: {display}")
+        logger.warning(f"发送管道消息失败: {err}")
+        return
+
+    dst_id = await get_processor(bot_.type).extract_msg_id(receipt.msg_ids)
+    await MsgIdCacheDAO().set_dst_id(
+        src_adapter=bot.type,
+        src_id=msg_id,
+        dst_adapter=bot_.type,
+        dst_id=dst_id,
+    )
+
+
 @run_postprocessor
 async def handle_pipe_msg(bot: Bot, event: Event) -> None:
     if event.get_type() != "message":
@@ -189,42 +232,20 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
     if not pipes:
         return
 
-    processor = get_processor(listen.adapter)
     group_name = (g := info.group or info.guild) and g.name or listen.id
     user_name = info.user.nick or info.user.name or info.user.id
-    msg = processor.get_message(event)
+    msg_head = f"[ {group_name} - {user_name} ]\n"
+    msg = get_processor(listen.adapter).get_message(event)
 
-    for pipe in pipes:
-        target = pipe.get_target()
-        display = display_pipe(listen, target)
-
-        try:
-            bot_ = await target.select()
-        except Exception as err:
-            logger.warning(f"管道: {display}")
-            logger.warning(f"管道选择目标 Bot 失败: {err}")
-            continue
-
-        m = UniMessage.text(f"[ {group_name} - {user_name} ]\n")
-        m.extend(await processor(bot_.type).process(msg))
-        logger.debug(f"发送管道: {display}")
-        logger.debug(f"消息: {m}")
-
-        try:
-            receipt = await m.send(
-                target=target,
-                bot=bot_,
-                fallback=FallbackStrategy.ignore,
-            )
-        except Exception as err:
-            logger.warning(f"管道: {display}")
-            logger.warning(f"发送管道消息失败: {err}")
-            continue
-
-        dst_id = await get_processor(bot_.type).extract_msg_id(receipt.msg_ids)
-        await MsgIdCacheDAO().set_dst_id(
-            src_adapter=bot.type,
-            src_id=msg_id,
-            dst_adapter=bot_.type,
-            dst_id=dst_id,
+    coros = [
+        send_pipe_msg(
+            bot=bot,
+            listen=listen,
+            msg_id=msg_id,
+            msg_head=msg_head,
+            msg=msg,
+            pipe=pipe,
         )
+        for pipe in pipes
+    ]
+    await asyncio.gather(*coros)

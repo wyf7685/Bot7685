@@ -99,7 +99,7 @@ class MsgIdCache(Model):
     """ 源消息 ID """
     dst_adapter: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)
     """ 目标消息适配器 """
-    dst_id: Mapped[str] = mapped_column(String(), nullable=True)
+    dst_id: Mapped[str] = mapped_column(String(), nullable=False)
     """ 目标消息 ID """
     created_at: Mapped[int] = mapped_column(Integer(), nullable=False)
     """ 创建时间 """
@@ -147,7 +147,7 @@ class MsgIdCacheDAO:
         *,
         src_adapter: str,
         dst_adapter: str,
-        src_id: str | None = None,
+        src_id: str,
     ) -> str | None: ...
     @overload
     async def get_reply_id(
@@ -155,7 +155,7 @@ class MsgIdCacheDAO:
         *,
         src_adapter: str,
         dst_adapter: str,
-        dst_id: str | None = None,
+        dst_id: str,
     ) -> str | None: ...
 
     async def get_reply_id(
@@ -167,14 +167,15 @@ class MsgIdCacheDAO:
     ) -> str | None:
         await self.clean_expired()
 
-        statement = select(MsgIdCache.dst_id if src_id else MsgIdCache.src_id).where(
-            MsgIdCache.src_adapter == src_adapter,
-            MsgIdCache.dst_adapter == dst_adapter,
+        statement = (
+            select(MsgIdCache.dst_id if src_id else MsgIdCache.src_id)
+            .where(MsgIdCache.src_adapter == src_adapter)
+            .where(MsgIdCache.dst_adapter == dst_adapter)
+            .where(
+                (MsgIdCache.src_id == src_id)
+                if src_id
+                else (MsgIdCache.dst_id == dst_id)
+            )
         )
-        if src_id:
-            statement = statement.where(MsgIdCache.src_id == src_id)
-        if dst_id:
-            statement = statement.where(MsgIdCache.dst_id == dst_id)
 
-        result = await self.session.execute(statement)
-        return result.scalar()
+        return await self.session.scalar(statement)

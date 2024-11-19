@@ -1,8 +1,8 @@
 """update
 
-迁移 ID: e5dcf2150f81
+迁移 ID: 2296bc681ee5
 父迁移: 2e39fdc3f6b1
-创建时间: 2024-11-18 16:45:38.770989
+创建时间: 2024-11-19 11:03:37.471331
 
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "e5dcf2150f81"
-down_revision: str | Sequence[str] | None = "2e39fdc3f6b1"
+revision: str = "2296bc681ee5"
+down_revision: str | Sequence[str] | None = "7c9dbbd5d73d"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -26,7 +26,7 @@ def upgrade(name: str = "") -> None:
         sa.Column("src_adapter", sa.String(), nullable=False),
         sa.Column("src_id", sa.String(), nullable=False),
         sa.Column("dst_adapter", sa.String(), nullable=False),
-        sa.Column("dst_id", sa.String(), nullable=True),
+        sa.Column("dst_id", sa.String(), nullable=False),
         sa.Column("created_at", sa.Integer(), nullable=False),
         sa.PrimaryKeyConstraint(
             "src_adapter",
