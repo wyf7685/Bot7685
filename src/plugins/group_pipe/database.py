@@ -1,6 +1,7 @@
 import datetime
 import functools
 from collections.abc import Sequence
+from typing import overload
 
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_orm import Model, get_scoped_session
@@ -105,7 +106,7 @@ class MsgIdCache(Model):
 
 
 class MsgIdCacheDAO:
-    expire_secs: int = 30 * 24 * 60 * 60
+    expire_secs: int = 7 * 24 * 60 * 60  # 7 days
 
     def __init__(self) -> None:
         self.session = get_scoped_session()
@@ -140,15 +141,40 @@ class MsgIdCacheDAO:
         )
         await self.session.commit()
 
-    async def get_dst_id(
-        self, src_adapter: str, src_id: str, dst_adapter: str
+    @overload
+    async def get_reply_id(
+        self,
+        *,
+        src_adapter: str,
+        dst_adapter: str,
+        src_id: str | None = None,
+    ) -> str | None: ...
+    @overload
+    async def get_reply_id(
+        self,
+        *,
+        src_adapter: str,
+        dst_adapter: str,
+        dst_id: str | None = None,
+    ) -> str | None: ...
+
+    async def get_reply_id(
+        self,
+        src_adapter: str,
+        dst_adapter: str,
+        src_id: str | None = None,
+        dst_id: str | None = None,
     ) -> str | None:
         await self.clean_expired()
 
-        statement = select(MsgIdCache.dst_id).where(
+        statement = select(MsgIdCache.dst_id if src_id else MsgIdCache.src_id).where(
             MsgIdCache.src_adapter == src_adapter,
-            MsgIdCache.src_id == src_id,
             MsgIdCache.dst_adapter == dst_adapter,
         )
+        if src_id:
+            statement = statement.where(MsgIdCache.src_id == src_id)
+        if dst_id:
+            statement = statement.where(MsgIdCache.dst_id == dst_id)
+
         result = await self.session.execute(statement)
         return result.scalar()

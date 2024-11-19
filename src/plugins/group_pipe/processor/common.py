@@ -40,11 +40,15 @@ class MessageProcessor[
     async def extract_msg_id(msg_ids: list[Any]) -> str:  # noqa: ARG004
         return ""
 
-    async def get_dst_id(self, src_id: str) -> str | None:
-        return await MsgIdCacheDAO().get_dst_id(
+    async def get_reply_id(self, message_id: str) -> str | None:
+        return await MsgIdCacheDAO().get_reply_id(
             src_adapter=self.get_bot().type,
-            src_id=src_id,
             dst_adapter=self.dst_adapter,
+            src_id=message_id,
+        ) or await MsgIdCacheDAO().get_reply_id(
+            src_adapter=self.dst_adapter,
+            dst_adapter=self.get_bot().type,
+            dst_id=message_id,
         )
 
     async def convert_segment(self, segment: TMS) -> AsyncGenerator[Segment, None]:
