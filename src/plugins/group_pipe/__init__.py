@@ -25,7 +25,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_uninfo import get_session
 
-from .database import MsgIdCacheDAO, Pipe, PipeDAO, display_pipe
+from .database import MsgIdCacheDAO, PipeDAO, display_pipe
 from .processor import get_processor
 
 __plugin_meta__ = PluginMetadata(
@@ -173,12 +173,11 @@ async def assign_remove(target: MsgTarget, idx: Match[int]) -> None:
 async def send_pipe_msg(
     bot: Bot,
     listen: Target,
+    target: Target,
     msg_id: str,
     msg_head: str,
     msg: Message,
-    pipe: Pipe,
 ) -> None:
-    target = pipe.get_target()
     display = display_pipe(listen, target)
 
     try:
@@ -222,7 +221,8 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         listen = UniMessage.get_target(event, bot)
         msg_id = UniMessage.get_message_id(event, bot)
         info = await get_session(bot, event)
-    except Exception:
+    except Exception as err:
+        logger.warning(f"获取消息信息失败: {err}")
         return
 
     if info is None:
@@ -241,10 +241,10 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         send_pipe_msg(
             bot=bot,
             listen=listen,
+            target=pipe.get_target(),
             msg_id=msg_id,
             msg_head=msg_head,
             msg=msg,
-            pipe=pipe,
         )
         for pipe in pipes
     ]
