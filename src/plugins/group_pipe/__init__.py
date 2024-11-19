@@ -1,14 +1,13 @@
 import asyncio
-from collections.abc import Sequence
-from typing import Annotated, cast
+from typing import Annotated
 
-from nonebot import logger, on_message, require
+from nonebot import logger, require
 from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
+from nonebot.message import run_postprocessor
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_orm")
@@ -27,7 +26,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_uninfo import Uninfo
 
-from .database import MsgIdCacheDAO, Pipe, PipeDAO, display_pipe
+from .database import MsgIdCacheDAO, PipeDAO, display_pipe
 from .processor import get_processor
 
 __plugin_meta__ = PluginMetadata(
@@ -172,29 +171,24 @@ async def assign_remove(target: MsgTarget, idx: Match[int]) -> None:
     await UniMessage.text(msg).finish(reply_to=True)
 
 
-async def _rule_is_listen_pipe(listen: MsgTarget, state: T_State) -> bool:
-    state["pipes"] = pipes = await PipeDAO().get_pipes(listen=listen)
-    return bool(pipes)
-
-
-pipe_msg = on_message(_rule_is_listen_pipe, priority=100)
-
-
-@pipe_msg.handle()
+@run_postprocessor
 async def handle_pipe_msg(
     bot: Bot,
     event: Event,
     listen: MsgTarget,
     msg_id: MsgId,
     info: Uninfo,
-    state: T_State,
 ) -> None:
+    pipes = await PipeDAO().get_pipes(listen=listen)
+    if not pipes:
+        return
+
     processor = get_processor(listen.adapter)
     group_name = (g := info.group or info.guild) and g.name or listen.id
     user_name = info.user.nick or info.user.name or info.user.id
     msg = processor.get_message(event)
 
-    for pipe in cast(Sequence[Pipe], state["pipes"]):
+    for pipe in pipes:
         target = pipe.get_target()
         display = display_pipe(listen, target)
 
