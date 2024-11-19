@@ -4,7 +4,8 @@ from collections.abc import Sequence
 from typing import overload
 
 from nonebot_plugin_alconna import Target
-from nonebot_plugin_orm import Model, get_scoped_session
+from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_orm import Model, get_scoped_session, get_session
 from sqlalchemy import JSON, Integer, String, select
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -106,20 +107,8 @@ class MsgIdCache(Model):
 
 
 class MsgIdCacheDAO:
-    expire_secs: int = 7 * 24 * 60 * 60  # 7 days
-
     def __init__(self) -> None:
         self.session = get_scoped_session()
-        self.now = int(datetime.datetime.now().timestamp())
-
-    async def clean_expired(self) -> None:
-        statement = select(MsgIdCache).where(
-            MsgIdCache.created_at < self.now - self.expire_secs
-        )
-        result = await self.session.execute(statement)
-        for cache in result.scalars().all():
-            await self.session.delete(cache)
-        await self.session.commit()
 
     async def set_dst_id(
         self,
@@ -128,17 +117,14 @@ class MsgIdCacheDAO:
         dst_adapter: str,
         dst_id: str,
     ) -> None:
-        await self.clean_expired()
-
-        self.session.add(
-            MsgIdCache(
-                src_adapter=src_adapter,
-                src_id=src_id,
-                dst_adapter=dst_adapter,
-                dst_id=dst_id,
-                created_at=self.now,
-            )
+        cache = MsgIdCache(
+            src_adapter=src_adapter,
+            src_id=src_id,
+            dst_adapter=dst_adapter,
+            dst_id=dst_id,
+            created_at=int(datetime.datetime.now().timestamp()),
         )
+        self.session.add(cache)
         await self.session.commit()
 
     @overload
@@ -165,8 +151,6 @@ class MsgIdCacheDAO:
         src_id: str | None = None,
         dst_id: str | None = None,
     ) -> str | None:
-        await self.clean_expired()
-
         statement = (
             select(MsgIdCache.dst_id if src_id else MsgIdCache.src_id)
             .where(MsgIdCache.src_adapter == src_adapter)
@@ -179,3 +163,15 @@ class MsgIdCacheDAO:
         )
 
         return await self.session.scalar(statement)
+
+
+@scheduler.scheduled_job("interval", minutes=10)
+async def auto_clean_cache() -> None:
+    now = int(datetime.datetime.now().timestamp())
+    expire_secs: int = 7 * 24 * 60 * 60  # 7 days
+    session = get_session()
+    statement = select(MsgIdCache).where(MsgIdCache.created_at < now - expire_secs)
+    result = await session.execute(statement)
+    for cache in result.scalars().all():
+        await session.delete(cache)
+    await session.commit()
