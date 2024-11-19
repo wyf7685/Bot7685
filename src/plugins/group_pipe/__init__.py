@@ -4,7 +4,7 @@ from typing import Annotated
 from nonebot import logger, require
 from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
-from nonebot.message import run_postprocessor
+from nonebot.message import event_postprocessor
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
@@ -188,7 +188,7 @@ async def send_pipe_msg(
         return
 
     m = UniMessage.text(msg_head)
-    m.extend(await get_processor(listen.adapter)(bot_.type).process(msg))
+    m.extend(await get_processor(listen.adapter)(bot, bot_).process(msg))
     logger.debug(f"发送管道: {display}")
     logger.debug(f"消息: {m}")
 
@@ -212,7 +212,7 @@ async def send_pipe_msg(
     )
 
 
-@run_postprocessor
+@event_postprocessor
 async def handle_pipe_msg(bot: Bot, event: Event) -> None:
     if event.get_type() != "message":
         return

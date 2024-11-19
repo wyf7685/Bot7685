@@ -3,7 +3,6 @@ from typing import Any, cast
 
 import httpx
 from nonebot.adapters import Bot, Event, Message, MessageSegment
-from nonebot.internal.matcher import current_bot
 from nonebot_plugin_alconna.uniseg import Segment, UniMessage, get_builder
 
 from ..database import MsgIdCacheDAO
@@ -25,12 +24,12 @@ class MessageProcessor[
     TB: Bot = Bot,
     TM: Message = Message,
 ]:
-    def __init__(self, dst_adapter: str) -> None:
-        self.dst_adapter = dst_adapter
+    def __init__(self, src_bot: TB, dst_bot: Bot) -> None:
+        self.src_bot = src_bot
+        self.dst_bot = dst_bot
 
-    @staticmethod
-    def get_bot() -> TB:
-        return cast(TB, current_bot.get())
+    def get_bot(self) -> TB:
+        return self.src_bot
 
     @staticmethod
     def get_message(event: Event) -> TM:
@@ -43,10 +42,10 @@ class MessageProcessor[
     async def get_reply_id(self, message_id: str) -> str | None:
         return await MsgIdCacheDAO().get_reply_id(
             src_adapter=self.get_bot().type,
-            dst_adapter=self.dst_adapter,
+            dst_adapter=self.dst_bot.type,
             src_id=message_id,
         ) or await MsgIdCacheDAO().get_reply_id(
-            src_adapter=self.dst_adapter,
+            src_adapter=self.dst_bot.type,
             dst_adapter=self.get_bot().type,
             dst_id=message_id,
         )
