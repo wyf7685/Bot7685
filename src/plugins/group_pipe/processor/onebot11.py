@@ -5,7 +5,8 @@ from typing import Any, override
 
 import httpx
 import yarl
-from nonebot.adapters import Event
+from nonebot.adapters import Bot as BaseBot
+from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
 from nonebot_plugin_alconna.uniseg import Image, Segment, Text
 
@@ -67,9 +68,13 @@ async def handle_json_msg(data: dict[str, Any]) -> AsyncGenerator[Segment, None]
 
 
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
+    def __init__(self, src_bot: Bot, dst_bot: BaseBot | None = None) -> None:
+        super().__init__(src_bot, dst_bot)
+        self.do_download_image = True
+
     @override
     @staticmethod
-    def get_message(event: Event) -> Message:
+    def get_message(event: BaseEvent) -> Message:
         assert isinstance(event, MessageEvent)  # noqa: S101
         return event.original_message
 
@@ -88,6 +93,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         cache_data = []
         processor = MessageProcessor(self.src_bot)
+        processor.do_download_image = False
 
         for item in content:
             sender: dict[str, str] = item.get("sender", {})
@@ -121,7 +127,10 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 yield Text(f"[at:{segment.data['qq']}]")
             case "image":
                 if url := segment.data.get("url"):
-                    yield await url_to_image(url)
+                    if self.do_download_image:
+                        yield await url_to_image(url)
+                    else:
+                        yield Image(url=url)
             case "reply":
                 yield await self.convert_reply(segment.data["id"])
             case "forward":
