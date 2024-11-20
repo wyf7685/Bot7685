@@ -198,7 +198,7 @@ class KVCacheDAO:
         expire: int = SECONDS_PER_WEEK,
     ) -> None:
         stmt = (
-            select(KVCache.value)
+            select(KVCache)
             .where(KVCache.adapter == adapter)
             .where(KVCache.key == key)
         )
