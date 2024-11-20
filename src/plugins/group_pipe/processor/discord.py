@@ -25,7 +25,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @staticmethod
     def get_message(event: Event) -> Message:
         assert isinstance(event, MessageEvent)  # noqa: S101
-        message = deepcopy(event.original_message)
+        message = deepcopy(event.get_message())
         attachments = {a.filename: a.url for a in event.attachments}
         for seg in message:
             if isinstance(seg, AttachmentSegment):

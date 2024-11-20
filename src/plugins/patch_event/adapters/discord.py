@@ -52,7 +52,7 @@ with contextlib.suppress(ImportError):
                 f"Message <c>{self.id}</c> from "
                 f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
                 f"(<c>{self.author.id}</c>) "
-                f"{Highlight.apply(self.original_message)}"
+                f"{Highlight.apply(self.get_message())}"
             )
 
     @Patcher
@@ -84,7 +84,7 @@ with contextlib.suppress(ImportError):
                 f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
                 f"(<c>{self.author.id}</c>)"
                 f"@[Guild:{guild} Channel:{channel}] "
-                f"{Highlight.apply(self.original_message)}"
+                f"{Highlight.apply(self.get_message())}"
             )
 
     @Patcher
