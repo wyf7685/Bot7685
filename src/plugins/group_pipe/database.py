@@ -198,9 +198,7 @@ class KVCacheDAO:
         expire: int = SECONDS_PER_WEEK,
     ) -> None:
         stmt = (
-            select(KVCache)
-            .where(KVCache.adapter == adapter)
-            .where(KVCache.key == key)
+            select(KVCache).where(KVCache.adapter == adapter).where(KVCache.key == key)
         )
         if cache := await self.session.scalar(stmt):
             await self.session.delete(cache)
@@ -214,6 +212,7 @@ class KVCacheDAO:
         )
         self.session.add(cache)
         await self.session.commit()
+        await self.session.close()
 
     async def get_value(self, adapter: str, key: str) -> str | None:
         statement = (
@@ -221,15 +220,18 @@ class KVCacheDAO:
             .where(KVCache.adapter == adapter)
             .where(KVCache.key == key)
         )
-        return await self.session.scalar(statement)
+        value = await self.session.scalar(statement)
+        await self.session.close()
+        return value
 
 
 @scheduler.scheduled_job("interval", minutes=10)
 async def auto_clean_cache() -> None:
     now = int(datetime.datetime.now().timestamp())
-    session = get_session()
     statement = select(MsgIdCache).where(MsgIdCache.created_at < now - SECONDS_PER_WEEK)
-    result = await session.execute(statement)
-    for cache in result.scalars().all():
-        await session.delete(cache)
-    await session.commit()
+
+    async with get_session() as session:
+        result = await session.execute(statement)
+        for cache in result.scalars().all():
+            await session.delete(cache)
+        await session.commit()
