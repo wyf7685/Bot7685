@@ -8,7 +8,7 @@ import yarl
 from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
-from nonebot_plugin_alconna.uniseg import Image, Segment, Text
+from nonebot_plugin_alconna.uniseg import Image, Reply, Segment, Text
 
 from ..database import KVCacheDAO
 from .common import MessageProcessor as BaseMessageProcessor
@@ -21,6 +21,7 @@ async def get_rkey() -> tuple[str, str]:
         resp = await client.get(rkey_api)
         data = resp.json()
         return data["private_rkey"], data["group_rkey"]
+
 
 async def url_to_image(url: str) -> Image:
     if raw := await download_file(url):
@@ -90,7 +91,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         if not content:
             return False
 
-        cache_data = []
+        msg_id_seq: dict[str, str] = {}
+        cache_data: list[dict[str, Any]] = []
         processor = MessageProcessor(self.src_bot)
         processor.do_download_image = False
 
@@ -109,7 +111,21 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             unimsg = await processor.process(
                 Message([MessageSegment(**seg) for seg in msg])
             )
-            cache_data.append({"nick": nick, "msg": unimsg.dump(media_save_dir=False)})
+
+            if Reply in unimsg:
+                if reply_seq := msg_id_seq.get(unimsg[Reply, 0].id):
+                    unimsg[Reply, 0].id = reply_seq
+                else:
+                    unimsg = unimsg.exclude(Reply)
+
+            msg_id_seq[item["message_id"]] = str(len(cache_data))
+            cache_data.append(
+                {
+                    "nick": nick,
+                    "msg": unimsg.dump(media_save_dir=False),
+                    "seq": len(cache_data),
+                }
+            )
 
         if cache_data:
             key = f"forward_{id_}"

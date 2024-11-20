@@ -1,10 +1,12 @@
 import json
 
+from nonebot.adapters import Bot
 from nonebot.adapters.onebot import v11
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, Subcommand, on_alconna
-from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
+from nonebot_plugin_alconna.uniseg import Image, Reply, Text, UniMessage, reply_fetch
 
 from ..database import KVCacheDAO
+from ..processor import get_processor
 from ..processor.onebot11 import MessageProcessor as V11MessageProcessor
 from ..processor.onebot11 import url_to_image
 
@@ -53,24 +55,33 @@ async def _(bot: v11.Bot, event: v11.Event) -> None:
 
 
 @matcher.assign("load")
-async def _(fwd_id: str) -> None:
+async def _(bot: Bot, fwd_id: str) -> None:
     cache = await KVCacheDAO().get_value(v11.Adapter.get_name(), f"forward_{fwd_id}")
 
     if cache is None:
         await UniMessage.text("未找到合并转发消息").finish(reply_to=True)
 
     cache_data = json.loads(cache)
+    processor = get_processor(bot.type)
+    msg_ids: dict[str, str] = {}
+
     for item in cache_data:
         nick = item["nick"]
         msg = UniMessage.load(item["msg"])
+
         for idx in range(len(msg)):
             seg = msg[idx]
             if isinstance(seg, Image) and seg.url:
                 msg[idx] = await url_to_image(seg.url)
+            elif isinstance(seg, Reply):
+                seg.id = msg_ids[seg.id]
+
         msg.insert(0, Text(f"{nick}\n\n"))
         try:
-            await msg.send()
+            receipt = await msg.send()
         except Exception as err:
             await UniMessage.text(f"发送消息失败: {err}").finish()
+
+        msg_ids[item["seq"]] = await processor.extract_msg_id(receipt.msg_ids)
 
     await UniMessage.text(f"加载合并转发消息成功: {fwd_id}").finish(reply_to=True)
