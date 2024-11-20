@@ -15,7 +15,7 @@ from nonebot.adapters.discord.message import (
     MessageSegment,
     ReferenceSegment,
 )
-from nonebot_plugin_alconna.uniseg import Image, Reply, Segment, Text
+from nonebot_plugin_alconna.uniseg import Image, Segment, Text
 
 from .common import MessageProcessor as BaseMessageProcessor
 
@@ -56,10 +56,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 yield Image(url=url)
             case ReferenceSegment():
                 msg_id = segment.data["reference"].message_id
-                if msg_id is not UNSET and (
-                    reply_id := await self.get_reply_id(str(msg_id))
-                ):
-                    yield Reply(reply_id)
+                if msg_id is not UNSET:
+                    yield await self.convert_reply(msg_id)
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg

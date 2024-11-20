@@ -9,6 +9,8 @@ from nonebot_plugin_orm import Model, get_scoped_session, get_session
 from sqlalchemy import JSON, Integer, String, select
 from sqlalchemy.orm import Mapped, mapped_column
 
+SECONDS_PER_WEEK = 7 * 24 * 60 * 60
+
 
 @functools.cache
 def make_key(target: Target) -> int:
@@ -165,12 +167,62 @@ class MsgIdCacheDAO:
         return await self.session.scalar(statement)
 
 
+class KVCache(Model):
+    adapter: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)
+    """ 适配器 """
+    key: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)
+    """ 键 """
+    value: Mapped[str] = mapped_column(String(), nullable=False)
+    """ 值 """
+    created_at: Mapped[int] = mapped_column(Integer(), nullable=False)
+    """ 创建时间 """
+    expire: Mapped[int] = mapped_column(
+        Integer(), default=SECONDS_PER_WEEK, nullable=False
+    )
+    """
+    过期时间
+
+    -1 为永不过期
+    """
+
+
+class KVCacheDAO:
+    def __init__(self) -> None:
+        self.session = get_session()
+
+    async def set_value(
+        self,
+        adapter: str,
+        key: str,
+        value: str,
+        expire: int = SECONDS_PER_WEEK,
+    ) -> None:
+        cache = KVCache(
+            adapter=adapter,
+            key=key,
+            value=value,
+            created_at=int(datetime.datetime.now().timestamp()),
+            expire=expire,
+        )
+        self.session.add(cache)
+        await self.session.commit()
+
+    async def get_value(self, adapter: str, key: str) -> str | None:
+        statement = (
+            select(KVCache.value)
+            .where(KVCache.adapter == adapter)
+            .where(KVCache.key == key)
+        )
+        cache = await self.session.scalar(statement)
+        if cache is None:
+            return None
+
+
 @scheduler.scheduled_job("interval", minutes=10)
 async def auto_clean_cache() -> None:
     now = int(datetime.datetime.now().timestamp())
-    expire_secs: int = 7 * 24 * 60 * 60  # 7 days
     session = get_session()
-    statement = select(MsgIdCache).where(MsgIdCache.created_at < now - expire_secs)
+    statement = select(MsgIdCache).where(MsgIdCache.created_at < now - SECONDS_PER_WEEK)
     result = await session.execute(statement)
     for cache in result.scalars().all():
         await session.delete(cache)

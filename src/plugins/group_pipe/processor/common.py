@@ -3,7 +3,7 @@ from typing import Any, cast
 
 import httpx
 from nonebot.adapters import Bot, Event, Message, MessageSegment
-from nonebot_plugin_alconna.uniseg import Segment, UniMessage, get_builder
+from nonebot_plugin_alconna.uniseg import Reply, Segment, Text, UniMessage, get_builder
 
 from ..database import MsgIdCacheDAO
 
@@ -24,7 +24,7 @@ class MessageProcessor[
     TB: Bot = Bot,
     TM: Message = Message,
 ]:
-    def __init__(self, src_bot: TB, dst_bot: Bot) -> None:
+    def __init__(self, src_bot: TB, dst_bot: Bot | None = None) -> None:
         self.src_bot = src_bot
         self.dst_bot = dst_bot
 
@@ -40,15 +40,24 @@ class MessageProcessor[
         return str(msg_ids[0]) if msg_ids else ""
 
     async def get_reply_id(self, message_id: str) -> str | None:
-        return await MsgIdCacheDAO().get_reply_id(
+        if self.dst_bot is None:
+            return None
+
+        get_reply_id = MsgIdCacheDAO().get_reply_id
+        return await get_reply_id(
             src_adapter=self.get_bot().type,
             dst_adapter=self.dst_bot.type,
             src_id=message_id,
-        ) or await MsgIdCacheDAO().get_reply_id(
+        ) or await get_reply_id(
             src_adapter=self.dst_bot.type,
             dst_adapter=self.get_bot().type,
             dst_id=message_id,
         )
+
+    async def convert_reply(self, src_msg_id: str | int) -> Segment:
+        if reply_id := await self.get_reply_id(str(src_msg_id)):
+            return Reply(reply_id)
+        return Text(f"[reply:{src_msg_id}]")
 
     async def convert_segment(self, segment: TMS) -> AsyncGenerator[Segment, None]:
         if fn := get_builder(self.get_bot()):

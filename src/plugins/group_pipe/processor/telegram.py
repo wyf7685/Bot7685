@@ -6,7 +6,7 @@ from nonebot.adapters import Event
 from nonebot.adapters.telegram import Bot, Message, MessageSegment, model
 from nonebot.adapters.telegram import event as tgevent
 from nonebot.adapters.telegram.message import Reply as TgReply
-from nonebot_plugin_alconna.uniseg import Image, Reply, Segment, Text
+from nonebot_plugin_alconna.uniseg import Image, Segment, Text
 
 from .common import MessageProcessor as BaseMessageProcessor
 from .common import download_file
@@ -49,9 +49,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 if raw := await self.get_file_content(segment.data["file"]):
                     yield Image(raw=raw)
             case "reply":
-                msg_id = str(segment.data["message_id"])
-                if reply_id := await self.get_reply_id(msg_id):
-                    yield Reply(reply_id)
+                yield await self.convert_reply(segment.data["message_id"])
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg
