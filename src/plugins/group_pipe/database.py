@@ -221,9 +221,7 @@ class KVCacheDAO:
             .where(KVCache.adapter == adapter)
             .where(KVCache.key == key)
         )
-        cache = await self.session.scalar(statement)
-        if cache is None:
-            return None
+        return await self.session.scalar(statement)
 
 
 @scheduler.scheduled_job("interval", minutes=10)

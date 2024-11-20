@@ -22,7 +22,6 @@ async def get_rkey() -> tuple[str, str]:
         data = resp.json()
         return data["private_rkey"], data["group_rkey"]
 
-
 async def url_to_image(url: str) -> Image:
     if raw := await download_file(url):
         return Image(raw=raw)
@@ -113,7 +112,9 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             cache_data.append({"nick": nick, "msg": unimsg.dump(media_save_dir=False)})
 
         if cache_data:
-            await KVCacheDAO().set_value(self.src_bot.type, id_, json.dumps(cache_data))
+            key = f"forward_{id_}"
+            value = json.dumps(cache_data)
+            await KVCacheDAO().set_value(self.src_bot.type, key, value)
             return True
 
         return False
