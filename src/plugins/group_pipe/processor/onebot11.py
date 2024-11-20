@@ -41,6 +41,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         meta = data.get("meta", {})
         if not meta:
             yield default()
+            return
 
         # Bilibili share
         if "detail_1" in meta and meta["detail_1"]["title"] == "哔哩哔哩":
@@ -48,6 +49,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             url = await solve_url_302(detail["qqdocurl"])
             yield Text(f"[哔哩哔哩] {detail['desc']}\n{url}")
             yield Image(url=detail["preview"])
+            return
 
         yield default()
 
