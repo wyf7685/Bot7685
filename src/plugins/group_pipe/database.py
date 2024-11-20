@@ -197,6 +197,14 @@ class KVCacheDAO:
         value: str,
         expire: int = SECONDS_PER_WEEK,
     ) -> None:
+        stmt = (
+            select(KVCache.value)
+            .where(KVCache.adapter == adapter)
+            .where(KVCache.key == key)
+        )
+        if cache := await self.session.scalar(stmt):
+            await self.session.delete(cache)
+
         cache = KVCache(
             adapter=adapter,
             key=key,
