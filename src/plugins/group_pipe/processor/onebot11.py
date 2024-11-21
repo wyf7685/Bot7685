@@ -36,28 +36,41 @@ async def get_rkey() -> tuple[str, str]:
         return data["private_rkey"], data["group_rkey"]
 
 
-async def url_to_image(url: str) -> Image:
-    if raw := await download_file(url):
+async def check_rkey(url: str) -> str | None:
+    if await check_url_ok(url):
+        return url
+
+    if "rkey" in (parsed := yarl.URL(url)).query:
+        for rkey in await get_rkey():
+            updated = parsed.update_query(rkey=rkey).human_repr()
+            if await check_url_ok(updated):
+                return updated
+
+    return None
+
+
+async def url_to_image(url: str) -> Image | None:
+    fixed = await check_rkey(url)
+    if fixed is None:
+        return None
+
+    if raw := await download_file(fixed):
         return Image(url=url, raw=raw, mimetype=fleep.get(raw).mime[0])
 
-    if "rkey" in (parsed := yarl.URL(url)).query:
-        for rkey in await get_rkey():
-            updated = parsed.update_query(rkey=rkey).human_repr()
-            if raw := await download_file(parsed.update_query(rkey=rkey).human_repr()):
-                return Image(url=updated, raw=raw, mimetype=fleep.get(raw).mime[0])
-
-    return Image(url=url)
+    return None
 
 
-async def url_to_video(url: str) -> Video:
-    if await check_url_ok(url):
-        return Video(url=url)
+async def url_to_video(url: str) -> Video | None:
+    fixed = await check_rkey(url)
+    if fixed is None:
+        return None
 
-    if "rkey" in (parsed := yarl.URL(url)).query:
-        for rkey in await get_rkey():
-            updated = parsed.update_query(rkey=rkey).human_repr()
-            if await check_url_ok(url):
-                return Video(url=updated)
+    url = fixed
+
+    with contextlib.suppress(Exception):
+        from src.plugins.upload_cos import upload_cos_from_url
+
+        url = await upload_cos_from_url(fixed, f"{hash(fixed)}.mp4")
 
     return Video(url=url)
 
@@ -180,7 +193,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case "image":
                 if url := segment.data.get("url"):
                     if self.do_download_image:
-                        yield await url_to_image(url)
+                        if seg := await url_to_image(url):
+                            yield seg
                     else:
                         yield Image(url=url)
             case "reply":
@@ -194,7 +208,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                     async for seg in handle_json_msg(json_data):
                         yield seg
             case "video":
-                yield await url_to_video(url=segment.data["url"])
+                if seg := await url_to_video(url=segment.data["url"]):
+                    yield seg
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg
