@@ -39,8 +39,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @staticmethod
-    def extract_msg_id(msg_ids: list[model.Message]) -> str:
-        return str(msg_ids[0].message_id) if msg_ids else ""
+    def extract_msg_id(res: model.Message) -> str:
+        return str(res.message_id) if res else ""
 
     async def get_file_content(self, file_id: str) -> bytes:
         token = self.src_bot.bot_config.token
@@ -82,6 +82,6 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         msg_ids = await super().send(msg, target, dst_bot)
         for file in gif_files:
             res = await dst_bot.send_animation(target.id, file)
-            msg_ids.append(cls.extract_msg_id([res]))
+            msg_ids.append(cls.extract_msg_id(res))
 
         return msg_ids

@@ -47,8 +47,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @staticmethod
-    def extract_msg_id(msg_ids: list[MessageGet]) -> str:
-        return str(msg_ids[0].id)
+    def extract_msg_id(res: MessageGet) -> str:
+        return str(res.id)
 
     @override
     async def convert_segment(

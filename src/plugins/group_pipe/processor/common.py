@@ -46,8 +46,8 @@ class MessageProcessor[
         return cast(TM, event.get_message())
 
     @staticmethod
-    def extract_msg_id(msg_ids: list[Any]) -> str:
-        return str(msg_ids[0]) if msg_ids else ""
+    def extract_msg_id(res: Any) -> str:
+        return str(res)
 
     async def get_reply_id(self, message_id: str) -> str | None:
         if self.dst_bot is None:
@@ -96,4 +96,4 @@ class MessageProcessor[
             bot=dst_bot,
             fallback=FallbackStrategy.ignore,
         )
-        return [cls.extract_msg_id(receipt.msg_ids)]
+        return [cls.extract_msg_id(item) for item in receipt.msg_ids]

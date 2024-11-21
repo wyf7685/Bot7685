@@ -110,8 +110,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @staticmethod
-    def extract_msg_id(msg_ids: list[dict[str, Any]]) -> str:
-        return str(msg_ids[0]["message_id"]) if msg_ids else ""
+    def extract_msg_id(res: dict[str, Any]) -> str:
+        return str(res["message_id"]) if res else ""
 
     async def get_platform(self) -> str:
         if self.src_bot not in self.bot_platform_cache:
