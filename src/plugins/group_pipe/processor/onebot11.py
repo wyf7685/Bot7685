@@ -20,6 +20,7 @@ from nonebot_plugin_alconna.uniseg import (
     Target,
     Text,
     UniMessage,
+    Video,
 )
 
 from ..database import KVCacheDAO
@@ -179,6 +180,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                     json_data = json.loads(segment.data["data"])
                     async for seg in handle_json_msg(json_data):
                         yield seg
+            case "video":
+                yield Video(url=segment.data["url"])
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg
