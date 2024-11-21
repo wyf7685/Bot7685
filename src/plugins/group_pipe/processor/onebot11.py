@@ -240,10 +240,12 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                     else:
                         yield Video(url=url)
             case "file":
-                if name := segment.data.get("file"):
-                    path = Path("/share") / name
-                    if seg := await upload_local_file(path):
+                if file_id := segment.data.get("file_id"):
+                    res = await self.src_bot.call_api("get_file", file_id=file_id)
+                    path = Path("/share") / str(res["file_name"])
+                    if path.exists() and (seg := await upload_local_file(path)):
                         yield seg
+                    path.unlink(missing_ok=True)
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg
