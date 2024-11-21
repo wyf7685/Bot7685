@@ -72,7 +72,7 @@ async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
         for idx in range(len(msg)):
             seg = msg[idx]
             if isinstance(seg, Image) and seg.url:
-                msg[idx] = await url_to_image(seg.url)
+                msg[idx] = await url_to_image(seg.url) or Text("[图片]")
 
         msg.insert(0, Text(f"{nick}\n\n"))
         try:
