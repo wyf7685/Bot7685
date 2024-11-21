@@ -30,7 +30,7 @@ alc = Alconna(
     ),
 )
 
-matcher = on_alconna(alc)
+matcher = on_alconna(alc, use_cmd_start=True, block=True)
 
 
 @matcher.assign("cache")
