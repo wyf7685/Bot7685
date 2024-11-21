@@ -19,7 +19,6 @@ from nonebot.adapters.discord.message import (
 from nonebot_plugin_alconna.uniseg import (
     Image,
     Keyboard,
-    Receipt,
     Segment,
     Target,
     Text,
@@ -80,6 +79,6 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @classmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> Receipt:
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> list[str]:
         msg = msg.exclude(Keyboard) + msg.include(Keyboard)
         return await super().send(msg, target, dst_bot)

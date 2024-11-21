@@ -11,7 +11,6 @@ from nonebot.adapters.telegram.message import Reply as TgReply
 from nonebot_plugin_alconna.uniseg import (
     Image,
     Keyboard,
-    Receipt,
     Segment,
     Target,
     Text,
@@ -68,8 +67,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @classmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> Receipt:
-        receipt: Receipt | None = None
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> list[str]:
+        msg_ids: list[str] = []
         msg = msg.exclude(Keyboard) + msg.include(Keyboard)
 
         for seg in msg[Image]:
@@ -80,13 +79,13 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 if seg.name and isinstance(file, bytes):
                     file = (f"{seg.name}.gif", file)
                 res = await dst_bot.send_animation(target.id, file)
-                if receipt is None:
-                    fn = get_exporter(dst_bot)
-                    if TYPE_CHECKING:
-                        assert fn is not None
-                    receipt = Receipt(dst_bot, target, fn, [res])
+                fn = get_exporter(dst_bot)
+                if TYPE_CHECKING:
+                    assert fn is not None
+                msg_ids.append(cls.extract_msg_id([res]))
 
-        if not msg and receipt is not None:
-            return receipt
+        if not msg and msg_ids:
+            return msg_ids
 
-        return await super().send(msg, target, dst_bot)
+        msg_ids.extend(await super().send(msg, target, dst_bot))
+        return msg_ids

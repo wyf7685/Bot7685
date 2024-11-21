@@ -5,7 +5,6 @@ import httpx
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot_plugin_alconna.uniseg import (
     FallbackStrategy,
-    Receipt,
     Reply,
     Segment,
     Target,
@@ -86,9 +85,10 @@ class MessageProcessor[
         return result
 
     @classmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: TB) -> Receipt:
-        return await msg.send(
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: TB) -> list[str]:
+        receipt = await msg.send(
             target=target,
             bot=dst_bot,
             fallback=FallbackStrategy.ignore,
         )
+        return [cls.extract_msg_id(receipt.msg_ids)]

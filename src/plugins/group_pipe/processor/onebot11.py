@@ -15,7 +15,6 @@ from nonebot_plugin_alconna.uniseg import (
     Button,
     Image,
     Keyboard,
-    Receipt,
     Reply,
     Segment,
     Target,
@@ -186,7 +185,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @classmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> Receipt:
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> list[str]:
         msg = msg.exclude(Keyboard)
         if Reply in msg:
             msg = msg.include(Reply) + msg.exclude(Reply)

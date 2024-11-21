@@ -34,20 +34,20 @@ async def send_pipe_msg(
     logger.debug(f"消息: {unimsg}")
 
     try:
-        receipt = await get_processor(dst_bot.type).send(unimsg, target, dst_bot)
+        dst_ids = await get_processor(dst_bot.type).send(unimsg, target, dst_bot)
     except Exception as err:
         logger.warning(f"管道: {display}")
         logger.warning(f"发送管道消息失败: {err}")
         logger.opt(exception=err).debug("exception")
         return
 
-    dst_id = get_processor(dst_bot.type).extract_msg_id(receipt.msg_ids)
-    await MsgIdCacheDAO().set_dst_id(
-        src_adapter=bot.type,
-        src_id=msg_id,
-        dst_adapter=dst_bot.type,
-        dst_id=dst_id,
-    )
+    for dst_id in dst_ids:
+        await MsgIdCacheDAO().set_dst_id(
+            src_adapter=bot.type,
+            src_id=msg_id,
+            dst_adapter=dst_bot.type,
+            dst_id=dst_id,
+        )
 
 
 @event_postprocessor
