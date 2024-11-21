@@ -1,6 +1,7 @@
 import contextlib
 import json
 from collections.abc import AsyncGenerator
+from copy import deepcopy
 from typing import Any, override
 
 import httpx
@@ -81,9 +82,11 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @staticmethod
-    def get_message(event: BaseEvent) -> Message:
-        assert isinstance(event, MessageEvent)  # noqa: S101
-        return event.original_message
+    def get_message(event: BaseEvent) -> Message | None:
+        if not isinstance(event, MessageEvent):
+            return None
+
+        return deepcopy(event.original_message)
 
     @override
     @staticmethod

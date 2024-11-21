@@ -170,9 +170,9 @@ class KVCache(Model):
     adapter: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)
     """ 适配器 """
     key: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)
-    """ 键 """
+    """ 缓存键 """
     value: Mapped[str] = mapped_column(String(), nullable=False)
-    """ 值 """
+    """ 缓存值 """
     created_at: Mapped[int] = mapped_column(Integer(), nullable=False)
     """ 创建时间 """
     expire: Mapped[int] = mapped_column(

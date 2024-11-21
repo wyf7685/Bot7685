@@ -24,8 +24,10 @@ from .common import download_file
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @override
     @staticmethod
-    def get_message(event: BaseEvent) -> Message:
-        assert isinstance(event, MessageEvent)  # noqa: S101
+    def get_message(event: BaseEvent) -> Message | None:
+        if not isinstance(event, MessageEvent):
+            return None
+
         message = deepcopy(event.original_message)
         if event.reply_to_message:
             reply = TgReply.reply(
@@ -41,9 +43,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         return str(msg_ids[0].message_id) if msg_ids else ""
 
     async def get_file_content(self, file_id: str) -> bytes:
-        bot = self.get_bot()
-        token = bot.bot_config.token
-        file_path = (await bot.get_file(file_id)).file_path
+        token = self.src_bot.bot_config.token
+        file_path = (await self.src_bot.get_file(file_id)).file_path
         url = f"https://api.telegram.org/file/bot{token}/{file_path}"
         return await download_file(url)
 

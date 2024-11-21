@@ -32,9 +32,11 @@ from .common import MessageProcessor as BaseMessageProcessor
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @override
     @staticmethod
-    def get_message(event: BaseEvent) -> Message:
-        assert isinstance(event, MessageEvent)  # noqa: S101
-        message = deepcopy(event.get_message())
+    def get_message(event: BaseEvent) -> Message | None:
+        if not isinstance(event, MessageEvent):
+            return None
+
+        message = deepcopy(event.original_message)
         attachments = {a.filename: a.url for a in event.attachments}
         for seg in message:
             if isinstance(seg, AttachmentSegment):

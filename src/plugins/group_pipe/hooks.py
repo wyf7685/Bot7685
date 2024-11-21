@@ -72,10 +72,14 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         logger.trace("没有监听当前群组的管道")
         return
 
+    msg = get_processor(listen.adapter).get_message(event)
+    if msg is None:
+        logger.trace("无法获取消息内容，跳过管道消息处理")
+        return
+
     group_name = (g := info.group or info.guild) and g.name or listen.id
     user_name = info.user.nick or info.user.name or info.user.id
     msg_head = f"[ {group_name} - {user_name} ]\n"
-    msg = get_processor(listen.adapter).get_message(event)
 
     coros = [
         send_pipe_msg(

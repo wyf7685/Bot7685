@@ -37,11 +37,8 @@ class MessageProcessor[
         self.src_bot = src_bot
         self.dst_bot = dst_bot
 
-    def get_bot(self) -> TB:
-        return self.src_bot
-
     @staticmethod
-    def get_message(event: Event) -> TM:
+    def get_message(event: Event) -> TM | None:
         return cast(TM, event.get_message())
 
     @staticmethod
@@ -54,12 +51,12 @@ class MessageProcessor[
 
         get_reply_id = MsgIdCacheDAO().get_reply_id
         return await get_reply_id(
-            src_adapter=self.get_bot().type,
+            src_adapter=self.src_bot.type,
             dst_adapter=self.dst_bot.type,
             src_id=message_id,
         ) or await get_reply_id(
             src_adapter=self.dst_bot.type,
-            dst_adapter=self.get_bot().type,
+            dst_adapter=self.src_bot.type,
             dst_id=message_id,
         )
 
@@ -69,7 +66,7 @@ class MessageProcessor[
         return Text(f"[reply:{src_msg_id}]")
 
     async def convert_segment(self, segment: TMS) -> AsyncGenerator[Segment, None]:
-        if fn := get_builder(self.get_bot()):
+        if fn := get_builder(self.src_bot):
             result = fn.convert(segment)
             if isinstance(result, list):
                 for item in result:
@@ -78,7 +75,7 @@ class MessageProcessor[
                 yield result
 
     async def process(self, msg: TM) -> UniMessage:
-        if builder := get_builder(self.get_bot()):
+        if builder := get_builder(self.src_bot):
             msg = cast(TM, builder.preprocess(msg))
 
         result = UniMessage()
