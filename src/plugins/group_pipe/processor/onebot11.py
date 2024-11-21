@@ -53,9 +53,18 @@ async def url_to_image(url: str) -> Image | None:
     fixed = await check_rkey(url)
     if fixed is None:
         return None
+    url = fixed
 
     if raw := await download_file(fixed):
-        return Image(url=url, raw=raw, mimetype=fleep.get(raw).mime[0])
+        info = fleep.get(raw)
+        name = f"{hash(url)}.{info.extension[0]}"
+
+        with contextlib.suppress(Exception):
+            from src.plugins.upload_cos import upload_cos
+
+            url = await upload_cos(raw, name)
+
+        return Image(url=url, raw=raw, mimetype=info.mime[0])
 
     return None
 
