@@ -6,7 +6,7 @@ from typing import overload
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_orm import Model, get_scoped_session, get_session
-from sqlalchemy import JSON, Integer, String, select
+from sqlalchemy import JSON, Integer, String, delete, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 SECONDS_PER_WEEK = 7 * 24 * 60 * 60
@@ -163,7 +163,6 @@ class MsgIdCacheDAO:
                 else (MsgIdCache.dst_id == dst_id)
             )
         )
-
         return await self.session.scalar(statement)
 
 
@@ -225,13 +224,17 @@ class KVCacheDAO:
         return value
 
 
-@scheduler.scheduled_job("interval", minutes=10)
+@scheduler.scheduled_job("interval", minutes=30)
 async def auto_clean_cache() -> None:
     now = int(datetime.datetime.now().timestamp())
-    statement = select(MsgIdCache).where(MsgIdCache.created_at < now - SECONDS_PER_WEEK)
 
     async with get_session() as session:
-        result = await session.execute(statement)
-        for cache in result.scalars().all():
-            await session.delete(cache)
+        stmt = delete(MsgIdCache).where(MsgIdCache.created_at < now - SECONDS_PER_WEEK)
+        await session.execute(stmt)
+        stmt = (
+            delete(KVCache)
+            .where(KVCache.expire != -1)
+            .where(KVCache.created_at < now - KVCache.expire)
+        )
+        await session.execute(stmt)
         await session.commit()

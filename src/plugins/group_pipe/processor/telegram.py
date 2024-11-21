@@ -2,11 +2,20 @@ from collections.abc import AsyncGenerator
 from copy import deepcopy
 from typing import override
 
-from nonebot.adapters import Event
+from nonebot.adapters import Bot as BaseBot
+from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Bot, Message, MessageSegment, model
-from nonebot.adapters.telegram import event as tgevent
+from nonebot.adapters.telegram.event import MessageEvent
 from nonebot.adapters.telegram.message import Reply as TgReply
-from nonebot_plugin_alconna.uniseg import Image, Segment, Text
+from nonebot_plugin_alconna.uniseg import (
+    Image,
+    Keyboard,
+    Receipt,
+    Segment,
+    Target,
+    Text,
+    UniMessage,
+)
 
 from .common import MessageProcessor as BaseMessageProcessor
 from .common import download_file
@@ -15,8 +24,8 @@ from .common import download_file
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @override
     @staticmethod
-    def get_message(event: Event) -> Message:
-        assert isinstance(event, tgevent.MessageEvent)  # noqa: S101
+    def get_message(event: BaseEvent) -> Message:
+        assert isinstance(event, MessageEvent)  # noqa: S101
         message = deepcopy(event.original_message)
         if event.reply_to_message:
             reply = TgReply.reply(
@@ -28,7 +37,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @staticmethod
-    async def extract_msg_id(msg_ids: list[model.Message]) -> str:
+    def extract_msg_id(msg_ids: list[model.Message]) -> str:
         return str(msg_ids[0].message_id) if msg_ids else ""
 
     async def get_file_content(self, file_id: str) -> bytes:
@@ -53,3 +62,18 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg
+
+    @override
+    @classmethod
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: BaseBot) -> Receipt:
+        msg = msg.exclude(Keyboard) + msg.include(Keyboard)
+
+        if len(images := msg[Image]) < 2:
+            return await super().send(msg, target, dst_bot)
+
+        msg = msg.exclude(Image) + images.pop(0)
+        receipt = await super().send(msg, target, dst_bot)
+        for image in images:
+            await super().send(UniMessage(image), target, dst_bot)
+
+        return receipt

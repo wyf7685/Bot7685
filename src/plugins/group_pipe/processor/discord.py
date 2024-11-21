@@ -2,7 +2,8 @@ from collections.abc import AsyncGenerator
 from copy import deepcopy
 from typing import override
 
-from nonebot.adapters import Event
+from nonebot.adapters import Bot as BaseBot
+from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.discord import Bot, MessageEvent
 from nonebot.adapters.discord.api.model import UNSET, MessageGet
 from nonebot.adapters.discord.message import (
@@ -15,7 +16,15 @@ from nonebot.adapters.discord.message import (
     MessageSegment,
     ReferenceSegment,
 )
-from nonebot_plugin_alconna.uniseg import Image, Segment, Text
+from nonebot_plugin_alconna.uniseg import (
+    Image,
+    Keyboard,
+    Receipt,
+    Segment,
+    Target,
+    Text,
+    UniMessage,
+)
 
 from .common import MessageProcessor as BaseMessageProcessor
 
@@ -23,7 +32,7 @@ from .common import MessageProcessor as BaseMessageProcessor
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @override
     @staticmethod
-    def get_message(event: Event) -> Message:
+    def get_message(event: BaseEvent) -> Message:
         assert isinstance(event, MessageEvent)  # noqa: S101
         message = deepcopy(event.get_message())
         attachments = {a.filename: a.url for a in event.attachments}
@@ -36,7 +45,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @staticmethod
-    async def extract_msg_id(msg_ids: list[MessageGet]) -> str:
+    def extract_msg_id(msg_ids: list[MessageGet]) -> str:
         return str(msg_ids[0].id)
 
     @override
@@ -61,3 +70,9 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg
+
+    @override
+    @classmethod
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: BaseBot) -> Receipt:
+        msg = msg.exclude(Keyboard) + msg.include(Keyboard)
+        return await super().send(msg, target, dst_bot)

@@ -9,6 +9,7 @@ from ..database import KVCacheDAO
 from ..processor import get_processor
 from ..processor.onebot11 import MessageProcessor as V11MessageProcessor
 from ..processor.onebot11 import url_to_image
+from .depends import MsgTarget
 
 alc = Alconna(
     "forward",
@@ -55,7 +56,7 @@ async def _(bot: v11.Bot, event: v11.Event) -> None:
 
 
 @matcher.assign("load")
-async def _(bot: Bot, fwd_id: str) -> None:
+async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
     cache = await KVCacheDAO().get_value(v11.Adapter.get_name(), f"forward_{fwd_id}")
 
     if cache is None:
@@ -78,10 +79,10 @@ async def _(bot: Bot, fwd_id: str) -> None:
 
         msg.insert(0, Text(f"{nick}\n\n"))
         try:
-            receipt = await msg.send()
+            receipt = await processor.send(msg, target, bot)
         except Exception as err:
             await UniMessage.text(f"发送消息失败: {err}").finish()
 
-        msg_ids[item["seq"]] = await processor.extract_msg_id(receipt.msg_ids)
+        msg_ids[item["seq"]] = processor.extract_msg_id(receipt.msg_ids)
 
     await UniMessage.text(f"加载合并转发消息成功: {fwd_id}").finish(reply_to=True)

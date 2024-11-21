@@ -3,7 +3,16 @@ from typing import Any, cast
 
 import httpx
 from nonebot.adapters import Bot, Event, Message, MessageSegment
-from nonebot_plugin_alconna.uniseg import Reply, Segment, Text, UniMessage, get_builder
+from nonebot_plugin_alconna.uniseg import (
+    FallbackStrategy,
+    Receipt,
+    Reply,
+    Segment,
+    Target,
+    Text,
+    UniMessage,
+    get_builder,
+)
 
 from ..database import MsgIdCacheDAO
 
@@ -36,7 +45,7 @@ class MessageProcessor[
         return cast(TM, event.get_message())
 
     @staticmethod
-    async def extract_msg_id(msg_ids: list[Any]) -> str:
+    def extract_msg_id(msg_ids: list[Any]) -> str:
         return str(msg_ids[0]) if msg_ids else ""
 
     async def get_reply_id(self, message_id: str) -> str | None:
@@ -69,12 +78,20 @@ class MessageProcessor[
                 yield result
 
     async def process(self, msg: TM) -> UniMessage:
-        result = UniMessage()
-        if fn := get_builder(self.get_bot()):
-            msg = cast(TM, fn.preprocess(msg))
+        if builder := get_builder(self.get_bot()):
+            msg = cast(TM, builder.preprocess(msg))
 
+        result = UniMessage()
         for segment in msg:
             async for seg in self.convert_segment(segment):
                 result.append(seg)
 
         return result
+
+    @classmethod
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> Receipt:
+        return await msg.send(
+            target=target,
+            bot=dst_bot,
+            fallback=FallbackStrategy.ignore,
+        )

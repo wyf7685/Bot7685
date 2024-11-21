@@ -1,16 +1,6 @@
 import asyncio
-from typing import Annotated
 
-from nonebot import require
-from nonebot.adapters import Bot, Event
-from nonebot.matcher import Matcher
-from nonebot.params import Depends
 from nonebot.permission import SUPERUSER
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_apscheduler")
-require("nonebot_plugin_orm")
-require("nonebot_plugin_uninfo")
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -23,6 +13,7 @@ from nonebot_plugin_alconna import (
 )
 
 from ..database import PipeDAO, display_pipe
+from .depends import MsgTarget
 
 alc = Alconna(
     "pipe",
@@ -57,16 +48,6 @@ alc = Alconna(
         fuzzy_match=True,
     ),
 )
-
-
-async def _target(bot: Bot, event: Event) -> Target:
-    try:
-        return UniMessage.get_target(event, bot)
-    except Exception:
-        Matcher.skip()
-
-
-MsgTarget = Annotated[Target, Depends(_target, use_cache=True)]
 
 
 async def _rule_is_group(target: MsgTarget) -> bool:

@@ -8,7 +8,17 @@ import yarl
 from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
-from nonebot_plugin_alconna.uniseg import Image, Reply, Segment, Text
+from nonebot_plugin_alconna.uniseg import (
+    Button,
+    Image,
+    Keyboard,
+    Receipt,
+    Reply,
+    Segment,
+    Target,
+    Text,
+    UniMessage,
+)
 
 from ..database import KVCacheDAO
 from .common import MessageProcessor as BaseMessageProcessor
@@ -27,13 +37,10 @@ async def url_to_image(url: str) -> Image:
     if raw := await download_file(url):
         return Image(raw=raw)
 
-    parsed = yarl.URL(url)
-    if "rkey" not in parsed.query:
-        return Image(url=url)
-
-    for rkey in await get_rkey():
-        if raw := await download_file(parsed.update_query(rkey=rkey).human_repr()):
-            return Image(raw=raw)
+    if "rkey" in (parsed := yarl.URL(url)).query:
+        for rkey in await get_rkey():
+            if raw := await download_file(parsed.update_query(rkey=rkey).human_repr()):
+                return Image(raw=raw)
 
     return Image(url=url)
 
@@ -80,7 +87,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @staticmethod
-    async def extract_msg_id(msg_ids: list[dict[str, Any]]) -> str:
+    def extract_msg_id(msg_ids: list[dict[str, Any]]) -> str:
         return str(msg_ids[0]["message_id"]) if msg_ids else ""
 
     async def get_platform(self) -> str:
@@ -135,6 +142,23 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         return False
 
+    async def handle_forward(
+        self, data: dict[str, Any]
+    ) -> AsyncGenerator[Segment, None]:
+        cached = False
+        forward_id = data["id"]
+        if "napcat" in await self.get_platform() and "content" in data:
+            content = data["content"]
+            cached = await self.cache_forward(forward_id, content)
+        yield Text(f"[forward:{forward_id}:cache={cached}]")
+        if cached:
+            btn = Button(
+                "input",
+                label="加载合并转发消息",
+                text=f"/forward load {forward_id}",
+            )
+            yield Keyboard([btn])
+
     @override
     async def convert_segment(
         self, segment: MessageSegment
@@ -151,13 +175,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case "reply":
                 yield await self.convert_reply(segment.data["id"])
             case "forward":
-                cached = False
-                if "napcat" in await self.get_platform() and "content" in segment.data:
-                    cached = await self.cache_forward(
-                        segment.data["id"],
-                        segment.data["content"],
-                    )
-                yield Text(f"[合并转发:{segment.data['id']}:cache={cached}]")
+                async for seg in self.handle_forward(segment.data):
+                    yield seg
             case "json":
                 with contextlib.suppress(Exception):
                     json_data = json.loads(segment.data["data"])
@@ -166,3 +185,11 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg
+
+    @override
+    @classmethod
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: BaseBot) -> Receipt:
+        msg = msg.exclude(Keyboard)
+        if Reply in msg:
+            msg = msg.include(Reply) + msg.exclude(Reply)
+        return await super().send(msg, target, dst_bot)

@@ -3,11 +3,7 @@ import asyncio
 from nonebot import logger
 from nonebot.adapters import Bot, Event, Message
 from nonebot.message import event_postprocessor
-from nonebot_plugin_alconna import (
-    FallbackStrategy,
-    Target,
-    UniMessage,
-)
+from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_uninfo import get_session
 
 from . import matchers as matchers
@@ -26,33 +22,30 @@ async def send_pipe_msg(
     display = display_pipe(listen, target)
 
     try:
-        bot_ = await target.select()
+        dst_bot = await target.select()
     except Exception as err:
         logger.warning(f"管道: {display}")
         logger.warning(f"管道选择目标 Bot 失败: {err}")
         return
 
-    m = UniMessage.text(msg_head)
-    m.extend(await get_processor(listen.adapter)(bot, bot_).process(msg))
+    processor = get_processor(listen.adapter)(bot, dst_bot)
+    unimsg = UniMessage.text(msg_head)
+    unimsg.extend(await processor.process(msg))
     logger.debug(f"发送管道: {display}")
-    logger.debug(f"消息: {m}")
+    logger.debug(f"消息: {unimsg}")
 
     try:
-        receipt = await m.send(
-            target=target,
-            bot=bot_,
-            fallback=FallbackStrategy.ignore,
-        )
+        receipt = await processor.send(unimsg, target, dst_bot)
     except Exception as err:
         logger.warning(f"管道: {display}")
         logger.warning(f"发送管道消息失败: {err}")
         return
 
-    dst_id = await get_processor(bot_.type).extract_msg_id(receipt.msg_ids)
+    dst_id = get_processor(dst_bot.type).extract_msg_id(receipt.msg_ids)
     await MsgIdCacheDAO().set_dst_id(
         src_adapter=bot.type,
         src_id=msg_id,
-        dst_adapter=bot_.type,
+        dst_adapter=dst_bot.type,
         dst_id=dst_id,
     )
 
@@ -71,7 +64,7 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         return
 
     if info is None:
-        logger.debug("消息信息为空")
+        logger.debug("无法获取群组信息，跳过管道消息处理")
         return
 
     pipes = await PipeDAO().get_pipes(listen=listen)
