@@ -3,7 +3,7 @@ import json
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot import v11
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, Subcommand, on_alconna
-from nonebot_plugin_alconna.uniseg import Image, Reply, Text, UniMessage, reply_fetch
+from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 
 from ..database import KVCacheDAO
 from ..processor import get_processor
@@ -64,7 +64,6 @@ async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
 
     cache_data = json.loads(cache)
     processor = get_processor(bot.type)
-    msg_ids: dict[str, str] = {}
 
     for item in cache_data:
         nick = item["nick"]
@@ -74,15 +73,11 @@ async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
             seg = msg[idx]
             if isinstance(seg, Image) and seg.url:
                 msg[idx] = await url_to_image(seg.url)
-            elif isinstance(seg, Reply):
-                seg.id = msg_ids[seg.id]
 
         msg.insert(0, Text(f"{nick}\n\n"))
         try:
-            receipt = await processor.send(msg, target, bot)
+            await processor.send(msg, target, bot)
         except Exception as err:
             await UniMessage.text(f"发送消息失败: {err}").finish()
-
-        msg_ids[item["seq"]] = processor.extract_msg_id(receipt.msg_ids)
 
     await UniMessage.text(f"加载合并转发消息成功: {fwd_id}").finish(reply_to=True)

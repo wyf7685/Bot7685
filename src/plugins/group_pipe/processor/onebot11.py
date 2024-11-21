@@ -2,7 +2,8 @@ import contextlib
 import json
 from collections.abc import AsyncGenerator
 from copy import deepcopy
-from typing import Any, override
+from typing import Any, ClassVar, override
+from weakref import WeakKeyDictionary
 
 import httpx
 import yarl
@@ -76,6 +77,10 @@ async def handle_json_msg(data: dict[str, Any]) -> AsyncGenerator[Segment, None]
 
 
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
+    bot_platform_cache: ClassVar[WeakKeyDictionary[Bot, str]] = WeakKeyDictionary()
+    do_download_image: bool
+
+    @override
     def __init__(self, src_bot: Bot, dst_bot: BaseBot | None = None) -> None:
         super().__init__(src_bot, dst_bot)
         self.do_download_image = True
@@ -94,14 +99,17 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         return str(msg_ids[0]["message_id"]) if msg_ids else ""
 
     async def get_platform(self) -> str:
-        data = await self.src_bot.get_version_info()
-        return str(data.get("app_name", "unkown")).lower()
+        if self.src_bot not in self.bot_platform_cache:
+            data = await self.src_bot.get_version_info()
+            platform = str(data.get("app_name", "unkown")).lower()
+            self.bot_platform_cache[self.src_bot] = platform
+
+        return self.bot_platform_cache[self.src_bot]
 
     async def cache_forward(self, id_: str, content: list[dict[str, Any]]) -> bool:
         if not content:
             return False
 
-        msg_id_seq: dict[str, str] = {}
         cache_data: list[dict[str, Any]] = []
         processor = MessageProcessor(self.src_bot)
         processor.do_download_image = False
@@ -118,24 +126,9 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             if not msg:
                 continue
 
-            unimsg = await processor.process(
-                Message([MessageSegment(**seg) for seg in msg])
-            )
-
-            if Reply in unimsg:
-                if reply_seq := msg_id_seq.get(unimsg[Reply, 0].id):
-                    unimsg[Reply, 0].id = reply_seq
-                else:
-                    unimsg = unimsg.exclude(Reply)
-
-            msg_id_seq[item["message_id"]] = str(len(cache_data))
-            cache_data.append(
-                {
-                    "nick": nick,
-                    "msg": unimsg.dump(media_save_dir=False),
-                    "seq": len(cache_data),
-                }
-            )
+            msg = Message([MessageSegment(**seg) for seg in msg])
+            unimsg = await processor.process(msg)
+            cache_data.append({"nick": nick, "msg": unimsg.dump(media_save_dir=False)})
 
         if cache_data:
             key = f"forward_{id_}"
