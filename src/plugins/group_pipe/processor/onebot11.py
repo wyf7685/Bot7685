@@ -5,6 +5,7 @@ from copy import deepcopy
 from typing import Any, ClassVar, override
 from weakref import WeakKeyDictionary
 
+import fleep
 import httpx
 import yarl
 from nonebot.adapters import Bot as BaseBot
@@ -37,12 +38,13 @@ async def get_rkey() -> tuple[str, str]:
 
 async def url_to_image(url: str) -> Image:
     if raw := await download_file(url):
-        return Image(raw=raw)
+        return Image(url=url, raw=raw, mimetype=fleep.get(raw).mime[0])
 
     if "rkey" in (parsed := yarl.URL(url)).query:
         for rkey in await get_rkey():
+            updated = parsed.update_query(rkey=rkey).human_repr()
             if raw := await download_file(parsed.update_query(rkey=rkey).human_repr()):
-                return Image(raw=raw)
+                return Image(url=updated, raw=raw, mimetype=fleep.get(raw).mime[0])
 
     return Image(url=url)
 
@@ -184,7 +186,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @classmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: BaseBot) -> Receipt:
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> Receipt:
         msg = msg.exclude(Keyboard)
         if Reply in msg:
             msg = msg.include(Reply) + msg.exclude(Reply)

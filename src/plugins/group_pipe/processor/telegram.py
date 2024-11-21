@@ -1,8 +1,9 @@
 from collections.abc import AsyncGenerator
 from copy import deepcopy
-from typing import override
+from io import BytesIO
+from typing import TYPE_CHECKING, override
 
-from nonebot.adapters import Bot as BaseBot
+import fleep
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Bot, Message, MessageSegment, model
 from nonebot.adapters.telegram.event import MessageEvent
@@ -15,6 +16,7 @@ from nonebot_plugin_alconna.uniseg import (
     Target,
     Text,
     UniMessage,
+    get_exporter,
 )
 
 from .common import MessageProcessor as BaseMessageProcessor
@@ -57,7 +59,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 yield Text(segment.data["text"])
             case "sticker" | "photo":
                 if raw := await self.get_file_content(segment.data["file"]):
-                    yield Image(raw=raw)
+                    yield Image(raw=raw, mimetype=fleep.get(raw).mime[0])
             case "reply":
                 yield await self.convert_reply(segment.data["message_id"])
             case _:
@@ -66,15 +68,35 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @classmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: BaseBot) -> Receipt:
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> Receipt:
+        receipt: Receipt | None = None
         msg = msg.exclude(Keyboard) + msg.include(Keyboard)
 
-        if len(images := msg[Image]) < 2:
-            return await super().send(msg, target, dst_bot)
+        for seg in msg[Image]:
+            if seg.mimetype == "image/gif" and (file := (seg.raw or seg.url)):
+                msg.remove(seg)
+                if isinstance(file, BytesIO):
+                    file = file.read()
+                if seg.name and isinstance(file, bytes):
+                    file = (seg.name, file)
+                res = await dst_bot.send_animation(target.id, file)
+                if receipt is None:
+                    fn = get_exporter(dst_bot)
+                    if TYPE_CHECKING:
+                        assert fn is not None
+                    receipt = Receipt(dst_bot, target, fn, [res])
 
-        msg = msg.exclude(Image) + images.pop(0)
-        receipt = await super().send(msg, target, dst_bot)
-        for image in images:
-            await super().send(UniMessage(image), target, dst_bot)
+        if not msg and receipt is not None:
+            return receipt
 
-        return receipt
+        return await super().send(msg, target, dst_bot)
+
+        # if len(images := msg[Image]) < 2:
+        #     return await super().send(msg, target, dst_bot)
+
+        # msg = msg.exclude(Image) + images.pop(0)
+        # receipt = await super().send(msg, target, dst_bot)
+        # for image in images:
+        #     await super().send(UniMessage(image), target, dst_bot)
+
+        # return receipt
