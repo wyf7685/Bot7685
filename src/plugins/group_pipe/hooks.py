@@ -39,6 +39,7 @@ async def send_pipe_msg(
     except Exception as err:
         logger.warning(f"管道: {display}")
         logger.warning(f"发送管道消息失败: {err}")
+        logger.opt(exception=err).debug("exception")
         return
 
     dst_id = get_processor(dst_bot.type).extract_msg_id(receipt.msg_ids)
