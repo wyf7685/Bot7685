@@ -78,7 +78,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 if isinstance(file, BytesIO):
                     file = file.read()
                 if seg.name and isinstance(file, bytes):
-                    file = (seg.name, file)
+                    file = (f"{seg.name}.gif", file)
                 res = await dst_bot.send_animation(target.id, file)
                 if receipt is None:
                     fn = get_exporter(dst_bot)
