@@ -90,13 +90,3 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             return receipt
 
         return await super().send(msg, target, dst_bot)
-
-        # if len(images := msg[Image]) < 2:
-        #     return await super().send(msg, target, dst_bot)
-
-        # msg = msg.exclude(Image) + images.pop(0)
-        # receipt = await super().send(msg, target, dst_bot)
-        # for image in images:
-        #     await super().send(UniMessage(image), target, dst_bot)
-
-        # return receipt
