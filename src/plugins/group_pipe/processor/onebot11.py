@@ -7,10 +7,12 @@ from weakref import WeakKeyDictionary
 
 import fleep
 import httpx
+import nonebot
 import yarl
 from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
+from nonebot.utils import escape_tag
 from nonebot_plugin_alconna.uniseg import (
     Button,
     Image,
@@ -27,13 +29,17 @@ from ..database import KVCacheDAO
 from .common import MessageProcessor as BaseMessageProcessor
 from .common import check_url_ok, download_file
 
+logger = nonebot.logger.opt(colors=True)
+
 
 async def get_rkey() -> tuple[str, str]:
     rkey_api = "https://llob.linyuchen.net/rkey"
     async with httpx.AsyncClient() as client:
         resp = await client.get(rkey_api)
         data = resp.json()
-        return data["private_rkey"], data["group_rkey"]
+        keys = data["private_rkey"], data["group_rkey"]
+        logger.debug(f"获取 rkey: {keys}")
+        return keys
 
 
 async def check_rkey(url: str) -> str | None:
@@ -51,22 +57,19 @@ async def check_rkey(url: str) -> str | None:
 
 async def url_to_image(url: str) -> Image | None:
     fixed = await check_rkey(url)
-    if fixed is None:
+    if fixed is None or not (raw := await download_file(url := fixed)):
         return None
-    url = fixed
 
-    if raw := await download_file(fixed):
-        info = fleep.get(raw)
-        name = f"{hash(url)}.{info.extension[0]}"
+    info = fleep.get(raw)
+    name = f"{hash(url)}.{info.extension[0]}"
 
-        with contextlib.suppress(Exception):
-            from src.plugins.upload_cos import upload_cos
+    with contextlib.suppress(Exception):
+        from src.plugins.upload_cos import upload_cos
 
-            url = await upload_cos(raw, name)
+        url = await upload_cos(raw, name)
+        logger.debug(f"上传图片: {escape_tag(url)}")
 
-        return Image(url=url, raw=raw, mimetype=info.mime[0])
-
-    return None
+    return Image(url=url, raw=raw, mimetype=info.mime[0])
 
 
 async def url_to_video(url: str) -> Video | None:
@@ -80,16 +83,16 @@ async def url_to_video(url: str) -> Video | None:
         from src.plugins.upload_cos import upload_cos_from_url
 
         url = await upload_cos_from_url(fixed, f"{hash(fixed)}.mp4")
+        logger.debug(f"上传视频: {escape_tag(url)}")
 
     return Video(url=url)
 
 
 async def solve_url_302(url: str) -> str:
-    async with httpx.AsyncClient() as client:
-        resp = await client.get(url)
+    async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
         if resp.status_code == 302:
             return resp.headers["Location"].partition("?")[0]
-        return url
+    return url
 
 
 async def handle_json_msg(data: dict[str, Any]) -> AsyncGenerator[Segment, None]:
@@ -115,12 +118,12 @@ async def handle_json_msg(data: dict[str, Any]) -> AsyncGenerator[Segment, None]
 
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     bot_platform_cache: ClassVar[WeakKeyDictionary[Bot, str]] = WeakKeyDictionary()
-    do_download_image: bool
+    do_resolve_url: bool
 
     @override
     def __init__(self, src_bot: Bot, dst_bot: BaseBot | None = None) -> None:
         super().__init__(src_bot, dst_bot)
-        self.do_download_image = True
+        self.do_resolve_url = True
 
     @override
     @staticmethod
@@ -149,7 +152,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         cache_data: list[dict[str, Any]] = []
         processor = MessageProcessor(self.src_bot)
-        processor.do_download_image = False
+        processor.do_resolve_url = False
 
         for item in content:
             sender: dict[str, str] = item.get("sender", {})
@@ -201,7 +204,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 yield Text(f"[at:{segment.data['qq']}]")
             case "image":
                 if url := segment.data.get("url"):
-                    if self.do_download_image:
+                    if self.do_resolve_url:
                         if seg := await url_to_image(url):
                             yield seg
                     else:
@@ -217,8 +220,12 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                     async for seg in handle_json_msg(json_data):
                         yield seg
             case "video":
-                if seg := await url_to_video(url=segment.data["url"]):
-                    yield seg
+                if url := segment.data["url"]:
+                    if self.do_resolve_url:
+                        if seg := await url_to_video(url):
+                            yield seg
+                    else:
+                        yield Video(url=url)
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg

@@ -69,6 +69,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> list[str]:
         msg = msg.exclude(Keyboard) + msg.include(Keyboard)
 
+        # alc 里没有处理 gif (animation) 的逻辑
+        # 提取出来单独发送
         gif_files: list[tuple[str, bytes] | bytes | str] = []
         for seg in msg[Image]:
             if seg.mimetype == "image/gif" and (file := (seg.raw or seg.url)):
