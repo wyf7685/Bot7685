@@ -33,6 +33,14 @@ async def put_file(data: bytes, key: str, retry: int = 3) -> None:
     )
 
 
+async def put_file_from_local(path: Path, key: str, retry: int = 3) -> None:
+    await anyio.to_thread.run_sync(
+        new_client(retry).upload_file,
+        config.bucket,
+        (ROOT / key).as_posix(),
+        path,
+    )
+
 async def delete_file(key: str, retry: int = 3) -> None:
     await anyio.to_thread.run_sync(
         new_client(retry).delete_object,

@@ -1,7 +1,6 @@
 from collections.abc import AsyncGenerator
 from typing import Any, cast
 
-import httpx
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot_plugin_alconna.uniseg import (
     FallbackStrategy,
@@ -14,22 +13,6 @@ from nonebot_plugin_alconna.uniseg import (
 )
 
 from ..database import MsgIdCacheDAO
-
-
-async def download_file(url: str) -> bytes:
-    async with httpx.AsyncClient() as client:
-        try:
-            resp = await client.get(url)
-            resp.raise_for_status()
-        except (httpx.ConnectError, httpx.HTTPError):
-            return b""
-        else:
-            return resp.read()
-
-
-async def check_url_ok(url: str) -> bool:
-    async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
-        return resp.status_code == 200
 
 
 class MessageProcessor[

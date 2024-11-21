@@ -25,8 +25,8 @@ from nonebot_plugin_alconna.uniseg import (
     UniMessage,
 )
 
+from ..utils import download_url
 from .common import MessageProcessor as BaseMessageProcessor
-from .common import download_file
 
 
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
@@ -65,7 +65,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case AttachmentSegment():
                 url = segment.data["attachment"].description
                 if url is not None:
-                    if raw := await download_file(url):
+                    if raw := await download_url(url):
                         yield Image(raw=raw, mimetype=fleep.get(raw).mime[0])
                     else:
                         yield Image(url=url)

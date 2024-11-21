@@ -2,6 +2,7 @@ import contextlib
 import json
 from collections.abc import AsyncGenerator
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, ClassVar, override
 from weakref import WeakKeyDictionary
 
@@ -15,6 +16,7 @@ from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegme
 from nonebot.utils import escape_tag
 from nonebot_plugin_alconna.uniseg import (
     Button,
+    File,
     Image,
     Keyboard,
     Reply,
@@ -26,8 +28,8 @@ from nonebot_plugin_alconna.uniseg import (
 )
 
 from ..database import KVCacheDAO
+from ..utils import check_url_ok, download_url
 from .common import MessageProcessor as BaseMessageProcessor
-from .common import check_url_ok, download_file
 
 logger = nonebot.logger.opt(colors=True)
 
@@ -57,7 +59,7 @@ async def check_rkey(url: str) -> str | None:
 
 async def url_to_image(url: str) -> Image | None:
     fixed = await check_rkey(url)
-    if fixed is None or not (raw := await download_file(url := fixed)):
+    if fixed is None or not (raw := await download_url(url := fixed)):
         return None
 
     info = fleep.get(raw)
@@ -86,6 +88,17 @@ async def url_to_video(url: str) -> Video | None:
         logger.debug(f"上传视频: {escape_tag(url)}")
 
     return Video(url=url)
+
+
+async def upload_local_file(path: Path) -> File | None:
+    with contextlib.suppress(Exception):
+        from src.plugins.upload_cos import upload_cos_from_local
+
+        url = await upload_cos_from_local(path, f"{hash(path)}/{path.name}")
+        logger.debug(f"上传文件: {escape_tag(url)}")
+        return File(url=url)
+
+    return None
 
 
 async def solve_url_302(url: str) -> str:
@@ -220,12 +233,17 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                     async for seg in handle_json_msg(json_data):
                         yield seg
             case "video":
-                if url := segment.data["url"]:
+                if url := segment.data.get("url"):
                     if self.do_resolve_url:
                         if seg := await url_to_video(url):
                             yield seg
                     else:
                         yield Video(url=url)
+            case "file":
+                if name := segment.data.get("file"):
+                    path = Path("/share") / name
+                    if seg := await upload_local_file(path):
+                        yield seg
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg

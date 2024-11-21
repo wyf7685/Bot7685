@@ -6,7 +6,6 @@ from nonebot.message import event_postprocessor
 from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_uninfo import get_session
 
-from . import matchers as matchers
 from .database import MsgIdCacheDAO, PipeDAO, display_pipe
 from .processor import get_processor
 

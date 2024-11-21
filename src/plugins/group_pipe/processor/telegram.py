@@ -17,8 +17,8 @@ from nonebot_plugin_alconna.uniseg import (
     UniMessage,
 )
 
+from ..utils import download_url
 from .common import MessageProcessor as BaseMessageProcessor
-from .common import download_file
 
 
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
@@ -46,7 +46,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         token = self.src_bot.bot_config.token
         file_path = (await self.src_bot.get_file(file_id)).file_path
         url = f"https://api.telegram.org/file/bot{token}/{file_path}"
-        return await download_file(url)
+        return await download_url(url)
 
     @override
     async def convert_segment(
