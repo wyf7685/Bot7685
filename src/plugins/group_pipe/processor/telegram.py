@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from copy import deepcopy
 from io import BytesIO
-from typing import TYPE_CHECKING, override
+from typing import override
 
 import fleep
 from nonebot.adapters import Event as BaseEvent
@@ -15,7 +15,6 @@ from nonebot_plugin_alconna.uniseg import (
     Target,
     Text,
     UniMessage,
-    get_exporter,
 )
 
 from .common import MessageProcessor as BaseMessageProcessor
@@ -68,9 +67,9 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @override
     @classmethod
     async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> list[str]:
-        msg_ids: list[str] = []
         msg = msg.exclude(Keyboard) + msg.include(Keyboard)
 
+        gif_files: list[tuple[str, bytes] | bytes | str] = []
         for seg in msg[Image]:
             if seg.mimetype == "image/gif" and (file := (seg.raw or seg.url)):
                 msg.remove(seg)
@@ -78,14 +77,11 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                     file = file.read()
                 if seg.name and isinstance(file, bytes):
                     file = (f"{seg.name}.gif", file)
-                res = await dst_bot.send_animation(target.id, file)
-                fn = get_exporter(dst_bot)
-                if TYPE_CHECKING:
-                    assert fn is not None
-                msg_ids.append(cls.extract_msg_id([res]))
+                gif_files.append(file)
 
-        if not msg and msg_ids:
-            return msg_ids
+        msg_ids = await super().send(msg, target, dst_bot)
+        for file in gif_files:
+            res = await dst_bot.send_animation(target.id, file)
+            msg_ids.append(cls.extract_msg_id([res]))
 
-        msg_ids.extend(await super().send(msg, target, dst_bot))
         return msg_ids
