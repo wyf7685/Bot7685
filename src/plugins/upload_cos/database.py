@@ -2,9 +2,14 @@ from collections.abc import AsyncGenerator
 from datetime import datetime
 from typing import Any, ClassVar
 
+import nonebot
+from nonebot.utils import escape_tag
+from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_orm import Model, get_session
 from sqlalchemy import FLOAT, TEXT, delete, insert, select, update
 from sqlalchemy.orm import Mapped, mapped_column
+
+from .cos_ops import delete_file
 
 
 class CosUploadFile(Model):
@@ -73,3 +78,12 @@ async def user_has_perm(user_id: str) -> bool:
     stmt = select(CosUploadPermission).where(CosUploadPermission.user_id == user_id)
     async with get_session() as session:
         return await session.scalar(stmt) is not None
+
+
+@scheduler.scheduled_job("cron", minute="*/10")
+async def _() -> None:
+    logger = nonebot.logger.opt(colors=True)
+    await remove_expired_perm()
+    async for key in pop_expired_keys():
+        await delete_file(key)
+        logger.info(f"删除超时文件: <c>{escape_tag(key)}</c>")
