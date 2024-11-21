@@ -25,7 +25,7 @@ from nonebot_plugin_alconna.uniseg import (
 
 from ..database import KVCacheDAO
 from .common import MessageProcessor as BaseMessageProcessor
-from .common import download_file
+from .common import check_url_ok, download_file
 
 
 async def get_rkey() -> tuple[str, str]:
@@ -47,6 +47,19 @@ async def url_to_image(url: str) -> Image:
                 return Image(url=updated, raw=raw, mimetype=fleep.get(raw).mime[0])
 
     return Image(url=url)
+
+
+async def url_to_video(url: str) -> Video:
+    if await check_url_ok(url):
+        return Video(url=url)
+
+    if "rkey" in (parsed := yarl.URL(url)).query:
+        for rkey in await get_rkey():
+            updated = parsed.update_query(rkey=rkey).human_repr()
+            if await check_url_ok(url):
+                return Video(url=updated)
+
+    return Video(url=url)
 
 
 async def solve_url_302(url: str) -> str:
@@ -181,7 +194,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                     async for seg in handle_json_msg(json_data):
                         yield seg
             case "video":
-                yield Video(url=segment.data["url"])
+                yield await url_to_video(url=segment.data["url"])
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg

@@ -27,6 +27,11 @@ async def download_file(url: str) -> bytes:
             return resp.read()
 
 
+async def check_url_ok(url: str) -> bool:
+    async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
+        return resp.status_code == 200
+
+
 class MessageProcessor[
     TMS: MessageSegment = MessageSegment,
     TB: Bot = Bot,
