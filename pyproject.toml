@@ -27,6 +27,7 @@ dependencies = [
     "nonebot-plugin-wordcloud>=0.8.0",
     "nonebot-plugin-wordle>=0.4.3",
     "aiofiles>=24.1.0",
+    "anyio>=4.6.2.post1",
     "async-lru>=2.0.4",
     "chardet>=5.2.0",
     "cos-python-sdk-v5>=1.9.33",
