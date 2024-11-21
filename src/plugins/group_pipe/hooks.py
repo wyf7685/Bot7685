@@ -28,14 +28,13 @@ async def send_pipe_msg(
         logger.warning(f"管道选择目标 Bot 失败: {err}")
         return
 
-    processor = get_processor(listen.adapter)(bot, dst_bot)
     unimsg = UniMessage.text(msg_head)
-    unimsg.extend(await processor.process(msg))
+    unimsg.extend(await get_processor(listen.adapter)(bot, dst_bot).process(msg))
     logger.debug(f"发送管道: {display}")
     logger.debug(f"消息: {unimsg}")
 
     try:
-        receipt = await processor.send(unimsg, target, dst_bot)
+        receipt = await get_processor(dst_bot.type).send(unimsg, target, dst_bot)
     except Exception as err:
         logger.warning(f"管道: {display}")
         logger.warning(f"发送管道消息失败: {err}")
