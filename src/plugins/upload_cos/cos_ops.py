@@ -1,7 +1,9 @@
-import asyncio
 from pathlib import Path
 
-from nonebot_plugin_localstore import get_plugin_cache_dir
+import anyio
+import anyio.lowlevel
+import anyio.to_thread
+import httpx
 from qcloud_cos import CosConfig, CosS3Client
 
 from .config import config
@@ -23,33 +25,94 @@ def new_client(retry: int = 1) -> CosS3Client:
 
 
 async def put_file(data: bytes, key: str, retry: int = 3) -> None:
-    cache = get_plugin_cache_dir() / str(id(data))
-    await asyncio.to_thread(cache.write_bytes, data=data)
-
-    try:
-        await asyncio.to_thread(
-            new_client(retry).upload_file,
-            Bucket=config.bucket,
-            Key=(ROOT / key).as_posix(),
-            LocalFilePath=cache,
-        )
-    finally:
-        await asyncio.to_thread(cache.unlink)
+    await anyio.to_thread.run_sync(
+        new_client(retry).upload_file_from_buffer,
+        config.bucket,
+        (ROOT / key).as_posix(),
+        data,
+    )
 
 
 async def delete_file(key: str, retry: int = 3) -> None:
-    await asyncio.to_thread(
+    await anyio.to_thread.run_sync(
         new_client(retry).delete_object,
-        Bucket=config.bucket,
-        Key=(ROOT / key).as_posix(),
+        config.bucket,
+        (ROOT / key).as_posix(),
     )
 
 
 async def presign(key: str, expired: int = 3600) -> str:
-    return await asyncio.to_thread(
+    return await anyio.to_thread.run_sync(
         new_client().get_presigned_url,
-        Bucket=config.bucket,
-        Key=(ROOT / key).as_posix(),
-        Method="GET",
-        Expired=expired,
+        config.bucket,
+        (ROOT / key).as_posix(),
+        "GET",
+        expired,
     )
+
+
+async def put_file_from_url(url: str, key: str, retry: int = 3) -> None:
+    key = (ROOT / key).as_posix()
+    cos_client = new_client(retry)
+    upload_id: str | None = None
+    chunk_size = 4 * 1024 * 1024  # 4MB
+    chunk_id = 1
+    running_tasks = 0
+    task_results = []
+
+    async def put_chunk(chunk_id: int, chunk: bytes) -> None:
+        nonlocal running_tasks
+
+        res = await anyio.to_thread.run_sync(
+            cos_client.upload_part, config.bucket, key, chunk, chunk_id, upload_id
+        )
+        task_results.append({"PartNumber": chunk_id, "ETag": res["ETag"]})
+        running_tasks -= 1
+
+    async with (
+        anyio.create_task_group() as task_group,
+        httpx.AsyncClient() as client,
+        client.stream("GET", url) as resp,
+    ):
+        resp.raise_for_status()
+
+        async for chunk in resp.aiter_bytes(chunk_size):
+            while running_tasks >= 5:
+                await anyio.lowlevel.checkpoint()
+
+            if upload_id is None:
+                if len(chunk) < chunk_size:
+                    await anyio.to_thread.run_sync(
+                        cos_client.upload_file_from_buffer,
+                        config.bucket,
+                        key,
+                        chunk,
+                    )
+                    return
+                upload_id = (
+                    await anyio.to_thread.run_sync(
+                        cos_client.create_multipart_upload, config.bucket, key
+                    )
+                )["UploadId"]
+
+            task_group.start_soon(put_chunk, chunk_id, chunk)
+            running_tasks += 1
+            chunk_id += 1
+
+    task_results.sort(key=lambda x: x["PartNumber"])
+    try:
+        await anyio.to_thread.run_sync(
+            cos_client.complete_multipart_upload,
+            config.bucket,
+            key,
+            upload_id,
+            {"Part": task_results},
+        )
+    except Exception:
+        await anyio.to_thread.run_sync(
+            cos_client.abort_multipart_upload,
+            config.bucket,
+            key,
+            upload_id,
+        )
+        raise
