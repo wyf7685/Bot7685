@@ -3,6 +3,7 @@ from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
+require("nonebot_plugin_localstore")
 require("nonebot_plugin_orm")
 
 from . import matchers as matchers

@@ -1,4 +1,3 @@
-import io
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Self, TypedDict
@@ -6,6 +5,7 @@ from typing import Self, TypedDict
 import anyio
 import anyio.to_thread
 import httpx
+from nonebot_plugin_localstore import get_plugin_cache_file
 from qcloud_cos import CosConfig, CosS3Client
 
 from .config import config
@@ -24,9 +24,10 @@ class AsyncCosS3Client:
         self._client = client
 
     async def upload_file_from_buffer(self, key: str, data: bytes) -> None:
-        await anyio.to_thread.run_sync(
-            self._client.upload_file_from_buffer, config.bucket, key, io.BytesIO(data)
-        )
+        cache_file = get_plugin_cache_file(str(id(data)))
+        await anyio.Path(cache_file).write_bytes(data)
+        await self.upload_file(key, cache_file)
+        await anyio.Path(cache_file).unlink()
 
     async def upload_file(self, key: str, path: Path) -> None:
         await anyio.to_thread.run_sync(
