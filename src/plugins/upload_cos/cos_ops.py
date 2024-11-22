@@ -177,7 +177,9 @@ async def put_file_from_url(url: str, key: str, retry: int = 3) -> None:
 
         # 小文件直接上传
         if len(first_chunk) < DEFAULT_CHUNK_SIZE:
-            await get_client(retry).upload_file_from_buffer(key=key, data=first_chunk)
+            await get_client(retry).upload_file_from_buffer(
+                key=(ROOT / key).as_posix(), data=first_chunk
+            )
             return
 
         # 大文件创建分块上传任务
