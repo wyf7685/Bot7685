@@ -39,9 +39,8 @@ async def pop_expired_keys() -> AsyncGenerator[str]:
     async with get_session() as session:
         while data := await session.scalar(select_):
             yield data.key
-            stmt = delete(CosUploadFile).where(CosUploadFile.key == data.key)
-            await session.execute(stmt)
-            await session.commit()
+            await session.delete(data)
+        await session.commit()
 
 
 class CosUploadPermission(Model):
