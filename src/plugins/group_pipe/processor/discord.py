@@ -2,7 +2,6 @@ from collections.abc import AsyncGenerator
 from copy import deepcopy
 from typing import override
 
-import fleep
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.discord import Bot, MessageEvent
 from nonebot.adapters.discord.api.model import UNSET, MessageGet
@@ -25,7 +24,7 @@ from nonebot_plugin_alconna.uniseg import (
     UniMessage,
 )
 
-from ..utils import download_url
+from ..utils import download_url, get_file_type
 from .common import MessageProcessor as BaseMessageProcessor
 
 
@@ -66,7 +65,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 url = segment.data["attachment"].description
                 if url is not None:
                     if raw := await download_url(url):
-                        yield Image(raw=raw, mimetype=fleep.get(raw).mime[0])
+                        yield Image(raw=raw, mimetype=get_file_type(raw).mime)
                     else:
                         yield Image(url=url)
             case ReferenceSegment():

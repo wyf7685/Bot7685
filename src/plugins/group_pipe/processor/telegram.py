@@ -3,7 +3,6 @@ from copy import deepcopy
 from io import BytesIO
 from typing import override
 
-import fleep
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Bot, Message, MessageSegment, model
 from nonebot.adapters.telegram.event import MessageEvent
@@ -17,7 +16,7 @@ from nonebot_plugin_alconna.uniseg import (
     UniMessage,
 )
 
-from ..utils import download_url
+from ..utils import download_url, get_file_type
 from .common import MessageProcessor as BaseMessageProcessor
 
 
@@ -57,7 +56,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 yield Text(segment.data["text"])
             case "sticker" | "photo":
                 if raw := await self.get_file_content(segment.data["file"]):
-                    yield Image(raw=raw, mimetype=fleep.get(raw).mime[0])
+                    yield Image(raw=raw, mimetype=get_file_type(raw).mime)
             case "reply":
                 yield await self.convert_reply(segment.data["message_id"])
             case _:

@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Any, ClassVar, override
 from weakref import WeakKeyDictionary
 
-import fleep
 import httpx
 import nonebot
 import yarl
@@ -28,7 +27,7 @@ from nonebot_plugin_alconna.uniseg import (
 )
 
 from ..database import KVCacheDAO
-from ..utils import check_url_ok, download_url
+from ..utils import check_url_ok, download_url, get_file_type
 from .common import MessageProcessor as BaseMessageProcessor
 
 logger = nonebot.logger.opt(colors=True)
@@ -62,8 +61,8 @@ async def url_to_image(url: str) -> Image | None:
     if fixed is None or not (raw := await download_url(url := fixed)):
         return None
 
-    info = fleep.get(raw)
-    name = f"{hash(url)}.{info.extension[0]}"
+    info = get_file_type(raw)
+    name = f"{hash(url)}.{info.extension}"
 
     with contextlib.suppress(Exception):
         from src.plugins.upload_cos import upload_cos
@@ -71,7 +70,7 @@ async def url_to_image(url: str) -> Image | None:
         url = await upload_cos(raw, name)
         logger.debug(f"上传图片: {escape_tag(url)}")
 
-    return Image(url=url, raw=raw, mimetype=info.mime[0])
+    return Image(url=url, raw=raw, mimetype=info.mime)
 
 
 async def url_to_video(url: str) -> Video | None:
