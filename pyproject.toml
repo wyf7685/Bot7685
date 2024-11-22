@@ -49,10 +49,10 @@ dependencies = [
 [tool.nonebot]
 adapters = [
     { name = "OneBot V11", module_name = "nonebot.adapters.onebot.v11" },
-    { name = "QQ", module_name = "nonebot.adapters.qq" },
-    { name = "Satori", module_name = "nonebot.adapters.satori" },
-    { name = "Discord", module_name = "nonebot.adapters.discord" },
-    { name = "Telegram", module_name = "nonebot.adapters.telegram" },
+    # { name = "QQ", module_name = "nonebot.adapters.qq" },
+    # { name = "Satori", module_name = "nonebot.adapters.satori" },
+    # { name = "Discord", module_name = "nonebot.adapters.discord" },
+    # { name = "Telegram", module_name = "nonebot.adapters.telegram" },
 ]
 plugins = [
     "nonebot_plugin_chatrecorder",
