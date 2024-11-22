@@ -17,6 +17,6 @@ __plugin_meta__ = PluginMetadata(
     supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
 )
 
-from .exports import upload_cos, upload_cos_from_local, upload_cos_from_url
+from .exports import upload_from_buffer, upload_from_local, upload_from_url
 
-__all__ = ["upload_cos", "upload_cos_from_local", "upload_cos_from_url"]
+__all__ = ["upload_from_buffer", "upload_from_local", "upload_from_url"]

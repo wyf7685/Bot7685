@@ -64,10 +64,14 @@ async def url_to_image(url: str) -> Image | None:
     info = get_file_type(raw)
     name = f"{hash(url)}.{info.extension}"
 
-    with contextlib.suppress(Exception):
-        from src.plugins.upload_cos import upload_cos
+    try:
+        from src.plugins.upload_cos import upload_from_buffer
 
-        url = await upload_cos(raw, name)
+        url = await upload_from_buffer(raw, name)
+
+    except Exception as err:
+        logger.opt(exception=err).debug("上传图片失败，使用原始链接")
+    else:
         logger.debug(f"上传图片: {escape_tag(url)}")
 
     return Image(url=url, raw=raw, mimetype=info.mime)
@@ -80,24 +84,31 @@ async def url_to_video(url: str) -> Video | None:
 
     url = fixed
 
-    with contextlib.suppress(Exception):
-        from src.plugins.upload_cos import upload_cos_from_url
+    try:
+        from src.plugins.upload_cos import upload_from_url
 
-        url = await upload_cos_from_url(fixed, f"{hash(fixed)}.mp4")
+        url = await upload_from_url(url, f"{hash(url)}.mp4")
+
+    except Exception as err:
+        logger.opt(exception=err).debug("上传视频失败，使用原始链接")
+    else:
         logger.debug(f"上传视频: {escape_tag(url)}")
 
     return Video(url=url)
 
 
 async def upload_local_file(path: Path) -> File | None:
-    with contextlib.suppress(Exception):
-        from src.plugins.upload_cos import upload_cos_from_local
+    try:
+        from src.plugins.upload_cos import upload_from_local
 
-        url = await upload_cos_from_local(path, f"{hash(path)}/{path.name}")
+        url = await upload_from_local(path, f"{hash(path)}/{path.name}")
+
+    except Exception as err:
+        logger.opt(exception=err).debug("上传文件失败")
+        return None
+    else:
         logger.debug(f"上传文件: {escape_tag(url)}")
         return File(url=url)
-
-    return None
 
 
 async def solve_url_302(url: str) -> str:
