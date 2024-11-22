@@ -32,8 +32,15 @@ from nonebot_plugin_alconna.uniseg import (
     Video,
 )
 
+from src.plugins.gtg import call_soon
+from src.plugins.upload_cos import (
+    upload_from_buffer,
+    upload_from_local,
+    upload_from_url,
+)
+
 from ..database import KVCacheDAO
-from ..utils import cached_call_soon, check_url_ok, download_url, get_file_type
+from ..utils import check_url_ok, download_url, get_file_type
 from .common import MessageProcessor as BaseMessageProcessor
 
 logger = nonebot.logger.opt(colors=True)
@@ -71,10 +78,7 @@ async def url_to_image(url: str) -> Image | None:
     name = f"{hash(url)}.{info.extension}"
 
     try:
-        from src.plugins.upload_cos import upload_from_buffer
-
         url = await upload_from_buffer(raw, name)
-
     except Exception as err:
         logger.opt(exception=err).debug("上传图片失败，使用原始链接")
     else:
@@ -91,10 +95,7 @@ async def url_to_video(url: str) -> Video | None:
     url = fixed
 
     try:
-        from src.plugins.upload_cos import upload_from_url
-
         url = await upload_from_url(url, f"{hash(url)}.mp4")
-
     except Exception as err:
         logger.opt(exception=err).debug("上传视频失败，使用原始链接")
     else:
@@ -105,10 +106,7 @@ async def url_to_video(url: str) -> Video | None:
 
 async def upload_local_file(path: Path) -> File | None:
     try:
-        from src.plugins.upload_cos import upload_from_local
-
         url = await upload_from_local(path, f"{hash(path)}/{path.name}")
-
     except Exception as err:
         logger.opt(exception=err).debug("上传文件失败")
         return None
@@ -280,7 +278,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         for file in files:
             if not file.url:
                 continue
-            cached_call_soon()(upload_file, file)
+            call_soon(upload_file, file)
 
     @override
     @classmethod

@@ -4,9 +4,10 @@ from nonebot.message import event_preprocessor
 from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_uninfo import get_session
 
+from src.plugins.gtg import call_soon
+
 from .database import MsgIdCacheDAO, PipeDAO, display_pipe
 from .processor import get_processor
-from .utils import cached_call_soon
 
 
 async def send_pipe_msg(
@@ -83,4 +84,4 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         target = pipe.get_target()
         logger.debug(f"管道转发: {display_pipe(listen, target)}")
         args = (bot, listen, target, msg_id, msg_head, msg)
-        cached_call_soon()(send_pipe_msg, *args)
+        call_soon(send_pipe_msg, *args)

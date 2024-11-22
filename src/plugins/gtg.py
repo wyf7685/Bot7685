@@ -40,7 +40,9 @@ def call_later[**P](
         raise RuntimeError("Task group not initialized")
 
     async def wrapper() -> None:
-        await anyio.sleep(delay)
+        if delay > 0:
+            await anyio.sleep(delay)
+
         try:
             await call(*arg, **kwargs)
         except Exception as err:

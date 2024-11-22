@@ -1,4 +1,3 @@
-import functools
 from typing import NamedTuple
 
 import anyio
@@ -52,10 +51,3 @@ async def webm_to_gif(raw: bytes) -> bytes:
     await webm_file.unlink()
     await gif_file.unlink()
     return data
-
-
-@functools.cache
-def cached_call_soon():  # noqa: ANN201
-    from src.plugins.gtg import call_soon
-
-    return call_soon
