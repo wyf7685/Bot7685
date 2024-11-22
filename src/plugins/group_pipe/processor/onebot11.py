@@ -118,7 +118,7 @@ async def solve_url_302(url: str) -> str:
     return url
 
 
-async def handle_json_msg(data: dict[str, Any]) -> AsyncGenerator[Segment, None]:
+async def handle_json_msg(data: dict[str, Any]) -> AsyncGenerator[Segment]:
     def default() -> Segment:
         return Text(f"[json消息:{data}]")
 
@@ -203,7 +203,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     async def handle_forward(
         self, data: dict[str, Any]
-    ) -> AsyncGenerator[Segment, None]:
+    ) -> AsyncGenerator[Segment]:
         cached = False
         forward_id = data["id"]
         if "napcat" in await self.get_platform() and "content" in data:
@@ -221,7 +221,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @override
     async def convert_segment(
         self, segment: MessageSegment
-    ) -> AsyncGenerator[Segment, None]:
+    ) -> AsyncGenerator[Segment]:
         match segment.type:
             case "at":
                 yield Text(f"[at:{segment.data['qq']}]")

@@ -115,7 +115,7 @@ class TodoList:
             md += f"{t.show_markdown(i)}\n"
         return await render_markdown(md)
 
-    def checked(self) -> Generator[Todo, Any, None]:
+    def checked(self) -> Generator[Todo, Any]:
         yield from (todo for todo in self.todo if todo.checked)
 
     async def purge(self) -> None:

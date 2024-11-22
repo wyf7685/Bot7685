@@ -33,7 +33,7 @@ async def update_key(key: str, expired: float) -> None:
         await session.commit()
 
 
-async def pop_expired_keys() -> AsyncGenerator[str, None]:
+async def pop_expired_keys() -> AsyncGenerator[str]:
     now = datetime.now().timestamp()
     select_ = select(CosUploadFile).where(CosUploadFile.expire_at <= now).limit(1)
     async with get_session() as session:

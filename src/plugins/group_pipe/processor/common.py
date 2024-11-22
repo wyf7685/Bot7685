@@ -52,7 +52,7 @@ class MessageProcessor[
             return Reply(reply_id)
         return Text(f"[reply:{src_msg_id}]")
 
-    async def convert_segment(self, segment: TMS) -> AsyncGenerator[Segment, None]:
+    async def convert_segment(self, segment: TMS) -> AsyncGenerator[Segment]:
         if fn := get_builder(self.src_bot):
             result = fn.convert(segment)
             if isinstance(result, list):

@@ -69,7 +69,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @override
     async def convert_segment(
         self, segment: MessageSegment
-    ) -> AsyncGenerator[Segment, None]:
+    ) -> AsyncGenerator[Segment]:
         match segment.type:
             case "mention":
                 yield Text(segment.data["text"])
