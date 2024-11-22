@@ -29,7 +29,7 @@ async def send_pipe_msg(
     unimsg = UniMessage.text(msg_head)
     unimsg.extend(await get_processor(listen.adapter)(bot, dst_bot).process(msg))
     logger.debug(f"发送管道: {display}")
-    logger.debug(f"消息: {unimsg}")
+    logger.debug(f"消息: {unimsg!r}")
 
     try:
         dst_ids = await get_processor(dst_bot.type).send(unimsg, target, dst_bot)
