@@ -3,11 +3,13 @@ from copy import deepcopy
 from io import BytesIO
 from typing import override
 
+import nonebot
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Bot, Message, MessageSegment, model
 from nonebot.adapters.telegram.event import MessageEvent
 from nonebot.adapters.telegram.message import Reply as TgReply
 from nonebot_plugin_alconna.uniseg import (
+    File,
     Image,
     Keyboard,
     Segment,
@@ -18,6 +20,8 @@ from nonebot_plugin_alconna.uniseg import (
 
 from ..utils import download_url, get_file_type, webm_to_gif
 from .common import MessageProcessor as BaseMessageProcessor
+
+logger = nonebot.logger.opt(colors=True)
 
 
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
@@ -41,11 +45,26 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     def extract_msg_id(res: model.Message) -> str:
         return str(res.message_id) if res else ""
 
-    async def get_file_content(self, file_id: str) -> bytes:
+    async def get_file_url(self, file_id: str) -> str:
         token = self.src_bot.bot_config.token
         file_path = (await self.src_bot.get_file(file_id)).file_path
-        url = f"https://api.telegram.org/file/bot{token}/{file_path}"
+        return f"https://api.telegram.org/file/bot{token}/{file_path}"
+
+    async def get_file_content(self, file_id: str) -> bytes:
+        url = await self.get_file_url(file_id)
         return await download_url(url)
+
+    async def convert_document(self, file_id: str) -> Segment | None:
+        url = await self.get_file_url(file_id)
+        try:
+            from src.plugins.upload_cos import upload_from_url
+
+            url = await upload_from_url(url, key=f"document/{file_id}")
+        except Exception as err:
+            logger.opt(exception=err).debug("上传文件失败")
+            return Text(f"[file:{file_id}]")
+        else:
+            return File(url=url)
 
     @override
     async def convert_segment(
@@ -61,6 +80,9 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                         raw = await webm_to_gif(raw)
                         mime = "image/gif"
                     yield Image(raw=raw, mimetype=mime)
+            case "document":
+                if seg := await self.convert_document(segment.data["file"]):
+                    yield seg
             case "reply":
                 yield await self.convert_reply(segment.data["message_id"])
             case _:
