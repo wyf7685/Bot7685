@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Self, TypedDict
 
 import anyio
-import anyio.lowlevel
 import anyio.to_thread
 import httpx
 from qcloud_cos import CosConfig, CosS3Client
