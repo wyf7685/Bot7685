@@ -1,5 +1,3 @@
-import functools
-
 from nonebot import logger
 from nonebot.adapters import Bot, Event, Message
 from nonebot.message import event_preprocessor
@@ -8,6 +6,7 @@ from nonebot_plugin_uninfo import get_session
 
 from .database import MsgIdCacheDAO, PipeDAO, display_pipe
 from .processor import get_processor
+from .utils import cached_call_soon
 
 
 async def send_pipe_msg(
@@ -47,13 +46,6 @@ async def send_pipe_msg(
             dst_adapter=dst_bot.type,
             dst_id=dst_id,
         )
-
-
-@functools.cache
-def cached_call_soon():  # noqa: ANN201
-    from src.plugins.gtg import call_soon
-
-    return call_soon
 
 
 @event_preprocessor

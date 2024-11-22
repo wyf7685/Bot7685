@@ -11,7 +11,13 @@ import nonebot
 import yarl
 from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters import Event as BaseEvent
-from nonebot.adapters.onebot.v11 import Bot, Message, MessageEvent, MessageSegment
+from nonebot.adapters.onebot.v11 import (
+    ActionFailed,
+    Bot,
+    Message,
+    MessageEvent,
+    MessageSegment,
+)
 from nonebot.utils import escape_tag
 from nonebot_plugin_alconna.uniseg import (
     Button,
@@ -27,7 +33,7 @@ from nonebot_plugin_alconna.uniseg import (
 )
 
 from ..database import KVCacheDAO
-from ..utils import check_url_ok, download_url, get_file_type
+from ..utils import cached_call_soon, check_url_ok, download_url, get_file_type
 from .common import MessageProcessor as BaseMessageProcessor
 
 logger = nonebot.logger.opt(colors=True)
@@ -201,9 +207,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         return False
 
-    async def handle_forward(
-        self, data: dict[str, Any]
-    ) -> AsyncGenerator[Segment]:
+    async def handle_forward(self, data: dict[str, Any]) -> AsyncGenerator[Segment]:
         cached = False
         forward_id = data["id"]
         if "napcat" in await self.get_platform() and "content" in data:
@@ -219,9 +223,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             yield Keyboard([btn])
 
     @override
-    async def convert_segment(
-        self, segment: MessageSegment
-    ) -> AsyncGenerator[Segment]:
+    async def convert_segment(self, segment: MessageSegment) -> AsyncGenerator[Segment]:
         match segment.type:
             case "at":
                 yield Text(f"[at:{segment.data['qq']}]")
@@ -263,7 +265,37 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @override
     @classmethod
     async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> list[str]:
+        # OneBot V11 适配器没有 Keyboard 消息段
         msg = msg.exclude(Keyboard)
+
+        # 回复消息段应在消息头部，且仅有一个
         if Reply in msg:
-            msg = msg.include(Reply) + msg.exclude(Reply)
+            msg = msg[Reply, 0] + msg.exclude(Reply)
+
+        # 文件消息段需要单独发送
+        if files := msg[File]:
+
+            async def upload_file(file: File) -> None:
+                try:
+                    await dst_bot.call_api(
+                        "upload_group_file",
+                        group_id=int(target.id),
+                        file=file.url,
+                        name=file.name or file.id,
+                    )
+                except ActionFailed as err:
+                    logger.opt(exception=err).debug(f"上传群文件失败: {err}")
+                    msg = UniMessage.text(f"上传群文件失败: {file.id}")
+                    await msg.send(target, dst_bot)
+
+            # 并发上传文件
+            for file in files:
+                if not file.url:
+                    continue
+                cached_call_soon()(upload_file, file)
+
+            # 从消息中排除文件消息段
+            msg = msg.exclude(File)
+
+        # 发送消息
         return await super().send(msg, target, dst_bot)

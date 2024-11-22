@@ -1,3 +1,4 @@
+import functools
 from typing import NamedTuple
 
 import anyio
@@ -32,8 +33,16 @@ def get_file_type(raw: bytes) -> _FileType:
     return _FileType(info.mime[0], info.extension[0])
 
 
+async def guess_url_type(url: str) -> _FileType | None:
+    async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
+        head = await anext(resp.aiter_bytes(128), None)
+        if head is not None:
+            return get_file_type(head)
+    return None
+
+
 async def webm_to_gif(raw: bytes) -> bytes:
-    cache_dir =  anyio.Path(get_plugin_cache_dir())
+    cache_dir = anyio.Path(get_plugin_cache_dir())
     webm_file = cache_dir / f"{id(raw)}.webm"
     gif_file = cache_dir / f"{id(raw)}.gif"
 
@@ -43,3 +52,10 @@ async def webm_to_gif(raw: bytes) -> bytes:
     await webm_file.unlink()
     await gif_file.unlink()
     return data
+
+
+@functools.cache
+def cached_call_soon():  # noqa: ANN201
+    from src.plugins.gtg import call_soon
+
+    return call_soon

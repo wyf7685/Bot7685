@@ -18,7 +18,7 @@ from nonebot_plugin_alconna.uniseg import (
     UniMessage,
 )
 
-from ..utils import download_url, get_file_type, webm_to_gif
+from ..utils import download_url, get_file_type, guess_url_type, webm_to_gif
 from .common import MessageProcessor as BaseMessageProcessor
 
 logger = nonebot.logger.opt(colors=True)
@@ -56,20 +56,27 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     async def convert_document(self, file_id: str) -> Segment | None:
         url = await self.get_file_url(file_id)
+        info = await guess_url_type(url)
+        if info is None:
+            return Text(f"[file:{file_id}]")
+
         try:
             from src.plugins.upload_cos import upload_from_url
 
             url = await upload_from_url(url, key=f"document/{file_id}")
         except Exception as err:
             logger.opt(exception=err).debug("上传文件失败")
-            return Text(f"[file:{file_id}]")
+            return Text(f"[file:{info.mime}:{file_id}]")
         else:
-            return File(url=url)
+            return File(
+                id=file_id,
+                url=url,
+                mimetype=info.mime,
+                name=f"{hash(file_id)}.{info.extension}",
+            )
 
     @override
-    async def convert_segment(
-        self, segment: MessageSegment
-    ) -> AsyncGenerator[Segment]:
+    async def convert_segment(self, segment: MessageSegment) -> AsyncGenerator[Segment]:
         match segment.type:
             case "mention":
                 yield Text(segment.data["text"])
