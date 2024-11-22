@@ -42,11 +42,6 @@ class AsyncCosS3Client:
             self._client.get_presigned_url, config.bucket, key, method, expired
         )
 
-    async def put_object(self, key: str, data: bytes) -> None:
-        await anyio.to_thread.run_sync(
-            self._client.put_object, config.bucket, key, data
-        )
-
     async def create_multipart_upload(self, key: str) -> str:
         res = await anyio.to_thread.run_sync(
             self._client.create_multipart_upload, config.bucket, key
@@ -182,7 +177,7 @@ async def put_file_from_url(url: str, key: str, retry: int = 3) -> None:
 
         # 小文件直接上传
         if len(first_chunk) < DEFAULT_CHUNK_SIZE:
-            await get_client(retry).put_object(key=key, data=first_chunk)
+            await get_client(retry).upload_file_from_buffer(key=key, data=first_chunk)
             return
 
         # 大文件创建分块上传任务
