@@ -1,3 +1,4 @@
+import io
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Self, TypedDict
@@ -24,7 +25,7 @@ class AsyncCosS3Client:
 
     async def upload_file_from_buffer(self, key: str, data: bytes) -> None:
         await anyio.to_thread.run_sync(
-            self._client.upload_file_from_buffer, config.bucket, key, data
+            self._client.upload_file_from_buffer, config.bucket, key, io.BytesIO(data)
         )
 
     async def upload_file(self, key: str, path: Path) -> None:
