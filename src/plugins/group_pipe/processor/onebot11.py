@@ -262,6 +262,26 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 async for seg in super().convert_segment(segment):
                     yield seg
 
+    @staticmethod
+    def _send_files(files: list[File], target: Target, bot: Bot) -> None:
+        async def upload_file(file: File) -> None:
+            try:
+                await bot.call_api(
+                    "upload_group_file",
+                    group_id=int(target.id),
+                    file=file.url,
+                    name=file.name or file.id,
+                )
+            except ActionFailed as err:
+                logger.opt(exception=err).debug(f"上传群文件失败: {err}")
+                msg = UniMessage.text(f"上传群文件失败: {file.id}")
+                await msg.send(target, bot)
+
+        for file in files:
+            if not file.url:
+                continue
+            cached_call_soon()(upload_file, file)
+
     @override
     @classmethod
     async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> list[str]:
@@ -274,28 +294,9 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         # 文件消息段需要单独发送
         if files := msg[File]:
-
-            async def upload_file(file: File) -> None:
-                try:
-                    await dst_bot.call_api(
-                        "upload_group_file",
-                        group_id=int(target.id),
-                        file=file.url,
-                        name=file.name or file.id,
-                    )
-                except ActionFailed as err:
-                    logger.opt(exception=err).debug(f"上传群文件失败: {err}")
-                    msg = UniMessage.text(f"上传群文件失败: {file.id}")
-                    await msg.send(target, dst_bot)
-
-            # 并发上传文件
-            for file in files:
-                if not file.url:
-                    continue
-                cached_call_soon()(upload_file, file)
-
             # 从消息中排除文件消息段
             msg = msg.exclude(File)
+            cls._send_files(files, target, dst_bot)
 
         # 发送消息
         return await super().send(msg, target, dst_bot)
