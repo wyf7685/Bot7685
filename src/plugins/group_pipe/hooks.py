@@ -1,8 +1,8 @@
-import asyncio
+import functools
 
 from nonebot import logger
 from nonebot.adapters import Bot, Event, Message
-from nonebot.message import event_postprocessor
+from nonebot.message import event_preprocessor
 from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_uninfo import get_session
 
@@ -37,7 +37,7 @@ async def send_pipe_msg(
     except Exception as err:
         logger.warning(f"管道: {display}")
         logger.warning(f"发送管道消息失败: {err}")
-        logger.opt(exception=err).debug("exception")
+        logger.opt(exception=err).debug(err)
         return
 
     for dst_id in dst_ids:
@@ -49,7 +49,14 @@ async def send_pipe_msg(
         )
 
 
-@event_postprocessor
+@functools.cache
+def cached_call_soon():  # noqa: ANN201
+    from src.plugins.gtg import call_soon
+
+    return call_soon
+
+
+@event_preprocessor
 async def handle_pipe_msg(bot: Bot, event: Event) -> None:
     if event.get_type() != "message":
         return
@@ -59,11 +66,11 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         msg_id = UniMessage.get_message_id(event, bot)
         info = await get_session(bot, event)
     except Exception as err:
-        logger.warning(f"获取消息信息失败: {err}")
+        logger.trace(f"获取消息信息失败: {err}")
         return
 
     if info is None:
-        logger.debug("无法获取群组信息，跳过管道消息处理")
+        logger.trace("无法获取群组信息，跳过管道消息处理")
         return
 
     pipes = await PipeDAO().get_pipes(listen=listen)
@@ -80,15 +87,8 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
     user_name = info.user.nick or info.user.name or info.user.id
     msg_head = f"[ {group_name} - {user_name} ]\n"
 
-    coros = [
-        send_pipe_msg(
-            bot=bot,
-            listen=listen,
-            target=pipe.get_target(),
-            msg_id=msg_id,
-            msg_head=msg_head,
-            msg=msg,
-        )
-        for pipe in pipes
-    ]
-    await asyncio.gather(*coros)
+    for pipe in pipes:
+        target = pipe.get_target()
+        logger.debug(f"管道转发: {display_pipe(listen, target)}")
+        args = (bot, listen, target, msg_id, msg_head, msg)
+        cached_call_soon()(send_pipe_msg, *args)
