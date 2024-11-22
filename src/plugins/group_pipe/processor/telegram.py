@@ -16,7 +16,7 @@ from nonebot_plugin_alconna.uniseg import (
     UniMessage,
 )
 
-from ..utils import download_url, get_file_type
+from ..utils import download_url, get_file_type, webm_to_gif
 from .common import MessageProcessor as BaseMessageProcessor
 
 
@@ -56,7 +56,11 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 yield Text(segment.data["text"])
             case "sticker" | "photo":
                 if raw := await self.get_file_content(segment.data["file"]):
-                    yield Image(raw=raw, mimetype=get_file_type(raw).mime)
+                    mime = get_file_type(raw).mime
+                    if mime == "video/webm":
+                        raw = await webm_to_gif(raw)
+                        mime = "image/gif"
+                    yield Image(raw=raw, mimetype=mime)
             case "reply":
                 yield await self.convert_reply(segment.data["message_id"])
             case _:
