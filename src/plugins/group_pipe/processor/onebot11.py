@@ -153,8 +153,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         self.do_resolve_url = True
 
     @override
-    @staticmethod
-    def get_message(event: BaseEvent) -> Message | None:
+    @classmethod
+    def get_message(cls, event: BaseEvent) -> Message | None:
         if not isinstance(event, MessageEvent):
             return None
 
@@ -173,7 +173,11 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         return self.bot_platform_cache[self.src_bot]
 
-    async def cache_forward(self, id_: str, content: list[dict[str, Any]]) -> bool:
+    async def cache_forward(
+        self,
+        forward_id: str,
+        content: list[dict[str, Any]],
+    ) -> bool:
         if not content:
             return False
 
@@ -183,22 +187,22 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         for item in content:
             sender: dict[str, str] = item.get("sender", {})
+            msg = item.get("message")
+            if not msg:
+                continue
             nick = (
                 sender.get("card")
                 or sender.get("nickname")
                 or sender.get("user_id")
                 or ""
             )
-            msg = item.get("message")
-            if not msg:
-                continue
 
             msg = Message([MessageSegment(**seg) for seg in msg])
             unimsg = await processor.process(msg)
             cache_data.append({"nick": nick, "msg": unimsg.dump(media_save_dir=False)})
 
         if cache_data:
-            key = f"forward_{id_}"
+            key = f"forward_{forward_id}"
             value = json.dumps(cache_data)
             await KVCacheDAO().set_value(self.src_bot.type, key, value)
             return True

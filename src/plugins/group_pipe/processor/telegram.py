@@ -26,8 +26,8 @@ logger = nonebot.logger.opt(colors=True)
 
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     @override
-    @staticmethod
-    def get_message(event: BaseEvent) -> Message | None:
+    @classmethod
+    def get_message(cls, event: BaseEvent) -> Message | None:
         if not isinstance(event, MessageEvent):
             return None
 

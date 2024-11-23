@@ -24,8 +24,8 @@ class MessageProcessor[
         self.src_bot = src_bot
         self.dst_bot = dst_bot
 
-    @staticmethod
-    def get_message(event: Event) -> TM | None:
+    @classmethod
+    def get_message(cls, event: Event) -> TM | None:
         return cast(TM, event.get_message())
 
     @staticmethod
@@ -61,11 +61,11 @@ class MessageProcessor[
             else:
                 yield result
 
-    async def process(self, msg: TM) -> UniMessage:
+    async def process(self, msg: TM) -> UniMessage[Segment]:
         if builder := get_builder(self.src_bot):
             msg = cast(TM, builder.preprocess(msg))
 
-        result = UniMessage()
+        result = UniMessage[Segment]()
         for segment in msg:
             async for seg in self.convert_segment(segment):
                 result.append(seg)
@@ -73,7 +73,9 @@ class MessageProcessor[
         return result
 
     @classmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: TB) -> list[str]:
+    async def send(
+        cls, msg: UniMessage[Segment], target: Target, dst_bot: TB
+    ) -> list[str]:
         receipt = await msg.send(
             target=target,
             bot=dst_bot,
