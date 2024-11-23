@@ -18,7 +18,9 @@ from nonebot_plugin_alconna.uniseg import (
     UniMessage,
 )
 
-from ..utils import download_url, get_file_type, guess_url_type, webm_to_gif
+from src.plugins.upload_cos import upload_from_url
+
+from ..utils import download_url, guess_url_type, webm_to_gif
 from .common import MessageProcessor as BaseMessageProcessor
 
 logger = nonebot.logger.opt(colors=True)
@@ -50,19 +52,32 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         file_path = (await self.src_bot.get_file(file_id)).file_path
         return f"https://api.telegram.org/file/bot{token}/{file_path}"
 
-    async def get_file_content(self, file_id: str) -> bytes:
+    async def convert_image(self, file_id: str) -> Segment:
         url = await self.get_file_url(file_id)
-        return await download_url(url)
+        info = await guess_url_type(url)
+        if info is None:
+            return Image(url=url)
 
-    async def convert_document(self, file_id: str) -> Segment | None:
+        if info.mime == "video/webm":
+            if raw := await download_url(url):
+                raw = await webm_to_gif(raw)
+                return Image(raw=raw, mimetype="image/gif")
+            return Text(f"[image:{info.mime}:{file_id}]")
+
+        try:
+            url = await upload_from_url(url, f"image/{file_id}")
+        except Exception as err:
+            logger.opt(exception=err).debug("上传文件失败")
+
+        return Image(url=url, mimetype=info.mime)
+
+    async def convert_document(self, file_id: str) -> Segment:
         url = await self.get_file_url(file_id)
         info = await guess_url_type(url)
         if info is None:
             return Text(f"[file:{file_id}]")
 
         try:
-            from src.plugins.upload_cos import upload_from_url
-
             url = await upload_from_url(url, key=f"document/{file_id}")
         except Exception as err:
             logger.opt(exception=err).debug("上传文件失败")
@@ -81,15 +96,9 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case "mention":
                 yield Text(segment.data["text"])
             case "sticker" | "photo":
-                if raw := await self.get_file_content(segment.data["file"]):
-                    mime = get_file_type(raw).mime
-                    if mime == "video/webm":
-                        raw = await webm_to_gif(raw)
-                        mime = "image/gif"
-                    yield Image(raw=raw, mimetype=mime)
+                yield await self.convert_image(segment.data["file_id"])
             case "document":
-                if seg := await self.convert_document(segment.data["file"]):
-                    yield seg
+                yield await self.convert_document(segment.data["file"])
             case "reply":
                 yield await self.convert_reply(segment.data["message_id"])
             case _:
