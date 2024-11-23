@@ -73,9 +73,7 @@ class MessageProcessor[
         return result
 
     @classmethod
-    async def send(
-        cls, msg: UniMessage[Segment], target: Target, dst_bot: TB
-    ) -> list[str]:
+    async def send(cls, msg: UniMessage, target: Target, dst_bot: TB) -> list[str]:
         receipt = await msg.send(
             target=target,
             bot=dst_bot,
