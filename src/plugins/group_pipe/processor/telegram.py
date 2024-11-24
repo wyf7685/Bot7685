@@ -65,20 +65,20 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             return Text(f"[image:{info.mime}:{file_id}]")
 
         try:
-            url = await upload_from_url(url, f"image/{file_id}")
+            url = await upload_from_url(url, f"image/{file_id}.{info.extension}")
         except Exception as err:
             logger.opt(exception=err).debug("上传文件失败")
 
         return Image(url=url, mimetype=info.mime)
 
-    async def convert_document(self, file_id: str) -> Segment:
+    async def convert_file(self, file_id: str) -> Segment:
         url = await self.get_file_url(file_id)
         info = await guess_url_type(url)
         if info is None:
             return Text(f"[file:{file_id}]")
 
         try:
-            url = await upload_from_url(url, key=f"document/{file_id}")
+            url = await upload_from_url(url, key=f"file/{file_id}.{info.extension}")
         except Exception as err:
             logger.opt(exception=err).debug("上传文件失败")
             return Text(f"[file:{info.mime}:{file_id}]")
@@ -97,8 +97,8 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 yield Text(segment.data["text"])
             case "sticker" | "photo":
                 yield await self.convert_image(segment.data["file_id"])
-            case "document":
-                yield await self.convert_document(segment.data["file"])
+            case "document" | "video":
+                yield await self.convert_file(segment.data["file"])
             case "reply":
                 yield await self.convert_reply(segment.data["message_id"])
             case _:
