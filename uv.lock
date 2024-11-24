@@ -211,8 +211,8 @@ requires-dist = [
     { name = "nonebot-adapter-onebot", specifier = ">=2.4.6" },
     { name = "nonebot-adapter-qq", specifier = ">=1.5.3" },
     { name = "nonebot-adapter-satori", specifier = ">=0.13.0rc3" },
-    { name = "nonebot-adapter-telegram", git = "https://github.com/nonebot/adapter-telegram.git?rev=beta" },
-    { name = "nonebot-plugin-alconna", specifier = ">=0.53.1" },
+    { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20" },
+    { name = "nonebot-plugin-alconna", git = "https://github.com/nonebot/plugin-alconna.git?rev=master" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", specifier = ">=0.6.2" },
     { name = "nonebot-plugin-emojimix", specifier = ">=0.4.0" },
@@ -1105,18 +1105,22 @@ wheels = [
 
 [[package]]
 name = "nonebot-adapter-telegram"
-version = "0.1.0b19"
-source = { git = "https://github.com/nonebot/adapter-telegram.git?rev=beta#53287e12030b95a89dcc8b054d3806f53b572039" }
+version = "0.1.0b20"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "nonebot2" },
     { name = "pydantic" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/89/18/28944035c60d6cbf9beceefe800cc68e797595effbb439ff253b58fd55ee/nonebot-adapter-telegram-0.1.0b20.tar.gz", hash = "sha256:fc17df61cbdb3162f29dbada1e5712b26f37c185da87602b613694bca32c9ada", size = 29594 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/24/3e/12d823f920fe3b42a474d8a5220e57ea1113a007d47860c23a224b2f570b/nonebot_adapter_telegram-0.1.0b20-py3-none-any.whl", hash = "sha256:a90acf29b8a9c8a16d4aaa93fb930debde4648d514f2050af945e973cd37a8d4", size = 30266 },
+]
 
 [[package]]
 name = "nonebot-plugin-alconna"
-version = "0.54.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.54.1"
+source = { git = "https://github.com/nonebot/plugin-alconna.git?rev=master#bc5fbbbb9641cface6a772138870d1476670185a" }
 dependencies = [
     { name = "arclet-alconna" },
     { name = "arclet-alconna-tools" },
@@ -1125,10 +1129,6 @@ dependencies = [
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot2" },
     { name = "tarina" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/83/38/08a5f29fa7eafd2b482eb2c4585aa3ebc25060c5831800f4954c03c2485e/nonebot_plugin_alconna-0.54.0.tar.gz", hash = "sha256:3e80ff59e997b386af65785b7d37b56ebabe7cd52236d603bbdf97b85f8151d6", size = 145064 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8f/22/c17bc5ce10f189320760a5090727e778c6e4b2ba1fec750bfd878b937522/nonebot_plugin_alconna-0.54.0-py3-none-any.whl", hash = "sha256:d117c6e2906a7ca27e004ac21b6c7ce96e3a7a4903b0fddd879358a1d690b49c", size = 201907 },
 ]
 
 [[package]]
