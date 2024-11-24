@@ -1,6 +1,6 @@
 import contextlib
 import json
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, ClassVar, override
@@ -33,14 +33,10 @@ from nonebot_plugin_alconna.uniseg import (
 )
 
 from src.plugins.gtg import call_soon
-from src.plugins.upload_cos import (
-    upload_from_buffer,
-    upload_from_local,
-    upload_from_url,
-)
+from src.plugins.upload_cos import upload_from_local, upload_from_url
 
 from ..database import KVCacheDAO
-from ..utils import check_url_ok, download_url, get_file_type
+from ..utils import check_url_ok, guess_url_type
 from .common import MessageProcessor as BaseMessageProcessor
 
 logger = nonebot.logger.opt(colors=True)
@@ -50,10 +46,11 @@ async def get_rkey() -> tuple[str, str]:
     rkey_api = "https://llob.linyuchen.net/rkey"
     async with httpx.AsyncClient() as client:
         resp = await client.get(rkey_api)
-        data = resp.json()
-        keys = data["private_rkey"], data["group_rkey"]
-        logger.debug(f"获取 rkey: {keys}")
-        return keys
+        data: dict[str, str] = resp.json()
+        p_rkey = data["private_rkey"].removeprefix("&rkey=")
+        g_rkey = data["group_rkey"].removeprefix("&rkey=")
+        logger.debug(f"从 API 获取 rkey: {p_rkey, g_rkey}")
+        return p_rkey, g_rkey
 
 
 async def check_rkey(url: str) -> str | None:
@@ -70,30 +67,23 @@ async def check_rkey(url: str) -> str | None:
 
 
 async def url_to_image(url: str) -> Image | None:
-    fixed = await check_rkey(url)
-    if fixed is None or not (raw := await download_url(url := fixed)):
+    info = await guess_url_type(url)
+    if info is None:
         return None
 
-    info = get_file_type(raw)
     name = f"{hash(url)}.{info.extension}"
 
     try:
-        url = await upload_from_buffer(raw, name)
+        url = await upload_from_url(url, name)
     except Exception as err:
         logger.opt(exception=err).debug("上传图片失败，使用原始链接")
     else:
         logger.debug(f"上传图片: {escape_tag(url)}")
 
-    return Image(url=url, raw=raw, mimetype=info.mime)
+    return Image(url=url, mimetype=info.mime)
 
 
 async def url_to_video(url: str) -> Video | None:
-    fixed = await check_rkey(url)
-    if fixed is None:
-        return None
-
-    url = fixed
-
     try:
         url = await upload_from_url(url, f"{hash(url)}.mp4")
     except Exception as err:
@@ -145,6 +135,7 @@ async def handle_json_msg(data: dict[str, Any]) -> AsyncGenerator[Segment]:
 
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     bot_platform_cache: ClassVar[WeakKeyDictionary[Bot, str]] = WeakKeyDictionary()
+    nc_get_rkey_available: ClassVar[bool] = True
     do_resolve_url: bool
 
     @override
@@ -172,6 +163,30 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             self.bot_platform_cache[self.src_bot] = platform
 
         return self.bot_platform_cache[self.src_bot]
+
+    async def get_rkey(self) -> Sequence[str]:
+        if not self.nc_get_rkey_available:
+            return await get_rkey()
+
+        try:
+            res: list[dict[str, str]] = await self.src_bot.call_api("nc_get_rkey")
+        except ActionFailed:
+            type(self).nc_get_rkey_available = False
+            return await get_rkey()
+
+        return [item["rkey"].removeprefix("&rkey=") for item in res]
+
+    async def check_rkey(self, url: str) -> str | None:
+        if await check_url_ok(url):
+            return url
+
+        if "rkey" in (parsed := yarl.URL(url)).query:
+            for rkey in await self.get_rkey():
+                updated = parsed.update_query(rkey=rkey).human_repr()
+                if await check_url_ok(updated):
+                    return updated
+
+        return None
 
     async def cache_forward(
         self,
@@ -232,7 +247,9 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case "image":
                 if url := segment.data.get("url"):
                     if self.do_resolve_url:
-                        if seg := await url_to_image(url):
+                        if (url := await self.check_rkey(url)) and (
+                            seg := await url_to_image(url)
+                        ):
                             yield seg
                     else:
                         yield Image(url=url)
@@ -249,7 +266,9 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case "video":
                 if url := segment.data.get("url"):
                     if self.do_resolve_url:
-                        if seg := await url_to_video(url):
+                        if (url := await self.check_rkey(url)) and (
+                            seg := await url_to_video(url)
+                        ):
                             yield seg
                     else:
                         yield Video(url=url)
