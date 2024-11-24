@@ -1,8 +1,11 @@
+import copy
 from typing import NamedTuple
 
 import anyio
 import fleep
 import httpx
+from nonebot_plugin_alconna.uniseg import Segment, UniMessage
+from nonebot_plugin_alconna.uniseg.segment import Media
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
 
@@ -51,3 +54,14 @@ async def webm_to_gif(raw: bytes) -> bytes:
     await webm_file.unlink()
     await gif_file.unlink()
     return data
+
+
+def _repr_uniseg(seg: Segment) -> str:
+    if isinstance(seg, Media):
+        seg = copy.copy(seg)
+        seg.raw = b"..."
+    return repr(seg)
+
+
+def repr_unimsg[TS: Segment](msg: UniMessage[TS]) -> str:
+    return "[" + ", ".join(_repr_uniseg(seg) for seg in msg) + "]"

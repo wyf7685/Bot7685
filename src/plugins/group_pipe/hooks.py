@@ -8,6 +8,7 @@ from src.plugins.gtg import call_soon
 
 from .database import MsgIdCacheDAO, PipeDAO, display_pipe
 from .processor import get_processor
+from .utils import repr_unimsg
 
 
 async def send_pipe_msg(
@@ -28,9 +29,9 @@ async def send_pipe_msg(
         return
 
     unimsg = UniMessage.text(msg_head)
-    unimsg.extend(await get_processor(listen.adapter)(bot, dst_bot).process(msg))
+    unimsg.extend(await get_processor(bot.type)(bot, dst_bot).process(msg))
     logger.debug(f"发送管道: {display}")
-    logger.debug(f"消息: {unimsg!r}")
+    logger.debug(f"消息: {repr_unimsg(unimsg)}")
 
     try:
         dst_ids = await get_processor(dst_bot.type).send(unimsg, target, dst_bot)
