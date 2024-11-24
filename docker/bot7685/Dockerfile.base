@@ -12,7 +12,8 @@ RUN apt-get update && \
     apt-get purge -y --auto-remove
 
 RUN python -m pip install --no-cache-dir playwright && \
-    playwright install chromium --with-deps && \
+    playwright install chromium && \
+    playwright install-deps && \
     apt-get purge -y --auto-remove
 
 CMD [ "bash" ]
