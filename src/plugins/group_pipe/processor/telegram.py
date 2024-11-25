@@ -5,9 +5,10 @@ from typing import override
 
 import nonebot
 from nonebot.adapters import Event as BaseEvent
-from nonebot.adapters.telegram import Bot, Message, MessageSegment, model
+from nonebot.adapters.telegram import Bot, Message, MessageSegment
 from nonebot.adapters.telegram.event import MessageEvent
 from nonebot.adapters.telegram.message import Reply as TgReply
+from nonebot.adapters.telegram.model import Message as MessageModel
 from nonebot_plugin_alconna.uniseg import (
     File,
     Image,
@@ -44,7 +45,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
     @override
     @staticmethod
-    def extract_msg_id(res: model.Message) -> str:
+    def extract_msg_id(res: MessageModel) -> str:
         return str(res.message_id) if res else ""
 
     async def get_file_url(self, file_id: str) -> str:
