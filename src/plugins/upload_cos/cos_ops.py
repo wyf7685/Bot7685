@@ -74,18 +74,28 @@ class AsyncCosS3Client:
         )
 
 
+__global_client: AsyncCosS3Client | None = None
+
+
 def get_client(retry: int = 1) -> AsyncCosS3Client:
-    client = CosS3Client(
-        conf=CosConfig(
-            Region=config.region,
-            SecretId=config.secret_id,
-            SecretKey=config.secret_key,
-            Token=None,
-            Scheme="https",
-        ),
-        retry=retry,
+    global __global_client
+
+    if __global_client is not None:
+        return __global_client
+
+    __global_client = AsyncCosS3Client(
+        CosS3Client(
+            conf=CosConfig(
+                Region=config.region,
+                SecretId=config.secret_id,
+                SecretKey=config.secret_key,
+                Token=None,
+                Scheme="https",
+            ),
+            retry=retry,
+        )
     )
-    return AsyncCosS3Client(client)
+    return __global_client
 
 
 class MultipartUploadTask:
