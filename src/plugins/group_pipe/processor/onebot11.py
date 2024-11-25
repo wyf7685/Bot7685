@@ -1,6 +1,6 @@
 import contextlib
 import json
-from collections.abc import AsyncGenerator, Sequence
+from collections.abc import AsyncIterable, Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, ClassVar, override
@@ -112,7 +112,7 @@ async def solve_url_302(url: str) -> str:
     return url
 
 
-async def handle_json_msg(data: dict[str, Any]) -> AsyncGenerator[Segment]:
+async def handle_json_msg(data: dict[str, Any]) -> AsyncIterable[Segment]:
     def default() -> Segment:
         return Text(f"[json消息:{data}]")
 
@@ -224,7 +224,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         return False
 
-    async def handle_forward(self, data: dict[str, Any]) -> AsyncGenerator[Segment]:
+    async def handle_forward(self, data: dict[str, Any]) -> AsyncIterable[Segment]:
         cached = False
         forward_id = data["id"]
         if "napcat" in await self.get_platform() and "content" in data:
@@ -240,7 +240,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             yield Keyboard([btn])
 
     @override
-    async def convert_segment(self, segment: MessageSegment) -> AsyncGenerator[Segment]:
+    async def convert_segment(self, segment: MessageSegment) -> AsyncIterable[Segment]:
         match segment.type:
             case "at":
                 yield Text(f"[at:{segment.data['qq']}]")

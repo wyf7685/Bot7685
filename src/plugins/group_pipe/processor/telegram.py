@@ -1,4 +1,4 @@
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncIterable
 from copy import deepcopy
 from io import BytesIO
 from typing import override
@@ -91,7 +91,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             )
 
     @override
-    async def convert_segment(self, segment: MessageSegment) -> AsyncGenerator[Segment]:
+    async def convert_segment(self, segment: MessageSegment) -> AsyncIterable[Segment]:
         match segment.type:
             case "mention":
                 yield Text(segment.data["text"])

@@ -1,4 +1,4 @@
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncIterable
 from typing import Any, cast
 
 from nonebot.adapters import Bot, Event, Message, MessageSegment
@@ -52,7 +52,7 @@ class MessageProcessor[
             return Reply(reply_id)
         return Text(f"[reply:{src_msg_id}]")
 
-    async def convert_segment(self, segment: TMS) -> AsyncGenerator[Segment]:
+    async def convert_segment(self, segment: TMS) -> AsyncIterable[Segment]:
         if fn := get_builder(self.src_bot):
             result = fn.convert(segment)
             if isinstance(result, list):

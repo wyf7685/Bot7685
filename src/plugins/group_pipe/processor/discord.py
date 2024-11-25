@@ -1,4 +1,4 @@
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncIterable
 from copy import deepcopy
 from typing import ClassVar, override
 from weakref import WeakKeyDictionary
@@ -67,7 +67,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         return Text(f"[image:{attachment.filename}]")
 
     @override
-    async def convert_segment(self, segment: MessageSegment) -> AsyncGenerator[Segment]:
+    async def convert_segment(self, segment: MessageSegment) -> AsyncIterable[Segment]:
         match segment:
             case (
                 MentionRoleSegment()
