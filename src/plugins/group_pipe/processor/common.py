@@ -32,6 +32,10 @@ class MessageProcessor[
     def extract_msg_id(res: Any) -> str:
         return str(res)
 
+    def get_cos_key(self, key: str) -> str:
+        type_ = self.src_bot.type.lower().replace(" ", "_")
+        return f"{type_}/{self.src_bot.self_id}/{key}"
+
     async def get_reply_id(self, message_id: str) -> str | None:
         if self.dst_bot is None:
             return None

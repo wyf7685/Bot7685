@@ -48,16 +48,19 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     def extract_msg_id(res: MessageModel) -> str:
         return str(res.message_id) if res else ""
 
-    async def get_file_url(self, file_id: str) -> str:
+    async def get_file_info(self, file_id: str) -> tuple[str | None, str]:
         token = self.src_bot.bot_config.token
         file_path = (await self.src_bot.get_file(file_id)).file_path
-        return f"https://api.telegram.org/file/bot{token}/{file_path}"
+        return file_path, f"https://api.telegram.org/file/bot{token}/{file_path}"
 
     async def convert_image(self, file_id: str) -> Segment:
-        url = await self.get_file_url(file_id)
+        file_path, url = await self.get_file_info(file_id)
+        if file_path is None:
+            return Text(f"[image:{file_id}]")
+
         info = await guess_url_type(url)
         if info is None:
-            return Image(url=url)
+            return Text(f"[image:{file_id}]")
 
         if info.mime == "video/webm":
             if raw := await download_url(url):
@@ -66,30 +69,33 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             return Text(f"[image:{info.mime}:{file_id}]")
 
         try:
-            url = await upload_from_url(url, f"image/{file_id}.{info.extension}")
+            url = await upload_from_url(url, self.get_cos_key(file_path))
         except Exception as err:
             logger.opt(exception=err).debug("上传文件失败")
 
         return Image(url=url, mimetype=info.mime)
 
     async def convert_file(self, file_id: str) -> Segment:
-        url = await self.get_file_url(file_id)
+        file_path, url = await self.get_file_info(file_id)
+        if file_path is None:
+            return Text(f"[file:{file_id}]")
+
         info = await guess_url_type(url)
         if info is None:
             return Text(f"[file:{file_id}]")
 
         try:
-            url = await upload_from_url(url, key=f"file/{file_id}.{info.extension}")
+            url = await upload_from_url(url, self.get_cos_key(file_path))
         except Exception as err:
             logger.opt(exception=err).debug("上传文件失败")
             return Text(f"[file:{info.mime}:{file_id}]")
-        else:
-            return File(
-                id=file_id,
-                url=url,
-                mimetype=info.mime,
-                name=f"{hash(file_id)}.{info.extension}",
-            )
+
+        return File(
+            id=file_id,
+            url=url,
+            mimetype=info.mime,
+            name=file_path.rpartition("/")[-1],
+        )
 
     @override
     async def convert_segment(self, segment: MessageSegment) -> AsyncIterable[Segment]:
