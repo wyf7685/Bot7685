@@ -12,6 +12,7 @@ from .config import config
 
 ROOT = Path("qbot/upload")
 DEFAULT_CHUNK_SIZE = 4 * 1024 * 1024  # 4MB
+DEFAULT_EXPIRE_SECS = 3600  # 1 hour
 
 
 class _PartDict(TypedDict):
@@ -153,7 +154,7 @@ async def delete_file(key: str, retry: int = 3) -> None:
     )
 
 
-async def presign(key: str, expired: int = 3600) -> str:
+async def presign(key: str, expired: int = DEFAULT_EXPIRE_SECS) -> str:
     return await get_client().get_presigned_url(
         key=(ROOT / key).as_posix(),
         method="GET",
