@@ -28,19 +28,18 @@ async def check_url_ok(url: str) -> bool:
 class _FileType(NamedTuple):
     mime: str
     extension: str
-
-
-def get_file_type(raw: bytes) -> _FileType:
-    info = fleep.get(raw)
-    return _FileType(info.mime[0], info.extension[0])
+    size: int
 
 
 async def guess_url_type(url: str) -> _FileType | None:
     async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
-        head = await anext(resp.aiter_bytes(128), None)
-        if head is not None:
-            return get_file_type(head)
-    return None
+        size = resp.headers.get("Content-Length")
+        if not size:
+            return None
+
+        head = await anext(resp.aiter_bytes(128))
+        info = fleep.get(head)
+        return _FileType(info.mime[0], info.extension[0], int(size))
 
 
 async def webm_to_gif(raw: bytes) -> bytes:
