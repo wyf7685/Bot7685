@@ -96,7 +96,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case "mention":
                 yield Text(segment.data["text"])
             case "sticker" | "photo":
-                yield await self.convert_image(segment.data["file_id"])
+                yield await self.convert_image(segment.data["file"])
             case "document" | "video":
                 yield await self.convert_file(segment.data["file"])
             case "reply":
