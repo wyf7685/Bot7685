@@ -63,7 +63,7 @@ async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
         await UniMessage.text("未找到合并转发消息").finish(reply_to=True)
 
     cache_data = json.loads(cache)
-    processor = get_processor(bot.type)
+    processor = get_processor(bot)
 
     for item in cache_data:
         nick = item["nick"]

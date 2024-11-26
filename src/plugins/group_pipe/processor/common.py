@@ -1,6 +1,7 @@
 from collections.abc import AsyncIterable
 from typing import Any, cast
 
+import nonebot
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot_plugin_alconna.uniseg import (
     FallbackStrategy,
@@ -13,6 +14,8 @@ from nonebot_plugin_alconna.uniseg import (
 )
 
 from ..database import MsgIdCacheDAO
+
+logger = nonebot.logger.opt(colors=True)
 
 
 class MessageProcessor[
@@ -70,10 +73,14 @@ class MessageProcessor[
             msg = cast(TM, builder.preprocess(msg))
 
         result = UniMessage[Segment]()
+        segment: TMS
         for segment in msg:
-            async for seg in self.convert_segment(segment):
-                result.append(seg)
-
+            try:
+                async for seg in self.convert_segment(segment):
+                    result.append(seg)
+            except Exception as err:
+                logger.opt(exception=err).warning("处理消息段失败")
+                result.append(Text(f"[error:{segment.type}]"))
         return result
 
     @classmethod

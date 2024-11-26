@@ -48,7 +48,8 @@ async def webm_to_gif(raw: bytes) -> bytes:
     gif_file = cache_dir / f"{id(raw)}.gif"
 
     await webm_file.write_bytes(raw)
-    await anyio.run_process(["ffmpeg", "-i", str(webm_file), str(gif_file)])
+    result = await anyio.run_process(["ffmpeg", "-i", str(webm_file), str(gif_file)])
+    result.check_returncode()
     data = await gif_file.read_bytes()
     await webm_file.unlink()
     await gif_file.unlink()

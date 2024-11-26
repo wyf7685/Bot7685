@@ -16,7 +16,7 @@ async def send_pipe_msg(
     listen: Target,
     target: Target,
     msg_id: str,
-    msg_head: str,
+    msg_head: UniMessage,
     msg: Message,
 ) -> None:
     display = display_pipe(listen, target)
@@ -28,13 +28,12 @@ async def send_pipe_msg(
         logger.warning(f"管道选择目标 Bot 失败: {err}")
         return
 
-    unimsg = UniMessage.text(msg_head)
-    unimsg.extend(await get_processor(bot.type)(bot, dst_bot).process(msg))
+    unimsg = msg_head + await get_processor(bot, dst_bot).process(msg)
     logger.debug(f"发送管道: {display}")
     logger.debug(f"消息: {repr_unimsg(unimsg)}")
 
     try:
-        dst_ids = await get_processor(dst_bot.type).send(unimsg, target, dst_bot)
+        dst_ids = await get_processor(dst_bot).send(unimsg, target, dst_bot)
     except Exception as err:
         logger.warning(f"管道: {display}")
         logger.warning(f"发送管道消息失败: {err}")
@@ -79,7 +78,7 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
 
     group_name = ((g := info.group or info.guild) and g.name) or listen.id
     user_name = info.user.nick or info.user.name or info.user.id
-    msg_head = f"[ {group_name} - {user_name} ]\n"
+    msg_head = UniMessage.text(f"[ {group_name} - {user_name} ]\n")
 
     for pipe in pipes:
         target = pipe.get_target()

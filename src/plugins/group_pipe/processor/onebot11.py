@@ -18,6 +18,7 @@ from nonebot.adapters.onebot.v11 import (
     MessageEvent,
     MessageSegment,
 )
+from nonebot.compat import type_validate_python
 from nonebot.utils import escape_tag
 from nonebot_plugin_alconna.uniseg import (
     Button,
@@ -135,7 +136,6 @@ async def handle_json_msg(data: dict[str, Any]) -> AsyncIterable[Segment]:
 
 class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     bot_platform_cache: ClassVar[WeakKeyDictionary[Bot, str]] = WeakKeyDictionary()
-    nc_get_rkey_available: ClassVar[bool] = True
     do_resolve_url: bool
 
     @override
@@ -161,20 +161,26 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             data = await self.src_bot.get_version_info()
             platform = str(data.get("app_name", "unkown")).lower()
             self.bot_platform_cache[self.src_bot] = platform
+            logger.debug(f"获取 {self.src_bot} 平台: {platform}")
 
         return self.bot_platform_cache[self.src_bot]
 
     async def get_rkey(self) -> Sequence[str]:
-        if not self.nc_get_rkey_available:
+        if "napcat" not in await self.get_platform():
             return await get_rkey()
 
         try:
-            res: list[dict[str, str]] = await self.src_bot.call_api("nc_get_rkey")
-        except ActionFailed:
-            type(self).nc_get_rkey_available = False
+            res = type_validate_python(
+                list[dict[str, str]],
+                await self.src_bot.call_api("nc_get_rkey"),
+            )
+        except Exception:
+            logger.debug("nc_get_rkey 出错，使用 rkey API")
             return await get_rkey()
 
-        return [item["rkey"].removeprefix("&rkey=") for item in res]
+        rkeys = [item["rkey"].removeprefix("&rkey=") for item in res]
+        logger.debug(f"从 NapCat 获取 rkey: {rkeys}")
+        return rkeys
 
     async def check_rkey(self, url: str) -> str | None:
         if await check_url_ok(url):
@@ -184,6 +190,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             for rkey in await self.get_rkey():
                 updated = parsed.update_query(rkey=rkey).human_repr()
                 if await check_url_ok(updated):
+                    logger.debug(f"更新 rkey: {url} -> {updated}")
                     return updated
 
         return None
@@ -217,9 +224,11 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             cache_data.append({"nick": nick, "msg": unimsg.dump(media_save_dir=False)})
 
         if cache_data:
-            key = f"forward_{forward_id}"
-            value = json.dumps(cache_data)
-            await KVCacheDAO().set_value(self.src_bot.type, key, value)
+            await KVCacheDAO().set_value(
+                adapter=self.src_bot.type,
+                key=f"forward_{forward_id}",
+                value=json.dumps(cache_data),
+            )
             return True
 
         return False
@@ -227,8 +236,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
     async def handle_forward(self, data: dict[str, Any]) -> AsyncIterable[Segment]:
         cached = False
         forward_id = data["id"]
-        if "napcat" in await self.get_platform() and "content" in data:
-            content = data["content"]
+        if "napcat" in await self.get_platform() and (content := data.get("content")):
             cached = await self.cache_forward(forward_id, content)
         yield Text(f"[forward:{forward_id}:cache={cached}]")
         if cached:
