@@ -4,24 +4,41 @@ from typing import NamedTuple
 import anyio
 import fleep
 import httpx
+import nonebot
 from nonebot_plugin_alconna.uniseg import Segment, UniMessage
 from nonebot_plugin_alconna.uniseg.segment import Media
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
 
+class _SharedClient:
+    client: httpx.AsyncClient
+
+    @nonebot.get_driver().on_startup
+    async def _() -> None:
+        _SharedClient.client = httpx.AsyncClient()
+        await _SharedClient.client.__aenter__()
+
+    @nonebot.get_driver().on_shutdown
+    async def _() -> None:
+        await _SharedClient.client.__aexit__(None, None, None)
+
+
+def get_httpx_client() -> httpx.AsyncClient:
+    return _SharedClient.client
+
+
 async def download_url(url: str) -> bytes:
-    async with httpx.AsyncClient() as client:
-        try:
-            resp = await client.get(url)
-            resp.raise_for_status()
-        except (httpx.ConnectError, httpx.HTTPError):
-            return b""
-        else:
-            return resp.read()
+    try:
+        resp = await get_httpx_client().get(url)
+        resp.raise_for_status()
+    except (httpx.ConnectError, httpx.HTTPError):
+        return b""
+    else:
+        return resp.read()
 
 
 async def check_url_ok(url: str) -> bool:
-    async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
+    async with get_httpx_client().stream("GET", url) as resp:
         return resp.status_code == 200
 
 
@@ -32,7 +49,7 @@ class _FileType(NamedTuple):
 
 
 async def guess_url_type(url: str) -> _FileType | None:
-    async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
+    async with get_httpx_client().stream("GET", url) as resp:
         size = resp.headers.get("Content-Length")
         if not size:
             return None
