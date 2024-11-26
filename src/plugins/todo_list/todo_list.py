@@ -3,14 +3,15 @@ from collections.abc import Generator, Iterable
 from datetime import datetime
 from typing import Annotated, Any, Self
 
-import aiofiles
+import anyio
 from async_lru import alru_cache
+from nonebot.compat import type_validate_json
 from nonebot.params import Depends
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_localstore import get_plugin_data_dir
 from nonebot_plugin_session import SessionId, SessionIdType
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 @alru_cache(1 << 4, ttl=120)
@@ -20,15 +21,11 @@ async def render_markdown(md: str) -> bytes:
 
 class Todo(BaseModel):
     content: str
-    checked: bool
-    pinned: bool
-    time: datetime
+    checked: bool = False
+    pinned: bool = False
+    time: datetime = Field(default_factory=datetime.now)
 
-    @classmethod
-    def new(cls, content: str) -> Self:
-        return cls(content=content, checked=False, pinned=False, time=datetime.now())
-
-    def show_markdown(self, idx: int) -> str:
+    def show(self, idx: int) -> str:
         check = "x" if self.checked else " "
         pin = "📌" if self.pinned else "&nbsp; &nbsp; &nbsp;"
         return f"- [{check}] {pin} **{idx}.** {self.content}"
@@ -46,29 +43,23 @@ class TodoList:
     async def load(
         cls, session_id: Annotated[str, SessionId(SessionIdType.USER)]
     ) -> Self:
-        fp = get_plugin_data_dir() / f"{session_id}.json"
+        fp = anyio.Path(get_plugin_data_dir()) / f"{session_id}.json"
         if not fp.exists():
-            fp.write_text("[]")
+            await fp.write_text("[]")
             return cls(session_id, [])
 
-        async with aiofiles.open(fp, "r+", encoding="utf-8") as file:
-            data = json.loads(await file.read())
-
-        return cls(
-            session_id,
-            [Todo.model_validate(i) for i in data],
-        )
+        data = type_validate_json(list[Todo], await fp.read_text(encoding="utf-8"))
+        return cls(session_id, data)
 
     async def save(self) -> None:
         self.sort()
-        fp = get_plugin_data_dir() / f"{self.session_id}.json"
+        fp = anyio.Path(get_plugin_data_dir()) / f"{self.session_id}.json"
         data = json.dumps(
             [i.model_dump(mode="json") for i in self.todo],
             ensure_ascii=False,
         )
 
-        async with aiofiles.open(fp, "w+", encoding="utf-8") as file:
-            await file.write(data)
+        await fp.write_text(data, encoding="utf-8")
 
     def sort(self) -> None:
         self.todo.sort(key=lambda x: (x.checked, 1 - x.pinned, x.time.timestamp()))
@@ -84,7 +75,7 @@ class TodoList:
             await UniMessage(f"没有序号为 {index} 的待办事项").finish()
 
     async def add(self, content: str) -> Todo:
-        todo = Todo.new(content)
+        todo = Todo(content=content)
         self.todo.append(todo)
         await self.save()
         return todo
@@ -112,7 +103,7 @@ class TodoList:
     async def render(self, todo: Iterable[Todo] | None = None) -> bytes:
         md = "### 📝 Todo List\n"
         for i, t in enumerate(todo or self.todo, 1):
-            md += f"{t.show_markdown(i)}\n"
+            md += f"{t.show(i)}\n"
         return await render_markdown(md)
 
     def checked(self) -> Generator[Todo, Any]:
