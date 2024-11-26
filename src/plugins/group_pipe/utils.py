@@ -10,26 +10,26 @@ from nonebot_plugin_alconna.uniseg.segment import Media
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
 
-class _SharedClient:
+class _GlobalAsyncClient:
     client: httpx.AsyncClient
 
     @nonebot.get_driver().on_startup
     async def _() -> None:
-        _SharedClient.client = httpx.AsyncClient()
-        await _SharedClient.client.__aenter__()
+        _GlobalAsyncClient.client = httpx.AsyncClient()
+        await _GlobalAsyncClient.client.__aenter__()
 
     @nonebot.get_driver().on_shutdown
     async def _() -> None:
-        await _SharedClient.client.__aexit__(None, None, None)
+        await _GlobalAsyncClient.client.__aexit__(None, None, None)
 
 
-def get_httpx_client() -> httpx.AsyncClient:
-    return _SharedClient.client
+def async_client() -> httpx.AsyncClient:
+    return _GlobalAsyncClient.client
 
 
 async def download_url(url: str) -> bytes:
     try:
-        resp = await get_httpx_client().get(url)
+        resp = await async_client().get(url)
         resp.raise_for_status()
     except (httpx.ConnectError, httpx.HTTPError):
         return b""
@@ -38,7 +38,7 @@ async def download_url(url: str) -> bytes:
 
 
 async def check_url_ok(url: str) -> bool:
-    async with get_httpx_client().stream("GET", url) as resp:
+    async with async_client().stream("GET", url) as resp:
         return resp.status_code == 200
 
 
@@ -49,7 +49,7 @@ class _FileType(NamedTuple):
 
 
 async def guess_url_type(url: str) -> _FileType | None:
-    async with get_httpx_client().stream("GET", url) as resp:
+    async with async_client().stream("GET", url) as resp:
         size = resp.headers.get("Content-Length")
         if not size:
             return None

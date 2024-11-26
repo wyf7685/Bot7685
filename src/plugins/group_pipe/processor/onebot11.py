@@ -36,7 +36,7 @@ from src.plugins.gtg import call_soon
 from src.plugins.upload_cos import upload_from_local, upload_from_url
 
 from ..database import KVCacheDAO
-from ..utils import check_url_ok, get_httpx_client, guess_url_type
+from ..utils import async_client, check_url_ok, guess_url_type
 from .common import MessageProcessor as BaseMessageProcessor
 
 logger = nonebot.logger.opt(colors=True)
@@ -44,7 +44,7 @@ logger = nonebot.logger.opt(colors=True)
 
 async def get_rkey() -> tuple[str, str]:
     rkey_api = "https://llob.linyuchen.net/rkey"
-    resp = await get_httpx_client().get(rkey_api)
+    resp = await async_client().get(rkey_api)
     data: dict[str, str] = resp.json()
     p_rkey = data["private_rkey"].removeprefix("&rkey=")
     g_rkey = data["group_rkey"].removeprefix("&rkey=")
@@ -105,7 +105,7 @@ async def upload_local_file(path: Path) -> File | None:
 
 
 async def solve_url_302(url: str) -> str:
-    async with get_httpx_client().stream("GET", url) as resp:
+    async with async_client().stream("GET", url) as resp:
         if resp.status_code == 302:
             return resp.headers["Location"].partition("?")[0]
     return url
