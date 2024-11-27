@@ -59,7 +59,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             mime = info and info.mime
 
             try:
-                url = await upload_from_url(url, attachment.filename)
+                url = await upload_from_url(url, self.get_cos_key(attachment.filename))
             except Exception as err:
                 logger.opt(exception=err).debug("上传文件失败，使用原始链接")
 

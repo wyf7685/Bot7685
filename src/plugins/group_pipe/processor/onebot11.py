@@ -52,62 +52,10 @@ async def get_rkey() -> tuple[str, str]:
     return p_rkey, g_rkey
 
 
-async def check_rkey(url: str) -> str | None:
-    if await check_url_ok(url):
-        return url
-
-    if "rkey" in (parsed := yarl.URL(url)).query:
-        for rkey in await get_rkey():
-            updated = parsed.update_query(rkey=rkey).human_repr()
-            if await check_url_ok(updated):
-                return updated
-
-    return None
-
-
-async def url_to_image(url: str) -> Image | None:
-    info = await guess_url_type(url)
-    if info is None:
-        return None
-
-    name = f"{hash(url)}.{info.extension}"
-
-    try:
-        url = await upload_from_url(url, name)
-    except Exception as err:
-        logger.opt(exception=err).debug("上传图片失败，使用原始链接")
-    else:
-        logger.debug(f"上传图片: {escape_tag(url)}")
-
-    return Image(url=url, mimetype=info.mime)
-
-
-async def url_to_video(url: str) -> Video | None:
-    try:
-        url = await upload_from_url(url, f"{hash(url)}.mp4")
-    except Exception as err:
-        logger.opt(exception=err).debug("上传视频失败，使用原始链接")
-    else:
-        logger.debug(f"上传视频: {escape_tag(url)}")
-
-    return Video(url=url)
-
-
-async def upload_local_file(path: Path) -> File | None:
-    try:
-        url = await upload_from_local(path, f"{hash(path)}/{path.name}")
-    except Exception as err:
-        logger.opt(exception=err).debug("上传文件失败")
-        return None
-    else:
-        logger.debug(f"上传文件: {escape_tag(url)}")
-        return File(url=url)
-
-
 async def solve_url_302(url: str) -> str:
     async with async_client().stream("GET", url) as resp:
         if resp.status_code == 302:
-            return resp.headers["Location"].partition("?")[0]
+            return await solve_url_302(resp.headers["Location"].partition("?")[0])
     return url
 
 
@@ -193,6 +141,44 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         return None
 
+    async def url_to_image(self, url: str) -> Image | None:
+        info = await guess_url_type(url)
+        if info is None:
+            return None
+
+        name = f"{hash(url)}.{info.extension}"
+
+        try:
+            url = await upload_from_url(url, self.get_cos_key(name))
+        except Exception as err:
+            logger.opt(exception=err).debug("上传图片失败，使用原始链接")
+        else:
+            logger.debug(f"上传图片: {escape_tag(url)}")
+
+        return Image(url=url, mimetype=info.mime)
+
+    async def url_to_video(self, url: str) -> Video | None:
+        try:
+            url = await upload_from_url(url, self.get_cos_key(f"{hash(url)}.mp4"))
+        except Exception as err:
+            logger.opt(exception=err).debug("上传视频失败，使用原始链接")
+        else:
+            logger.debug(f"上传视频: {escape_tag(url)}")
+
+        return Video(url=url)
+
+    async def upload_local_file(self, path: Path) -> File | None:
+        try:
+            url = await upload_from_local(
+                path, self.get_cos_key(f"{hash(path)}/{path.name}")
+            )
+        except Exception as err:
+            logger.opt(exception=err).debug("上传文件失败")
+            return None
+        else:
+            logger.debug(f"上传文件: {escape_tag(url)}")
+            return File(url=url)
+
     async def cache_forward(
         self,
         forward_id: str,
@@ -254,7 +240,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 if url := segment.data.get("url"):
                     if self.do_resolve_url:
                         if (url := await self.check_rkey(url)) and (
-                            seg := await url_to_image(url)
+                            seg := await self.url_to_image(url)
                         ):
                             yield seg
                     else:
@@ -273,7 +259,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 if url := segment.data.get("url"):
                     if self.do_resolve_url:
                         if (url := await self.check_rkey(url)) and (
-                            seg := await url_to_video(url)
+                            seg := await self.url_to_video(url)
                         ):
                             yield seg
                     else:
@@ -282,7 +268,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 if file_id := segment.data.get("file_id"):
                     res = await self.src_bot.call_api("get_file", file_id=file_id)
                     path = Path("/share") / str(res["file_name"])
-                    if path.exists() and (seg := await upload_local_file(path)):
+                    if path.exists() and (seg := await self.upload_local_file(path)):
                         yield seg
                     path.unlink(missing_ok=True)
             case _:
