@@ -54,8 +54,11 @@ async def guess_url_type(url: str) -> _FileType | None:
         if not size:
             return None
 
-        head = await anext(resp.aiter_bytes(128))
+        head = await anext(resp.aiter_bytes(256))
         info = fleep.get(head)
+        if not info.mime or not info.extension:
+            return None
+
         return _FileType(info.mime[0], info.extension[0], int(size))
 
 
