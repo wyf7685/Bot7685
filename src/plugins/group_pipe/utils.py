@@ -38,8 +38,12 @@ async def download_url(url: str) -> bytes:
 
 
 async def check_url_ok(url: str) -> bool:
-    async with async_client().stream("GET", url) as resp:
-        return resp.status_code == 200
+    try:
+        async with async_client().stream("GET", url) as resp:
+            resp.raise_for_status()
+    except (httpx.ConnectError, httpx.HTTPError):
+        return False
+    return True
 
 
 class _FileType(NamedTuple):
