@@ -43,7 +43,8 @@ async def check_url_ok(url: str) -> bool:
             resp.raise_for_status()
     except (httpx.ConnectError, httpx.HTTPError):
         return False
-    return True
+    else:
+        return True
 
 
 class _FileType(NamedTuple):
@@ -81,7 +82,7 @@ async def webm_to_gif(raw: bytes) -> bytes:
 
 
 def _repr_uniseg(seg: Segment) -> str:
-    if isinstance(seg, Media):
+    if isinstance(seg, Media) and seg.raw is not None:
         seg = copy.copy(seg)
         seg.raw = b"..."
     return repr(seg)
