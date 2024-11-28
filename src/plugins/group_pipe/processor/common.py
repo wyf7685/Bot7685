@@ -1,6 +1,8 @@
 from collections.abc import AsyncIterable
-from typing import Any, cast
+from typing import Any, ClassVar, cast, override
+from weakref import WeakKeyDictionary
 
+import anyio
 import nonebot
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot_plugin_alconna.uniseg import (
@@ -14,26 +16,25 @@ from nonebot_plugin_alconna.uniseg import (
 )
 
 from ..database import MsgIdCacheDAO
+from ._registry import register
+from .abstract import (
+    AbstractMessageConverter,
+    AbstractMessageProcessor,
+    AbstractMessageSender,
+)
 
-logger = nonebot.logger.opt(colors=True)
 
-
-class MessageProcessor[
+class MessageConverter[
     TMS: MessageSegment = MessageSegment,
     TB: Bot = Bot,
     TM: Message = Message,
-]:
-    def __init__(self, src_bot: TB, dst_bot: Bot | None = None) -> None:
-        self.src_bot = src_bot
-        self.dst_bot = dst_bot
+](AbstractMessageConverter[TMS, TB, TM]):
+    logger = nonebot.logger.opt(colors=True)
 
+    @override
     @classmethod
     def get_message(cls, event: Event) -> TM | None:
         return cast(TM, event.get_message())
-
-    @staticmethod
-    def extract_msg_id(res: Any) -> str:
-        return str(res)
 
     def get_cos_key(self, key: str) -> str:
         type_ = self.src_bot.type.lower().replace(" ", "_")
@@ -68,6 +69,7 @@ class MessageProcessor[
             else:
                 yield result
 
+    @override
     async def process(self, msg: TM) -> UniMessage[Segment]:
         if builder := get_builder(self.src_bot):
             msg = cast(TM, builder.preprocess(msg))
@@ -79,15 +81,41 @@ class MessageProcessor[
                 async for seg in self.convert_segment(segment):
                     result.append(seg)
             except Exception as err:
-                logger.opt(exception=err).warning("处理消息段失败")
+                self.logger.opt(exception=err).warning("处理消息段失败")
                 result.append(Text(f"[error:{segment.type}]"))
         return result
 
+
+class MessageSender[TB: Bot](AbstractMessageSender[TB]):
+    _bot_send_lock: ClassVar[WeakKeyDictionary[Bot, anyio.Lock]] = WeakKeyDictionary()
+
+    @staticmethod
+    def extract_msg_id(res: Any) -> str:
+        return str(res)
+
+    @classmethod
+    def _send_lock(cls, dst_bot: Bot) -> anyio.Lock:
+        if lock := cls._bot_send_lock.get(dst_bot):
+            return lock
+        lock = anyio.Lock()
+        cls._bot_send_lock[dst_bot] = lock
+        return lock
+
+    @override
     @classmethod
     async def send(cls, msg: UniMessage, target: Target, dst_bot: TB) -> list[str]:
-        receipt = await msg.send(
-            target=target,
-            bot=dst_bot,
-            fallback=FallbackStrategy.ignore,
-        )
+        async with cls._send_lock(dst_bot):
+            receipt = await msg.send(
+                target=target,
+                bot=dst_bot,
+                fallback=FallbackStrategy.ignore,
+            )
         return [cls.extract_msg_id(item) for item in receipt.msg_ids]
+
+
+@register(None)
+class MessageProcessor(
+    MessageConverter[MessageSegment, Bot, Message],
+    MessageSender[Bot],
+    AbstractMessageProcessor[MessageSegment, Bot, Message],
+): ...

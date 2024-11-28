@@ -3,7 +3,6 @@ from copy import deepcopy
 from io import BytesIO
 from typing import override
 
-import nonebot
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Bot, Message, MessageSegment
 from nonebot.adapters.telegram.event import MessageEvent
@@ -22,12 +21,13 @@ from nonebot_plugin_alconna.uniseg import (
 from src.plugins.upload_cos import upload_from_url
 
 from ..utils import download_url, guess_url_type, webm_to_gif
-from .common import MessageProcessor as BaseMessageProcessor
+from ._registry import register
+from .abstract import AbstractMessageProcessor
+from .common import MessageConverter as BaseMessageConverter
+from .common import MessageSender as BaseMessageSender
 
-logger = nonebot.logger.opt(colors=True)
 
-
-class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
+class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
     @override
     @classmethod
     def get_message(cls, event: BaseEvent) -> Message | None:
@@ -42,11 +42,6 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             )
             message.insert(0, reply)
         return message
-
-    @override
-    @staticmethod
-    def extract_msg_id(res: MessageModel) -> str:
-        return str(res.message_id) if res else ""
 
     async def get_file_info(self, file_id: str) -> tuple[str | None, str]:
         token = self.src_bot.bot_config.token
@@ -71,7 +66,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         try:
             url = await upload_from_url(url, self.get_cos_key(file_path))
         except Exception as err:
-            logger.opt(exception=err).debug("上传文件失败")
+            self.logger.opt(exception=err).debug("上传文件失败")
 
         return Image(url=url, mimetype=info.mime)
 
@@ -87,7 +82,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
         try:
             url = await upload_from_url(url, self.get_cos_key(file_path))
         except Exception as err:
-            logger.opt(exception=err).debug("上传文件失败")
+            self.logger.opt(exception=err).debug("上传文件失败")
             return Text(f"[file:{info.mime}:{file_id}]")
 
         return File(
@@ -112,6 +107,13 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 async for seg in super().convert_segment(segment):
                     yield seg
 
+
+class MessageSender(BaseMessageSender[Bot]):
+    @override
+    @staticmethod
+    def extract_msg_id(res: MessageModel) -> str:
+        return str(res.message_id) if res else ""
+
     @override
     @classmethod
     async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> list[str]:
@@ -130,8 +132,17 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 gif_files.append(file)
 
         msg_ids = await super().send(msg, target, dst_bot)
-        for file in gif_files:
-            res = await dst_bot.send_animation(target.id, file)
-            msg_ids.append(cls.extract_msg_id(res))
+        async with cls._send_lock(dst_bot):
+            for file in gif_files:
+                res = await dst_bot.send_animation(target.id, file)
+                msg_ids.append(cls.extract_msg_id(res))
 
         return msg_ids
+
+
+@register("Telegram")
+class MessageProcessor(
+    MessageConverter,
+    MessageSender,
+    AbstractMessageProcessor[MessageSegment, Bot, Message],
+): ...

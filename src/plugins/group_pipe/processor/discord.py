@@ -3,7 +3,6 @@ from copy import deepcopy
 from typing import ClassVar, override
 from weakref import WeakKeyDictionary
 
-import nonebot
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.discord import Bot, MessageEvent
 from nonebot.adapters.discord.api.model import UNSET, AttachmentSend, MessageGet
@@ -22,12 +21,13 @@ from nonebot_plugin_alconna.uniseg import Image, Segment, Text
 from src.plugins.upload_cos import upload_from_url
 
 from ..utils import guess_url_type
-from .common import MessageProcessor as BaseMessageProcessor
+from ._registry import register
+from .abstract import AbstractMessageProcessor
+from .common import MessageConverter as BaseMessageConverter
+from .common import MessageSender as BaseMessageSender
 
-logger = nonebot.logger.opt(colors=True)
 
-
-class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
+class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
     attachment_url: ClassVar[WeakKeyDictionary[AttachmentSend, str]] = (
         WeakKeyDictionary()
     )
@@ -48,11 +48,6 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         return message
 
-    @override
-    @staticmethod
-    def extract_msg_id(res: MessageGet) -> str:
-        return str(res.id)
-
     async def convert_attachment(self, attachment: AttachmentSend) -> Segment:
         if url := self.attachment_url.get(attachment):
             info = await guess_url_type(url)
@@ -61,7 +56,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             try:
                 url = await upload_from_url(url, self.get_cos_key(attachment.filename))
             except Exception as err:
-                logger.opt(exception=err).debug("上传文件失败，使用原始链接")
+                self.logger.opt(exception=err).debug("上传文件失败，使用原始链接")
 
             return Image(url=url, mimetype=mime)
         return Text(f"[image:{attachment.filename}]")
@@ -85,3 +80,19 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg
+
+
+class MessageSender(BaseMessageSender[Bot]):
+
+    @override
+    @staticmethod
+    def extract_msg_id(res: MessageGet) -> str:
+        return str(res.id)
+
+
+@register("Discord")
+class MessageProcessor(
+    MessageSender,
+    MessageConverter,
+    AbstractMessageProcessor[MessageSegment, Bot, Message],
+): ...

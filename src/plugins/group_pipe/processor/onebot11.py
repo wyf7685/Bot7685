@@ -8,7 +8,6 @@ from weakref import WeakKeyDictionary
 
 import nonebot
 import yarl
-from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.onebot.v11 import (
     ActionFailed,
@@ -37,7 +36,10 @@ from src.plugins.upload_cos import upload_from_local, upload_from_url
 
 from ..database import KVCacheDAO
 from ..utils import async_client, check_url_ok, guess_url_type
-from .common import MessageProcessor as BaseMessageProcessor
+from ._registry import register
+from .abstract import AbstractMessageProcessor
+from .common import MessageConverter as BaseMessageConverter
+from .common import MessageSender as BaseMessageSender
 
 logger = nonebot.logger.opt(colors=True)
 
@@ -136,14 +138,9 @@ async def handle_json_msg(data: dict[str, Any]) -> AsyncIterable[Segment]:
     return
 
 
-class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
+class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
     bot_platform_cache: ClassVar[WeakKeyDictionary[Bot, str]] = WeakKeyDictionary()
-    do_resolve_url: bool
-
-    @override
-    def __init__(self, src_bot: Bot, dst_bot: BaseBot | None = None) -> None:
-        super().__init__(src_bot, dst_bot)
-        self.do_resolve_url = True
+    do_resolve_url: bool = True
 
     @override
     @classmethod
@@ -152,11 +149,6 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
             return None
 
         return deepcopy(event.original_message)
-
-    @override
-    @staticmethod
-    def extract_msg_id(res: dict[str, Any]) -> str:
-        return str(res["message_id"]) if res else ""
 
     async def get_platform(self) -> str:
         if self.src_bot not in self.bot_platform_cache:
@@ -296,6 +288,13 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 async for seg in super().convert_segment(segment):
                     yield seg
 
+
+class MessageSender(BaseMessageSender[Bot]):
+    @override
+    @staticmethod
+    def extract_msg_id(res: dict[str, Any]) -> str:
+        return str(res["message_id"]) if res else ""
+
     @staticmethod
     def _send_files(files: list[File], target: Target, bot: Bot) -> None:
         async def upload_file(file: File) -> None:
@@ -308,8 +307,7 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
                 )
             except ActionFailed as err:
                 logger.opt(exception=err).debug(f"上传群文件失败: {err}")
-                msg = UniMessage.text(f"上传群文件失败: {file.id}")
-                await msg.send(target, bot)
+                await UniMessage.text(f"上传群文件失败: {file.id}").send(target, bot)
 
         for file in files:
             if not file.url:
@@ -328,9 +326,18 @@ class MessageProcessor(BaseMessageProcessor[MessageSegment, Bot, Message]):
 
         # 文件消息段需要单独发送
         if files := msg[File]:
-            # 从消息中排除文件消息段
-            msg = msg.exclude(File)
+            msg = msg.exclude(File) + " ".join(
+                f"[file:{file.name or file.id}]" for file in files
+            )
             cls._send_files(files, target, dst_bot)
 
         # 发送消息
         return await super().send(msg, target, dst_bot)
+
+
+@register("OneBot V11")
+class MessageProcessor(
+    MessageConverter,
+    MessageSender,
+    AbstractMessageProcessor[MessageSegment, Bot, Message],
+): ...

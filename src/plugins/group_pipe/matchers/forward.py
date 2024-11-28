@@ -7,8 +7,7 @@ from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 
 from ..database import KVCacheDAO
 from ..processor import get_processor
-from ..processor.onebot11 import MessageProcessor as V11MessageProcessor
-from ..processor.onebot11 import url_to_image
+from ..processor.onebot11 import MessageConverter, url_to_image
 from .depends import MsgTarget
 
 alc = Alconna(
@@ -49,7 +48,7 @@ async def _(bot: v11.Bot, event: v11.Event) -> None:
     id_ = seg.data["id"]
     content = seg.data["content"]
 
-    if not await V11MessageProcessor(bot).cache_forward(id_, content):
+    if not await MessageConverter(bot).cache_forward(id_, content):
         await UniMessage.text("缓存合并转发消息失败").finish(reply_to=True)
 
     await UniMessage.text(f"缓存合并转发消息成功: {id_}").finish(reply_to=True)
