@@ -108,15 +108,22 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                     yield seg
 
 
-class MessageSender(BaseMessageSender[Bot]):
+class MessageSender(BaseMessageSender[Bot, MessageModel]):
     @override
     @staticmethod
-    def extract_msg_id(res: MessageModel) -> str:
-        return str(res.message_id) if res else ""
+    def extract_msg_id(data: MessageModel) -> str:
+        return str(data.message_id) if data else ""
 
     @override
     @classmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> list[str]:
+    async def send(
+        cls,
+        dst_bot: Bot,
+        target: Target,
+        msg: UniMessage,
+        src_type: str | None = None,
+        src_id: str | None = None,
+    ) -> None:
         msg = msg.exclude(Keyboard) + msg.include(Keyboard)
 
         # alc 里没有处理 gif (animation) 的逻辑
@@ -131,13 +138,12 @@ class MessageSender(BaseMessageSender[Bot]):
                     file = (f"{seg.name}.gif", file)
                 gif_files.append(file)
 
-        msg_ids = await super().send(msg, target, dst_bot)
+        await super().send(dst_bot, target, msg, src_type, src_id)
+
         async with cls._send_lock(dst_bot):
             for file in gif_files:
                 res = await dst_bot.send_animation(target.id, file)
-                msg_ids.append(cls.extract_msg_id(res))
-
-        return msg_ids
+                await cls._set_dst_id(src_type, src_id, dst_bot, res)
 
 
 @register("Telegram")

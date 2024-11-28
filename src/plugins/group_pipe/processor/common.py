@@ -86,31 +86,60 @@ class MessageConverter[
         return result
 
 
-class MessageSender[TB: Bot](AbstractMessageSender[TB]):
+class MessageSender[TB: Bot, TR = Any](AbstractMessageSender[TB]):
     _bot_send_lock: ClassVar[WeakKeyDictionary[Bot, anyio.Lock]] = WeakKeyDictionary()
-
-    @staticmethod
-    def extract_msg_id(res: Any) -> str:
-        return str(res)
 
     @classmethod
     def _send_lock(cls, dst_bot: Bot) -> anyio.Lock:
         if lock := cls._bot_send_lock.get(dst_bot):
             return lock
-        lock = anyio.Lock()
-        cls._bot_send_lock[dst_bot] = lock
+
+        lock = cls._bot_send_lock[dst_bot] = anyio.Lock()
         return lock
+
+    @staticmethod
+    def extract_msg_id(data: TR) -> str:
+        return str(data)
+
+    @classmethod
+    async def _set_dst_id(
+        cls,
+        src_adapter: str | None,
+        src_id: str | None,
+        dst_bot: TB,
+        data: TR,
+    ) -> None:
+        if src_adapter and src_id:
+            await MsgIdCacheDAO().set_dst_id(
+                src_adapter=src_adapter,
+                src_id=src_id,
+                dst_adapter=dst_bot.type,
+                dst_id=cls.extract_msg_id(data),
+            )
 
     @override
     @classmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: TB) -> list[str]:
+    async def send(
+        cls,
+        dst_bot: TB,
+        target: Target,
+        msg: UniMessage,
+        src_type: str | None = None,
+        src_id: str | None = None,
+    ) -> None:
         async with cls._send_lock(dst_bot):
             receipt = await msg.send(
                 target=target,
                 bot=dst_bot,
                 fallback=FallbackStrategy.ignore,
             )
-        return [cls.extract_msg_id(item) for item in receipt.msg_ids]
+        for item in receipt.msg_ids:
+            await cls._set_dst_id(
+                src_adapter=src_type,
+                src_id=src_id,
+                dst_bot=dst_bot,
+                data=item,
+            )
 
 
 @register(None)

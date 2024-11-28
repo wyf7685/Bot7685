@@ -34,8 +34,14 @@ class AbstractMessageConverter[
 class AbstractMessageSender[TB: Bot = Bot](abc.ABC):
     @classmethod
     @abc.abstractmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: TB) -> list[str]:
-        return NotImplemented
+    async def send(
+        cls,
+        dst_bot: TB,
+        target: Target,
+        msg: UniMessage,
+        src_type: str | None = None,
+        src_id: str | None = None,
+    ) -> None: ...
 
 
 class AbstractMessageProcessor[

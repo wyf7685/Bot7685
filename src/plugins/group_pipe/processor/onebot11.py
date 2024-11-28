@@ -289,11 +289,11 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                     yield seg
 
 
-class MessageSender(BaseMessageSender[Bot]):
+class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
     @override
     @staticmethod
-    def extract_msg_id(res: dict[str, Any]) -> str:
-        return str(res["message_id"]) if res else ""
+    def extract_msg_id(data: dict[str, Any]) -> str:
+        return str(data["message_id"]) if data else ""
 
     @staticmethod
     def _send_files(files: list[File], target: Target, bot: Bot) -> None:
@@ -316,7 +316,14 @@ class MessageSender(BaseMessageSender[Bot]):
 
     @override
     @classmethod
-    async def send(cls, msg: UniMessage, target: Target, dst_bot: Bot) -> list[str]:
+    async def send(
+        cls,
+        dst_bot: Bot,
+        target: Target,
+        msg: UniMessage,
+        src_type: str | None = None,
+        src_id: str | None = None,
+    ) -> None:
         # OneBot V11 适配器没有 Keyboard 消息段
         msg = msg.exclude(Keyboard)
 
@@ -332,7 +339,7 @@ class MessageSender(BaseMessageSender[Bot]):
             cls._send_files(files, target, dst_bot)
 
         # 发送消息
-        return await super().send(msg, target, dst_bot)
+        return await super().send(dst_bot, target, msg, src_type, src_id)
 
 
 @register("OneBot V11")

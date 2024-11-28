@@ -75,7 +75,11 @@ async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
 
         msg.insert(0, Text(f"{nick}\n\n"))
         try:
-            await processor.send(msg, target, bot)
+            await processor.send(
+                dst_bot=bot,
+                target=target,
+                msg=msg,
+            )
         except Exception as err:
             await UniMessage.text(f"发送消息失败: {err}").finish()
 

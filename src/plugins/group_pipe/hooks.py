@@ -6,7 +6,7 @@ from nonebot_plugin_uninfo import get_session
 
 from src.plugins.gtg import call_soon
 
-from .database import MsgIdCacheDAO, PipeDAO, display_pipe
+from .database import PipeDAO, display_pipe
 from .processor import get_processor
 from .utils import repr_unimsg
 
@@ -33,20 +33,18 @@ async def send_pipe_msg(
     logger.debug(f"消息: {repr_unimsg(unimsg)}")
 
     try:
-        dst_ids = await get_processor(dst_bot).send(unimsg, target, dst_bot)
+        await get_processor(dst_bot).send(
+            dst_bot=dst_bot,
+            target=target,
+            msg=unimsg,
+            src_type=bot.type,
+            src_id=msg_id,
+        )
     except Exception as err:
         logger.warning(f"管道: {display}")
         logger.warning(f"发送管道消息失败: {err}")
         logger.opt(exception=err).debug(err)
         return
-
-    for dst_id in dst_ids:
-        await MsgIdCacheDAO().set_dst_id(
-            src_adapter=bot.type,
-            src_id=msg_id,
-            dst_adapter=dst_bot.type,
-            dst_id=dst_id,
-        )
 
 
 @event_preprocessor

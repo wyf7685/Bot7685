@@ -82,12 +82,11 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                     yield seg
 
 
-class MessageSender(BaseMessageSender[Bot]):
-
+class MessageSender(BaseMessageSender[Bot, MessageGet]):
     @override
     @staticmethod
-    def extract_msg_id(res: MessageGet) -> str:
-        return str(res.id)
+    def extract_msg_id(data: MessageGet) -> str:
+        return str(data.id)
 
 
 @register("Discord")
