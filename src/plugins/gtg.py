@@ -15,6 +15,7 @@ __plugin_meta__ = nonebot.plugin.PluginMetadata(
 __gtg: anyio.abc.TaskGroup | None = None
 """ Global Task Group """
 
+
 @nonebot.get_driver().on_startup
 async def _() -> None:
     global __gtg
