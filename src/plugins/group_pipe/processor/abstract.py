@@ -27,7 +27,7 @@ class AbstractMessageConverter[
         yield NotImplemented
 
     @abc.abstractmethod
-    async def process(self, msg: TM) -> UniMessage[Segment]:
+    async def convert(self, msg: TM) -> UniMessage[Segment]:
         return NotImplemented
 
 

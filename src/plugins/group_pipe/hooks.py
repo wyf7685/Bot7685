@@ -28,7 +28,7 @@ async def send_pipe_msg(
         logger.warning(f"管道选择目标 Bot 失败: {err}")
         return
 
-    unimsg = msg_head + await get_processor(bot, dst_bot).process(msg)
+    unimsg = msg_head + await get_processor(bot, dst_bot).convert(msg)
     logger.debug(f"发送管道: {display}")
     logger.debug(f"消息: {repr_unimsg(unimsg)}")
 

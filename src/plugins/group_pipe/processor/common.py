@@ -70,7 +70,7 @@ class MessageConverter[
                 yield result
 
     @override
-    async def process(self, msg: TM) -> UniMessage[Segment]:
+    async def convert(self, msg: TM) -> UniMessage[Segment]:
         if builder := get_builder(self.src_bot):
             msg = cast(TM, builder.preprocess(msg))
 

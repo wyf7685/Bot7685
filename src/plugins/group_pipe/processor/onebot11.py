@@ -214,7 +214,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             )
 
             msg = Message([MessageSegment(**seg) for seg in msg])
-            unimsg = await processor.process(msg)
+            unimsg = await processor.convert(msg)
             cache_data.append({"nick": nick, "msg": unimsg.dump(media_save_dir=False)})
 
         if cache_data:
