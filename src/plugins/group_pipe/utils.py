@@ -83,8 +83,7 @@ async def webm_to_gif(raw: bytes) -> bytes:
 
 def _repr_uniseg(seg: Segment) -> str:
     if isinstance(seg, Media) and seg.raw is not None:
-        seg = copy.copy(seg)
-        seg.raw = b"..."
+        (seg := copy.copy(seg)).raw = b"..."
     return repr(seg)
 
 
