@@ -679,18 +679,17 @@ wheels = [
 
 [[package]]
 name = "httpx"
-version = "0.27.2"
+version = "0.28.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "certifi" },
     { name = "httpcore" },
     { name = "idna" },
-    { name = "sniffio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/78/82/08f8c936781f67d9e6b9eeb8a0c8b4e406136ea4c3d1f89a5db71d42e0e6/httpx-0.27.2.tar.gz", hash = "sha256:f7c2be1d2f3c3c3160d441802406b206c2b76f5947b11115e6df10c6c65e66c2", size = 144189 }
+sdist = { url = "https://files.pythonhosted.org/packages/10/df/676b7cf674dd1bdc71a64ad393c89879f75e4a0ab8395165b498262ae106/httpx-0.28.0.tar.gz", hash = "sha256:0858d3bab51ba7e386637f22a61d8ccddaeec5f3fe4209da3a6168dbb91573e0", size = 141307 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/95/9377bcb415797e44274b51d46e3249eba641711cf3348050f76ee7b15ffc/httpx-0.27.2-py3-none-any.whl", hash = "sha256:7bb2708e112d8fdd7829cd4243970f0c223274051cb35ee80c03301ee29a3df0", size = 76395 },
+    { url = "https://files.pythonhosted.org/packages/8f/fb/a19866137577ba60c6d8b69498dc36be479b13ba454f691348ddf428f185/httpx-0.28.0-py3-none-any.whl", hash = "sha256:dc0b419a0cfeb6e8b34e85167c0da2671206f5095f1baa9663d23bcfd6b535fc", size = 73551 },
 ]
 
 [package.optional-dependencies]
@@ -1433,15 +1432,15 @@ sm-local = [
 
 [[package]]
 name = "nonebot-plugin-uninfo"
-version = "0.5.0"
+version = "0.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "importlib-metadata" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/db/19/aded38657f026075626d438f5e3651c5a7a732bb9c01c0faa9706887c137/nonebot_plugin_uninfo-0.5.0.tar.gz", hash = "sha256:79cb1a1ed19d8cbfe96019cf6ee28ac7be4bd6b71eae0a127047736f97a8f7f6", size = 33230 }
+sdist = { url = "https://files.pythonhosted.org/packages/c9/24/3d5f723c713bde5bbdb07c77b1e231e634c9725516b83ebebb8c92320695/nonebot_plugin_uninfo-0.6.0.tar.gz", hash = "sha256:0123cdde5134c9be673c7e798fd00405ae078c6a17c99c5f9db71f01f3624fec", size = 34325 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7b/2b/e4edb63ab1c0ac41f2d3af03ef2297f1bbc1cc92d6359cc17bb0c7597a32/nonebot_plugin_uninfo-0.5.0-py3-none-any.whl", hash = "sha256:5e9bd0edcaf90ed6cc063a0f8a05127a7f1a9de9e7fc516bc71e4064c9515e68", size = 52589 },
+    { url = "https://files.pythonhosted.org/packages/cb/7e/309fa3f02abd17544819480678c3ec83572a204f05d302c6c6beec12f968/nonebot_plugin_uninfo-0.6.0-py3-none-any.whl", hash = "sha256:23d2b6161fba1ebce4d5c48667acc2ce51658339f28b48c04f33247ca73fdf10", size = 54201 },
 ]
 
 [[package]]
@@ -1621,7 +1620,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "1.55.2"
+version = "1.55.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1633,9 +1632,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e2/ae/ef32e19631f752d3b10bbfa0bda2b3f63865438635bee7356d4b3c8a6bf6/openai-1.55.2.tar.gz", hash = "sha256:5cc0b1162b65dcdf670b4b41448f18dd470d2724ca04821ab1e86b6b4e88650b", size = 314465 }
+sdist = { url = "https://files.pythonhosted.org/packages/1e/39/d4859d897da053b61b84403f67dbef1abd075e441cb354892ff14f98e2c7/openai-1.55.3.tar.gz", hash = "sha256:547e85b94535469f137a779d8770c8c5adebd507c2cc6340ca401a7c4d5d16f0", size = 314571 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cb/d7/6ae403b1fd5667621f8a4b6d2eec954da7ab7efd2ba1b0b41c6c791af67a/openai-1.55.2-py3-none-any.whl", hash = "sha256:3027c7fa4a33ed759f4a3d076093fcfa1c55658660c889bec33f651e2dc77922", size = 389537 },
+    { url = "https://files.pythonhosted.org/packages/10/06/691ef3f0112ecf0d7420d0bf35b5d16cf81554141f4b4913a9831031013d/openai-1.55.3-py3-none-any.whl", hash = "sha256:2a235d0e1e312cd982f561b18c27692e253852f4e5fb6ccf08cb13540a9bdaa1", size = 389558 },
 ]
 
 [[package]]
