@@ -5,11 +5,7 @@ from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot_plugin_alconna.uniseg import Segment, Target, UniMessage
 
 
-class AbstractMessageConverter[
-    TMS: MessageSegment = MessageSegment,
-    TB: Bot = Bot,
-    TM: Message = Message,
-](abc.ABC):
+class AbstractMessageConverter[TMS: MessageSegment, TB: Bot, TM: Message](abc.ABC):
     src_bot: TB
     dst_bot: Bot | None
 
@@ -31,14 +27,14 @@ class AbstractMessageConverter[
         return NotImplemented
 
 
-class AbstractMessageSender[TB: Bot = Bot](abc.ABC):
+class AbstractMessageSender[TB: Bot](abc.ABC):
     @classmethod
     @abc.abstractmethod
     async def send(
         cls,
         dst_bot: TB,
         target: Target,
-        msg: UniMessage,
+        msg: UniMessage[Segment],
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None: ...

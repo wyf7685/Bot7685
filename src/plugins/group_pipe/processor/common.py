@@ -82,7 +82,7 @@ class MessageConverter[
         return result
 
 
-class MessageSender[TB: Bot, TR = Any](AbstractMessageSender[TB]):
+class MessageSender[TB: Bot, TR: Any](AbstractMessageSender[TB]):
     _bot_send_lock: ClassVar[WeakKeyDictionary[Bot, anyio.Lock]] = WeakKeyDictionary()
 
     @classmethod
@@ -119,7 +119,7 @@ class MessageSender[TB: Bot, TR = Any](AbstractMessageSender[TB]):
         cls,
         dst_bot: TB,
         target: Target,
-        msg: UniMessage,
+        msg: UniMessage[Segment],
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None:
@@ -141,5 +141,5 @@ class MessageSender[TB: Bot, TR = Any](AbstractMessageSender[TB]):
 @register(None)
 class MessageProcessor(
     MessageConverter[MessageSegment, Bot, Message],
-    MessageSender[Bot],
+    MessageSender[Bot, Any],
 ): ...

@@ -15,7 +15,7 @@ class MessageProcessorProtocol[TB: Bot, TM: Message](Protocol):
         cls,
         dst_bot: TB,
         target: Target,
-        msg: UniMessage,
+        msg: UniMessage[Segment],
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None: ...
@@ -60,6 +60,4 @@ def get_processor(
     if src_bot in PROCESSORS:
         return PROCESSORS[src_bot]
 
-    from .common import MessageProcessor
-
-    return MessageProcessor
+    return PROCESSORS[None]  # common.MessageProcessor

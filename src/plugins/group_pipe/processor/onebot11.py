@@ -319,7 +319,7 @@ class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
         cls,
         dst_bot: Bot,
         target: Target,
-        msg: UniMessage,
+        msg: UniMessage[Segment],
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None:
