@@ -16,7 +16,7 @@ from nonebot.adapters.discord.message import (
     MessageSegment,
     ReferenceSegment,
 )
-from nonebot_plugin_alconna.uniseg import Image, Segment, Text
+from nonebot_plugin_alconna import uniseg as u
 
 from src.plugins.upload_cos import upload_from_url
 
@@ -47,7 +47,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return message
 
-    async def convert_attachment(self, attachment: AttachmentSend) -> Segment:
+    async def convert_attachment(self, attachment: AttachmentSend) -> u.Segment:
         if url := self.attachment_url.get(attachment):
             info = await guess_url_type(url)
             mime = info and info.mime
@@ -57,11 +57,13 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             except Exception as err:
                 self.logger.opt(exception=err).debug("上传文件失败，使用原始链接")
 
-            return Image(url=url, mimetype=mime)
-        return Text(f"[image:{attachment.filename}]")
+            return u.Image(url=url, mimetype=mime)
+        return u.Text(f"[image:{attachment.filename}]")
 
     @override
-    async def convert_segment(self, segment: MessageSegment) -> AsyncIterable[Segment]:
+    async def convert_segment(
+        self, segment: MessageSegment
+    ) -> AsyncIterable[u.Segment]:
         match segment:
             case (
                 MentionRoleSegment()
@@ -69,7 +71,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                 | MentionChannelSegment()
                 | MentionEveryoneSegment()
             ):
-                yield Text(str(segment))
+                yield u.Text(str(segment))
             case AttachmentSegment():
                 yield await self.convert_attachment(segment.data["attachment"])
             case ReferenceSegment():

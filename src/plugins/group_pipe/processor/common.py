@@ -5,15 +5,7 @@ from weakref import WeakKeyDictionary
 import anyio
 import nonebot
 from nonebot.adapters import Bot, Event, Message, MessageSegment
-from nonebot_plugin_alconna.uniseg import (
-    FallbackStrategy,
-    Reply,
-    Segment,
-    Target,
-    Text,
-    UniMessage,
-    get_builder,
-)
+from nonebot_plugin_alconna import uniseg as u
 
 from ..database import MsgIdCacheDAO
 from ._registry import register
@@ -51,13 +43,13 @@ class MessageConverter[
             dst_id=message_id,
         )
 
-    async def convert_reply(self, src_msg_id: str | int) -> Segment:
+    async def convert_reply(self, src_msg_id: str | int) -> u.Segment:
         if reply_id := await self.get_reply_id(str(src_msg_id)):
-            return Reply(reply_id)
-        return Text(f"[reply:{src_msg_id}]")
+            return u.Reply(reply_id)
+        return u.Text(f"[reply:{src_msg_id}]")
 
-    async def convert_segment(self, segment: TMS) -> AsyncIterable[Segment]:
-        if fn := get_builder(self.src_bot):
+    async def convert_segment(self, segment: TMS) -> AsyncIterable[u.Segment]:
+        if fn := u.get_builder(self.src_bot):
             result = fn.convert(segment)
             if isinstance(result, list):
                 for item in result:
@@ -66,11 +58,11 @@ class MessageConverter[
                 yield result
 
     @override
-    async def convert(self, msg: TM) -> UniMessage[Segment]:
-        if builder := get_builder(self.src_bot):
+    async def convert(self, msg: TM) -> u.UniMessage[u.Segment]:
+        if builder := u.get_builder(self.src_bot):
             msg = cast(TM, builder.preprocess(msg))
 
-        result = UniMessage[Segment]()
+        result = u.UniMessage[u.Segment]()
         segment: TMS
         for segment in msg:
             try:
@@ -78,7 +70,7 @@ class MessageConverter[
                     result.append(seg)
             except Exception as err:
                 self.logger.opt(exception=err).warning("处理消息段失败")
-                result.append(Text(f"[error:{segment.type}]"))
+                result.append(u.Text(f"[error:{segment.type}]"))
         return result
 
 
@@ -118,8 +110,8 @@ class MessageSender[TB: Bot, TR: Any](AbstractMessageSender[TB]):
     async def send(
         cls,
         dst_bot: TB,
-        target: Target,
-        msg: UniMessage[Segment],
+        target: u.Target,
+        msg: u.UniMessage[u.Segment],
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None:
@@ -127,7 +119,7 @@ class MessageSender[TB: Bot, TR: Any](AbstractMessageSender[TB]):
             receipt = await msg.send(
                 target=target,
                 bot=dst_bot,
-                fallback=FallbackStrategy.ignore,
+                fallback=u.FallbackStrategy.ignore,
             )
         for item in receipt.msg_ids:
             await cls._set_dst_id(

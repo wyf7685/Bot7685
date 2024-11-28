@@ -6,17 +6,9 @@ from typing import override
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Bot, Message, MessageSegment
 from nonebot.adapters.telegram.event import MessageEvent
-from nonebot.adapters.telegram.message import Reply as TgReply
+from nonebot.adapters.telegram.message import Reply
 from nonebot.adapters.telegram.model import Message as MessageModel
-from nonebot_plugin_alconna.uniseg import (
-    File,
-    Image,
-    Keyboard,
-    Segment,
-    Target,
-    Text,
-    UniMessage,
-)
+from nonebot_plugin_alconna import uniseg as u
 
 from src.plugins.upload_cos import upload_from_url
 
@@ -35,7 +27,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         message = deepcopy(event.original_message)
         if event.reply_to_message:
-            reply = TgReply.reply(
+            reply = Reply.reply(
                 message_id=event.reply_to_message.message_id,
                 chat_id=event.reply_to_message.chat.id,
             )
@@ -47,44 +39,44 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         file_path = (await self.src_bot.get_file(file_id)).file_path
         return file_path, f"https://api.telegram.org/file/bot{token}/{file_path}"
 
-    async def convert_image(self, file_id: str) -> Segment:
+    async def convert_image(self, file_id: str) -> u.Segment:
         file_path, url = await self.get_file_info(file_id)
         if file_path is None:
-            return Text(f"[image:{file_id}]")
+            return u.Text(f"[image:{file_id}]")
 
         info = await guess_url_type(url)
         if info is None:
-            return Text(f"[image:{file_id}]")
+            return u.Text(f"[image:{file_id}]")
 
         if info.mime == "video/webm":
             if raw := await download_url(url):
                 raw = await webm_to_gif(raw)
-                return Image(raw=raw, mimetype="image/gif")
-            return Text(f"[image:{info.mime}:{file_id}]")
+                return u.Image(raw=raw, mimetype="image/gif")
+            return u.Text(f"[image:{info.mime}:{file_id}]")
 
         try:
             url = await upload_from_url(url, self.get_cos_key(file_path))
         except Exception as err:
             self.logger.opt(exception=err).debug("上传文件失败")
 
-        return Image(url=url, mimetype=info.mime)
+        return u.Image(url=url, mimetype=info.mime)
 
-    async def convert_file(self, file_id: str) -> Segment:
+    async def convert_file(self, file_id: str) -> u.Segment:
         file_path, url = await self.get_file_info(file_id)
         if file_path is None:
-            return Text(f"[file:{file_id}]")
+            return u.Text(f"[file:{file_id}]")
 
         info = await guess_url_type(url)
         if info is None:
-            return Text(f"[file:{file_id}]")
+            return u.Text(f"[file:{file_id}]")
 
         try:
             url = await upload_from_url(url, self.get_cos_key(file_path))
         except Exception as err:
             self.logger.opt(exception=err).debug("上传文件失败")
-            return Text(f"[file:{info.mime}:{file_id}]")
+            return u.Text(f"[file:{info.mime}:{file_id}]")
 
-        return File(
+        return u.File(
             id=file_id,
             url=url,
             mimetype=info.mime,
@@ -92,10 +84,12 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         )
 
     @override
-    async def convert_segment(self, segment: MessageSegment) -> AsyncIterable[Segment]:
+    async def convert_segment(
+        self, segment: MessageSegment
+    ) -> AsyncIterable[u.Segment]:
         match segment.type:
             case "mention":
-                yield Text(segment.data["text"])
+                yield u.Text(segment.data["text"])
             case "sticker" | "photo":
                 yield await self.convert_image(segment.data["file"])
             case "document" | "video":
@@ -118,17 +112,17 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
     async def send(
         cls,
         dst_bot: Bot,
-        target: Target,
-        msg: UniMessage[Segment],
+        target: u.Target,
+        msg: u.UniMessage[u.Segment],
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None:
-        msg = msg.exclude(Keyboard) + msg.include(Keyboard)
+        msg = msg.exclude(u.Keyboard) + msg.include(u.Keyboard)
 
         # alc 里没有处理 gif (animation) 的逻辑
         # 提取出来单独发送
         gif_files: list[tuple[str, bytes] | bytes | str] = []
-        for seg in msg[Image]:
+        for seg in msg[u.Image]:
             if seg.mimetype == "image/gif" and (file := (seg.raw or seg.url)):
                 msg.remove(seg)
                 if isinstance(file, BytesIO):

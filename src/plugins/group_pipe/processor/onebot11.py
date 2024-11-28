@@ -18,18 +18,7 @@ from nonebot.adapters.onebot.v11 import (
 )
 from nonebot.compat import type_validate_python
 from nonebot.utils import escape_tag
-from nonebot_plugin_alconna.uniseg import (
-    Button,
-    File,
-    Image,
-    Keyboard,
-    Reply,
-    Segment,
-    Target,
-    Text,
-    UniMessage,
-    Video,
-)
+from nonebot_plugin_alconna import uniseg as u
 
 from src.plugins.gtg import call_soon
 from src.plugins.upload_cos import upload_from_local, upload_from_url
@@ -56,7 +45,7 @@ async def get_rkey() -> tuple[str, str]:
 async def url_to_image(
     url: str,
     get_cos_key: Callable[[str], str] | None = None,
-) -> Image | None:
+) -> u.Image | None:
     info = await guess_url_type(url)
     if info is None:
         return None
@@ -71,13 +60,13 @@ async def url_to_image(
     else:
         logger.debug(f"上传图片: {escape_tag(url)}")
 
-    return Image(url=url, mimetype=info.mime)
+    return u.Image(url=url, mimetype=info.mime)
 
 
 async def url_to_video(
     url: str,
     get_cos_key: Callable[[str], str] | None = None,
-) -> Video | None:
+) -> u.Video | None:
     key = f"{hash(url)}.mp4"
     if get_cos_key:
         key = get_cos_key(key)
@@ -89,13 +78,13 @@ async def url_to_video(
     else:
         logger.debug(f"上传视频: {escape_tag(url)}")
 
-    return Video(url=url)
+    return u.Video(url=url)
 
 
 async def upload_local_file(
     path: Path,
     get_cos_key: Callable[[str], str] | None = None,
-) -> File | None:
+) -> u.File | None:
     key = f"{hash(path)}/{path.name}"
     if get_cos_key:
         key = get_cos_key(key)
@@ -106,7 +95,7 @@ async def upload_local_file(
         return None
     else:
         logger.debug(f"上传文件: {escape_tag(url)}")
-        return File(url=url)
+        return u.File(url=url)
 
 
 async def solve_url_302(url: str) -> str:
@@ -116,9 +105,10 @@ async def solve_url_302(url: str) -> str:
     return url
 
 
-async def handle_json_msg(data: dict[str, Any]) -> AsyncIterable[Segment]:
-    def default() -> Segment:
-        return Text(f"[json消息:{data}]")
+async def handle_json_msg(data: dict[str, Any]) -> AsyncIterable[u.Segment]:
+
+    def default() -> u.Segment:
+        return u.Text(f"[json消息:{data}]")
 
     meta = data.get("meta", {})
     if not meta:
@@ -129,8 +119,8 @@ async def handle_json_msg(data: dict[str, Any]) -> AsyncIterable[Segment]:
     if "detail_1" in meta and meta["detail_1"]["title"] == "哔哩哔哩":
         detail = meta["detail_1"]
         url = await solve_url_302(detail["qqdocurl"])
-        yield Text(f"[哔哩哔哩] {detail['desc']}\n{url}")
-        yield Image(url=detail["preview"])
+        yield u.Text(f"[哔哩哔哩] {detail['desc']}\n{url}")
+        yield u.Image(url=detail["preview"])
         return
 
     yield default()
@@ -226,25 +216,27 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return False
 
-    async def handle_forward(self, data: dict[str, Any]) -> AsyncIterable[Segment]:
+    async def handle_forward(self, data: dict[str, Any]) -> AsyncIterable[u.Segment]:
         cached = False
         forward_id = data["id"]
         if "napcat" in await self.get_platform() and (content := data.get("content")):
             cached = await self.cache_forward(forward_id, content)
-        yield Text(f"[forward:{forward_id}:cache={cached}]")
+        yield u.Text(f"[forward:{forward_id}:cache={cached}]")
         if cached:
-            btn = Button(
+            btn = u.Button(
                 "input",
                 label="加载合并转发消息",
                 text=f"/forward load {forward_id}",
             )
-            yield Keyboard([btn])
+            yield u.Keyboard([btn])
 
     @override
-    async def convert_segment(self, segment: MessageSegment) -> AsyncIterable[Segment]:
+    async def convert_segment(
+        self, segment: MessageSegment
+    ) -> AsyncIterable[u.Segment]:
         match segment.type:
             case "at":
-                yield Text(f"[at:{segment.data['qq']}]")
+                yield u.Text(f"[at:{segment.data['qq']}]")
             case "image":
                 if url := segment.data.get("url"):
                     if self.do_resolve_url:
@@ -253,7 +245,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                         ):
                             yield seg
                     else:
-                        yield Image(url=url)
+                        yield u.Image(url=url)
             case "reply":
                 yield await self.convert_reply(segment.data["id"])
             case "forward":
@@ -272,7 +264,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                         ):
                             yield seg
                     else:
-                        yield Video(url=url)
+                        yield u.Video(url=url)
             case "file":
                 if file_id := segment.data.get("file_id"):
                     res = await self.src_bot.call_api("get_file", file_id=file_id)
@@ -281,7 +273,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                         if seg := await upload_local_file(path, self.get_cos_key):
                             yield seg
                         else:
-                            yield Text(f"[file:{file_id}]")
+                            yield u.Text(f"[file:{file_id}]")
                     path.unlink(missing_ok=True)
             case _:
                 async for seg in super().convert_segment(segment):
@@ -295,8 +287,9 @@ class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
         return str(data["message_id"]) if data else ""
 
     @staticmethod
-    def _send_files(files: list[File], target: Target, bot: Bot) -> None:
-        async def upload_file(file: File) -> None:
+    def _send_files(files: list[u.File], target: u.Target, bot: Bot) -> None:
+
+        async def upload_file(file: u.File) -> None:
             try:
                 await bot.call_api(
                     "upload_group_file",
@@ -306,7 +299,7 @@ class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
                 )
             except ActionFailed as err:
                 logger.opt(exception=err).debug(f"上传群文件失败: {err}")
-                await UniMessage.text(f"上传群文件失败: {file.id}").send(target, bot)
+                await target.send(f"上传群文件失败: {file.id}", bot=bot)
 
         for file in files:
             if not file.url:
@@ -318,21 +311,21 @@ class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
     async def send(
         cls,
         dst_bot: Bot,
-        target: Target,
-        msg: UniMessage[Segment],
+        target: u.Target,
+        msg: u.UniMessage[u.Segment],
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None:
         # OneBot V11 适配器没有 Keyboard 消息段
-        msg = msg.exclude(Keyboard)
+        msg = msg.exclude(u.Keyboard)
 
         # 回复消息段应在消息头部，且仅有一个
-        if Reply in msg:
-            msg = msg[Reply, 0] + msg.exclude(Reply)
+        if u.Reply in msg:
+            msg = msg[u.Reply, 0] + msg.exclude(u.Reply)
 
         # 文件消息段需要单独发送
-        if files := msg[File]:
-            msg = msg.exclude(File) + " ".join(
+        if files := msg[u.File]:
+            msg = msg.exclude(u.File) + " ".join(
                 f"[file:{file.name or file.id}]" for file in files
             )
             cls._send_files(files, target, dst_bot)
