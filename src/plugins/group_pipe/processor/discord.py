@@ -22,7 +22,6 @@ from src.plugins.upload_cos import upload_from_url
 
 from ..utils import guess_url_type
 from ._registry import register
-from .abstract import AbstractMessageProcessor
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
@@ -90,8 +89,4 @@ class MessageSender(BaseMessageSender[Bot, MessageGet]):
 
 
 @register("Discord")
-class MessageProcessor(
-    MessageSender,
-    MessageConverter,
-    AbstractMessageProcessor[MessageSegment, Bot, Message],
-): ...
+class MessageProcessor(MessageSender, MessageConverter): ...

@@ -22,7 +22,6 @@ from src.plugins.upload_cos import upload_from_url
 
 from ..utils import download_url, guess_url_type, webm_to_gif
 from ._registry import register
-from .abstract import AbstractMessageProcessor
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
@@ -147,8 +146,4 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
 
 
 @register("Telegram")
-class MessageProcessor(
-    MessageConverter,
-    MessageSender,
-    AbstractMessageProcessor[MessageSegment, Bot, Message],
-): ...
+class MessageProcessor(MessageConverter, MessageSender): ...

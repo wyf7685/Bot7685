@@ -37,7 +37,6 @@ from src.plugins.upload_cos import upload_from_local, upload_from_url
 from ..database import KVCacheDAO
 from ..utils import async_client, check_url_ok, guess_url_type
 from ._registry import register
-from .abstract import AbstractMessageProcessor
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
@@ -343,8 +342,4 @@ class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
 
 
 @register("OneBot V11")
-class MessageProcessor(
-    MessageConverter,
-    MessageSender,
-    AbstractMessageProcessor[MessageSegment, Bot, Message],
-): ...
+class MessageProcessor(MessageConverter, MessageSender): ...

@@ -17,11 +17,7 @@ from nonebot_plugin_alconna.uniseg import (
 
 from ..database import MsgIdCacheDAO
 from ._registry import register
-from .abstract import (
-    AbstractMessageConverter,
-    AbstractMessageProcessor,
-    AbstractMessageSender,
-)
+from .abstract import AbstractMessageConverter, AbstractMessageSender
 
 
 class MessageConverter[
@@ -146,5 +142,4 @@ class MessageSender[TB: Bot, TR = Any](AbstractMessageSender[TB]):
 class MessageProcessor(
     MessageConverter[MessageSegment, Bot, Message],
     MessageSender[Bot],
-    AbstractMessageProcessor[MessageSegment, Bot, Message],
 ): ...

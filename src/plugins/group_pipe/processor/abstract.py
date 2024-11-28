@@ -42,13 +42,3 @@ class AbstractMessageSender[TB: Bot = Bot](abc.ABC):
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None: ...
-
-
-class AbstractMessageProcessor[
-    TMS: MessageSegment = MessageSegment,
-    TB: Bot = Bot,
-    TM: Message = Message,
-](
-    AbstractMessageSender[TB],
-    AbstractMessageConverter[TMS, TB, TM],
-): ...
