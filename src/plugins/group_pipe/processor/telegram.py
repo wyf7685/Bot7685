@@ -6,7 +6,6 @@ from typing import override
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Bot, Message, MessageSegment
 from nonebot.adapters.telegram.event import MessageEvent
-from nonebot.adapters.telegram.message import Reply
 from nonebot.adapters.telegram.model import Message as MessageModel
 from nonebot_plugin_alconna import uniseg as u
 
@@ -16,6 +15,8 @@ from ..utils import download_url, guess_url_type, webm_to_gif
 from ._registry import register
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
+
+TG_MSGID_MARK = "$telegram$"
 
 
 class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
@@ -27,9 +28,11 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         message = deepcopy(event.original_message)
         if event.reply_to_message:
-            reply = Reply.reply(
-                message_id=event.reply_to_message.message_id,
-                chat_id=event.reply_to_message.chat.id,
+            chat_id = event.reply_to_message.chat.id
+            msg_id = event.reply_to_message.message_id
+            reply = MessageSegment(
+                "reply",
+                {"message_id": f"{chat_id}{TG_MSGID_MARK}{msg_id}"},
             )
             message.insert(0, reply)
         return message
@@ -84,6 +87,18 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         )
 
     @override
+    async def convert_reply(self, src_msg_id: str | int) -> u.Segment:
+        if reply_id := await self.get_reply_id(str(src_msg_id)):
+            if TG_MSGID_MARK in reply_id:
+                reply_id = reply_id.partition(TG_MSGID_MARK)[2]
+            return u.Reply(reply_id)
+
+        if isinstance(src_msg_id, str) and TG_MSGID_MARK in src_msg_id:
+            src_msg_id = src_msg_id.partition(TG_MSGID_MARK)[2]
+
+        return u.Text(f"[reply:{src_msg_id}]")
+
+    @override
     async def convert_segment(
         self, segment: MessageSegment
     ) -> AsyncIterable[u.Segment]:
@@ -105,7 +120,7 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
     @override
     @staticmethod
     def extract_msg_id(data: MessageModel) -> str:
-        return str(data.message_id) if data else ""
+        return f"{data.chat.id}{TG_MSGID_MARK}{data.message_id}" if data else ""
 
     @override
     @classmethod
