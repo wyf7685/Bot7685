@@ -91,7 +91,7 @@ async def _fix_file(file: _AnyFile) -> AsyncGenerator[anyio.Path]:
     if isinstance(file, pathlib.Path):
         file = anyio.Path(file)
 
-    if not file.exists():
+    if not await file.exists():
         raise FileNotFoundError(f"文件 {file} 不存在")
 
     yield file
