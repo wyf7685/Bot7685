@@ -1,6 +1,7 @@
 import contextlib
 import copy
 import pathlib
+import shutil
 from collections.abc import AsyncGenerator, AsyncIterable
 from typing import NamedTuple
 
@@ -118,9 +119,21 @@ async def webm_to_gif(raw: bytes) -> bytes:
         return await gif_file.read_bytes()
 
 
-async def amr_to_mp3(file: _AnyFile) -> AsyncIterable[pathlib.Path]:
-    async with _ffmpeg_transform(file, "mp3") as mp3_file:
-        yield pathlib.Path(mp3_file)
+async def amr_to_mp3(file: pathlib.Path) -> AsyncIterable[pathlib.Path]:
+    tmpfile = shutil.copyfile(file, get_plugin_cache_dir() / file.name)
+
+    cmd = [
+        "/silk-v3-decoder/converter.sh",
+        str(tmpfile),
+        "mp3",
+    ]
+    result = await anyio.run_process(cmd)
+    result.check_returncode()
+
+    output = tmpfile.with_name(f"{file.stem}.mp3")
+    yield output
+    tmpfile.unlink()
+    output.unlink()
 
 
 def _repr_uniseg(seg: Segment) -> str:
