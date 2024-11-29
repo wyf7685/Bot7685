@@ -1,6 +1,6 @@
 import contextlib
 import json
-from collections.abc import AsyncIterable, Callable, Sequence
+from collections.abc import AsyncGenerator, AsyncIterable, Callable, Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, ClassVar, override
@@ -24,7 +24,7 @@ from src.plugins.gtg import call_soon
 from src.plugins.upload_cos import upload_from_local, upload_from_url
 
 from ..database import KVCacheDAO
-from ..utils import async_client, check_url_ok, guess_url_type
+from ..utils import amr_to_mp3, async_client, check_url_ok, guess_url_type
 from ._registry import register
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
@@ -178,6 +178,16 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return None
 
+    async def convert_image(self, url: str) -> u.Segment:
+        if self.do_resolve_url:
+            if (checked := await self.check_rkey(url)) and (
+                seg := await url_to_image(checked, self.get_cos_key)
+            ):
+                return seg
+            return u.Text(f"[image:{url}]")
+
+        return u.Image(url=url)
+
     async def cache_forward(
         self,
         forward_id: str,
@@ -230,6 +240,45 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             )
             yield u.Keyboard([btn])
 
+    async def convert_video(self, url: str) -> u.Segment:
+        if self.do_resolve_url:
+            if (fixed := await self.check_rkey(url)) and (
+                seg := await url_to_video(fixed, self.get_cos_key)
+            ):
+                return seg
+            return u.Text(f"[video:{url}]")
+
+        return u.Video(url=url)
+
+    @contextlib.asynccontextmanager
+    async def convert_file(self, file_id: str) -> AsyncGenerator[u.Segment]:
+        res = await self.src_bot.call_api("get_file", file_id=file_id)
+        path = Path("/share/QQ/NapCat/temp") / str(res["file_name"])
+        if path.exists():
+            if seg := await upload_local_file(path, self.get_cos_key):
+                yield seg
+            else:
+                yield u.Text(f"[file:{file_id}]")
+        path.unlink(missing_ok=True)
+
+    async def convert_record(self, file_path: str) -> u.Segment:
+        path = Path("/share") / Path(file_path).relative_to("/app/.config")
+
+        agen = None
+        if path.name.endswith(".amr"):
+            agen = aiter(amr_to_mp3(path))
+            path = await anext(agen)
+
+        seg = await upload_local_file(path, self.get_cos_key)
+        if seg is None:
+            seg = u.Text(f"[record:{path}]")
+
+        if agen is not None:
+            with contextlib.suppress(StopAsyncIteration):
+                await anext(agen)
+
+        return seg
+
     @override
     async def convert_segment(
         self, segment: MessageSegment
@@ -238,14 +287,10 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             case "at":
                 yield u.Text(f"[at:{segment.data['qq']}]")
             case "image":
-                if url := segment.data.get("url"):
-                    if self.do_resolve_url:
-                        if (url := await self.check_rkey(url)) and (
-                            seg := await url_to_image(url, self.get_cos_key)
-                        ):
-                            yield seg
-                    else:
-                        yield u.Image(url=url)
+                if (url := segment.data.get("url")) and (
+                    seg := await self.convert_image(url)
+                ):
+                    yield seg
             case "reply":
                 yield await self.convert_reply(segment.data["id"])
             case "forward":
@@ -257,24 +302,19 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                     async for seg in handle_json_msg(json_data):
                         yield seg
             case "video":
-                if url := segment.data.get("url"):
-                    if self.do_resolve_url:
-                        if (url := await self.check_rkey(url)) and (
-                            seg := await url_to_video(url, self.get_cos_key)
-                        ):
-                            yield seg
-                    else:
-                        yield u.Video(url=url)
+                if (url := segment.data.get("url")) and (
+                    seg := await self.convert_video(url)
+                ):
+                    yield seg
             case "file":
                 if file_id := segment.data.get("file_id"):
-                    res = await self.src_bot.call_api("get_file", file_id=file_id)
-                    path = Path("/share/QQ/NapCat/temp") / str(res["file_name"])
-                    if path.exists():
-                        if seg := await upload_local_file(path, self.get_cos_key):
-                            yield seg
-                        else:
-                            yield u.Text(f"[file:{file_id}]")
-                    path.unlink(missing_ok=True)
+                    async with self.convert_file(file_id) as seg:
+                        yield seg
+            case "record":
+                if (path := segment.data.get("path")) and (
+                    seg := await self.convert_record(path)
+                ):
+                    yield seg
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg

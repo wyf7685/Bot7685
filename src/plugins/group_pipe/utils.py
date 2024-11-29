@@ -1,4 +1,7 @@
+import contextlib
 import copy
+import pathlib
+from collections.abc import AsyncGenerator, AsyncIterable
 from typing import NamedTuple
 
 import anyio
@@ -67,18 +70,57 @@ async def guess_url_type(url: str) -> _FileType | None:
         return _FileType(info.mime[0], info.extension[0], int(size))
 
 
-async def webm_to_gif(raw: bytes) -> bytes:
-    cache_dir = anyio.Path(get_plugin_cache_dir())
-    webm_file = cache_dir / f"{id(raw)}.webm"
-    gif_file = cache_dir / f"{id(raw)}.gif"
+type _AnyFile = bytes | anyio.Path | pathlib.Path
 
-    await webm_file.write_bytes(raw)
-    result = await anyio.run_process(["ffmpeg", "-i", str(webm_file), str(gif_file)])
-    result.check_returncode()
-    data = await gif_file.read_bytes()
-    await webm_file.unlink()
-    await gif_file.unlink()
-    return data
+
+@contextlib.asynccontextmanager
+async def _fix_file(file: _AnyFile) -> AsyncGenerator[anyio.Path]:
+    if isinstance(file, bytes):
+        info = fleep.get(file[:128])
+        if not info.extension:
+            raise ValueError("无法识别的文件类型")
+
+        path = anyio.Path(get_plugin_cache_dir()) / f"{id(file)}.{info.extension[0]}"
+        await path.write_bytes(file)
+        try:
+            yield path
+        finally:
+            await path.unlink()
+        return
+
+    if isinstance(file, pathlib.Path):
+        file = anyio.Path(file)
+
+    if not file.exists():
+        raise FileNotFoundError(f"文件 {file} 不存在")
+
+    yield file
+
+
+@contextlib.asynccontextmanager
+async def _ffmpeg_transform(
+    src_file: _AnyFile, dst_file_ext: str
+) -> AsyncGenerator[anyio.Path]:
+    dst_file = anyio.Path(get_plugin_cache_dir()) / f"{id(src_file)}.{dst_file_ext}"
+
+    async with _fix_file(src_file) as src_file:
+        result = await anyio.run_process(["ffmpeg", "-i", str(src_file), str(dst_file)])
+        result.check_returncode()
+
+    try:
+        yield dst_file
+    finally:
+        await dst_file.unlink()
+
+
+async def webm_to_gif(raw: bytes) -> bytes:
+    async with _ffmpeg_transform(raw, "gif") as gif_file:
+        return await gif_file.read_bytes()
+
+
+async def amr_to_mp3(file: _AnyFile) -> AsyncIterable[pathlib.Path]:
+    async with _ffmpeg_transform(file, "mp3") as mp3_file:
+        yield pathlib.Path(mp3_file)
 
 
 def _repr_uniseg(seg: Segment) -> str:
