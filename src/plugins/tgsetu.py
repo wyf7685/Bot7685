@@ -8,7 +8,6 @@ from nonebot_plugin_alconna import (
     Alconna,
     Arparma,
     CommandMeta,
-    Image,
     Option,
     UniMessage,
     on_alconna,
@@ -62,19 +61,7 @@ async def _(arp: Arparma) -> None:
             await UniMessage.text(f"接口错误: {data['error']}").finish(reply_to=True)
 
         img_data = data["data"][0]
-        img = str(img_data["urls"]["original"])
-
-        try:
-            resp = await client.get(img)
-        except Exception as err:
-            await UniMessage.text(f"图片请求出错: {err}").finish(reply_to=True)
-
-        if resp.status_code == 200:
-            img = Image(raw=resp.read())
-        else:
-            await UniMessage.text(f"图片获取失败: {resp.status_code}").finish(
-                reply_to=True
-            )
+        url = str(img_data["urls"]["original"])
 
     r18 = "是" if img_data["r18"] else "否"
     ai_type = {0: "未知", 1: "否", 2: "是"}.get(img_data["aiType"])
@@ -86,4 +73,4 @@ async def _(arp: Arparma) -> None:
         f"AI: {ai_type}\n"
         f"标签: {', '.join(img_data['tags'])}\n"
     )
-    await (UniMessage.text(description) + img).finish(reply_to=True)
+    await UniMessage.text(description).image(url=url).finish(reply_to=True)
