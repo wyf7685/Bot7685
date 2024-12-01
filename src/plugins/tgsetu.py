@@ -1,6 +1,7 @@
 import httpx
 from nonebot import require
 from nonebot.adapters import Bot
+from nonebot.exception import ActionFailed, FinishedException
 from nonebot.plugin import PluginMetadata
 
 require("nonebot_plugin_alconna")
@@ -16,7 +17,7 @@ from nonebot_plugin_alconna import (
 __plugin_meta__ = PluginMetadata(
     name="tgsetu",
     description="涩图插件",
-    usage="setu [r18]",
+    usage="setu [r18] [noai]",
     type="application",
 )
 
@@ -33,7 +34,7 @@ setu = on_alconna(
         meta=CommandMeta(
             "涩图",
             "setu [--r18] [--noai]",
-            "setu\nsetu r18",
+            "setu\nsetu r18\nsetu noai",
         ),
     ),
     rule=_check,
@@ -73,4 +74,10 @@ async def _(arp: Arparma) -> None:
         f"AI: {ai_type}\n"
         f"标签: {', '.join(img_data['tags'])}\n"
     )
-    await UniMessage.text(description).image(url=url).finish(reply_to=True)
+
+    try:
+        await UniMessage.text(description).image(url=url).finish(reply_to=True)
+    except FinishedException:
+        raise
+    except ActionFailed:
+        await UniMessage.text(f"{description}\n{url}").finish(reply_to=True)
