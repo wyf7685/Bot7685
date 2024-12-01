@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, ClassVar, override
 from weakref import WeakKeyDictionary
 
+import anyio
 import nonebot
 import yarl
 from nonebot.adapters import Event as BaseEvent
@@ -266,6 +267,10 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         agen = None
         if path.name.endswith(".amr"):
+            if not path.exists():
+                await anyio.sleep(1)
+            if not path.exists():
+                return u.Text(f"[record:{path.name}]")
             agen = aiter(amr_to_mp3(path))
             path = await anext(agen)
 
