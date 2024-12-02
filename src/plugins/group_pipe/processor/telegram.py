@@ -149,12 +149,8 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
 
         await super().send(dst_bot, target, msg, src_type, src_id)
 
-        lock = anyio.Lock()
-
         async def _send_gif(file: tuple[str, bytes] | bytes | str) -> None:
-            async with lock:
-                res = await dst_bot.send_animation(target.id, file)
-
+            res = await dst_bot.send_animation(target.id, file)
             await cls._set_dst_id(src_type, src_id, dst_bot, res)
 
         if len(gif_files) == 1:
