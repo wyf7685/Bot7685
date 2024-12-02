@@ -3,6 +3,7 @@ from copy import deepcopy
 from io import BytesIO
 from typing import override
 
+import anyio
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Bot, Message, MessageSegment
 from nonebot.adapters.telegram.event import MessageEvent
@@ -148,10 +149,20 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
 
         await super().send(dst_bot, target, msg, src_type, src_id)
 
-        async with cls._send_lock(dst_bot):
-            for file in gif_files:
+        lock = anyio.Lock()
+
+        async def _send_gif(file: tuple[str, bytes] | bytes | str) -> None:
+            async with lock:
                 res = await dst_bot.send_animation(target.id, file)
-                await cls._set_dst_id(src_type, src_id, dst_bot, res)
+
+            await cls._set_dst_id(src_type, src_id, dst_bot, res)
+
+        if len(gif_files) == 1:
+            await _send_gif(gif_files[0])
+        elif gif_files:
+            async with anyio.create_task_group() as tg:
+                for file in gif_files:
+                    tg.start_soon(_send_gif, file)
 
 
 @register("Telegram")

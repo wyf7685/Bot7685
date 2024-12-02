@@ -1,8 +1,6 @@
 from collections.abc import AsyncIterable
-from typing import Any, ClassVar, cast, override
-from weakref import WeakKeyDictionary
+from typing import Any, cast, override
 
-import anyio
 import nonebot
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot_plugin_alconna import uniseg as u
@@ -75,16 +73,6 @@ class MessageConverter[
 
 
 class MessageSender[TB: Bot, TR: Any](AbstractMessageSender[TB]):
-    _bot_send_lock: ClassVar[WeakKeyDictionary[Bot, anyio.Lock]] = WeakKeyDictionary()
-
-    @classmethod
-    def _send_lock(cls, dst_bot: Bot) -> anyio.Lock:
-        if lock := cls._bot_send_lock.get(dst_bot):
-            return lock
-
-        lock = cls._bot_send_lock[dst_bot] = anyio.Lock()
-        return lock
-
     @staticmethod
     def extract_msg_id(data: TR) -> str:
         return str(data)
@@ -115,12 +103,12 @@ class MessageSender[TB: Bot, TR: Any](AbstractMessageSender[TB]):
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None:
-        async with cls._send_lock(dst_bot):
-            receipt = await msg.send(
-                target=target,
-                bot=dst_bot,
-                fallback=u.FallbackStrategy.ignore,
-            )
+        receipt = await msg.send(
+            target=target,
+            bot=dst_bot,
+            fallback=u.FallbackStrategy.ignore,
+        )
+
         for item in receipt.msg_ids:
             await cls._set_dst_id(
                 src_adapter=src_type,
