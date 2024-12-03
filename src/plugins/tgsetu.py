@@ -1,8 +1,10 @@
 import httpx
 from nonebot import require
 from nonebot.adapters import Bot
-from nonebot.exception import ActionFailed, FinishedException
+from nonebot.compat import type_validate_json
+from nonebot.exception import ActionFailed
 from nonebot.plugin import PluginMetadata
+from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import (
@@ -20,6 +22,27 @@ __plugin_meta__ = PluginMetadata(
     usage="setu [r18] [noai]",
     type="application",
 )
+
+
+class RespDataModel(BaseModel):
+    pid: int
+    p: int
+    uid: int
+    title: str
+    author: str
+    r18: bool
+    width: int
+    height: int
+    tags: list[str]
+    ext: str
+    aiType: int  # noqa: N815
+    uploadDate: int  # noqa: N815
+    urls: dict[str, str]
+
+
+class RespModel(BaseModel):
+    error: str
+    data: list[RespDataModel]
 
 
 async def _check(bot: Bot) -> bool:
@@ -51,33 +74,30 @@ async def _(arp: Arparma) -> None:
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.get(base_url, params=params)
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as err:
+            await UniMessage.text(f"接口请求失败: {err}").finish(reply_to=True)
         except Exception as err:
             await UniMessage.text(f"接口请求出错: {err}").finish(reply_to=True)
 
-        if resp.status_code != 200:
-            await UniMessage.text("接口请求失败").finish(reply_to=True)
+        data = type_validate_json(RespModel, resp.read())
 
-        data = resp.json()
-        if data["error"]:
-            await UniMessage.text(f"接口错误: {data['error']}").finish(reply_to=True)
+    if data.error:
+        await UniMessage.text(f"接口错误: {data.error}").finish(reply_to=True)
 
-        img_data = data["data"][0]
-        url = str(img_data["urls"]["original"])
-
-    r18 = "是" if img_data["r18"] else "否"
-    ai_type = {0: "未知", 1: "否", 2: "是"}.get(img_data["aiType"])
+    img_data = data.data[0]
+    url = img_data.urls["original"]
+    ai_type = {0: "未知", 1: "否", 2: "是"}.get(img_data.aiType)
     description = (
-        f"PID: {img_data['pid']}\n"
-        f"标题: {img_data['title']}\n"
-        f"作者: {img_data['author']}\n"
-        f"R18: {r18}\n"
+        f"PID: {img_data.pid}\n"
+        f"标题: {img_data.title}\n"
+        f"作者: {img_data.author}\n"
+        f"R18: {img_data.r18}\n"
         f"AI: {ai_type}\n"
-        f"标签: {', '.join(img_data['tags'])}\n"
+        f"标签: {', '.join(img_data.tags)}\n"
     )
 
     try:
         await UniMessage.text(description).image(url=url).finish(reply_to=True)
-    except FinishedException:
-        raise
     except ActionFailed:
         await UniMessage.text(f"{description}\n{url}").finish(reply_to=True)
