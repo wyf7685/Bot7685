@@ -1,6 +1,6 @@
 import contextlib
 import json
-from collections.abc import AsyncGenerator, AsyncIterable, Callable, Sequence
+from collections.abc import AsyncGenerator, AsyncIterable, Sequence
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, ClassVar, override
@@ -26,107 +26,16 @@ from src.plugins.gtg import call_soon
 from src.plugins.upload_cos import upload_from_local, upload_from_url
 
 from ..database import KVCacheDAO
-from ..utils import amr_to_mp3, async_client, check_url_ok, guess_url_type
+from ..utils import (
+    amr_to_mp3,
+    async_client,
+    check_url_ok,
+    guess_url_type,
+    solve_url_302,
+)
 from ._registry import register
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
-
-logger = nonebot.logger.opt(colors=True)
-
-
-async def get_rkey() -> tuple[str, str]:
-    rkey_api = "https://llob.linyuchen.net/rkey"
-    resp = await async_client().get(rkey_api)
-    data: dict[str, str] = resp.json()
-    p_rkey = data["private_rkey"].removeprefix("&rkey=")
-    g_rkey = data["group_rkey"].removeprefix("&rkey=")
-    logger.debug(f"从 API 获取 rkey: {p_rkey, g_rkey}")
-    return p_rkey, g_rkey
-
-
-async def url_to_image(
-    url: str,
-    get_cos_key: Callable[[str], str] | None = None,
-) -> u.Image | None:
-    info = await guess_url_type(url)
-    if info is None:
-        return None
-
-    name = f"{hash(url)}.{info.extension}"
-    key = get_cos_key(name) if get_cos_key else name
-
-    try:
-        url = await upload_from_url(url, key)
-    except Exception as err:
-        logger.opt(exception=err).debug("上传图片失败，使用原始链接")
-    else:
-        logger.debug(f"上传图片: {escape_tag(url)}")
-
-    return u.Image(url=url, mimetype=info.mime)
-
-
-async def url_to_video(
-    url: str,
-    get_cos_key: Callable[[str], str] | None = None,
-) -> u.Video | None:
-    key = f"{hash(url)}.mp4"
-    if get_cos_key:
-        key = get_cos_key(key)
-
-    try:
-        url = await upload_from_url(url, key)
-    except Exception as err:
-        logger.opt(exception=err).debug("上传视频失败，使用原始链接")
-    else:
-        logger.debug(f"上传视频: {escape_tag(url)}")
-
-    return u.Video(url=url)
-
-
-async def upload_local_file(
-    path: Path,
-    get_cos_key: Callable[[str], str] | None = None,
-) -> u.File | None:
-    key = f"{hash(path)}/{path.name}"
-    if get_cos_key:
-        key = get_cos_key(key)
-    try:
-        url = await upload_from_local(path, key)
-    except Exception as err:
-        logger.opt(exception=err).debug("上传文件失败")
-        return None
-    else:
-        logger.debug(f"上传文件: {escape_tag(url)}")
-        return u.File(url=url)
-
-
-async def solve_url_302(url: str) -> str:
-    async with async_client().stream("GET", url) as resp:
-        if resp.status_code == 302:
-            return await solve_url_302(resp.headers["Location"].partition("?")[0])
-    return url
-
-
-async def handle_json_msg(data: dict[str, Any]) -> AsyncIterable[u.Segment]:
-
-    def default() -> u.Segment:
-        return u.Text(f"[json消息:{data}]")
-
-    meta = data.get("meta", {})
-    if not meta:
-        yield default()
-        return
-
-    # Bili share
-    if "detail_1" in meta and meta["detail_1"]["title"] == "哔哩哔哩":
-        detail = meta["detail_1"]
-        url = await solve_url_302(detail["qqdocurl"])
-        yield u.Text(f"[哔哩哔哩] {detail['desc']}\n{url}")
-        yield u.Image(url=detail["preview"])
-        return
-
-    yield default()
-    return
 
 
 class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
@@ -146,13 +55,22 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             data = await self.src_bot.get_version_info()
             platform = str(data.get("app_name", "unkown")).lower()
             self.bot_platform_cache[self.src_bot] = platform
-            logger.debug(f"获取 {self.src_bot} 平台: {platform}")
+            self.logger.debug(f"获取 {self.src_bot} 平台: {platform}")
 
         return self.bot_platform_cache[self.src_bot]
 
+    async def _get_api_rkey(self) -> tuple[str, str]:
+        rkey_api = "https://llob.linyuchen.net/rkey"
+        resp = await async_client().get(rkey_api)
+        data: dict[str, str] = resp.json()
+        p_rkey = data["private_rkey"].removeprefix("&rkey=")
+        g_rkey = data["group_rkey"].removeprefix("&rkey=")
+        self.logger.debug(f"从 API 获取 rkey: {p_rkey, g_rkey}")
+        return p_rkey, g_rkey
+
     async def get_rkey(self) -> Sequence[str]:
         if "napcat" not in await self.get_platform():
-            return await get_rkey()
+            return await self._get_api_rkey()
 
         try:
             res = type_validate_python(
@@ -160,11 +78,11 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                 await self.src_bot.call_api("nc_get_rkey"),
             )
         except Exception:
-            logger.debug("nc_get_rkey 出错，使用 rkey API")
-            return await get_rkey()
+            self.logger.debug("nc_get_rkey 出错，使用 rkey API")
+            return await self._get_api_rkey()
 
         rkeys = [item["rkey"].removeprefix("&rkey=") for item in res]
-        logger.debug(f"从 NapCat 获取 rkey: {rkeys}")
+        self.logger.debug(f"从 NapCat 获取 rkey: {rkeys}")
         return rkeys
 
     async def check_rkey(self, url: str) -> str | None:
@@ -175,15 +93,32 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             for rkey in await self.get_rkey():
                 updated = parsed.update_query(rkey=rkey).human_repr()
                 if await check_url_ok(updated):
-                    logger.debug(f"更新 rkey: {url} -> {updated}")
+                    self.logger.debug(f"更新 rkey: {url} -> {updated}")
                     return updated
 
         return None
 
+    async def url_to_image(self, url: str) -> u.Image | None:
+        info = await guess_url_type(url)
+        if info is None:
+            return None
+
+        name = f"{hash(url)}.{info.extension}"
+        key = self.get_cos_key(name)
+
+        try:
+            url = await upload_from_url(url, key)
+        except Exception as err:
+            self.logger.opt(exception=err).debug("上传图片失败，使用原始链接")
+        else:
+            self.logger.debug(f"上传图片: {escape_tag(url)}")
+
+        return u.Image(url=url, mimetype=info.mime, name=name)
+
     async def convert_image(self, url: str) -> u.Segment:
         if self.do_resolve_url:
             if (checked := await self.check_rkey(url)) and (
-                seg := await url_to_image(checked, self.get_cos_key)
+                seg := await self.url_to_image(checked)
             ):
                 return seg
             return u.Text(f"[image:{url}]")
@@ -224,6 +159,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                 key=f"forward_{forward_id}",
                 value=json.dumps(cache_data),
             )
+            self.logger.debug(f"缓存合并转发消息: {forward_id}")
             return True
 
         return False
@@ -242,22 +178,66 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             )
             yield u.Keyboard([btn])
 
+    async def handle_json_msg(self, data: dict[str, Any]) -> AsyncIterable[u.Segment]:
+        def default() -> u.Segment:
+            return u.Text(f"[json消息:{data}]")
+
+        meta = data.get("meta", {})
+        if not meta:
+            yield default()
+            return
+
+        # Bili share
+        if "detail_1" in meta and meta["detail_1"]["title"] == "哔哩哔哩":
+            detail = meta["detail_1"]
+            url = await solve_url_302(detail["qqdocurl"])
+            yield u.Text(f"[哔哩哔哩] {detail['desc']}\n{url}")
+            yield u.Image(url=detail["preview"])
+            return
+
+        yield default()
+        return
+
+    async def url_to_video(self, url: str) -> u.Video | None:
+        key = self.get_cos_key(f"{hash(url)}.mp4")
+
+        try:
+            url = await upload_from_url(url, key)
+        except Exception as err:
+            self.logger.opt(exception=err).debug("上传视频失败，使用原始链接")
+        else:
+            self.logger.debug(f"上传视频: {escape_tag(url)}")
+
+        return u.Video(url=url)
+
     async def convert_video(self, url: str) -> u.Segment:
         if self.do_resolve_url:
             if (fixed := await self.check_rkey(url)) and (
-                seg := await url_to_video(fixed, self.get_cos_key)
+                seg := await self.url_to_video(fixed)
             ):
                 return seg
             return u.Text(f"[video:{url}]")
 
         return u.Video(url=url)
 
+    async def upload_local_file(self, path: Path) -> u.File | None:
+        key = self.get_cos_key(f"{hash(path)}/{path.name}")
+
+        try:
+            url = await upload_from_local(path, key)
+        except Exception as err:
+            self.logger.opt(exception=err).debug("上传文件失败")
+            return None
+        else:
+            self.logger.debug(f"上传文件: {escape_tag(url)}")
+            return u.File(url=url)
+
     @contextlib.asynccontextmanager
     async def convert_file(self, file_id: str) -> AsyncGenerator[u.Segment]:
         res = await self.src_bot.call_api("get_file", file_id=file_id)
         path = Path("/share/QQ/NapCat/temp") / str(res["file_name"])
         if path.exists():
-            if seg := await upload_local_file(path, self.get_cos_key):
+            if seg := await self.upload_local_file(path):
                 yield seg
             else:
                 yield u.Text(f"[file:{file_id}]")
@@ -275,7 +255,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             agen = aiter(amr_to_mp3(path))
             path = await anext(agen)
 
-        seg = await upload_local_file(path, self.get_cos_key)
+        seg = await self.upload_local_file(path)
         if seg is None:
             seg = u.Text(f"[record:{path}]")
 
@@ -305,7 +285,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             case "json":
                 with contextlib.suppress(Exception):
                     json_data = json.loads(segment.data["data"])
-                    async for seg in handle_json_msg(json_data):
+                    async for seg in self.handle_json_msg(json_data):
                         yield seg
             case "video":
                 if (url := segment.data.get("url")) and (
@@ -344,7 +324,7 @@ class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
                     name=file.name or file.id,
                 )
             except ActionFailed as err:
-                logger.opt(exception=err).debug(f"上传群文件失败: {err}")
+                nonebot.logger.opt(exception=err).debug(f"上传群文件失败: {err}")
                 await target.send(f"上传群文件失败: {file.id}", bot=bot)
 
         for file in files:

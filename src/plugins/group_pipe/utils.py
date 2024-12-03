@@ -71,6 +71,13 @@ async def guess_url_type(url: str) -> _FileType | None:
         return _FileType(info.mime[0], info.extension[0], int(size))
 
 
+async def solve_url_302(url: str) -> str:
+    async with async_client().stream("GET", url) as resp:
+        if resp.status_code == 302:
+            return await solve_url_302(resp.headers["Location"].partition("?")[0])
+    return url
+
+
 type _AnyFile = bytes | anyio.Path | pathlib.Path
 
 

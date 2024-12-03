@@ -1,15 +1,34 @@
 import json
 
+from nonebot import logger, require
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot import v11
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, Subcommand, on_alconna
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 
+require("src.plugins.upload_cos")
+from src.plugins.upload_cos import upload_from_url
+
 from ..database import KVCacheDAO
 from ..processor import get_processor
-from ..processor.onebot11 import MessageConverter, url_to_image
+from ..processor.onebot11 import MessageConverter
+from ..utils import guess_url_type
 from .depends import MsgTarget
+
+
+async def url_to_image(url: str) -> Image | None:
+    if (info := await guess_url_type(url)) is None:
+        return None
+
+    try:
+        url = await upload_from_url(url, f"{hash(url)}.{info.extension}")
+    except Exception as err:
+        logger.opt(exception=err).debug("上传图片失败，使用原始链接")
+
+    logger.debug(f"上传图片: {url}")
+    return Image(url=url, mimetype=info.mime)
+
 
 alc = Alconna(
     "forward",
