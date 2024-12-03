@@ -1,7 +1,7 @@
-import asyncio
 import contextlib
 from typing import Literal, override
 
+import anyio
 import nonebot
 from nonebot import get_driver
 from nonebot.compat import model_dump, type_validate_python
@@ -10,9 +10,12 @@ from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
 nonebot.require("nonebot_plugin_apscheduler")
+nonebot.require("src.plugins.gtg")
 from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
+
+from src.plugins.gtg import call_later, call_soon
 
 from ..highlight import Highlight as BaseHighlight
 from ..patcher import Patcher
@@ -92,7 +95,7 @@ with contextlib.suppress(ImportError):
         elif update_retry_id.get(key, 0) != _id:
             return
 
-        await asyncio.sleep(_wait_secs)
+        await anyio.sleep(_wait_secs)
 
         try:
             update = {
@@ -102,13 +105,13 @@ with contextlib.suppress(ImportError):
         except Exception as err:
             logger.warning(f"更新 {bot} 的群聊信息缓存时出错: {err!r}")
             if _try_count <= 3:
-                coro = update_group_cache(
+                call_soon(
+                    update_group_cache,
                     bot,
                     _try_count=_try_count + 1,
                     _wait_secs=30,
                     _id=_id,
                 )
-                asyncio.get_running_loop().create_task(coro)
                 logger.warning("<y>30</y>s 后重试...")
             return
 
@@ -117,9 +120,7 @@ with contextlib.suppress(ImportError):
         del update_retry_id[key]
 
     async def update_user_card_cache(bot: Bot) -> None:
-        loop = asyncio.get_event_loop()
-
-        def reset(user_id: int, group_id: int | None) -> None:
+        async def reset(user_id: int, group_id: int | None) -> None:
             user_card_cache[(user_id, group_id)] = None
 
         for (user_id, group_id), name in list(user_card_cache.items()):
@@ -136,7 +137,7 @@ with contextlib.suppress(ImportError):
                     data = await bot.get_stranger_info(user_id=user_id)
                     name = data.get("nickname") or str(user_id)
             user_card_cache[(user_id, group_id)] = name
-            loop.call_later(5 * 60, reset, user_id, group_id)
+            call_later(5 * 60, reset, user_id, group_id)
 
     def colored_user_card(user: int | Sender, group: int | None = None) -> str:
         if isinstance(user, Sender):
@@ -435,11 +436,10 @@ with contextlib.suppress(ImportError):
         ]
 
         async def update() -> None:
-            await asyncio.sleep(5)
             if bot in scheduler_job:
                 await update_group_cache(bot)
 
-        asyncio.create_task(update())  # noqa: RUF006
+        call_later(5, update)
 
     @get_driver().on_bot_disconnect
     async def on_bot_disconnect(bot: Bot) -> None:
