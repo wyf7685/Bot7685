@@ -2,19 +2,20 @@ from collections.abc import Callable
 from typing import Any, cast
 
 import nonebot
+from nonebot.adapters import Event
 from nonebot.utils import escape_tag
 
 logger = nonebot.logger.opt(colors=True)
 
 
-class Patcher[T: type]:
+class Patcher[T: Event = Event]:
     __target: type
     __name: str
     __patched: dict[str, tuple[Callable[..., Any], Callable[..., Any]]]
-    origin: T
-    patcher: T
+    origin: type[T]
+    patcher: type[T]
 
-    def __init__(self, cls: T) -> None:
+    def __init__(self, cls: type[T]) -> None:
         self.__target = cls.mro()[1]
         self.__name = self.__target.__name__
         self.__patched = {
@@ -31,7 +32,7 @@ class Patcher[T: type]:
             (self.__target,),
             {name: original for name, (_, original) in self.__patched.items()},
         )
-        self.origin = cast(T, origin)
+        self.origin = cast(type[T], origin)
         self.patcher = cls
         nonebot.get_driver().on_startup(self.patch)
 
