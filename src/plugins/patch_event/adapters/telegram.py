@@ -8,6 +8,7 @@ from ..patcher import Patcher
 
 with contextlib.suppress(ImportError):
     from nonebot.adapters.telegram.event import (
+        ForumTopicEditedMessageEvent,
         ForumTopicMessageEvent,
         GroupEditedMessageEvent,
         GroupMessageEvent,
@@ -78,6 +79,24 @@ with contextlib.suppress(ImportError):
                 f"[{self.get_event_name()}]: "
                 f"EditedMessage <c>{self.message_id}</c> from "
                 f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>)@[Chat {chat}]: "
+                f"{Highlight.apply(self.get_message())}"
+            )
+
+    @Patcher
+    class PatchForumTopicEditedMessageEvent(ForumTopicEditedMessageEvent):
+        @override
+        def get_log_string(self) -> str:
+            nick = self.from_.first_name + (
+                f" {self.from_.last_name}" if self.from_.last_name else ""
+            )
+            chat = f"<c>{self.chat.id}</c>"
+            if self.chat.title:
+                chat = f"<y>{escape_tag(self.chat.title)}</y>({chat})"
+            return (
+                f"[{self.get_event_name()}]: "
+                f"EditedMessage <c>{self.message_id}</c> from "
+                f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>)@[Chat {chat} "
+                f"Thread <c>{self.message_thread_id}</c>]: "
                 f"{Highlight.apply(self.get_message())}"
             )
 
