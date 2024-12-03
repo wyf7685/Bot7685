@@ -3,6 +3,7 @@ import json
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot import v11
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, Subcommand, on_alconna
+from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 
 from ..database import KVCacheDAO
@@ -29,7 +30,12 @@ alc = Alconna(
     ),
 )
 
-matcher = on_alconna(alc, use_cmd_start=True, block=True)
+matcher = on_alconna(
+    alc,
+    use_cmd_start=True,
+    block=True,
+    extensions=[TelegramSlashExtension()],
+)
 
 
 @matcher.assign("cache")

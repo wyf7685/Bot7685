@@ -10,6 +10,7 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
+from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 
 from ..database import PipeDAO, display_pipe
 from .depends import MsgTarget
@@ -53,7 +54,13 @@ async def _rule_is_group(target: MsgTarget) -> bool:
     return not target.private
 
 
-pipe_cmd = on_alconna(alc, _rule_is_group, permission=SUPERUSER, use_cmd_start=True)
+pipe_cmd = on_alconna(
+    alc,
+    _rule_is_group,
+    permission=SUPERUSER,
+    extensions=[TelegramSlashExtension()],
+    use_cmd_start=True,
+)
 
 
 @pipe_cmd.assign("list.listen")
