@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Protocol, cast, overload
 
-from nonebot.adapters import Bot, Event, Message
+from nonebot.adapters import Adapter, Bot, Event, Message
 from nonebot_plugin_alconna.uniseg import Segment, Target, UniMessage
 
 
@@ -24,9 +24,13 @@ class MessageProcessorProtocol[TB: Bot, TM: Message](Protocol):
 PROCESSORS: dict[str | None, type[MessageProcessorProtocol]] = {}
 
 
-def register[T: type[MessageProcessorProtocol]](type_: str | None) -> Callable[[T], T]:
+def register[
+    T: type[MessageProcessorProtocol]
+](type_: type[Adapter] | None) -> Callable[[T], T]:
+    key = type_.get_name() if type_ is not None else None
+
     def decorator(processor: T) -> T:
-        PROCESSORS[type_] = cast(type[MessageProcessorProtocol], processor)
+        PROCESSORS[key] = cast(type[MessageProcessorProtocol], processor)
         return processor
 
     return decorator

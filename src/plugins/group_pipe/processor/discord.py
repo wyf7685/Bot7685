@@ -4,7 +4,7 @@ from typing import ClassVar, override
 from weakref import WeakKeyDictionary
 
 from nonebot.adapters import Event as BaseEvent
-from nonebot.adapters.discord import Bot, MessageEvent
+from nonebot.adapters.discord import Adapter, Bot, MessageEvent
 from nonebot.adapters.discord.api.model import UNSET, AttachmentSend, MessageGet
 from nonebot.adapters.discord.message import (
     AttachmentSegment,
@@ -90,5 +90,5 @@ class MessageSender(BaseMessageSender[Bot, MessageGet]):
         return str(data.id)
 
 
-@register("Discord")
+@register(Adapter)
 class MessageProcessor(MessageSender, MessageConverter): ...

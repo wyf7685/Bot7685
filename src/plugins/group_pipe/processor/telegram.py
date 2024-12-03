@@ -5,7 +5,7 @@ from typing import override
 
 import anyio
 from nonebot.adapters import Event as BaseEvent
-from nonebot.adapters.telegram import Bot, Message, MessageSegment
+from nonebot.adapters.telegram import Adapter, Bot, Message, MessageSegment
 from nonebot.adapters.telegram.event import MessageEvent
 from nonebot.adapters.telegram.model import Message as MessageModel
 from nonebot_plugin_alconna import uniseg as u
@@ -161,5 +161,5 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
                     tg.start_soon(_send_gif, file)
 
 
-@register("Telegram")
+@register(Adapter)
 class MessageProcessor(MessageConverter, MessageSender): ...

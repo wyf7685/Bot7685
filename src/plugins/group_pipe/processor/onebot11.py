@@ -12,6 +12,7 @@ import yarl
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.onebot.v11 import (
     ActionFailed,
+    Adapter,
     Bot,
     Message,
     MessageEvent,
@@ -379,5 +380,5 @@ class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
         await super().send(dst_bot, target, msg, src_type, src_id)
 
 
-@register("OneBot V11")
+@register(Adapter)
 class MessageProcessor(MessageConverter, MessageSender): ...
