@@ -29,6 +29,7 @@ async def _() -> None:
     if __gtg is not None:
         __gtg.cancel_scope.cancel()
         await __gtg.__aexit__(None, None, None)
+        __gtg = None
 
 
 def call_later[**P](
