@@ -376,7 +376,7 @@ class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
             cls._send_files(files, target, dst_bot)
 
         # 发送消息
-        return await super().send(dst_bot, target, msg, src_type, src_id)
+        await super().send(dst_bot, target, msg, src_type, src_id)
 
 
 @register("OneBot V11")
