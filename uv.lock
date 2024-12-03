@@ -207,7 +207,7 @@ requires-dist = [
     { name = "nonebot-adapter-qq", specifier = ">=1.5.3" },
     { name = "nonebot-adapter-satori", specifier = ">=0.13.0rc3" },
     { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20" },
-    { name = "nonebot-plugin-alconna", git = "https://github.com/wyf7685/plugin-alconna.git" },
+    { name = "nonebot-plugin-alconna", git = "https://github.com/nonebot/plugin-alconna.git" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", specifier = ">=0.6.2" },
     { name = "nonebot-plugin-emojimix", specifier = ">=0.4.0" },
@@ -1122,7 +1122,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-alconna"
 version = "0.54.1"
-source = { git = "https://github.com/wyf7685/plugin-alconna.git#bbe678cdc64d9216deabee1904634d02c5422b3f" }
+source = { git = "https://github.com/nonebot/plugin-alconna.git#a0e5ec0b7f98c13ac1e9253433c187ba2c8a234c" }
 dependencies = [
     { name = "arclet-alconna" },
     { name = "arclet-alconna-tools" },
