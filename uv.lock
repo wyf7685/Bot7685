@@ -376,16 +376,15 @@ wheels = [
 
 [[package]]
 name = "cookit"
-version = "0.8.1"
+version = "0.8.2.post2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "anyio" },
     { name = "fleep" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/83/e83a0da3acd29f341de7815a725e9140d9102b2064f5a35e6f7e043c8cfe/cookit-0.8.1.tar.gz", hash = "sha256:0d4ac51db51ee2c306b442fa6493897387972739da7307a80d998d06911dc4f2", size = 25355 }
+sdist = { url = "https://files.pythonhosted.org/packages/83/0f/2e9dde0eda3fcd694973b6488f4616ec5e7c6349e7b609f5fb5c52514b57/cookit-0.8.2.post2.tar.gz", hash = "sha256:1cff72e15c36279825d2d92a86610d4ae7e9a243ab3d5e0720f5bf1b5601c22d", size = 26043 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b3/51/ae444268aec34c329a68b7916686507ad5be39de12534fd507aa4df768b4/cookit-0.8.1-py3-none-any.whl", hash = "sha256:382abe6604e0dc0444041a2ac416c0464172d2cad0e5c6ddfd0301a60fdaa357", size = 27478 },
+    { url = "https://files.pythonhosted.org/packages/1a/ca/9f03d0e6c05788274dad4a7465732377ee4801b7baed3296d6477c7be3f5/cookit-0.8.2.post2-py3-none-any.whl", hash = "sha256:2fe37ce37bf6cb5c60a1d944ad81c1716d2eff231c58a8b2c99cab586507df58", size = 28914 },
 ]
 
 [package.optional-dependencies]
@@ -396,7 +395,9 @@ loguru = [
     { name = "loguru" },
 ]
 playwright = [
+    { name = "anyio" },
     { name = "playwright" },
+    { name = "yarl" },
 ]
 pydantic = [
     { name = "pydantic" },
@@ -1619,7 +1620,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "1.56.1"
+version = "1.56.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1631,9 +1632,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/8f/9235cc14f16f24efb9ee7dd95f8cf1c4fb782d30e5b668f5f183de7735ad/openai-1.56.1.tar.gz", hash = "sha256:8b0449f22a0c318441eae8a8a789753c3b2cac86542be51ca45df788e26aa180", size = 315316 }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/97/302669f5888d1adf8ce0e93f1e5b2337b6c9db47d9877bd344a29db314be/openai-1.56.2.tar.gz", hash = "sha256:17312af69bc7670d4048f98ab5849f8784d98c39ac64fcde19406e3774a0c1e5", size = 315404 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/57/31/22681ac17756f5274d978688640710572cdc53eae8e96a2d1572a50c7d40/openai-1.56.1-py3-none-any.whl", hash = "sha256:38e61183c2a98fedebbbb04a909a052d9f897358b070483fc0caff17300a227c", size = 389847 },
+    { url = "https://files.pythonhosted.org/packages/23/36/c60fffa518d82952335e2ef4a6b93b0427c57eb49469879dee1cbe59d551/openai-1.56.2-py3-none-any.whl", hash = "sha256:82d0c48f9504e04c7797e9b799dcf7f49a246d99b6cbfd90f3193ea80815b69e", size = 389854 },
 ]
 
 [[package]]
@@ -2130,11 +2131,11 @@ wheels = [
 
 [[package]]
 name = "six"
-version = "1.16.0"
+version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/71/39/171f1c67cd00715f190ba0b100d606d440a28c93c7714febeca8b79af85e/six-1.16.0.tar.gz", hash = "sha256:1e61c37477a1626458e36f7b1d82aa5c9b094fa4802892072e49de9c60c4c926", size = 34041 }
+sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d9/5a/e7c31adbe875f2abbb91bd84cf2dc52d792b5a01506781dbcf25c91daf11/six-1.16.0-py2.py3-none-any.whl", hash = "sha256:8abb2f1d86890a2dfb989f9a77cfcfd3e47c2a354b01111771326f8aa26e0254", size = 11053 },
+    { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050 },
 ]
 
 [[package]]
