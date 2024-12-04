@@ -89,12 +89,14 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         if await check_url_ok(url):
             return url
 
-        if "rkey" in (parsed := yarl.URL(url)).query:
-            for rkey in await self.get_rkey():
-                updated = parsed.update_query(rkey=rkey).human_repr()
-                if await check_url_ok(updated):
-                    self.logger.debug(f"更新 rkey: {url} -> {updated}")
-                    return updated
+        if "rkey" not in (parsed := yarl.URL(url)).query:
+            return None
+
+        for rkey in await self.get_rkey():
+            updated = parsed.update_query(rkey=rkey).human_repr()
+            if await check_url_ok(updated):
+                self.logger.debug(f"更新 rkey: {url} -> {updated}")
+                return updated
 
         return None
 
@@ -110,9 +112,8 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             url = await upload_from_url(url, key)
         except Exception as err:
             self.logger.opt(exception=err).debug("上传图片失败，使用原始链接")
-        else:
-            self.logger.debug(f"上传图片: {escape_tag(url)}")
 
+        self.logger.debug(f"上传图片: {escape_tag(url)}")
         return u.Image(url=url, mimetype=info.mime, name=name)
 
     async def convert_image(self, url: str) -> u.Segment:
@@ -134,7 +135,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             return False
 
         cache_data: list[dict[str, Any]] = []
-        processor = MessageProcessor(self.src_bot)
+        processor = MessageConverter(self.src_bot)
         processor.do_resolve_url = False
 
         for item in content:
@@ -205,9 +206,8 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             url = await upload_from_url(url, key)
         except Exception as err:
             self.logger.opt(exception=err).debug("上传视频失败，使用原始链接")
-        else:
-            self.logger.debug(f"上传视频: {escape_tag(url)}")
 
+        self.logger.debug(f"上传视频: {escape_tag(url)}")
         return u.Video(url=url)
 
     async def convert_video(self, url: str) -> u.Segment:
@@ -228,9 +228,9 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         except Exception as err:
             self.logger.opt(exception=err).debug("上传文件失败")
             return None
-        else:
-            self.logger.debug(f"上传文件: {escape_tag(url)}")
-            return u.File(url=url)
+
+        self.logger.debug(f"上传文件: {escape_tag(url)}")
+        return u.File(url=url)
 
     @contextlib.asynccontextmanager
     async def convert_file(self, file_id: str) -> AsyncGenerator[u.Segment]:
