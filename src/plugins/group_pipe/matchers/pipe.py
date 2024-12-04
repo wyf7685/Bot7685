@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Sequence
 
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import (
@@ -12,7 +13,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 
-from ..database import PipeDAO, display_pipe
+from ..database import Pipe, PipeDAO, display_pipe
 from .depends import MsgTarget
 
 alc = Alconna(
@@ -63,16 +64,32 @@ pipe_cmd = on_alconna(
 )
 
 
+def show_pipes(
+    listen: Sequence[Pipe] | None = None,
+    target: Sequence[Pipe] | None = None,
+) -> str:
+    idx = 1
+    msg = ""
+    if listen:
+        for pipe in listen:
+            t = pipe.get_target()
+            msg += f"{idx}. ==> <{t.adapter}: {t.id}>\n"
+            idx += 1
+    if target:
+        for pipe in target:
+            t = pipe.get_listen()
+            msg += f"{idx}. <== <{t.adapter}: {t.id}>\n"
+            idx += 1
+    return msg.rstrip("\n")
+
+
 @pipe_cmd.assign("list.listen")
 async def assign_list_listen(target: MsgTarget) -> None:
     pipes = await PipeDAO().get_pipes(listen=target)
     if not pipes:
         await UniMessage.text("没有监听当前群组的管道").finish(reply_to=True)
 
-    msg = "监听当前群组的管道:\n"
-    for idx, pipe in enumerate(pipes, 1):
-        t = pipe.get_target()
-        msg += f"{idx}. ==> <{t.adapter}: {t.id}>\n"
+    msg = "监听当前群组的管道:\n" + show_pipes(listen=pipes)
     await UniMessage.text(msg.rstrip("\n")).finish(reply_to=True)
 
 
@@ -82,10 +99,7 @@ async def assign_list_target(target: MsgTarget) -> None:
     if not pipes:
         await UniMessage.text("没有目标为当前群组的管道").finish(reply_to=True)
 
-    msg = "目标为当前群组的管道:\n"
-    for idx, pipe in enumerate(pipes, 1):
-        t = pipe.get_listen()
-        msg += f"{idx}. <== <{t.adapter}: {t.id}>\n"
+    msg = "目标为当前群组的管道:\n" + show_pipes(target=pipes)
     await UniMessage.text(msg.rstrip("\n")).finish(reply_to=True)
 
 
@@ -95,13 +109,7 @@ async def assign_list(target: MsgTarget) -> None:
     if not listen_pipes and not target_pipes:
         await UniMessage.text("没有链接到当前群组的管道").finish(reply_to=True)
 
-    msg = "当前群组的管道:\n"
-    for idx, pipe in enumerate(listen_pipes, 1):
-        t = pipe.get_target()
-        msg += f"{idx}. ==> <{t.adapter}: {t.id}>\n"
-    for idx, pipe in enumerate(target_pipes, len(listen_pipes) + 1):
-        t = pipe.get_listen()
-        msg += f"{idx}. <== <{t.adapter}: {t.id}>\n"
+    msg = "当前群组的管道:\n" + show_pipes(listen_pipes, target_pipes)
     await UniMessage.text(msg.rstrip("\n")).finish(reply_to=True)
 
 
@@ -133,13 +141,18 @@ async def assign_link(target: MsgTarget, code: int) -> None:
 
 @pipe_cmd.assign("remove")
 async def assign_remove(target: MsgTarget, idx: int) -> None:
-    listen_pipes, target_pipes = await PipeDAO().get_linked_pipes(target)
-    pipes = [*listen_pipes, *target_pipes]
-    if idx < 1 or idx > len(pipes):
+    listen_pipes, target_pipes = map(list, await PipeDAO().get_linked_pipes(target))
+    if idx < 1 or idx > len(listen_pipes) + len(target_pipes):
         await UniMessage.text("管道序号无效").finish(reply_to=True)
 
-    pipe = pipes[idx - 1]
+    pipe = (listen_pipes + target_pipes)[idx - 1]
     listen, target = pipe.get_listen(), pipe.get_target()
     await PipeDAO().delete_pipe(pipe)
-    msg = f"管道删除成功:\n{display_pipe(listen, target)}"
+    (listen_pipes if pipe in listen_pipes else target_pipes).remove(pipe)
+
+    msg = (
+        "管道删除成功:\n"
+        f"{display_pipe(listen, target)}\n\n"
+        "当前群组的管道:\n" + show_pipes(listen_pipes, target_pipes)
+    )
     await UniMessage.text(msg).finish(reply_to=True)
