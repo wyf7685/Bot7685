@@ -1,4 +1,3 @@
-import asyncio
 from collections.abc import Sequence
 
 from nonebot.permission import SUPERUSER
@@ -12,6 +11,8 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
+
+from src.plugins.gtg import call_later
 
 from ..database import Pipe, PipeDAO, display_pipe
 from .depends import MsgTarget
@@ -120,7 +121,11 @@ pipe_create_cache: dict[int, Target] = {}
 async def assign_create(target: MsgTarget) -> None:
     key = hash(target)
     pipe_create_cache[key] = target
-    asyncio.get_event_loop().call_later(60 * 5, pipe_create_cache.pop, key, None)
+
+    async def _() -> None:
+        pipe_create_cache.pop(key, None)
+
+    call_later(60 * 5, _)
     await (
         UniMessage.text("请在5分钟内向目标群组中发送以下命令:\n")
         .text(f"/pipe link {key}")

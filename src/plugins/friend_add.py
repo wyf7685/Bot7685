@@ -1,7 +1,7 @@
-import asyncio
 import contextlib
 from typing import Annotated
 
+import anyio
 from nonebot import get_driver, on_message, on_type, require
 from nonebot.adapters.onebot.v11 import Bot, FriendRequestEvent, PrivateMessageEvent
 from nonebot.permission import SUPERUSER
@@ -49,7 +49,6 @@ async def _(
         )
 
     matcher = on_message(rule=rule, permission=SUPERUSER, temp=True)
-    task = asyncio.create_task(asyncio.sleep(10 * 60))
 
     @matcher.handle()
     async def _(bot: Bot, msg: UniMsg) -> None:
@@ -59,10 +58,13 @@ async def _(
             else event.reject
         )(bot)
         await UniMessage.text(f"已{text}该好友申请").send()
-        task.cancel()
+        finished.set()
 
-    with contextlib.suppress(Exception):
-        await task
+    finished = anyio.Event()
+    with anyio.move_on_after(10 * 60):
+        await finished.wait()
+
+    if not finished.is_set():
         matcher.destroy()
         for receipt in receipts.values():
             await receipt.reply("操作超时，将忽略该好友申请")
