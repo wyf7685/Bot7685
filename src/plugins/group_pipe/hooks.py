@@ -1,10 +1,9 @@
+import anyio
 from nonebot import logger
 from nonebot.adapters import Bot, Event, Message
 from nonebot.message import event_preprocessor
 from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_uninfo import get_session
-
-from src.plugins.gtg import call_soon
 
 from .database import PipeDAO, display_pipe
 from .processor import get_processor
@@ -78,8 +77,9 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
     user_name = info.user.nick or info.user.name or info.user.id
     msg_head = UniMessage.text(f"[ {group_name} - {user_name} ]\n")
 
-    for pipe in pipes:
-        target = pipe.get_target()
-        logger.debug(f"管道转发: {display_pipe(listen, target)}")
-        args = (bot, listen, target, msg_id, msg_head, msg)
-        call_soon(send_pipe_msg, *args)
+    async with anyio.create_task_group() as tg:
+        for pipe in pipes:
+            target = pipe.get_target()
+            logger.debug(f"管道转发: {display_pipe(listen, target)}")
+            args = (bot, listen, target, msg_id, msg_head, msg)
+            tg.start_soon(send_pipe_msg, *args)
