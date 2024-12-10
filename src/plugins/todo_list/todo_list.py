@@ -65,14 +65,13 @@ class TodoList:
         self.todo.sort(key=lambda x: (x.checked, 1 - x.pinned, x.time.timestamp()))
 
     async def get(self, index: int) -> Todo:
-        i = index
-        if index > 0:
-            i = index - 1
+        i = index - 1 if index > 0 else index
 
-        try:
+        if 0 < index <= len(self.todo):
             return self.todo[i]
-        except IndexError:
-            await UniMessage(f"没有序号为 {index} 的待办事项").finish()
+
+        # wtf ruff it's **NoReturn**
+        await UniMessage(f"没有序号为 {index} 的待办事项").finish()  # noqa: RET503
 
     async def add(self, content: str) -> Todo:
         todo = Todo(content=content)

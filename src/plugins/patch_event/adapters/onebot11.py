@@ -246,7 +246,7 @@ with contextlib.suppress(ImportError):
         def lagrange(self: PokeNotifyEvent, action: str, suffix: str) -> str:
             return (
                 f"[{self.get_event_name()}]: "
-                f"{(colored_group(self.group_id) + ' ') if self.group_id else ''}"
+                f"{f"{colored_group(self.group_id)} " if self.group_id else ''}"
                 f"{colored_user_card(self.user_id, self.group_id)} {action} "
                 f"{colored_user_card(self.target_id, self.group_id)} {suffix}"
             )

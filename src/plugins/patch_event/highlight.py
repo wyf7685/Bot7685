@@ -56,9 +56,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     @register(int)
     @classmethod
     def _(cls, data: int) -> str:
-        if isinstance(data, Enum):
-            return cls.enum(data)
-        return cls.repr(data, "lc", "i")
+        return cls.enum(data) if isinstance(data, Enum) else cls.repr(data, "lc", "i")
 
     @register(float)
     @classmethod

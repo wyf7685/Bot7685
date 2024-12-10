@@ -61,7 +61,4 @@ def get_processor(
     if isinstance(src_bot, Bot):
         src_bot = src_bot.type
 
-    if src_bot in PROCESSORS:
-        return PROCESSORS[src_bot]
-
-    return PROCESSORS[None]  # common.MessageProcessor
+    return PROCESSORS[src_bot] if src_bot in PROCESSORS else PROCESSORS[None]
