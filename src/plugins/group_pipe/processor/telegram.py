@@ -7,6 +7,7 @@ import anyio
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Adapter, Bot, Message, MessageSegment
 from nonebot.adapters.telegram.event import MessageEvent
+from nonebot.adapters.telegram.model import InputFile
 from nonebot.adapters.telegram.model import Message as MessageModel
 from nonebot_plugin_alconna import uniseg as u
 
@@ -137,7 +138,7 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
 
         # alc 里没有处理 gif (animation) 的逻辑
         # 提取出来单独发送
-        gif_files: list[tuple[str, bytes] | bytes | str] = []
+        gif_files: list[InputFile | str] = []
         for seg in msg[u.Image]:
             if seg.mimetype == "image/gif" and (file := (seg.raw or seg.url)):
                 msg.remove(seg)
@@ -149,8 +150,13 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
 
         await super().send(dst_bot, target, msg, src_type, src_id)
 
-        async def _send_gif(file: tuple[str, bytes] | bytes | str) -> None:
-            res = await dst_bot.send_animation(target.id, file)
+        async def _send_gif(file: InputFile | str) -> None:
+            message_thread_id = target.extra.get("message_thread_id", None)
+            res = await dst_bot.send_animation(
+                chat_id=target.id,
+                animation=file,
+                message_thread_id=message_thread_id,
+            )
             await cls._set_dst_id(src_type, src_id, dst_bot, res)
 
         if len(gif_files) == 1:
