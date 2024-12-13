@@ -5,8 +5,8 @@ from nonebot.message import event_preprocessor
 from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_uninfo import get_session
 
+from .adapters import get_converter, get_sender
 from .database import PipeDAO, display_pipe
-from .processor import get_processor
 from .utils import repr_unimsg
 
 
@@ -27,12 +27,12 @@ async def send_pipe_msg(
         logger.warning(f"管道选择目标 Bot 失败: {err}")
         return
 
-    unimsg = msg_head + await get_processor(bot, dst_bot).convert(msg)
+    unimsg = msg_head + await get_converter(bot, dst_bot).convert(msg)
     logger.debug(f"发送管道: {display}")
     logger.debug(f"消息: {repr_unimsg(unimsg)}")
 
     try:
-        await get_processor(dst_bot).send(
+        await get_sender(dst_bot).send(
             dst_bot=dst_bot,
             target=target,
             msg=unimsg,
@@ -68,7 +68,7 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         logger.trace("没有监听当前群组的管道")
         return
 
-    msg = get_processor(listen.adapter).get_message(event)
+    msg = get_converter(listen.adapter).get_message(event)
     if msg is None:
         logger.trace("无法获取消息内容，跳过管道消息处理")
         return

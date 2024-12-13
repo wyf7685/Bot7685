@@ -33,11 +33,12 @@ from ..utils import (
     guess_url_type,
     solve_url_302,
 )
-from ._registry import register
+from ._registry import converter, sender
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
 
+@converter(Adapter)
 class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
     bot_platform_cache: ClassVar[WeakKeyDictionary[Bot, str]] = WeakKeyDictionary()
     do_resolve_url: bool = True
@@ -306,6 +307,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                     yield seg
 
 
+@sender(Adapter)
 class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
     @override
     @staticmethod
@@ -358,7 +360,3 @@ class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
 
         # 发送消息
         await super().send(dst_bot, target, msg, src_type, src_id)
-
-
-@register(Adapter)
-class MessageProcessor(MessageConverter, MessageSender): ...

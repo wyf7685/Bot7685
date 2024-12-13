@@ -6,10 +6,11 @@ from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot_plugin_alconna import uniseg as u
 
 from ..database import MsgIdCacheDAO
-from ._registry import register
+from ._registry import converter, sender
 from .abstract import AbstractMessageConverter, AbstractMessageSender
 
 
+@converter(None)
 class MessageConverter[
     TMS: MessageSegment = MessageSegment,
     TB: Bot = Bot,
@@ -72,13 +73,14 @@ class MessageConverter[
         return result
 
 
+@sender(None)
 class MessageSender[TB: Bot, TR: Any](AbstractMessageSender[TB]):
     @staticmethod
     def extract_msg_id(data: TR) -> str:
         return str(data)
 
     @classmethod
-    async def _set_dst_id(
+    async def set_dst_id(
         cls,
         src_adapter: str | None,
         src_id: str | None,
@@ -110,16 +112,9 @@ class MessageSender[TB: Bot, TR: Any](AbstractMessageSender[TB]):
         )
 
         for item in receipt.msg_ids:
-            await cls._set_dst_id(
+            await cls.set_dst_id(
                 src_adapter=src_type,
                 src_id=src_id,
                 dst_bot=dst_bot,
                 data=item,
             )
-
-
-@register(None)
-class MessageProcessor(
-    MessageConverter[MessageSegment, Bot, Message],
-    MessageSender[Bot, Any],
-): ...

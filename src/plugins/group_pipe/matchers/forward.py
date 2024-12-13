@@ -10,9 +10,9 @@ from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 require("src.plugins.upload_cos")
 from src.plugins.upload_cos import upload_from_url
 
+from ..adapters import get_sender
+from ..adapters.onebot11 import MessageConverter
 from ..database import KVCacheDAO
-from ..processor import get_processor
-from ..processor.onebot11 import MessageConverter
 from ..utils import guess_url_type
 from .depends import MsgTarget
 
@@ -87,7 +87,7 @@ async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
         await UniMessage.text("未找到合并转发消息").finish(reply_to=True)
 
     cache_data = json.loads(cache)
-    processor = get_processor(bot)
+    fn = get_sender(bot)
 
     for item in cache_data:
         nick = item["nick"]
@@ -100,7 +100,7 @@ async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
 
         msg.insert(0, Text(f"{nick}\n\n"))
         try:
-            await processor.send(
+            await fn.send(
                 dst_bot=bot,
                 target=target,
                 msg=msg,

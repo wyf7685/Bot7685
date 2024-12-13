@@ -14,13 +14,14 @@ from nonebot_plugin_alconna import uniseg as u
 from src.plugins.upload_cos import upload_from_url
 
 from ..utils import download_url, guess_url_type, webm_to_gif
-from ._registry import register
+from ._registry import converter, sender
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
 TG_MSGID_MARK = "$telegram$"
 
 
+@converter(Adapter)
 class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
     @override
     @classmethod
@@ -118,6 +119,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                     yield seg
 
 
+@sender(Adapter)
 class MessageSender(BaseMessageSender[Bot, MessageModel]):
     @override
     @staticmethod
@@ -157,7 +159,7 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
                 animation=file,
                 message_thread_id=message_thread_id,
             )
-            await cls._set_dst_id(src_type, src_id, dst_bot, res)
+            await cls.set_dst_id(src_type, src_id, dst_bot, res)
 
         if len(gif_files) == 1:
             await _send_gif(gif_files[0])
@@ -165,7 +167,3 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
             async with anyio.create_task_group() as tg:
                 for file in gif_files:
                     tg.start_soon(_send_gif, file)
-
-
-@register(Adapter)
-class MessageProcessor(MessageConverter, MessageSender): ...

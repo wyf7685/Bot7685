@@ -21,11 +21,12 @@ from nonebot_plugin_alconna import uniseg as u
 from src.plugins.upload_cos import upload_from_url
 
 from ..utils import guess_url_type
-from ._registry import register
+from ._registry import converter, sender
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
 
+@converter(Adapter)
 class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
     attachment_url: ClassVar[WeakKeyDictionary[AttachmentSend, str]] = (
         WeakKeyDictionary()
@@ -83,12 +84,9 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                     yield seg
 
 
+@sender(Adapter)
 class MessageSender(BaseMessageSender[Bot, MessageGet]):
     @override
     @staticmethod
     def extract_msg_id(data: MessageGet) -> str:
         return str(data.id)
-
-
-@register(Adapter)
-class MessageProcessor(MessageSender, MessageConverter): ...
