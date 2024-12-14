@@ -49,6 +49,13 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         chat_id = event.chat.id
         return f"{chat_id}{TG_MSGID_MARK}{msg_id}"
 
+    @override
+    async def get_reply_id(self, message_id: str) -> str | None:
+        reply_id = await super().get_reply_id(message_id)
+        if reply_id is not None and TG_MSGID_MARK in reply_id:
+            return reply_id.partition(TG_MSGID_MARK)[2]
+        return reply_id
+
     async def get_file_info(self, file_id: str) -> tuple[str | None, str]:
         token = self.src_bot.bot_config.token
         file_path = (await self.src_bot.get_file(file_id)).file_path
