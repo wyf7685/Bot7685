@@ -1,7 +1,7 @@
 import json
 from collections.abc import Generator, Iterable
 from datetime import datetime
-from typing import Annotated, Any, Self
+from typing import Annotated, Any
 
 import anyio
 from async_lru import alru_cache
@@ -38,18 +38,6 @@ class TodoList:
     def __init__(self, session_id: str, todo: list[Todo]) -> None:
         self.session_id = session_id
         self.todo = todo
-
-    @classmethod
-    async def load(
-        cls, session_id: Annotated[str, SessionId(SessionIdType.USER)]
-    ) -> Self:
-        fp = anyio.Path(get_plugin_data_dir()) / f"{session_id}.json"
-        if not fp.exists():
-            await fp.write_text("[]")
-            return cls(session_id, [])
-
-        data = type_validate_json(list[Todo], await fp.read_text(encoding="utf-8"))
-        return cls(session_id, data)
 
     async def save(self) -> None:
         self.sort()
@@ -114,4 +102,16 @@ class TodoList:
         await self.save()
 
 
-UserTodo = Annotated[TodoList, Depends(TodoList.load)]
+async def _user_todo(
+    session_id: Annotated[str, SessionId(SessionIdType.USER)]
+) -> TodoList:
+    fp = anyio.Path(get_plugin_data_dir()) / f"{session_id}.json"
+    if not fp.exists():
+        await fp.write_text("[]")
+        return TodoList(session_id, [])
+
+    data = type_validate_json(list[Todo], await fp.read_text(encoding="utf-8"))
+    return TodoList(session_id, data)
+
+
+UserTodo = Annotated[TodoList, Depends(_user_todo)]
