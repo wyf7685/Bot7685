@@ -17,6 +17,10 @@ class AbstractMessageConverter[TMS: MessageSegment, TB: Bot, TM: Message](abc.AB
     @abc.abstractmethod
     def get_message(cls, event: Event) -> TM | None: ...
 
+    @classmethod
+    @abc.abstractmethod
+    def get_message_id(cls, event: Event, bot: TB) -> str: ...
+
     @abc.abstractmethod
     async def convert_segment(self, segment: TMS) -> AsyncIterable[Segment]:
         yield NotImplemented

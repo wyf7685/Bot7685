@@ -23,6 +23,11 @@ class MessageConverter[
     def get_message(cls, event: Event) -> TM | None:
         return cast(TM, event.get_message())
 
+    @override
+    @classmethod
+    def get_message_id(cls, event: Event, bot: TB) -> str:
+        return u.UniMessage.get_message_id(event, bot)
+
     def get_cos_key(self, key: str) -> str:
         type_ = self.src_bot.type.lower().replace(" ", "_")
         return f"{type_}/{self.src_bot.self_id}/{key}"

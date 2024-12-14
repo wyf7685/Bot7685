@@ -53,7 +53,6 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
 
     try:
         listen = UniMessage.get_target(event, bot)
-        msg_id = UniMessage.get_message_id(event, bot)
         info = await get_session(bot, event)
     except Exception as err:
         logger.trace(f"获取消息信息失败: {err}")
@@ -68,9 +67,16 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         logger.trace("没有监听当前群组的管道")
         return
 
-    msg = get_converter(listen.adapter).get_message(event)
+    converter = get_converter(listen.adapter)
+    msg = converter.get_message(event)
     if msg is None:
         logger.trace("无法获取消息内容，跳过管道消息处理")
+        return
+
+    try:
+        msg_id = converter.get_message_id(event, bot)
+    except Exception as err:
+        logger.trace(f"获取消息 ID 失败: {err}")
         return
 
     group_name = ((g := info.group or info.guild) and g.name) or listen.id
@@ -81,5 +87,4 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         for pipe in pipes:
             target = pipe.get_target()
             logger.debug(f"管道转发: {display_pipe(listen, target)}")
-            args = (bot, listen, target, msg_id, msg_head, msg)
-            tg.start_soon(send_pipe_msg, *args)
+            tg.start_soon(send_pipe_msg, bot, listen, target, msg_id, msg_head, msg)

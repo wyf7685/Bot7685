@@ -40,6 +40,15 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             message.insert(0, reply)
         return message
 
+    @override
+    @classmethod
+    def get_message_id(cls, event: BaseEvent, bot: Bot) -> str:
+        msg_id = super().get_message_id(event, bot)
+        if not isinstance(event, MessageEvent):
+            return msg_id
+        chat_id = event.chat.id
+        return f"{chat_id}{TG_MSGID_MARK}{msg_id}"
+
     async def get_file_info(self, file_id: str) -> tuple[str | None, str]:
         token = self.src_bot.bot_config.token
         file_path = (await self.src_bot.get_file(file_id)).file_path
