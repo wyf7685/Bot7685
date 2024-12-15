@@ -47,7 +47,7 @@ def _rule_bubble(target: MsgTarget) -> bool:
     return not target.private
 
 
-bubble = on_keyword({"冒泡"}, _rule_bubble)
+bubble = on_keyword({"冒泡", "锚抛"}, _rule_bubble)
 
 
 @bubble.handle()
