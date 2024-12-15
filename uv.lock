@@ -1240,17 +1240,18 @@ wheels = [
 
 [[package]]
 name = "nonebot-adapter-qq"
-version = "1.5.3"
+version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "cryptography" },
     { name = "nonebot2" },
     { name = "pydantic" },
     { name = "typing-extensions" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/96/aa/50260a4f80cae88e206f049255770a0ea5bddae2e187ae8daeaa2cc1c884/nonebot_adapter_qq-1.5.3.tar.gz", hash = "sha256:e20dd4c080312131c1ea057a3c798024bac3d0b9c68778ac9a21601aa0ff74e0", size = 29570 }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/5c/8ce4231979584937860e7b4ebb0c4554a27684ad88ac77f7c2cd7ac88a79/nonebot_adapter_qq-1.6.0.tar.gz", hash = "sha256:6471fefb77f3d131f95a11b380bbcd87ce7ac8932148614f20327d3ed36d9962", size = 31087 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1f/c6/14f480365372944c5c47d4172822e9088ae5edd2e4488502ed811c917ef4/nonebot_adapter_qq-1.5.3-py3-none-any.whl", hash = "sha256:9cf15e25be877ba8ca715b212e909dce8b49852aeb52b20bca596de8ef7afe18", size = 33523 },
+    { url = "https://files.pythonhosted.org/packages/60/8b/f8d512451bf7f6092967cac3dd7323cc90f22b40cc9acbaa87a55e969716/nonebot_adapter_qq-1.6.0-py3-none-any.whl", hash = "sha256:a727ce1905d705ee6cb9bad37a2d9384b8fc80c12b2b341679fa4a139fa999a6", size = 34900 },
 ]
 
 [[package]]
@@ -2482,15 +2483,15 @@ wheels = [
 
 [[package]]
 name = "uvicorn"
-version = "0.33.0"
+version = "0.34.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "h11" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/cb/81/a083ae41716b00df56d45d4b5f6ca8e90fc233a62e6c04ab3ad3c476b6c4/uvicorn-0.33.0.tar.gz", hash = "sha256:3577119f82b7091cf4d3d4177bfda0bae4723ed92ab1439e8d779de880c9cc59", size = 76590 }
+sdist = { url = "https://files.pythonhosted.org/packages/4b/4d/938bd85e5bf2edeec766267a5015ad969730bb91e31b44021dfe8b22df6c/uvicorn-0.34.0.tar.gz", hash = "sha256:404051050cd7e905de2c9a7e61790943440b3416f49cb409f965d9dcd0fa73e9", size = 76568 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/98/79/2e2620337ef1e4ef7a058b351603b765f59ac28e6e3ac7c5e7cdee9ea1ab/uvicorn-0.33.0-py3-none-any.whl", hash = "sha256:2c30de4aeea83661a520abab179b24084a0019c0c1bbe137e5409f741cbde5f8", size = 62297 },
+    { url = "https://files.pythonhosted.org/packages/61/14/33a3a1352cfa71812a3a21e8c9bfb83f60b0011f5e36f2b1399d51928209/uvicorn-0.34.0-py3-none-any.whl", hash = "sha256:023dc038422502fa28a09c7a30bf2b6991512da7dcdb8fd35fe57cfc154126f4", size = 62315 },
 ]
 
 [package.optional-dependencies]
