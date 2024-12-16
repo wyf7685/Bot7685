@@ -9,13 +9,22 @@ require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, Subcommand, on_alconna
 from nonebot_plugin_localstore import get_plugin_config_file
 
+
+def fix_meow_word(word: str) -> str:
+    word = word.rstrip()
+    if (ls := word.lstrip()) != word:
+        word = f" {ls}"
+    return word
+
+
 enabled_flag = get_plugin_config_file("meow.enabled").resolve()
 enabled = enabled_flag.exists()
 word_file = get_plugin_config_file("meow.txt").resolve()
 if not word_file.exists():
     word_file.write_text(meow_word := "喵")
 else:
-    meow_word = word_file.read_text().strip()
+    meow_word = fix_meow_word(word_file.read_text())
+
 
 toggle = on_alconna(
     Alconna(
@@ -53,6 +62,7 @@ def handle_meow_disable() -> None:
 async def handle_meow_set(word: str) -> None:
     global meow_word
 
+    word = fix_meow_word(word)
     word_file.write_text(word)
     meow_word = word
 
