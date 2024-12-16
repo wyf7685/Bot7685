@@ -3,11 +3,20 @@ from typing import Any
 from nonebot import require
 from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters.onebot.v11 import Bot, Message, MessageSegment
+from nonebot.plugin import PluginMetadata
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, Subcommand, on_alconna
 from nonebot_plugin_localstore import get_plugin_config_file
+
+__plugin_meta__ = PluginMetadata(
+    name="meow",
+    description="meow?",
+    usage="meow!",
+    type="application",
+    supported_adapters={"~onebot.v11"},
+)
 
 
 def fix_meow_word(word: str) -> str:
@@ -67,33 +76,24 @@ async def handle_meow_set(word: str) -> None:
     meow_word = word
 
 
+SEND_MSG_API = "send_msg", "send_group_msg", "send_private_msg"
+
+
 @BaseBot.on_calling_api
 async def _(bot: BaseBot, api: str, data: dict[str, Any]) -> None:
     if not enabled:
         return
 
-    if not isinstance(bot, Bot):
-        return
-
-    if api not in {"send_msg", "send_group_msg", "send_private_msg"}:
-        return
-
-    if "message" not in data:
-        return
-
-    message = data["message"]
-
-    if (
-        isinstance(message, Message)
-        and message
-        and isinstance(seg := message[-1], MessageSegment)
-        and seg.type == "text"
+    if not (
+        isinstance(bot, Bot)
+        and api in SEND_MSG_API
+        and (message := data.get("message"))
+        and isinstance(message, list)
     ):
-        seg.data["text"] += meow_word
-    elif (
-        isinstance(message, list)
-        and message
-        and isinstance(seg := message[-1], dict)
-        and seg.get("type") == "text"
-    ):
+        return
+
+    if isinstance(message, Message):
+        if isinstance(seg := message[-1], MessageSegment) and seg.type == "text":
+            seg.data["text"] += meow_word
+    elif isinstance(seg := message[-1], dict) and seg.get("type") == "text":
         seg["data"]["text"] += meow_word

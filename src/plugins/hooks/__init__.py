@@ -1,6 +1,6 @@
-import importlib
+from pathlib import Path
 
-from nonebot.plugin import PluginMetadata
+from nonebot.plugin import PluginMetadata, load_plugins
 
 __plugin_meta__ = PluginMetadata(
     name="hooks",
@@ -10,9 +10,4 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-def __init() -> None:
-    for name in "clean_pycache", "hook_memes", "meow":
-        importlib.import_module(f"{__name__}.{name}")
-
-
-__init()
+load_plugins(Path(__file__).parent.resolve().as_posix())
