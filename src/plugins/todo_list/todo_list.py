@@ -61,8 +61,8 @@ class TodoList:
         # wtf ruff it's **NoReturn**
         await UniMessage(f"没有序号为 {index} 的待办事项").finish()  # noqa: RET503
 
-    async def add(self, content: str) -> Todo:
-        todo = Todo(content=content)
+    async def add(self, content: str, *, pin: bool = False) -> Todo:
+        todo = Todo(content=content, pinned=pin)
         self.todo.append(todo)
         await self.save()
         return todo
@@ -106,7 +106,7 @@ async def _user_todo(
     session_id: Annotated[str, SessionId(SessionIdType.USER)]
 ) -> TodoList:
     fp = anyio.Path(get_plugin_data_dir()) / f"{session_id}.json"
-    if not fp.exists():
+    if not await fp.exists():
         await fp.write_text("[]")
         return TodoList(session_id, [])
 

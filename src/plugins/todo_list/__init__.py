@@ -1,9 +1,7 @@
 from typing import NoReturn
 
 from nonebot import require
-from nonebot.params import Depends
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_htmlrender")
@@ -12,6 +10,7 @@ require("nonebot_plugin_session")
 require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import (
     Alconna,
+    AlconnaMatcher,
     Args,
     CommandMeta,
     Match,
@@ -23,7 +22,7 @@ from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExt
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_waiter import prompt, suggest
 
-from .todo_list import Todo, TodoList, UserTodo
+from .todo_list import TodoList, UserTodo
 
 __plugin_meta__ = PluginMetadata(
     name="todo_list",
@@ -40,12 +39,15 @@ __plugin_meta__ = PluginMetadata(
 )
 
 arg_index = Args["index#todo序号", int]
-arg_content = Args["content?#todo内容", str]
-opt_pin = Option("-p|--pin")
 alc = Alconna(
     "todo",
     Subcommand("list", alias={"ls", "show"}, help_text="显示 todo"),
-    Subcommand("add", arg_content, opt_pin, help_text="添加 todo"),
+    Subcommand(
+        "add",
+        Args["content?#todo内容", str],
+        Option("-p|--pin"),
+        help_text="添加 todo",
+    ),
     Subcommand("remove", arg_index, alias={"rm", "del"}, help_text="删除 todo"),
     Subcommand("get", arg_index, help_text="获取 todo 文本"),
     Subcommand("set", arg_index, help_text="修改 todo"),
@@ -81,31 +83,24 @@ async def handle_todo_list(user_todo: UserTodo) -> NoReturn:
     await send_todo(user_todo)
 
 
-async def _todo_add_content(content: Match[str], state: T_State) -> None:
+todo_add = todo.dispatch("add")
+
+
+@todo_add.handle()
+async def handle_todo_add_args(
+    matcher: AlconnaMatcher, content: Match[str], pin: Match
+) -> None:
     if content.available:
-        state["content"] = content.result
-        return
-
-    text = await prompt("请发送 todo 内容", timeout=120)
-    if text is None:
-        await UniMessage("todo 发送超时!").finish(reply_to=True)
-    state["content"] = text.extract_plain_text().strip()
+        matcher.set_path_arg("~content", content.result)
+    matcher.set_path_arg("~pin", pin.available)
 
 
-@todo.assign("add", parameterless=[Depends(_todo_add_content)])
-async def handle_todo_add(user_todo: UserTodo, state: T_State) -> None:
-    state["todo"] = await user_todo.add(state["content"])
-
-
-@todo.assign("add.pin")
-async def handle_todo_add_pin(user_todo: UserTodo, state: T_State) -> None:
-    todo: Todo = state["todo"]
-    todo.pinned = True
-    await user_todo.save()
-
-
-@todo.assign("add")
-async def handle_todo_add_send(user_todo: UserTodo) -> NoReturn:
+@todo_add.got_path("~content", prompt="请发送 todo 内容")
+async def handle_todo_add(
+    matcher: AlconnaMatcher, user_todo: UserTodo, content: str
+) -> None:
+    pin = matcher.get_path_arg("~pin", default=False)
+    await user_todo.add(content, pin=pin)
     await send_todo(user_todo)
 
 
