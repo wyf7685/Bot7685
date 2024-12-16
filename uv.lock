@@ -347,7 +347,7 @@ requires-dist = [
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", specifier = ">=0.6.2" },
     { name = "nonebot-plugin-emojimix", specifier = ">=0.4.0" },
-    { name = "nonebot-plugin-exe-code", specifier = ">=1.1.4" },
+    { name = "nonebot-plugin-exe-code", git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" },
     { name = "nonebot-plugin-htmlrender", specifier = ">=0.4.0" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.2" },
     { name = "nonebot-plugin-memes-api", specifier = ">=0.4.12" },
@@ -1386,18 +1386,16 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-exe-code"
 version = "1.1.4"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git#33d384822631822e095043a3df2fddb6fdc5335e" }
 dependencies = [
+    { name = "anyio" },
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-session" },
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot2" },
     { name = "pillow" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/06/0d97831df1f8ffe686eb2e42410a9539c4fe5ff25a512a4dfbe0d4ffe23b/nonebot_plugin_exe_code-1.1.4.tar.gz", hash = "sha256:092e68748ae82e8e92ed98fe099363f9c2b5f98141c98be8b469badbcc3541b6", size = 43207 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/e7/223d163ba6d3eaaed07dc0594d05fea1829fa22cbfe60d3c4c3476b4c46f/nonebot_plugin_exe_code-1.1.4-py3-none-any.whl", hash = "sha256:fefe832037165acfe153f1790223dd9ac58cc69c839d8075ebe8b44739cff146", size = 38362 },
+    { name = "tarina" },
 ]
 
 [[package]]
