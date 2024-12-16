@@ -1,9 +1,11 @@
 import contextlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import anyio
 from nonebot import get_plugin_config, on_keyword, on_message, require
 from nonebot.adapters import Bot, Event
+from nonebot.adapters.onebot.v11 import Bot as V11Bot
+from nonebot.adapters.telegram import Bot as TgBot
 from nonebot.exception import ActionFailed
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from pydantic import BaseModel
@@ -15,6 +17,8 @@ from nonebot_plugin_session import EventSession
 
 if TYPE_CHECKING:
     from nonebot_plugin_exe_code.interface import get_api_class
+    from nonebot_plugin_exe_code.interface.adapters.onebot11 import API as V11API
+    from nonebot_plugin_exe_code.interface.adapters.telegram import API as TGAPI
 else:
     try:
         require("src.dev.nonebot_plugin_exe_code")
@@ -51,27 +55,38 @@ bubble = on_keyword({"冒泡", "锚抛"}, _rule_bubble)
 
 
 @bubble.handle()
-async def handle_bubble(bot: Bot, event: Event, session: EventSession) -> None:
-    api = get_api_class(bot)(bot, event, session, {})
-    if set_reaction := getattr(api, "set_reaction", None):
-        with contextlib.suppress(ActionFailed):
-            await set_reaction(38, api.mid)
+async def handle_bubble(bot: V11Bot, event: Event, session: EventSession) -> None:
+    api = cast("V11API", get_api_class(bot)(bot, event, session, {}))
+    with contextlib.suppress(ActionFailed):
+        await api.set_reaction(38, api.mid)
 
 
-def _rule(event: Event, target: MsgTarget) -> bool:
-    return not target.private and event.get_user_id() in config.reaction_users
+def _rule(bot: Bot, event: Event, target: MsgTarget) -> bool:
+    if target.private:
+        return False
+
+    user_id = event.get_user_id()
+    adapter = bot.type.split(maxsplit=1)[0].lower()
+
+    return any({user_id, f"{adapter}:{user_id}"} & config.reaction_users)
 
 
 matcher = on_message(rule=_rule, block=False)
 
 
 @matcher.handle()
-async def _(bot: Bot, event: Event, session: EventSession) -> None:
-    api = get_api_class(bot)(bot, event, session, {})
-    if set_reaction := getattr(api, "set_reaction", None):
-        with contextlib.suppress(ActionFailed):
-            await set_reaction(424, api.mid)
-            await anyio.sleep(0.5)
-            await set_reaction(38, api.mid)
-            await anyio.sleep(0.5)
-            await set_reaction(285, api.mid)
+async def _(bot: V11Bot, event: Event, session: EventSession) -> None:
+    api = cast("V11API", get_api_class(bot)(bot, event, session, {}))
+    with contextlib.suppress(ActionFailed):
+        await api.set_reaction(424, api.mid)
+        await anyio.sleep(0.5)
+        await api.set_reaction(38, api.mid)
+        await anyio.sleep(0.5)
+        await api.set_reaction(285, api.mid)
+
+
+@matcher.handle()
+async def _(bot: TgBot, event: Event, session: EventSession) -> None:
+    api = cast("TGAPI", get_api_class(bot)(bot, event, session, {}))
+    with contextlib.suppress(ActionFailed):
+        await api.set_reaction("🤓", api.mid)
