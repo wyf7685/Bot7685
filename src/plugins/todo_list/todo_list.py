@@ -1,16 +1,18 @@
 import json
 from collections.abc import Generator, Iterable
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated
 
 import anyio
 from async_lru import alru_cache
+from nonebot.adapters import Bot, Event
 from nonebot.compat import type_validate_json
 from nonebot.params import Depends
+from nonebot.typing import T_State
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_localstore import get_plugin_data_dir
-from nonebot_plugin_session import SessionId, SessionIdType
+from nonebot_plugin_session import SessionIdType, extract_session
 from pydantic import BaseModel, Field
 
 
@@ -93,7 +95,7 @@ class TodoList:
             md += f"{t.show(i)}\n"
         return await render_markdown(md)
 
-    def checked(self) -> Generator[Todo, Any]:
+    def checked(self) -> Generator[Todo]:
         yield from (todo for todo in self.todo if todo.checked)
 
     async def purge(self) -> None:
@@ -102,16 +104,22 @@ class TodoList:
         await self.save()
 
 
-async def _user_todo(
-    session_id: Annotated[str, SessionId(SessionIdType.USER)]
-) -> TodoList:
+_STATE_CACHE_KEY = "user_todo_list"
+
+
+async def _user_todo(bot: Bot, event: Event, state: T_State) -> TodoList:
+    if _STATE_CACHE_KEY in state:
+        return state[_STATE_CACHE_KEY]
+
+    session_id = extract_session(bot, event).get_id(SessionIdType.USER)
     fp = anyio.Path(get_plugin_data_dir()) / f"{session_id}.json"
     if not await fp.exists():
         await fp.write_text("[]")
         return TodoList(session_id, [])
 
     data = type_validate_json(list[Todo], await fp.read_text(encoding="utf-8"))
-    return TodoList(session_id, data)
+    state[_STATE_CACHE_KEY] = user_todo = TodoList(session_id, data)
+    return user_todo
 
 
 UserTodo = Annotated[TodoList, Depends(_user_todo)]

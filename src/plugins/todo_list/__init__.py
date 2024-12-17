@@ -22,7 +22,7 @@ from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExt
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_waiter import prompt, suggest
 
-from .todo_list import TodoList, UserTodo
+from .todo_list import UserTodo
 
 __plugin_meta__ = PluginMetadata(
     name="todo_list",
@@ -39,9 +39,8 @@ __plugin_meta__ = PluginMetadata(
 )
 
 arg_index = Args["index#todo序号", int]
-alc = Alconna(
+todo_alc = Alconna(
     "todo",
-    Subcommand("list", alias={"ls", "show"}, help_text="显示 todo"),
     Subcommand(
         "add",
         Args["content?#todo内容", str],
@@ -62,31 +61,15 @@ alc = Alconna(
         author="wyf7685",
     ),
 )
+
 todo = on_alconna(
-    alc,
+    todo_alc,
     use_cmd_start=True,
     extensions=[TelegramSlashExtension()],
 )
 
 
-async def send_todo(user_todo: TodoList) -> NoReturn:
-    msg = (
-        UniMessage.image(raw=await user_todo.render())
-        if user_todo.todo
-        else UniMessage.text("🎉当前没有待办事项")
-    )
-    await msg.finish(reply_to=True)
-
-
-@todo.assign("list")
-async def handle_todo_list(user_todo: UserTodo) -> NoReturn:
-    await send_todo(user_todo)
-
-
-todo_add = todo.dispatch("add")
-
-
-@todo_add.handle()
+@todo.assign("add")
 async def handle_todo_add_args(
     matcher: AlconnaMatcher, content: Match[str], pin: Match
 ) -> None:
@@ -95,30 +78,28 @@ async def handle_todo_add_args(
     matcher.set_path_arg("~pin", pin.available)
 
 
-@todo_add.got_path("~content", prompt="请发送 todo 内容")
+@todo.got_path("add.content", prompt="请发送 todo 内容")
 async def handle_todo_add(
     matcher: AlconnaMatcher, user_todo: UserTodo, content: str
 ) -> None:
-    pin = matcher.get_path_arg("~pin", default=False)
+    pin = matcher.get_path_arg("add.pin", default=False)
     await user_todo.add(content, pin=pin)
-    await send_todo(user_todo)
 
 
 @todo.assign("remove")
-async def handle_todo_remove(user_todo: UserTodo, index: Match[int]) -> NoReturn:
-    await user_todo.remove(index.result)
-    await send_todo(user_todo)
+async def handle_todo_remove(user_todo: UserTodo, index: int) -> NoReturn:
+    await user_todo.remove(index)
 
 
 @todo.assign("get")
-async def handle_todo_get(user_todo: UserTodo, index: Match[int]) -> NoReturn:
-    todo = await user_todo.get(index.result)
+async def handle_todo_get(user_todo: UserTodo, index: int) -> NoReturn:
+    todo = await user_todo.get(index)
     await UniMessage.text(todo.content).finish()
 
 
 @todo.assign("set")
-async def handle_todo_set(user_todo: UserTodo, index: Match[int]) -> NoReturn:
-    todo = await user_todo.get(index.result)
+async def handle_todo_set(user_todo: UserTodo, index: int) -> NoReturn:
+    todo = await user_todo.get(index)
     await UniMessage.text(f"当前选中的 todo:\n{todo.content}").send()
     text = await prompt("请输入新的 todo 内容")
     if text is None:
@@ -129,27 +110,23 @@ async def handle_todo_set(user_todo: UserTodo, index: Match[int]) -> NoReturn:
 
 
 @todo.assign("check")
-async def handle_todo_check(user_todo: UserTodo, index: Match[int]) -> NoReturn:
-    await user_todo.check(index.result)
-    await send_todo(user_todo)
+async def handle_todo_check(user_todo: UserTodo, index: int) -> NoReturn:
+    await user_todo.check(index)
 
 
 @todo.assign("uncheck")
-async def handle_todo_uncheck(user_todo: UserTodo, index: Match[int]) -> NoReturn:
-    await user_todo.uncheck(index.result)
-    await send_todo(user_todo)
+async def handle_todo_uncheck(user_todo: UserTodo, index: int) -> NoReturn:
+    await user_todo.uncheck(index)
 
 
 @todo.assign("pin")
-async def handle_todo_pin(user_todo: UserTodo, index: Match[int]) -> NoReturn:
-    await user_todo.pin(index.result)
-    await send_todo(user_todo)
+async def handle_todo_pin(user_todo: UserTodo, index: int) -> NoReturn:
+    await user_todo.pin(index)
 
 
 @todo.assign("unpin")
-async def handle_todo_unpin(user_todo: UserTodo, index: Match[int]) -> NoReturn:
-    await user_todo.unpin(index.result)
-    await send_todo(user_todo)
+async def handle_todo_unpin(user_todo: UserTodo, index: int) -> NoReturn:
+    await user_todo.unpin(index)
 
 
 @todo.assign("purge")
@@ -167,4 +144,11 @@ async def handle_todo_purge(user_todo: UserTodo) -> NoReturn:
     if resp.extract_plain_text().strip().lower() == "y":
         await user_todo.purge()
 
-    await send_todo(user_todo)
+
+@todo.handle()
+async def send_todo_list(user_todo: UserTodo) -> NoReturn:
+    await (
+        UniMessage.image(raw=await user_todo.render())
+        if user_todo.todo
+        else UniMessage.text("🎉当前没有待办事项")
+    ).finish(reply_to=True)
