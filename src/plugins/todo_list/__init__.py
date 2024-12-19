@@ -81,9 +81,11 @@ async def handle_todo_add_args(
 
 
 @todo_add.got_path("~content", prompt="请发送 todo 内容")
-async def handle_todo_add(
-    matcher: AlconnaMatcher, user_todo: UserTodo, content: str
-) -> None:
+async def handle_todo_add(matcher: AlconnaMatcher, user_todo: UserTodo) -> None:
+    content = matcher.get_path_arg("~content", default=...)
+    if content is ...:
+        await UniMessage("取消操作").finish(reply_to=True)
+
     pin = matcher.get_path_arg("~pin", default=False)
     await user_todo.add(content, pin=pin)
 
