@@ -6,8 +6,8 @@ from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot_plugin_alconna import uniseg as u
 
 from ..database import MsgIdCacheDAO
+from . import abstract
 from ._registry import converter, sender
-from .abstract import AbstractMessageConverter, AbstractMessageSender
 
 
 @converter(None)
@@ -15,8 +15,13 @@ class MessageConverter[
     TMS: MessageSegment = MessageSegment,
     TB: Bot = Bot,
     TM: Message = Message,
-](AbstractMessageConverter[TMS, TB, TM]):
+](abstract.MessageConverter[TB, TM]):
     logger = nonebot.logger.opt(colors=True)
+
+    @override
+    def __init__(self, src_bot: TB, dst_bot: Bot | None = None) -> None:
+        self.src_bot = src_bot
+        self.dst_bot = dst_bot
 
     @override
     @classmethod
@@ -79,7 +84,7 @@ class MessageConverter[
 
 
 @sender(None)
-class MessageSender[TB: Bot, TR: Any](AbstractMessageSender[TB]):
+class MessageSender[TB: Bot, TR: Any](abstract.MessageSender[TB]):
     @staticmethod
     def extract_msg_id(data: TR) -> str:
         return str(data)

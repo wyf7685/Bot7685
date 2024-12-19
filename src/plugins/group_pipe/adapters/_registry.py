@@ -1,38 +1,17 @@
 from collections.abc import Callable
-from typing import Protocol, overload
+from typing import overload
 
-from nonebot.adapters import Adapter, Bot, Event, Message
-from nonebot_plugin_alconna.uniseg import Segment, Target, UniMessage
+from nonebot.adapters import Adapter, Bot, Message, MessageSegment
 
+from . import abstract
 
-class MessageConverterProtocol[TB: Bot, TM: Message](Protocol):
-    def __init__(self, src_bot: TB, dst_bot: Bot | None = None) -> None: ...
-    @classmethod
-    def get_message(cls, event: Event) -> TM | None: ...
-    @classmethod
-    def get_message_id(cls, event: Event, bot: TB) -> str: ...
-    async def convert(self, msg: TM) -> UniMessage[Segment]: ...
+CONVERTERS: dict[str | None, type[abstract.MessageConverter]] = {}
+SENDERS: dict[str | None, type[abstract.MessageSender]] = {}
 
 
-class MessageSenderProtocol[TB: Bot](Protocol):
-    @classmethod
-    async def send(
-        cls,
-        dst_bot: TB,
-        target: Target,
-        msg: UniMessage[Segment],
-        src_type: str | None = None,
-        src_id: str | None = None,
-    ) -> None: ...
-
-
-CONVERTERS: dict[str | None, type[MessageConverterProtocol]] = {}
-SENDERS: dict[str | None, type[MessageSenderProtocol]] = {}
-
-
-def converter[
-    T: type[MessageConverterProtocol]
-](type_: type[Adapter] | None) -> Callable[[T], T]:
+def converter[T: type[abstract.MessageConverter]](
+    type_: type[Adapter] | None,
+) -> Callable[[T], T]:
     key = type_.get_name() if type_ is not None else None
 
     def decorator(cls: T) -> T:
@@ -42,9 +21,9 @@ def converter[
     return decorator
 
 
-def sender[
-    T: type[MessageSenderProtocol]
-](type_: type[Adapter] | None) -> Callable[[T], T]:
+def sender[T: type[abstract.MessageSender]](
+    type_: type[Adapter] | None,
+) -> Callable[[T], T]:
     key = type_.get_name() if type_ is not None else None
 
     def decorator(cls: T) -> T:
@@ -54,8 +33,9 @@ def sender[
     return decorator
 
 
-type MessageConverter = MessageConverterProtocol[Bot, Message]
-type MessageSender = MessageSenderProtocol[Bot]
+type _M = Message[MessageSegment[_M]]
+type MessageConverter = abstract.MessageConverter[Bot, _M]
+type MessageSender = abstract.MessageSender[Bot]
 
 
 @overload

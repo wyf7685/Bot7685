@@ -316,7 +316,6 @@ class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
 
     @staticmethod
     def _send_files(files: list[u.File], target: u.Target, bot: Bot) -> None:
-
         async def upload_file(file: u.File) -> None:
             try:
                 await bot.call_api(
