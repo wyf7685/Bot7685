@@ -10,7 +10,6 @@ require("nonebot_plugin_session")
 require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import (
     Alconna,
-    AlconnaMatcher,
     Args,
     CommandMeta,
     Match,
@@ -68,73 +67,67 @@ todo = on_alconna(
     extensions=[TelegramSlashExtension()],
 )
 
-todo_add = todo.dispatch("add")
 
-
-@todo_add.assign("~")
-async def handle_todo_add_args(
-    matcher: AlconnaMatcher, content: Match[str], pin: Match
-) -> None:
+@todo.assign("add")
+async def handle_todo_add(user_todo: UserTodo, content: Match[str], pin: Match) -> None:
     if content.available:
-        matcher.set_path_arg("~content", content.result)
-    matcher.set_path_arg("~pin", pin.available)
+        text = content.result
+    else:
+        res = await prompt("请发送 todo 内容")
+        if res is None:
+            await UniMessage("todo 发送超时!").finish(reply_to=True)
+        text = res.extract_plain_text()
 
-
-@todo_add.got_path("~content", prompt="请发送 todo 内容")
-async def handle_todo_add(matcher: AlconnaMatcher, user_todo: UserTodo) -> None:
-    content = matcher.get_path_arg("~content", default=...)
-    if content is ...:
-        await UniMessage("取消操作").finish(reply_to=True)
-
-    pin = matcher.get_path_arg("~pin", default=False)
-    await user_todo.add(content, pin=pin)
+    await user_todo.add(text, pin=pin.available)
 
 
 @todo.assign("remove")
-async def handle_todo_remove(user_todo: UserTodo, index: int) -> NoReturn:
+async def handle_todo_remove(user_todo: UserTodo, index: int) -> None:
     await user_todo.remove(index)
 
 
 @todo.assign("get")
-async def handle_todo_get(user_todo: UserTodo, index: int) -> NoReturn:
+async def handle_todo_get(user_todo: UserTodo, index: int) -> None:
     todo = await user_todo.get(index)
     await UniMessage.text(todo.content).finish()
 
 
 @todo.assign("set")
-async def handle_todo_set(user_todo: UserTodo, index: int) -> NoReturn:
+async def handle_todo_set(user_todo: UserTodo, index: int) -> None:
     todo = await user_todo.get(index)
     await UniMessage.text(f"当前选中的 todo:\n{todo.content}").send()
+
     text = await prompt("请输入新的 todo 内容")
     if text is None:
         await UniMessage("todo 发送超时!").finish(reply_to=True)
     todo.content = text.extract_plain_text()
+
     await user_todo.save()
     await UniMessage.text(f"已修改 todo:\n{todo.content}").finish()
 
 
 @todo.assign("check")
-async def handle_todo_check(user_todo: UserTodo, index: int) -> NoReturn:
+async def handle_todo_check(user_todo: UserTodo, index: int) -> None:
     await user_todo.check(index)
 
 
 @todo.assign("uncheck")
-async def handle_todo_uncheck(user_todo: UserTodo, index: int) -> NoReturn:
+async def handle_todo_uncheck(user_todo: UserTodo, index: int) -> None:
     await user_todo.uncheck(index)
 
 
 @todo.assign("pin")
-async def handle_todo_pin(user_todo: UserTodo, index: int) -> NoReturn:
+async def handle_todo_pin(user_todo: UserTodo, index: int) -> None:
     await user_todo.pin(index)
 
 
 @todo.assign("unpin")
-async def handle_todo_unpin(user_todo: UserTodo, index: int) -> NoReturn:
+async def handle_todo_unpin(user_todo: UserTodo, index: int) -> None:
     await user_todo.unpin(index)
 
 
 @todo.assign("purge")
-async def handle_todo_purge(user_todo: UserTodo) -> NoReturn:
+async def handle_todo_purge(user_todo: UserTodo) -> None:
     prompt = await (
         UniMessage.text("将要删除的待办事项:\n")
         .image(raw=await user_todo.render(user_todo.checked()))
