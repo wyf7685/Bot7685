@@ -154,6 +154,10 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
     ) -> None:
         msg = msg.exclude(u.Keyboard) + msg.include(u.Keyboard)
 
+        for seg in msg[u.Reply]:
+            if TG_MSGID_MARK in seg.id:
+                seg.id = seg.id.partition(TG_MSGID_MARK)[2]
+
         # alc 里没有处理 gif (animation) 的逻辑
         # 提取出来单独发送
         gif_files: list[InputFile | str] = []
