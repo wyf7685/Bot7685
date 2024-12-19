@@ -78,6 +78,7 @@ async def handle_todo_add_args(
     matcher.set_path_arg("~pin", pin.available)
 
 
+@todo.assign("add")
 @todo.got_path("add.content", prompt="请发送 todo 内容")
 async def handle_todo_add(
     matcher: AlconnaMatcher, user_todo: UserTodo, content: str
