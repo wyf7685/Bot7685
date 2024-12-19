@@ -68,8 +68,10 @@ todo = on_alconna(
     extensions=[TelegramSlashExtension()],
 )
 
+todo_add = todo.dispatch("add")
 
-@todo.assign("add")
+
+@todo_add.assign("~")
 async def handle_todo_add_args(
     matcher: AlconnaMatcher, content: Match[str], pin: Match
 ) -> None:
@@ -78,12 +80,11 @@ async def handle_todo_add_args(
     matcher.set_path_arg("~pin", pin.available)
 
 
-@todo.assign("add")
-@todo.got_path("add.content", prompt="请发送 todo 内容")
+@todo_add.got_path("~content", prompt="请发送 todo 内容")
 async def handle_todo_add(
     matcher: AlconnaMatcher, user_todo: UserTodo, content: str
 ) -> None:
-    pin = matcher.get_path_arg("add.pin", default=False)
+    pin = matcher.get_path_arg("~pin", default=False)
     await user_todo.add(content, pin=pin)
 
 
