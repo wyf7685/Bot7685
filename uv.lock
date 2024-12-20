@@ -345,7 +345,7 @@ requires-dist = [
     { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20" },
     { name = "nonebot-plugin-alconna", git = "https://github.com/nonebot/plugin-alconna.git" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
-    { name = "nonebot-plugin-chatrecorder", specifier = ">=0.6.2" },
+    { name = "nonebot-plugin-chatrecorder", specifier = ">=0.6.2,<0.7.0" },
     { name = "nonebot-plugin-emojimix", specifier = ">=0.4.0" },
     { name = "nonebot-plugin-exe-code", git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" },
     { name = "nonebot-plugin-htmlrender", specifier = ">=0.4.0" },
@@ -1339,17 +1339,18 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-chatrecorder"
-version = "0.7.0"
+version = "0.6.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm" },
-    { name = "nonebot-plugin-uninfo" },
+    { name = "nonebot-plugin-session" },
+    { name = "nonebot-plugin-session-orm" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d0/6d/77fd9f23c20a84118cc26223c309c895ae808099f672f3cf2cbcff89ef29/nonebot_plugin_chatrecorder-0.7.0.tar.gz", hash = "sha256:5b63a92733307c4cd739bb1bb6d2af949811ff6882ce49e73d42735cfd6e820d", size = 17224 }
+sdist = { url = "https://files.pythonhosted.org/packages/00/b9/c4afde39e1297b65871e3fe46bf1d4019b75e4027ad2a19e659fb8252369/nonebot_plugin_chatrecorder-0.6.2.tar.gz", hash = "sha256:4bdd892eb00e16f3d75e7edfc85b6bfd7e0fd17be82de164bd9b275cc1ea6974", size = 17887 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/49/f6529eec6b57d4e0eefc289ae2d2fa7237645effd66ed2767f152ebca6ab/nonebot_plugin_chatrecorder-0.7.0-py3-none-any.whl", hash = "sha256:56cfb306cc85c602c8c97e7f1a63328d075ac8fd2349ddefcb501600f416d544", size = 28422 },
+    { url = "https://files.pythonhosted.org/packages/c2/c5/d90b841411f422353b8ea913c051e7f6aa74ac8fd4de5be82116ba8f593d/nonebot_plugin_chatrecorder-0.6.2-py3-none-any.whl", hash = "sha256:70df4bc7bf1a8d9a5e84f6bf8d0c473095a581150e118fb29c340a1abf5e39f3", size = 30536 },
 ]
 
 [[package]]
