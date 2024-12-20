@@ -451,7 +451,7 @@ name = "click"
 version = "8.1.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/96/d3/f04c7bfcf5c1862a2a5b845c6b2b360488cf47af55dfa79c98f6a6bf98b5/click-8.1.7.tar.gz", hash = "sha256:ca9853ad459e787e2192211578cc907e7594e294c7ccc834310722b41b9ca6de", size = 336121 }
 wheels = [
@@ -889,7 +889,7 @@ name = "ipykernel"
 version = "6.29.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "appnope", marker = "platform_system == 'Darwin'" },
+    { name = "appnope", marker = "sys_platform == 'darwin'" },
     { name = "comm" },
     { name = "debugpy" },
     { name = "ipython" },
@@ -910,7 +910,7 @@ wheels = [
 
 [[package]]
 name = "ipython"
-version = "8.30.0"
+version = "8.31.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -923,9 +923,9 @@ dependencies = [
     { name = "stack-data" },
     { name = "traitlets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/8b/710af065ab8ed05649afa5bd1e07401637c9ec9fb7cfda9eac7e91e9fbd4/ipython-8.30.0.tar.gz", hash = "sha256:cb0a405a306d2995a5cbb9901894d240784a9f341394c6ba3f4fe8c6eb89ff6e", size = 5592205 }
+sdist = { url = "https://files.pythonhosted.org/packages/01/35/6f90fdddff7a08b7b715fccbd2427b5212c9525cd043d26fdc45bee0708d/ipython-8.31.0.tar.gz", hash = "sha256:b6a2274606bec6166405ff05e54932ed6e5cfecaca1fc05f2cacde7bb074d70b", size = 5501011 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/f3/1332ba2f682b07b304ad34cad2f003adcfeb349486103f4b632335074a7c/ipython-8.30.0-py3-none-any.whl", hash = "sha256:85ec56a7e20f6c38fce7727dcca699ae4ffc85985aa7b23635a8008f918ae321", size = 820765 },
+    { url = "https://files.pythonhosted.org/packages/04/60/d0feb6b6d9fe4ab89fe8fe5b47cbf6cd936bfd9f1e7ffa9d0015425aeed6/ipython-8.31.0-py3-none-any.whl", hash = "sha256:46ec58f8d3d076a61d128fe517a51eb730e3aaf0c184ea8c17d16e366660c6a6", size = 821583 },
 ]
 
 [[package]]
@@ -1400,7 +1400,7 @@ dependencies = [
 
 [[package]]
 name = "nonebot-plugin-htmlrender"
-version = "0.5.0"
+version = "0.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1412,9 +1412,9 @@ dependencies = [
     { name = "pymdown-extensions" },
     { name = "python-markdown-math" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/83/d6/ea35bfb3f27c1004b5261d596a39b96d55fdd0cdb8898f4c393d3a1fe09c/nonebot_plugin_htmlrender-0.5.0.tar.gz", hash = "sha256:254fb1024cb1d8c097332bca767107573b799735c79c9196167b5acccb660a22", size = 1343440 }
+sdist = { url = "https://files.pythonhosted.org/packages/54/35/56a09d5cdb95a31280e8417fac39e59cc565ed59eac0e491bfca9f4e9d63/nonebot_plugin_htmlrender-0.5.1.tar.gz", hash = "sha256:8dc3fedf12ae7a2b9d0f41af81cfa31b07373b50c362ddfb5f1ff1b436a56889", size = 1343795 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/82/d0/fd945c35118717ae839a56c9dcf0a8b094814c43061439c866f81eaaad76/nonebot_plugin_htmlrender-0.5.0-py3-none-any.whl", hash = "sha256:29af10ec95890ec8cb3331f1cb77b702b1cb6eaf5f1df9f7bf585dd8faf9b8f4", size = 1056364 },
+    { url = "https://files.pythonhosted.org/packages/61/c8/488b6f870fb6de987e33ec544197c200f6baacab42b6b422df0bcbd6d898/nonebot_plugin_htmlrender-0.5.1-py3-none-any.whl", hash = "sha256:5c6395202bf437bb111edc0c761a201fdeaeb12114275d723ca9f33fd8b7dca7", size = 1056481 },
 ]
 
 [[package]]
@@ -2141,11 +2141,11 @@ wheels = [
 
 [[package]]
 name = "pyspellchecker"
-version = "0.8.1"
+version = "0.8.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5d/f4/5ed7eefd94df484406d2ff29af54daa940ea4cfc265e5add3d2150ff0640/pyspellchecker-0.8.1.tar.gz", hash = "sha256:3478ca8484d1c2db0c93d12b3c986cd17958c69f47b3ed7ef4d3f4201e591776", size = 6773020 }
+sdist = { url = "https://files.pythonhosted.org/packages/42/5d/86d94aceb9c0813f27004ec71c036d8ec6a6324d989854ff0fe13fe036dc/pyspellchecker-0.8.2.tar.gz", hash = "sha256:2b026be14a162ba810bdda8e5454c56e364f42d3b9e14aeff31706e5ebcdc78f", size = 7149207 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e1/d2/c7e3b3a61a34b9320399fa731d1f9f0c73db8a1f28c6764e9e11efa68a29/pyspellchecker-0.8.1-py3-none-any.whl", hash = "sha256:d91e9e1064793ae1ee8e71b06ca40eeb8e5923437c54291a8e041b447792b640", size = 6771060 },
+    { url = "https://files.pythonhosted.org/packages/99/8e/7c79443d302a80cfd59bc365938d51e36e7e9aa7ce8ab1d8a0ca0c8e6065/pyspellchecker-0.8.2-py3-none-any.whl", hash = "sha256:4fee22e1859c5153c3bc3953ac3041bf07d4541520b7e01901e955062022290a", size = 7147898 },
 ]
 
 [[package]]
@@ -2424,7 +2424,7 @@ name = "tqdm"
 version = "4.67.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "platform_system == 'Windows'" },
+    { name = "colorama", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737 }
 wheels = [
@@ -2463,7 +2463,7 @@ name = "tzlocal"
 version = "5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "tzdata", marker = "platform_system == 'Windows'" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/04/d3/c19d65ae67636fe63953b20c2e4a8ced4497ea232c43ff8d01db16de8dc0/tzlocal-5.2.tar.gz", hash = "sha256:8d399205578f1a9342816409cc1e46a93ebd5755e39ea2d85334bea911bf0e6e", size = 30201 }
 wheels = [
