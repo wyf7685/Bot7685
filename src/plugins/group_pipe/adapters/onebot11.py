@@ -236,13 +236,16 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
     @contextlib.asynccontextmanager
     async def convert_file(self, file_id: str) -> AsyncGenerator[u.Segment]:
         res = await self.src_bot.call_api("get_file", file_id=file_id)
-        path = Path("/share/QQ/NapCat/temp") / str(res["file_name"])
-        if path.exists():
-            if seg := await self.upload_local_file(path):
-                yield seg
-            else:
-                yield u.Text(f"[file:{file_id}]")
-        path.unlink(missing_ok=True)
+        path = anyio.Path("/share/QQ/NapCat/temp") / str(res["file_name"])
+        with anyio.move_on_after(30):
+            while not await path.exists():  # noqa: ASYNC110
+                await anyio.sleep(3)
+
+        if await path.exists() and (seg := await self.upload_local_file(Path(path))):
+            yield seg
+        else:
+            yield u.Text(f"[file:{file_id}]")
+        await path.unlink(missing_ok=True)
 
     async def convert_record(self, file_path: str) -> u.Segment:
         path = Path("/share") / Path(file_path).relative_to("/app/.config")
