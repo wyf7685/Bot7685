@@ -2,7 +2,7 @@ import contextlib
 from typing import TYPE_CHECKING, cast
 
 import anyio
-from nonebot import get_plugin_config, on_keyword, on_message, require
+from nonebot import get_plugin_config, on_message, require
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11 import Bot as V11Bot
 from nonebot.adapters.telegram import Bot as TgBot
@@ -27,6 +27,7 @@ else:
         require("nonebot_plugin_exe_code")
         from nonebot_plugin_exe_code.interface import get_api_class
 
+from .bubble_check import check_bubble_word
 
 __plugin_meta__ = PluginMetadata(
     name="reaction",
@@ -47,11 +48,14 @@ class Config(BaseModel):
 config = get_plugin_config(Config)
 
 
-def _rule_bubble(target: MsgTarget) -> bool:
-    return not target.private
+def _rule_bubble(target: MsgTarget, event: Event) -> bool:
+    return (
+        not target.private
+        and check_bubble_word(event.get_message().extract_plain_text())
+    )
 
 
-bubble = on_keyword({"冒泡", "锚抛"}, _rule_bubble)
+bubble = on_message(_rule_bubble)
 
 
 @bubble.handle()
