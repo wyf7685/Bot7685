@@ -2,8 +2,10 @@ import importlib
 import logging
 import pathlib
 import tomllib
+from typing import Any
 
 import nonebot
+import yaml
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 nonebot.logger.add(
@@ -34,6 +36,15 @@ nonebot.logger.add(
 )
 
 
+def load_config() -> dict[str, Any]:
+    config_file = pathlib.Path("config.yaml")
+    if not config_file.exists():
+        return {}
+    config: dict[str, Any] = yaml.safe_load(config_file.open("r"))
+    config |= config.pop(config.get("environment", "prod"), {})
+    return config
+
+
 def custom_load() -> None:
     nonebot_data: dict = (
         tomllib.loads(pathlib.Path("pyproject.toml").read_text("utf-8"))
@@ -58,7 +69,7 @@ def custom_load() -> None:
     nonebot.load_all_plugins(plugins, ["src/plugins", "src/dev"])
 
 
-nonebot.init()
+nonebot.init(**load_config())
 app = nonebot.get_asgi()
 custom_load()
 

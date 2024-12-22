@@ -145,3 +145,4 @@ logs/
 .env*
 .pdm-python
 shortcut.db*
+config.yaml
