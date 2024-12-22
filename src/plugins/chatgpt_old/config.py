@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from .apikey import APIKeyPool
 
 
-class Config(BaseModel, extra="ignore", arbitrary_types_allowed=True):
+class PluginConfig(BaseModel):
     api_key: str | list[str]
     key_load_balancing: bool = False
     history_save_path: Path = Path("data/chatgpt/chat_history").resolve()
@@ -34,4 +34,8 @@ class Config(BaseModel, extra="ignore", arbitrary_types_allowed=True):
         return APIKeyPool(self.api_key)
 
 
-plugin_config = get_plugin_config(Config)
+class Config(BaseModel):
+    chatgpt: PluginConfig
+
+
+plugin_config = get_plugin_config(Config).chatgpt
