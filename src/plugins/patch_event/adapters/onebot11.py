@@ -98,10 +98,7 @@ with contextlib.suppress(ImportError):
         await anyio.sleep(_wait_secs)
 
         try:
-            update = {
-                (info := type_validate_python(GroupInfo, item)).group_id: info
-                for item in await bot.get_group_list()
-            }
+            update = type_validate_python(list[GroupInfo], await bot.get_group_list())
         except Exception as err:
             logger.warning(f"更新 {bot} 的群聊信息缓存时出错: {err!r}")
             if _try_count <= 3:
@@ -116,7 +113,7 @@ with contextlib.suppress(ImportError):
             return
 
         logger.debug(f"更新 {bot} 的 <y>{len(update)}</y> 条群聊信息缓存")
-        group_info_cache.update(update)
+        group_info_cache.update({info.group_id: info for info in update})
         del update_retry_id[key]
 
     async def update_user_card_cache(bot: Bot) -> None:
