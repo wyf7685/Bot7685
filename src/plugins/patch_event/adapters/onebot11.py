@@ -136,13 +136,22 @@ with contextlib.suppress(ImportError):
             user_card_cache[(user_id, group_id)] = name
             call_later(5 * 60, reset, user_id, group_id)
 
+    def colored_user_card_sender(sender: Sender, group: int | None) -> str:
+        if sender.user_id is None:
+            return "<c>None</c>"
+
+        if (name := sender.card or sender.nickname) is None:
+            return f"<c>{sender.user_id}</c>"
+
+        user_card_cache[(sender.user_id, None)] = name
+        if group is not None:
+            user_card_cache[(sender.user_id, group)] = name
+
+        return f"<y>{escape_tag(name)}</y>(<c>{sender.user_id}</c>)"
+
     def colored_user_card(user: int | Sender, group: int | None = None) -> str:
         if isinstance(user, Sender):
-            return (
-                f"<y>{escape_tag(name)}</y>(<c>{user.user_id}</c>)"
-                if (name := (user.card or user.nickname))
-                else f"<c>{user.user_id}</c>"
-            )
+            return colored_user_card_sender(user, group)
 
         name = user_card_cache.setdefault((user, group), None)
         if name is None and (user, None) in user_card_cache:
@@ -185,7 +194,7 @@ with contextlib.suppress(ImportError):
             return (
                 f"[{self.get_event_name()}]: "
                 f"Message <c>{self.message_id}</c> from "
-                f"{colored_user_card(self.sender)}"
+                f"{colored_user_card(self.sender, self.group_id)}"
                 f"@{colored_group(self.group_id)} "
                 f"{Highlight.apply(self.original_message)}"
             )
