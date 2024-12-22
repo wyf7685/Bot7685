@@ -32,7 +32,7 @@ customize_talk_cmd = plugin_config.customize_talk_cmd
 change_chat_to = plugin_config.change_chat_to
 prefix_str = customize_prefix if customize_prefix is not None else "/"
 chat_str = f"(chat|{change_chat_to})" if change_chat_to else "chat"
-talk_cmd_str = customize_talk_cmd if customize_talk_cmd else "talk"
+talk_cmd_str = customize_talk_cmd or "talk"
 pattern_str = prefix_str + chat_str
 menu_chat_str = prefix_str + (f"{change_chat_to}" if change_chat_to else "chat")
 
@@ -191,7 +191,7 @@ async def _(event: MessageEvent, group_id: GroupId):
         )
         await UniMessage(text).finish(at_sender=True)
     session = group_usage[user_id]
-    group_usage[user_id].del_user(user_id)
+    session.del_user(user_id)
     new_session = session_container.create_with_session(session, user_id, group_id)
 
     text = f"创建并加入会话 '{new_session.name}' 成功!"
