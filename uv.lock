@@ -1434,7 +1434,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-memes-api"
-version = "0.4.12"
+version = "0.4.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -1442,18 +1442,16 @@ dependencies = [
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm" },
-    { name = "nonebot-plugin-session" },
-    { name = "nonebot-plugin-session-orm" },
-    { name = "nonebot-plugin-userinfo" },
+    { name = "nonebot-plugin-uninfo" },
     { name = "nonebot2" },
     { name = "pypinyin" },
     { name = "python-dateutil" },
     { name = "pyyaml" },
     { name = "rapidfuzz" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6b/0c/8e504ef2a7f66c4a9f6e44c4e4f608a4dc297bb9f6230076653294d8cdae/nonebot_plugin_memes_api-0.4.12.tar.gz", hash = "sha256:20c126fc17b91090028562800bb7ba55aa6382b5f5b802fd6659e3a86e26247d", size = 20772 }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/46/5e3a995345e4b852defd05ca80d9a59544142195cb0b90ae3675faa04fee/nonebot_plugin_memes_api-0.4.13.tar.gz", hash = "sha256:5643bdbf1ec72064a0637a8afaf5357420007d1f0c24c01746757e5886f14a2f", size = 21977 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f2/dc/2561349ba319a69c7f36bca8e9c0e992f2868216f56e5ac8cee8dac77975/nonebot_plugin_memes_api-0.4.12-py3-none-any.whl", hash = "sha256:e3486ceb1e67a1ab3507056f0e595201d34c0aba10991aa03dcd2bcbe8f4f9a4", size = 25534 },
+    { url = "https://files.pythonhosted.org/packages/f5/af/fd8c3ff1dfa71027d852677de01c0bb00539a560d4bd117ea7f9627b72e3/nonebot_plugin_memes_api-0.4.13-py3-none-any.whl", hash = "sha256:e5c13dbdf0eae4a752f5ceaca8f5cfc2e20ccddbfb947397d53ab32cc1f26e0d", size = 27359 },
 ]
 
 [[package]]
@@ -1707,7 +1705,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-wordle"
-version = "0.4.4"
+version = "0.4.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nonebot-plugin-alconna" },
@@ -1716,9 +1714,9 @@ dependencies = [
     { name = "pillow" },
     { name = "pyspellchecker" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/66/b9/e927ae25185c36d7a0a350657a031ffa942d9b62f26ec0c666583748cc27/nonebot_plugin_wordle-0.4.4.tar.gz", hash = "sha256:ea4bfe4f95563fdf12e60e39f15ca756cc4506aa00ef56842233a89b1debda50", size = 2606387 }
+sdist = { url = "https://files.pythonhosted.org/packages/60/85/18e765d0aaf573703917a2333cb1f4321f172883e87dbf893a58ba7ecef4/nonebot_plugin_wordle-0.4.5.tar.gz", hash = "sha256:929e107579feb50865fd3eba6c32a104ab26e060e2d18e01b8ea6803b1207b62", size = 2606401 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/87/421b0d2ed8089d5349dda251fdab7099c21e5edce232e33a90ff9346ced0/nonebot_plugin_wordle-0.4.4-py3-none-any.whl", hash = "sha256:b38a3bdf6316362cb03a82664c0107e20ae99729a71ac9e39b6bbe303ec7b641", size = 2646580 },
+    { url = "https://files.pythonhosted.org/packages/ca/87/02279c72a30464dbc93c589eb4e0478e626ffcaeacd10e3e4d692c4f4b5c/nonebot_plugin_wordle-0.4.5-py3-none-any.whl", hash = "sha256:c8e88371e2f25c38e3571ca448c2056644e8970ba7ac9bdf715b396cd178c135", size = 2646594 },
 ]
 
 [[package]]
@@ -2120,15 +2118,15 @@ wheels = [
 
 [[package]]
 name = "pymdown-extensions"
-version = "10.12"
+version = "10.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "markdown" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/0b/32f05854cfd432e9286bb41a870e0d1a926b72df5f5cdb6dec962b2e369e/pymdown_extensions-10.12.tar.gz", hash = "sha256:b0ee1e0b2bef1071a47891ab17003bfe5bf824a398e13f49f8ed653b699369a7", size = 840790 }
+sdist = { url = "https://files.pythonhosted.org/packages/49/87/4998d1aac5afea5b081238a609d9814f4c33cd5c7123503276d1105fb6a9/pymdown_extensions-10.13.tar.gz", hash = "sha256:e0b351494dc0d8d14a1f52b39b1499a00ef1566b4ba23dc74f1eba75c736f5dd", size = 843302 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/53/32/95a164ddf533bd676cbbe878e36e89b4ade3efde8dd61d0148c90cbbe57e/pymdown_extensions-10.12-py3-none-any.whl", hash = "sha256:49f81412242d3527b8b4967b990df395c89563043bc51a3d2d7d500e52123b77", size = 263448 },
+    { url = "https://files.pythonhosted.org/packages/86/7f/46c7122186759350cf523c71d29712be534f769f073a1d980ce8f095072c/pymdown_extensions-10.13-py3-none-any.whl", hash = "sha256:80bc33d715eec68e683e04298946d47d78c7739e79d808203df278ee8ef89428", size = 264108 },
 ]
 
 [[package]]
