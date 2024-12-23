@@ -1,7 +1,8 @@
 import nonebot
 
-from src.bootstrap import load_config, load_plugins
+from src.bootstrap import load_config, load_plugins, setup_logger
 
+setup_logger()
 nonebot.init(**load_config())
 app = nonebot.get_asgi()
 load_plugins()
