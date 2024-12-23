@@ -10,10 +10,7 @@ from nonebot_plugin_alconna.uniseg import At, UniMessage
 from nonebot_plugin_alconna.uniseg.utils import fleep
 
 from .cos_ops import presign, put_file
-from .database import (
-    update_key,
-    update_permission,
-)
+from .database import update_key, update_permission
 from .depends import ALLOW_UPLOAD, EventImageRaw
 
 upload_cos = on_startswith("cos上传", permission=ALLOW_UPLOAD)

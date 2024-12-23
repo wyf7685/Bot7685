@@ -13,7 +13,7 @@ dependencies = [
     "nonebot-adapter-telegram>=0.1.0b20",
     "nonebot-plugin-alconna>=0.54.0",
     "nonebot-plugin-apscheduler>=0.5.0",
-    "nonebot-plugin-chatrecorder>=0.6.2,<0.7.0", # todo: migrate
+    "nonebot-plugin-chatrecorder>=0.6.2,<0.7.0",      # todo: migrate
     "nonebot-plugin-emojimix>=0.4.0",
     "nonebot-plugin-htmlrender>=0.4.0",
     "nonebot-plugin-localstore>=0.7.2",
@@ -71,26 +71,14 @@ plugin_dirs = ["src/plugins"]
 builtin_plugins = []
 
 [tool.pdm.scripts]
-lint = { composite = ["isort .", "black .", "pyright .", "ruff check ."] }
-
-[tool.black]
-line-length = 88
-target-version = ["py312"]
-include = '\.pyi?$'
-extend-exclude = '''
-'''
-
-[tool.isort]
-profile = "black"
-line_length = 88
-skip_gitignore = true
-src_paths = ["src"]
-extra_standard_library = ["typing_extensions"]
+lint = { composite = ["ruff format .", "pyright .", "ruff check ."] }
 
 [tool.ruff]
 line-length = 88
 target-version = "py313"
 
+[tool.ruff.format]
+line-ending = "lf"
 
 [tool.ruff.lint]
 select = [
@@ -154,6 +142,20 @@ ignore = [
     "DTZ005", # call-datetime-now-without-tzinfo
     "S311",   # suspicious-non-cryptographic-random-usage
 ]
+
+[tool.ruff.lint.flake8-builtins]
+builtins-ignorelist = ["id", "dir"]
+
+[tool.ruff.lint.flake8-pytest-style]
+fixture-parentheses = false
+mark-parentheses = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["src", "tests/*"]
+extra-standard-library = ["typing_extensions"]
+
+[tool.ruff.lint.pyupgrade]
+keep-runtime-typing = true
 
 [tool.pyright]
 pythonVersion = "3.13"
