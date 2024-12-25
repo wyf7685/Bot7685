@@ -14,7 +14,7 @@ from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExt
 
 from src.plugins.gtg import call_later
 
-from ..database import Pipe, PipeDAO, display_pipe
+from ..database import PipeDAO, PipeTuple, display_pipe
 from .depends import MsgTarget
 
 alc = Alconna(
@@ -66,19 +66,19 @@ pipe_cmd = on_alconna(
 
 
 def show_pipes(
-    listen: Sequence[Pipe] | None = None,
-    target: Sequence[Pipe] | None = None,
+    listen: Sequence[PipeTuple] | None = None,
+    target: Sequence[PipeTuple] | None = None,
 ) -> str:
     idx = 1
     msg = ""
     if listen:
         for pipe in listen:
-            t = pipe.get_target()
+            t = pipe.target
             msg += f"{idx}. ==> <{t.adapter}: {t.id}>\n"
             idx += 1
     if target:
         for pipe in target:
-            t = pipe.get_listen()
+            t = pipe.listen
             msg += f"{idx}. <== <{t.adapter}: {t.id}>\n"
             idx += 1
     return msg.rstrip("\n")
@@ -146,18 +146,17 @@ async def assign_link(target: MsgTarget, code: int) -> None:
 
 @pipe_cmd.assign("remove")
 async def assign_remove(target: MsgTarget, idx: int) -> None:
-    listen_pipes, target_pipes = map(list, await PipeDAO().get_linked_pipes(target))
+    listen_pipes, target_pipes = await PipeDAO().get_linked_pipes(target)
     if idx < 1 or idx > len(listen_pipes) + len(target_pipes):
         await UniMessage.text("管道序号无效").finish(reply_to=True)
 
     pipe = (listen_pipes + target_pipes)[idx - 1]
-    listen, target = pipe.get_listen(), pipe.get_target()
     await PipeDAO().delete_pipe(pipe)
     (listen_pipes if pipe in listen_pipes else target_pipes).remove(pipe)
 
     msg = (
         "管道删除成功:\n"
-        f"{display_pipe(listen, target)}\n\n"
+        f"{display_pipe(pipe.listen, pipe.target)}\n\n"
         "当前群组的管道:\n" + show_pipes(listen_pipes, target_pipes)
     )
     await UniMessage.text(msg).finish(reply_to=True)

@@ -1,10 +1,20 @@
 import functools
 from collections.abc import Sequence
+from typing import NamedTuple
 
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_orm import Model, get_scoped_session
-from sqlalchemy import JSON, Integer, select
+from sqlalchemy import JSON, Integer, delete, select
 from sqlalchemy.orm import Mapped, mapped_column
+
+
+class PipeTuple(NamedTuple):
+    listen: Target
+    target: Target
+
+    @classmethod
+    def from_scalars(cls, pipes: Sequence[tuple[dict, dict]]) -> list["PipeTuple"]:
+        return [cls(Target.load(pipe[0]), Target.load(pipe[1])) for pipe in pipes]
 
 
 @functools.cache
@@ -19,7 +29,7 @@ def make_key(target: Target) -> int:
     for i in key:
         result = (result << 5) - result + i
         result &= 0xFFFFFFFFFFFF
-    return result % (1 << 31)
+    return result & (1 << 31)
 
 
 class Pipe(Model):
@@ -48,25 +58,27 @@ class PipeDAO:
         *,
         listen: Target | None = None,
         target: Target | None = None,
-    ) -> Sequence[Pipe]:
-        statement = select(Pipe)
+    ) -> list[PipeTuple]:
+        statement = select(Pipe.listen_t, Pipe.target_t)
         if listen is not None:
             statement = statement.where(Pipe.listen == make_key(listen))
         if target is not None:
             statement = statement.where(Pipe.target == make_key(target))
         result = await self.session.execute(statement)
-        return result.scalars().all()
+        return PipeTuple.from_scalars(result.scalars().all())
 
     async def get_linked_pipes(
         self, query: Target
-    ) -> tuple[Sequence[Pipe], Sequence[Pipe]]:
-        statement = select(Pipe).where(Pipe.listen == make_key(query))
-        result = await self.session.execute(statement)
-        listen_pipes = result.scalars().all()
+    ) -> tuple[list[PipeTuple], list[PipeTuple]]:
+        key = make_key(query)
 
-        statement = select(Pipe).where(Pipe.target == make_key(query))
+        statement = select(Pipe.listen_t, Pipe.target_t).where(Pipe.listen == key)
         result = await self.session.execute(statement)
-        target_pipes = result.scalars().all()
+        listen_pipes = PipeTuple.from_scalars(result.scalars().all())
+
+        statement = select(Pipe.listen_t, Pipe.target_t).where(Pipe.target == key)
+        result = await self.session.execute(statement)
+        target_pipes = PipeTuple.from_scalars(result.scalars().all())
 
         return listen_pipes, target_pipes
 
@@ -81,8 +93,13 @@ class PipeDAO:
         )
         await self.session.commit()
 
-    async def delete_pipe(self, pipe: Pipe) -> None:
-        await self.session.delete(pipe)
+    async def delete_pipe(self, pipe: PipeTuple) -> None:
+        statement = (
+            delete(Pipe)
+            .where(Pipe.listen == make_key(pipe.listen))
+            .where(Pipe.target == make_key(pipe.target))
+        )
+        await self.session.execute(statement)
         await self.session.commit()
 
 

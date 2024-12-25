@@ -83,8 +83,15 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
     user_name = info.user.nick or info.user.name or info.user.id
     msg_head = UniMessage.text(f"[ {group_name} - {user_name} ]\n")
 
+    async def _send(target: Target) -> None:
+        logger.debug(f"管道转发: {display_pipe(listen, target)}")
+        await send_pipe_msg(bot, listen, target, msg_id, msg_head, msg)
+
+    # Avoid unnessary task group
+    if len(pipes) == 1:
+        await _send(pipes.pop().target)
+        return
+
     async with anyio.create_task_group() as tg:
         for pipe in pipes:
-            target = pipe.get_target()
-            logger.debug(f"管道转发: {display_pipe(listen, target)}")
-            tg.start_soon(send_pipe_msg, bot, listen, target, msg_id, msg_head, msg)
+            tg.start_soon(_send, pipe.target)
