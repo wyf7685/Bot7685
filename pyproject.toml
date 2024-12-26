@@ -168,5 +168,8 @@ disableBytesTypePromotions = true
 dev-dependencies = ["ipykernel>=6.29.5"]
 
 [tool.uv.sources]
-nonebot-plugin-alconna = { git = "https://github.com/nonebot/plugin-alconna.git" }
 nonebot-plugin-exe-code = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" }
+# Forked from https://github.com/GuGuMur/nonebot-plugin-skland-arksign
+nonebot-plugin-skland-arksign = { git = "https://github.com/wyf7685/nonebot-plugin-skland-arksign.git" }
+# For unreleased commit 56074cc
+nonebot-plugin-wordcloud = { git = "https://github.com/he0119/nonebot-plugin-wordcloud.git" }
