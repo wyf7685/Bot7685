@@ -14,7 +14,9 @@ class PipeTuple(NamedTuple):
 
     @classmethod
     def from_scalars(cls, pipes: Sequence[tuple[dict, dict]]) -> list["PipeTuple"]:
-        return [cls(Target.load(pipe[0]), Target.load(pipe[1])) for pipe in pipes]
+        return [
+            cls(Target.load(listen), Target.load(target)) for listen, target in pipes
+        ]
 
 
 @functools.cache
@@ -65,7 +67,7 @@ class PipeDAO:
         if target is not None:
             statement = statement.where(Pipe.target == make_key(target))
         result = await self.session.execute(statement)
-        return PipeTuple.from_scalars(result.scalars().all())
+        return PipeTuple.from_scalars([row.tuple() for row in result.all()])
 
     async def get_linked_pipes(
         self, query: Target
@@ -74,11 +76,11 @@ class PipeDAO:
 
         statement = select(Pipe.listen_t, Pipe.target_t).where(Pipe.listen == key)
         result = await self.session.execute(statement)
-        listen_pipes = PipeTuple.from_scalars(result.scalars().all())
+        listen_pipes = PipeTuple.from_scalars([row.tuple() for row in result.all()])
 
         statement = select(Pipe.listen_t, Pipe.target_t).where(Pipe.target == key)
         result = await self.session.execute(statement)
-        target_pipes = PipeTuple.from_scalars(result.scalars().all())
+        target_pipes = PipeTuple.from_scalars([row.tuple() for row in result.all()])
 
         return listen_pipes, target_pipes
 
