@@ -1,11 +1,14 @@
-import contextlib
 import importlib
 import logging
 import pathlib
-from typing import Any
+import time
+from typing import TYPE_CHECKING, Any
 
 import nonebot
 import yaml
+
+if TYPE_CHECKING:
+    from nonebot.adapters import Adapter
 
 
 def setup_logger() -> None:
@@ -71,10 +74,30 @@ def load_config() -> dict[str, Any]:
 
 def load_adapters(adapters: list[str]) -> None:
     driver = nonebot.get_driver()
+    logger = nonebot.logger.opt(colors=True)
+
     for module_name in adapters:
-        with contextlib.suppress(ImportError, AttributeError):
-            module = importlib.import_module(f"nonebot.adapters.{module_name}")
-            driver.register_adapter(module.Adapter)
+        logger.debug(f"Loading adapter: <g>{module_name}</g>")
+        start = time.time()
+
+        full_name = f"nonebot.adapters.{module_name}"
+        try:
+            module = importlib.import_module(full_name)
+        except ImportError:
+            logger.warning(f"Failed to import module: <y>{full_name}</y>")
+            continue
+
+        try:
+            adapter: type[Adapter] = module.Adapter
+        except AttributeError:
+            logger.warning(f"Module <y>{full_name}</y> is not a valid adapter")
+            continue
+
+        driver.register_adapter(adapter)
+        logger.success(
+            f"Adapter <g>{adapter.get_name()}</g> loaded"
+            f" in <y>{time.time()-start:.3f}</y>s"
+        )
 
 
 def load_plugins(plugins: list[str]) -> None:
@@ -84,10 +107,14 @@ def load_plugins(plugins: list[str]) -> None:
         ):
             plugins.remove(name)
             nonebot.logger.opt(colors=True).warning(
-                f'优先加载来自 "<m>src.dev.{name}</m>" 的插件 "<y>{name}</y>"'
+                f'Prefer loading plugin <y>{name}</y> from "<m>src.dev.{name}</m>"'
             )
 
+    start = time.time()
     nonebot.load_all_plugins(plugins, ["src/plugins", "src/dev"])
+    nonebot.logger.opt(colors=True).success(
+        f"Plugins loaded in <y>{time.time()-start:.3f}</y>s"
+    )
 
 
 def init_nonebot() -> None:
@@ -95,9 +122,13 @@ def init_nonebot() -> None:
     adapters = config.pop("adapters", [])
     plugins = config.pop("plugins", [])
 
+    start = time.time()
     setup_logger()
     nonebot.init(**config)
     load_adapters(adapters)
     load_plugins(plugins)
+    nonebot.logger.opt(colors=True).success(
+        f"NoneBot initialized in <y>{time.time()-start:.3f}</y>s"
+    )
 
     return nonebot.get_asgi()
