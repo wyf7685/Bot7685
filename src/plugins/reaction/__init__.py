@@ -49,7 +49,7 @@ config = get_plugin_config(Config)
 
 
 def _rule_bubble(target: MsgTarget, event: Event) -> bool:
-    if not target.private:
+    if target.private:
         return False
     text = event.get_message().extract_plain_text()
     return check_bubble_word(text)
