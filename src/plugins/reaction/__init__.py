@@ -5,9 +5,9 @@ import anyio
 from nonebot import get_plugin_config, on_message, require
 from nonebot.adapters import Bot, Event
 from nonebot.adapters.onebot.v11 import Bot as V11Bot
-from nonebot.adapters.telegram import Bot as TgBot
 from nonebot.exception import ActionFailed
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
+from nonebot.typing import T_State
 from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
@@ -18,7 +18,6 @@ from nonebot_plugin_session import EventSession
 if TYPE_CHECKING:
     from nonebot_plugin_exe_code.interface import get_api_class
     from nonebot_plugin_exe_code.interface.adapters.onebot11 import API as V11API
-    from nonebot_plugin_exe_code.interface.adapters.telegram import API as TGAPI
 else:
     try:
         require("src.dev.nonebot_plugin_exe_code")
@@ -41,8 +40,23 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
+class Reaction(BaseModel):
+    user: str
+    reactions: list[str]
+
+
 class Config(BaseModel):
-    reaction_users: set[str] = set()
+    reaction: list[Reaction] = []
+
+    @property
+    def reaction_users(self) -> set[str]:
+        return {reaction.user for reaction in self.reaction}
+
+    def get_reactions(self, user: str) -> list[str]:
+        for reaction in self.reaction:
+            if reaction.user == user:
+                return reaction.reactions
+        return []
 
 
 config = get_plugin_config(Config)
@@ -65,32 +79,32 @@ async def handle_bubble(bot: V11Bot, event: Event, session: EventSession) -> Non
         await api.set_reaction(38, api.mid)
 
 
-def _rule(bot: Bot, event: Event, target: MsgTarget) -> bool:
+def _rule(bot: Bot, event: Event, target: MsgTarget, state: T_State) -> bool:
     if target.private:
         return False
 
     user_id = event.get_user_id()
     adapter = bot.type.split(maxsplit=1)[0].lower()
+    if user := {user_id, f"{adapter}:{user_id}"} & config.reaction_users:
+        state["reactions"] = config.get_reactions(user.pop())
+        return True
 
-    return any({user_id, f"{adapter}:{user_id}"} & config.reaction_users)
+    return False
 
 
 matcher = on_message(rule=_rule, block=False)
 
 
 @matcher.handle()
-async def _(bot: V11Bot, event: Event, session: EventSession) -> None:
-    api = cast("V11API", get_api_class(bot)(bot, event, session, {}))
-    with contextlib.suppress(ActionFailed):
-        await api.set_reaction(424, api.mid)
-        await anyio.sleep(0.5)
-        await api.set_reaction(38, api.mid)
-        await anyio.sleep(0.5)
-        await api.set_reaction(285, api.mid)
+async def _(bot: Bot, event: Event, session: EventSession, state: T_State) -> None:
+    if not (reactions := state["reactions"]):
+        return
 
+    api = get_api_class(bot)(bot, event, session, {})
+    if not (set_reaction := getattr(api, "set_reaction", None)):
+        return
 
-@matcher.handle()
-async def _(bot: TgBot, event: Event, session: EventSession) -> None:
-    api = cast("TGAPI", get_api_class(bot)(bot, event, session, {}))
     with contextlib.suppress(ActionFailed):
-        await api.set_reaction("🤓", api.mid)
+        for reaction in reactions:
+            await set_reaction(reaction, api.mid)
+            await anyio.sleep(0.5)
