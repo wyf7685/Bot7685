@@ -56,12 +56,6 @@ todo_alc = Alconna(
     Subcommand("pin", Args["index#todo序号", int], help_text="置顶 todo"),
     Subcommand("unpin", Args["index#todo序号", int], help_text="取消 todo"),
     Subcommand("clear", help_text="清空已完成的 todo"),
-    Subcommand(
-        "update",
-        Option("--check", Args["check#是否完成", bool]),
-        Option("--pin", Args["pin#是否置顶", bool]),
-        Args["index#todo序号", int],
-    ),
     meta=CommandMeta(
         description="待办事项",
         usage="todo --help",
