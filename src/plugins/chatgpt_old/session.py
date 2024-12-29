@@ -1,5 +1,6 @@
 # ruff: noqa
 
+import contextlib
 import copy
 import json
 from datetime import datetime
@@ -101,15 +102,13 @@ class SessionContainer:
     def old_version_check(session: "Session") -> None:
         if session.group == PRIVATE_GROUP:
             session.file_path.unlink(missing_ok=True)
-            session.group = PRIVATE_GROUP + f"_{session.creator}"
+            session.group = f"{PRIVATE_GROUP}_{session.creator}"
             session.save()
 
     def load(self) -> None:
         files: list[Path] = list(self.dir_path.glob("*.json"))
-        try:
+        with contextlib.suppress(ValueError):
             files.remove(self.group_auth_file_path)
-        except ValueError:
-            pass
         for file in files:
             session = Session.reload_from_file(file)
             if not session:
@@ -126,8 +125,8 @@ class SessionContainer:
     def get_user_usage(self, gid: str | int, uid: int) -> "Session":
         try:
             return self.get_group_usage(gid)[uid]
-        except KeyError:
-            raise NeedCreateSession(f"群{gid} 用户{uid} 需要创建 Session")
+        except KeyError as e:
+            raise NeedCreateSession(f"群{gid} 用户{uid} 需要创建 Session") from e
 
     def create_with_chat_log(
         self,
@@ -145,11 +144,7 @@ class SessionContainer:
             history_max=self.history_max,
             chat_memory_max=self.chat_memory_max,
         )
-        self.get_group_usage(group)[creator] = session
-        self.sessions.append(session)
-        session.add_user(creator)
-        logger.success(f"{creator} 成功创建会话 {session.name}")
-        return session
+        return self._store_session_and_user(session, str(group), str(creator))
 
     def create_with_template(
         self, template_id: str, creator: int | str, group: int | str
@@ -180,11 +175,17 @@ class SessionContainer:
             history_max=self.history_max,
             chat_memory_max=self.chat_memory_max,
         )
-        self.get_group_usage(group)[creator] = new_session
-        self.sessions.append(new_session)
-        new_session.add_user(creator)
-        logger.success(f"{creator} 成功创建会话 {new_session.name}")
-        return new_session
+        return self._store_session_and_user(new_session, group, str(creator))
+
+    # TODO Rename this here and in `create_with_chat_log` and `create_with_session`
+    def _store_session_and_user(
+        self, session: "Session", group: str, creator: str
+    ) -> "Session":
+        self.get_group_usage(group)[creator] = session
+        self.sessions.append(session)
+        session.add_user(creator)
+        logger.success(f"{creator} 成功创建会话 {session.name}")
+        return session
 
 
 class Session:
@@ -210,10 +211,7 @@ class Session:
         self.history_max: int = history_max
         self.creation_time: int = int(datetime.now().timestamp())
         self.dir_path: Path = dir_path
-        if basic_len is not None:
-            self.basic_len: int = basic_len
-        else:
-            self.basic_len = len(self.history)
+        self.basic_len = basic_len if basic_len is not None else len(self.history)
         if is_save:
             self.save()
 
