@@ -36,10 +36,12 @@ class Todo(BaseModel):
 class TodoList:
     session_id: str
     todo: list[Todo]
+    current: Todo | None
 
     def __init__(self, session_id: str, todo: list[Todo]) -> None:
         self.session_id = session_id
         self.todo = todo
+        self.current = None
 
     async def save(self) -> None:
         self.sort()
@@ -54,40 +56,34 @@ class TodoList:
     def sort(self) -> None:
         self.todo.sort(key=lambda x: (x.checked, 1 - x.pinned, x.time.timestamp()))
 
-    async def get(self, index: int) -> Todo:
-        i = index - 1 if index > 0 else index
+    async def check_index(self, index: int) -> None:
+        if not (1 <= index <= len(self.todo)):
+            await UniMessage(f"没有序号为 {index} 的待办事项").finish()
 
-        if 0 < index <= len(self.todo):
-            return self.todo[i]
+    def get(self, index: int) -> Todo:
+        self.current = self.todo[index - 1]
+        return self.current
 
-        # wtf ruff it's **NoReturn**
-        await UniMessage(f"没有序号为 {index} 的待办事项").finish()  # noqa: RET503
+    def add(self, content: str) -> Todo:
+        self.current = Todo(content=content)
+        self.todo.append(self.current)
+        return self.current
 
-    async def add(self, content: str, *, pin: bool = False) -> Todo:
-        todo = Todo(content=content, pinned=pin)
-        self.todo.append(todo)
-        await self.save()
-        return todo
+    def remove(self, index: int) -> None:
+        self.todo.remove(self.get(index))
+        self.current = None
 
-    async def remove(self, index: int) -> None:
-        self.todo.remove(await self.get(index))
-        await self.save()
+    def check(self, index: int) -> None:
+        self.get(index).checked = True
 
-    async def check(self, index: int) -> None:
-        (await self.get(index)).checked = True
-        await self.save()
+    def uncheck(self, index: int) -> None:
+        self.get(index).checked = False
 
-    async def uncheck(self, index: int) -> None:
-        (await self.get(index)).checked = False
-        await self.save()
+    def pin(self, index: int) -> None:
+        self.get(index).pinned = True
 
-    async def pin(self, index: int) -> None:
-        (await self.get(index)).pinned = True
-        await self.save()
-
-    async def unpin(self, index: int) -> None:
-        (await self.get(index)).pinned = False
-        await self.save()
+    def unpin(self, index: int) -> None:
+        self.get(index).pinned = False
 
     async def render(self, todo: Iterable[Todo] | None = None) -> bytes:
         md = "### 📝 Todo List\n"
@@ -98,10 +94,10 @@ class TodoList:
     def checked(self) -> Generator[Todo]:
         yield from (todo for todo in self.todo if todo.checked)
 
-    async def purge(self) -> None:
+    def clear(self) -> None:
         for todo in [*self.checked()]:
             self.todo.remove(todo)
-        await self.save()
+        self.current = None
 
 
 _STATE_CACHE_KEY = "user_todo_list"
