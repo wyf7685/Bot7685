@@ -1398,7 +1398,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-exe-code"
 version = "1.1.4"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git#65eac01cded8c7cb9b0031e965f8b027efde58f2" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git#cfc6674fad19d97283ffe9b1e6be35a3ffe671d2" }
 dependencies = [
     { name = "anyio" },
     { name = "nonebot-plugin-alconna" },
@@ -1659,7 +1659,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-wordcloud"
 version = "0.8.1"
-source = { git = "https://github.com/he0119/nonebot-plugin-wordcloud.git#bda438e6fc8e51bef349ff1c0c0632961709c56a" }
+source = { git = "https://github.com/he0119/nonebot-plugin-wordcloud.git#8fe2f1ca6f7522d6f3ffdf82975a2eb2c70f327b" }
 dependencies = [
     { name = "emoji" },
     { name = "jieba" },
