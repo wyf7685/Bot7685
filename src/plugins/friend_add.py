@@ -22,7 +22,7 @@ __plugin_meta__ = PluginMetadata(
 
 
 @on_type(FriendRequestEvent).handle()
-async def _(
+async def handle(
     event: FriendRequestEvent,
     info: Annotated[UserInfo, EventUserInfo()],
 ) -> None:
@@ -33,8 +33,13 @@ async def _(
 
     receipts: dict[str, Receipt] = {}
     for user_id in get_driver().config.superusers:
+        adapter, _, user = user_id.partition(":")
+        if adapter and adapter != "onebot":
+            continue
+
+        target = Target.user(user)
         with contextlib.suppress(Exception):
-            receipts[user_id] = await message.send(Target(user_id, private=True))
+            receipts[user_id] = await message.send(target)
 
     if not receipts:
         return
@@ -48,10 +53,7 @@ async def _(
             and msg.extract_plain_text() in {"接受", "拒绝"}
         )
 
-    matcher = on_message(rule=rule, permission=SUPERUSER, temp=True)
-
-    @matcher.handle()
-    async def _(bot: Bot, msg: UniMsg) -> None:
+    async def handler(bot: Bot, msg: UniMsg) -> None:
         await (
             event.approve
             if (text := msg.extract_plain_text()) == "接受"
@@ -60,6 +62,12 @@ async def _(
         await UniMessage.text(f"已{text}该好友申请").send()
         finished.set()
 
+    matcher = on_message(
+        rule=rule,
+        permission=SUPERUSER,
+        handlers=[handler],
+        temp=True,
+    )
     finished = anyio.Event()
     with anyio.move_on_after(10 * 60):
         await finished.wait()
