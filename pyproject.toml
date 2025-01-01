@@ -45,6 +45,8 @@ dependencies = [
     "websockets>=14.1",
     "nonebot-plugin-exe-code>=1.1.4",
     "nonebot-plugin-werewolf>=1.1.7",
+    "tencentcloud-sdk-python-dnspod>=3.0.1294",
+    "paramiko>=3.5.0",
 ]
 
 [tool.nonebot]
