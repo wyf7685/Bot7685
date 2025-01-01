@@ -1597,15 +1597,15 @@ sm-local = [
 
 [[package]]
 name = "nonebot-plugin-uninfo"
-version = "0.6.3"
+version = "0.6.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "importlib-metadata" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3d/76/d33fea83ddab82cef97c434ff00e53a643a8d264da795808d1747f74f5c7/nonebot_plugin_uninfo-0.6.3.tar.gz", hash = "sha256:3e5fad7a8fdf4a06ce5677b7c7224b8d5ee4400697dcb680decc4745ee7c17e9", size = 34684 }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/61/56783eac1b9f128b5d20ecf06667108def386a14592b77060fc7f0afe139/nonebot_plugin_uninfo-0.6.4.tar.gz", hash = "sha256:9d4fcfc26f757c88ff77546bfda1aacb551dc33cb9b714579bd6fa4e2e477c55", size = 34690 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0f/86/53c8faf463dd888e012c674bf5e1fe2eeaab444e7844c49e8b6aaf77d63b/nonebot_plugin_uninfo-0.6.3-py3-none-any.whl", hash = "sha256:1cbe261b8200a4e7278a05feb23786d32cda382fea61e775daec0c9660e61b3a", size = 54577 },
+    { url = "https://files.pythonhosted.org/packages/01/84/662db97046b8afce189b2853b487e51567e7a35f56e372386adfd9617045/nonebot_plugin_uninfo-0.6.4-py3-none-any.whl", hash = "sha256:ebb8468a0680d3d986695a60cf17ff383930084395004d3262f2188267beb012", size = 54592 },
 ]
 
 [[package]]
