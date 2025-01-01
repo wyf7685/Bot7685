@@ -39,14 +39,14 @@ dependencies = [
     "numpy>=2.1.3",
     "openai>=1.54.5",
     "pandas>=2.2.3",
+    "paramiko>=3.5.0",
     "pydantic>=2.10.4",
     "tarina>=0.6.7",
+    "tencentcloud-sdk-python-dnspod>=3.0.1294",
     "uvicorn[standard]>=0.32.0",
     "websockets>=14.1",
     "nonebot-plugin-exe-code>=1.1.4",
     "nonebot-plugin-werewolf>=1.1.7",
-    "tencentcloud-sdk-python-dnspod>=3.0.1294",
-    "paramiko>=3.5.0",
 ]
 
 [tool.nonebot]
