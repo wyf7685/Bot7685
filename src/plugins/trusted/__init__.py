@@ -12,7 +12,7 @@ __plugin_meta__ = PluginMetadata(
     type="library",
 )
 
-
+from . import matcher as matcher
 from .trust_data import TrustedUser as TrustedUser
 
 __all__ = ["TrustedUser"]
