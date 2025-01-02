@@ -14,3 +14,5 @@ __plugin_meta__ = PluginMetadata(
 
 
 from .trust_data import TrustedUser as TrustedUser
+
+__all__ = ["TrustedUser"]

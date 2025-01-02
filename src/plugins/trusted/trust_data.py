@@ -41,10 +41,13 @@ def query_trusted(
     type: Literal["user", "group"],  # noqa: A002
     id: str,
 ) -> bool:
+    try:
+        bot = current_bot.get()
+    except LookupError:
+        return False
+
     data = load_trust_data()
-    return f"{current_bot.get().type}:{id}" in (
-        data.user if type == "user" else data.group
-    )
+    return f"{bot.type}:{id}" in (data.user if type == "user" else data.group)
 
 
 @Permission
