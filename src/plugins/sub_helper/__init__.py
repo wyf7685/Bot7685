@@ -13,6 +13,9 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 
+require("src.plugins.trusted")
+from src.plugins.trusted import TrustedUser
+
 from .ali.client import AliClient
 from .config import Config, plugin_config
 from .ssh import SSHClient
@@ -22,7 +25,7 @@ from .tencent.client import TencentClient
 __plugin_meta__ = PluginMetadata(
     name="sub_helper",
     description="A helper for sub",
-    usage="Usage",
+    usage="sub -h",
     type="application",
     config=Config,
 )
@@ -40,6 +43,7 @@ check_sub = on_alconna(
         ),
     ),
     use_cmd_start=True,
+    permission=TrustedUser,
 )
 
 
