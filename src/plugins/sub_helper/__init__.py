@@ -5,7 +5,13 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 
 require("nonebot_plugin_alconna")
-from nonebot_plugin_alconna import Alconna, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_alconna import (
+    Alconna,
+    CommandMeta,
+    Subcommand,
+    UniMessage,
+    on_alconna,
+)
 
 from .ali.client import AliClient
 from .config import Config, plugin_config
@@ -25,9 +31,15 @@ __plugin_meta__ = PluginMetadata(
 check_sub = on_alconna(
     Alconna(
         "sub",
-        Subcommand("check"),
-        Subcommand("get"),
-    )
+        Subcommand("check", help_text="check status"),
+        Subcommand("create", help_text="[superuser] create instance"),
+        Subcommand("get", help_text="get sub"),
+        meta=CommandMeta(
+            description="sub helper",
+            usage="sub -h",
+        ),
+    ),
+    use_cmd_start=True,
 )
 
 
@@ -63,6 +75,7 @@ async def assign_create(bot: Bot, event: Event) -> None:
         tg.start_soon(SSHClient.setup_server, host)
 
     await UniMessage.text("Instance setup completed").finish()
+
 
 @check_sub.assign("get")
 async def assign_get() -> None:
