@@ -1,12 +1,10 @@
-import json
 from typing import Literal
 
-from nonebot.compat import model_dump, type_validate_json
 from nonebot.internal.matcher import current_bot
 from nonebot.permission import SUPERUSER, Permission
 from nonebot_plugin_localstore import get_plugin_data_file
 from nonebot_plugin_uninfo import Uninfo
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
 DATA_FILE = get_plugin_data_file("trusted.json")
 if not DATA_FILE.exists():
@@ -18,12 +16,15 @@ class TrustData(BaseModel):
     group: set[str] = set()
 
 
+_ta = TypeAdapter(TrustData)
+
+
 def load_trust_data() -> TrustData:
-    return type_validate_json(TrustData, DATA_FILE.read_text())
+    return _ta.validate_json(DATA_FILE.read_text())
 
 
 def dump_trust_data(data: TrustData) -> None:
-    DATA_FILE.write_text(json.dumps(model_dump(data), ensure_ascii=False, indent=2))
+    DATA_FILE.write_text(data.model_dump_json(indent=2))
 
 
 def set_trusted(
@@ -53,8 +54,8 @@ def query_trusted(
 @Permission
 async def _trusted(info: Uninfo) -> bool:
     return query_trusted("user", info.user.id) or (
-        (group := info.group or info.channel) is not None
-        and query_trusted("group", group.id)
+        (scene := info.group or info.channel) is not None
+        and query_trusted("group", scene.id)
     )
 
 
