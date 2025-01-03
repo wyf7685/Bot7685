@@ -1,5 +1,5 @@
 import enum
-from typing import Any, cast, get_origin
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -49,13 +49,11 @@ class Request[B: ResponseBody, H: ResponseHeaders](BaseModel):
     @classmethod
     def _find_model(cls) -> tuple[type[B], type[H]]:
         for c in cls.mro():
-            if get_origin(c) is Request:
-                req_cls = cast(type[Request[B, H]], c)
-                break
-        else:
-            raise TypeError(f"{cls} doesnt inherit from Request")
+            match c:
+                case type(__pydantic_generic_metadata__={"args": (_, _) as args}):
+                    return tuple(args)
 
-        return tuple(req_cls.__pydantic_generic_metadata__["args"])
+        raise TypeError(f"{cls} doesnt inherit from Request")
 
     @classmethod
     def parse_response(cls, response: dict[str, Any]) -> Response[B, H]:
