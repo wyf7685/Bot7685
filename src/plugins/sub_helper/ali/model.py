@@ -1,5 +1,5 @@
 import enum
-from typing import Any, cast
+from typing import Any, cast, get_origin
 
 from pydantic import BaseModel
 
@@ -41,20 +41,26 @@ class Response[B: ResponseBody, H: ResponseHeaders](BaseModel):
     body: B
 
 
-class Request[
-    B: ResponseBody,
-    H: ResponseHeaders,
-](BaseModel):
+class Request[B: ResponseBody, H: ResponseHeaders](BaseModel):
     @property
     def action(self) -> str:
         return type(self).__name__.removesuffix("Request")
 
-    def parse_response(self, response: dict[str, Any]) -> Response[B, H]:
-        req_cls = cast(type[Request[B, H]], type(self).mro()[1])
-        args = req_cls.__pydantic_generic_metadata__["args"]
-        body_model = cast(type[B], args[0])
-        headers_model = cast(type[H], args[1])
-        return Response[body_model, headers_model].model_validate(response)
+    @classmethod
+    def _find_model(cls) -> tuple[type[B], type[H]]:
+        for c in cls.mro():
+            if get_origin(c) is Request:
+                req_cls = cast(type[Request[B, H]], c)
+                break
+        else:
+            raise TypeError(f"{cls} doesnt inherit from Request")
+
+        return tuple(req_cls.__pydantic_generic_metadata__["args"])
+
+    @classmethod
+    def parse_response(cls, response: dict[str, Any]) -> Response[B, H]:
+        body, headers = cls._find_model()
+        return Response[body, headers].model_validate(response)
 
 
 class InstanceStatus(str, enum.Enum):
