@@ -1,5 +1,6 @@
 from typing import Literal
 
+from nonebot.adapters import Bot
 from nonebot.internal.matcher import current_bot
 from nonebot.permission import SUPERUSER, Permission
 from nonebot_plugin_localstore import get_plugin_data_file
@@ -39,23 +40,19 @@ def set_trusted(
 
 
 def query_trusted(
+    adapter: str,
     type: Literal["user", "group"],  # noqa: A002
     id: str,
 ) -> bool:
-    try:
-        bot = current_bot.get()
-    except LookupError:
-        return False
-
     data = load_trust_data()
-    return f"{bot.type}:{id}" in (data.user if type == "user" else data.group)
+    return f"{adapter}:{id}" in (data.user if type == "user" else data.group)
 
 
 @Permission
-async def _trusted(info: Uninfo) -> bool:
-    return query_trusted("user", info.user.id) or (
+async def _trusted(bot: Bot, info: Uninfo) -> bool:
+    return query_trusted(bot.type, "user", info.user.id) or (
         (scene := info.group or info.channel) is not None
-        and query_trusted("group", scene.id)
+        and query_trusted(bot.type, "group", scene.id)
     )
 
 
