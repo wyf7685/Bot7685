@@ -30,15 +30,18 @@ class SSHConfig(BaseModel):
     username: str
     private_key: Path
     sub_helper_data: Path
+    update_file: str
+    update_eval: str
 
 
 class SubConfig(BaseModel):
     class _Inner(BaseModel):
         model_config = ConfigDict(extra="allow")
 
-    data: _Inner
-    fmt_inner: str
-    fmt_outer: str
+    d: _Inner
+    u: Path
+    inner: str
+    outer: str
 
 
 class PluginConfig(BaseModel):

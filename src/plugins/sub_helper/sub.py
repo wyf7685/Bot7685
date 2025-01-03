@@ -6,6 +6,7 @@ config = plugin_config.sub
 
 
 def generate() -> str:
-    inner = config.fmt_inner.format(data=config.data)
+    u = config.u.read_text()
+    inner = config.inner.format(u=u, d=config.d)
     inner = base64.b64encode(inner.encode()).decode()
-    return config.fmt_outer.format(inner=inner, data=config.data)
+    return config.outer.format(inner=inner, d=config.d)

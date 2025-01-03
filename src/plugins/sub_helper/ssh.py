@@ -19,6 +19,9 @@ class SSHClient:
         )
 
     def put_files(self) -> None:
+        (config.sub_helper_data / config.update_file).write_text(
+            str(eval(config.update_eval))  # noqa: S307
+        )
         sftp = self.ssh.open_sftp()
         for fp in config.sub_helper_data.iterdir():
             sftp.put(fp, f"/root/{fp.name}")
