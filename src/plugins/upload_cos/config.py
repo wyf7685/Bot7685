@@ -1,10 +1,10 @@
 from nonebot import get_plugin_config
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 
 
 class UploadCosConfig(BaseModel):
-    secret_id: str
-    secret_key: str
+    secret_id: SecretStr
+    secret_key: SecretStr
     region: str
     bucket: str
 

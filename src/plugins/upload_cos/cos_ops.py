@@ -87,8 +87,8 @@ def get_client(retry: int = 1) -> AsyncCosS3Client:
         CosS3Client(
             conf=CosConfig(
                 Region=config.region,
-                SecretId=config.secret_id,
-                SecretKey=config.secret_key,
+                SecretId=config.secret_id.get_secret_value(),
+                SecretKey=config.secret_key.get_secret_value(),
                 Token=None,
                 Scheme="https",
             ),
