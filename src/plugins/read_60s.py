@@ -2,7 +2,7 @@ import contextlib
 
 import httpx
 from nonebot import get_bots, get_plugin_config, require
-from nonebot.adapters.onebot.v11 import Bot, MessageSegment
+from nonebot.adapters.onebot.v11 import Bot, Message, MessageSegment
 from nonebot.log import logger
 from nonebot.plugin import PluginMetadata
 from pydantic import BaseModel, Field
@@ -34,10 +34,6 @@ class Config(BaseModel):
     read_60s: list[Read60sConfig] = []
 
 
-config = get_plugin_config(Config)
-api_url = ["https://api.2xb.cn/zaob", "https://api.iyk0.com/60s"]
-
-
 async def get_url(api: str) -> str:
     async with httpx.AsyncClient() as client:
         resp = await client.get(api)
@@ -46,13 +42,13 @@ async def get_url(api: str) -> str:
 
 
 async def read60s(config: Read60sConfig) -> None:
-    for api in api_url:
+    for api in "https://api.2xb.cn/zaob", "https://api.iyk0.com/60s":
         with contextlib.suppress(Exception):
             url = await get_url(api)
             msg = "今日60S读世界已送达\n" + MessageSegment.image(url)
             break
     else:
-        msg = "今日60S读世界获取失败!"
+        msg = Message("今日60S读世界获取失败!")
 
     bot = next((b for b in get_bots().values() if isinstance(b, Bot)), None)
 
@@ -67,9 +63,9 @@ async def read60s(config: Read60sConfig) -> None:
         await bot.send_group_msg(group_id=group_id, message=msg)
 
 
-for conf in config.read_60s:
+for config in get_plugin_config(Config).read_60s:
     scheduler.add_job(
         read60s,
-        CronTrigger(hour=conf.time.hour, minute=conf.time.minute),
-        args=(conf,),
+        CronTrigger(hour=config.time.hour, minute=config.time.minute),
+        args=(config,),
     )
