@@ -8,6 +8,7 @@ from nonebot.plugin import PluginMetadata
 from pydantic import BaseModel, Field
 
 require("nonebot_plugin_apscheduler")
+from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
 __plugin_meta__ = PluginMetadata(
@@ -19,14 +20,18 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
-class Config(BaseModel):
+class Read60sConfig(BaseModel):
     class Time(BaseModel):
-        hour: int = Field(default=0, alias="HOUR")
-        minute: int = Field(default=0, alias="MINUTE")
+        hour: int = Field(default=0)
+        minute: int = Field(default=0)
 
-    read_qq_friends: list[int] = Field(default_factory=list)
-    read_qq_groups: list[int] = Field(default_factory=list)
-    read_inform_time: list[Time] = Field(default_factory=list)
+    time: Time
+    user_id: list[int] = []
+    group_id: list[int] = []
+
+
+class Config(BaseModel):
+    read_60s: list[Read60sConfig] = []
 
 
 config = get_plugin_config(Config)
@@ -40,7 +45,7 @@ async def get_url(api: str) -> str:
     return resp.json()["imageUrl"]
 
 
-async def read60s() -> None:
+async def read60s(config: Read60sConfig) -> None:
     for api in api_url:
         with contextlib.suppress(Exception):
             url = await get_url(api)
@@ -55,17 +60,16 @@ async def read60s() -> None:
         logger.opt(colors=True).warning("未找到 <m>OneBot V11</m> Bot")
         return
 
-    for qq in config.read_qq_friends:
-        await bot.send_private_msg(user_id=qq, message=msg)
+    for user_id in config.user_id:
+        await bot.send_private_msg(user_id=user_id, message=msg)
 
-    for qq_group in config.read_qq_groups:
-        await bot.send_group_msg(group_id=qq_group, message=msg)
+    for group_id in config.group_id:
+        await bot.send_group_msg(group_id=group_id, message=msg)
 
 
-for time in config.read_inform_time:
+for conf in config.read_60s:
     scheduler.add_job(
         read60s,
-        "cron",
-        hour=time.hour,
-        minute=time.minute,
+        CronTrigger(hour=conf.time.hour, minute=conf.time.minute),
+        args=(conf,),
     )
