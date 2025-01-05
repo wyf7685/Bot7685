@@ -6,9 +6,16 @@ from nonebot.adapters import Event
 from nonebot.utils import escape_tag
 
 logger = nonebot.logger.opt(colors=True)
+_PATCHERS: set["Patcher"] = set()
 
 
-class Patcher[T: Event = Event]:
+@nonebot.get_driver().on_startup
+async def _() -> None:
+    for patcher in _PATCHERS:
+        patcher.patch()
+
+
+class Patcher[T: Event]:
     __target: type
     __name: str
     __patched: dict[str, tuple[Callable[..., Any], Callable[..., Any]]]
@@ -23,8 +30,8 @@ class Patcher[T: Event = Event]:
             for name, patched in cls.__dict__.items()
             if not name.startswith("model_")
             and callable(patched)
-            and (original := getattr(self.__target, name, ...)) is not ...
-            and callable(original)
+            and hasattr(self.__target, name)
+            and callable(original := getattr(self.__target, name))
             and original is not patched
         }
         origin = type(
@@ -34,7 +41,7 @@ class Patcher[T: Event = Event]:
         )
         self.origin = cast(type[T], origin)
         self.patcher = cls
-        nonebot.get_driver().on_startup(self.patch)
+        _PATCHERS.add(self)
 
     def patch(self) -> None:
         for name, (patched, _) in self.__patched.items():
