@@ -172,15 +172,15 @@ wheels = [
 
 [[package]]
 name = "anyio"
-version = "4.7.0"
+version = "4.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "idna" },
     { name = "sniffio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f6/40/318e58f669b1a9e00f5c4453910682e2d9dd594334539c7b7817dabb765f/anyio-4.7.0.tar.gz", hash = "sha256:2f834749c602966b7d456a7567cafcb309f96482b5081d14ac93ccd457f9dd48", size = 177076 }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/73/199a98fc2dae33535d6b8e8e6ec01f8c1d76c9adb096c6b7d64823038cde/anyio-4.8.0.tar.gz", hash = "sha256:1d9fe889df5212298c0c0723fa20479d1b94883a2df44bd3897aa91083316f7a", size = 181126 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/7a/4daaf3b6c08ad7ceffea4634ec206faeff697526421c20f07628c7372156/anyio-4.7.0-py3-none-any.whl", hash = "sha256:ea60c3723ab42ba6fff7e8ccb0488c898ec538ff4df1f1d5e642c3601d07e352", size = 93052 },
+    { url = "https://files.pythonhosted.org/packages/46/eb/e7f063ad1fec6b3178a3cd82d1a3c4de82cccf283fc42746168188e1cdd5/anyio-4.8.0-py3-none-any.whl", hash = "sha256:b5011f270ab5eb0abf13385f851315585cc37ef330dd88e27ec3d34d651fd47a", size = 96041 },
 ]
 
 [[package]]
@@ -2121,11 +2121,11 @@ wheels = [
 
 [[package]]
 name = "pygments"
-version = "2.18.0"
+version = "2.19.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8e/62/8336eff65bcbc8e4cb5d05b55faf041285951b6e80f33e2bff2024788f31/pygments-2.18.0.tar.gz", hash = "sha256:786ff802f32e91311bff3889f6e9a86e81505fe99f2735bb6d60ae0c5004f199", size = 4891905 }
+sdist = { url = "https://files.pythonhosted.org/packages/d3/c0/9c9832e5be227c40e1ce774d493065f83a91d6430baa7e372094e9683a45/pygments-2.19.0.tar.gz", hash = "sha256:afc4146269910d4bdfabcd27c24923137a74d562a23a320a41a55ad303e19783", size = 4967733 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/3f/01c8b82017c199075f8f788d0d906b9ffbbc5a47dc9918a945e13d5a2bda/pygments-2.18.0-py3-none-any.whl", hash = "sha256:b8e6aca0523f3ab76fee51799c488e38782ac06eafcf95e7ba832985c8e7b13a", size = 1205513 },
+    { url = "https://files.pythonhosted.org/packages/20/dc/fde3e7ac4d279a331676829af4afafd113b34272393d73f610e8f0329221/pygments-2.19.0-py3-none-any.whl", hash = "sha256:4755e6e64d22161d5b61432c0600c923c5927214e7c956e31c23923c89251a9b", size = 1225305 },
 ]
 
 [[package]]
@@ -2452,26 +2452,26 @@ wheels = [
 
 [[package]]
 name = "tencentcloud-sdk-python-common"
-version = "3.0.1295"
+version = "3.0.1296"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f3/63/bb3ba29bbbb0ad7f4e59384bcefc195b7720c8f64ede10922e2c61797f5b/tencentcloud-sdk-python-common-3.0.1295.tar.gz", hash = "sha256:ffa08025a84e07817ddd12bc70519c2a865883279e5dedfcf18e079bf03c541a", size = 16344 }
+sdist = { url = "https://files.pythonhosted.org/packages/2a/2b/18c2945b5f54736333858e06a5ce8d680a1c5c64b3f0fbde46106e596463/tencentcloud-sdk-python-common-3.0.1296.tar.gz", hash = "sha256:f91050a7d6b6577ebb385e7e3c7bffa1b1a2e4d7ede744a6a1f86942f39a2ae0", size = 16342 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/17/ad/e17e92afc0dbe936351bd38cb2e94594a4014a6a8d204af448013bdaa63c/tencentcloud_sdk_python_common-3.0.1295-py2.py3-none-any.whl", hash = "sha256:6ad9b1f016607ac1253d561094d1334fa09b990c472bca6f4b039e005a2dd5f0", size = 23403 },
+    { url = "https://files.pythonhosted.org/packages/53/40/0e6e28e4d1a48a1bdd013615053f4974d81f4f059c618bf7443eca6a1d56/tencentcloud_sdk_python_common-3.0.1296-py2.py3-none-any.whl", hash = "sha256:5287da6ac5a76bfe7e30dbb4388808c1b0f2fcab17bb506b52be94f1075aa2c6", size = 23404 },
 ]
 
 [[package]]
 name = "tencentcloud-sdk-python-dnspod"
-version = "3.0.1295"
+version = "3.0.1296"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "tencentcloud-sdk-python-common" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/24/10/3fc56b5a4b7f375fc13aa6d2790375696ab0ba4b4d9693e5c9896ae79613/tencentcloud-sdk-python-dnspod-3.0.1295.tar.gz", hash = "sha256:74e41f6e265a9bbebe7f74a89fac659aaa293914fe3cf8f8e39625e3abfc169a", size = 60852 }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/f2/83bf2709b6da31f37560da6cf5feb6b61be392e579d0a8fe98484c1b6179/tencentcloud-sdk-python-dnspod-3.0.1296.tar.gz", hash = "sha256:7b60dfc71b53192ad262f5397a33d95d12ae31f1e4d133337ced8ca658f4f752", size = 60846 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/1a/9d6cbd584dc2fdddf63ae2864eab105d027f9180c58207b628c6b11d5981/tencentcloud_sdk_python_dnspod-3.0.1295-py2.py3-none-any.whl", hash = "sha256:e3615954474f50456fe93737d51c6750f6ef6e93ab508df6a0cb7d3298edb58a", size = 63063 },
+    { url = "https://files.pythonhosted.org/packages/a6/1b/e13a139994a818b39c2760c03a17bd8581ed666e8f15e5184e966d7ca13a/tencentcloud_sdk_python_dnspod-3.0.1296-py2.py3-none-any.whl", hash = "sha256:46cad1bdc9bbf98756edae329bd1b137d7f1dc1b62090b400fe02b564b02a152", size = 63063 },
 ]
 
 [[package]]
