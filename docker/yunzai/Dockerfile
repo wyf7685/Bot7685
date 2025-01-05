@@ -5,6 +5,7 @@ WORKDIR /app
 COPY start.sh /
 
 RUN git clone https://github.com/TimeRainStarSky/Yunzai /app && \
+    git config --global --add safe.directory /app && git checkout 69726d2 && \
     git clone https://github.com/TomyJan/Yunzai-Kuro-Plugin.git /app/plugins/Yunzai-Kuro-Plugin && \
     pnpm install -P && \
     chmod +x /start.sh && \
