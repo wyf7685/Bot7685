@@ -13,5 +13,6 @@ __plugin_meta__ = PluginMetadata(
         "~discord",
         "~qq",
         "~satori",
+        "~telegram",
     },
 )
