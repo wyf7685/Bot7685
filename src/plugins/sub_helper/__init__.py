@@ -1,6 +1,7 @@
 import anyio
 from nonebot import require
 from nonebot.adapters import Bot, Event
+from nonebot.exception import MatcherException
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 
@@ -57,11 +58,7 @@ async def assign_check() -> None:
     await UniMessage.text(f"Instance {status}").finish()
 
 
-@check_sub.assign("create")
-async def assign_create(bot: Bot, event: Event) -> None:
-    if not await SUPERUSER(bot, event):
-        await UniMessage.text("Permission denied").finish()
-
+async def do_create() -> None:
     ali_client = AliClient()
 
     if await ali_client.find_instance_by_name(plugin_config.ali.instance_name):
@@ -81,6 +78,18 @@ async def assign_create(bot: Bot, event: Event) -> None:
 
     await UniMessage.text("Instance setup completed").finish()
 
+
+@check_sub.assign("create")
+async def assign_create(bot: Bot, event: Event) -> None:
+    if not await SUPERUSER(bot, event):
+        await UniMessage.text("Permission denied").finish()
+
+    try:
+        await do_create()
+    except MatcherException:
+        raise
+    except Exception as err:
+        await UniMessage.text(f"Error creating instance: {err}").finish()
 
 @check_sub.assign("get")
 async def assign_get() -> None:
