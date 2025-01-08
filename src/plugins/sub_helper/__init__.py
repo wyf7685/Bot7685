@@ -76,6 +76,7 @@ async def assign_create(bot: Bot, event: Event) -> None:
     async with anyio.create_task_group() as tg:
         tg.start_soon(UniMessage.text(f"Instance public ip: {host}").send)
         tg.start_soon(TencentClient().update_record, host)
+        await anyio.sleep(10)
         tg.start_soon(SSHClient.setup_server, host)
 
     await UniMessage.text("Instance setup completed").finish()
