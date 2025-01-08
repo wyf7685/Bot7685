@@ -165,6 +165,11 @@ pythonPlatform = "All"
 typeCheckingMode = "standard"
 reportShadowedImports = false
 disableBytesTypePromotions = true
+# reportUnusedCallResult = false
+# reportUnknownVariableType = false
+# reportUnknownMemberType = false
+# reportUnknownArgumentType = false
+# reportImplicitStringConcatenation = false
 
 [tool.uv]
 dev-dependencies = ["ipykernel>=6.29.5"]

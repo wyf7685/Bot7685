@@ -2,13 +2,12 @@ import importlib
 import logging
 import pathlib
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any, cast
 
 import nonebot
 import yaml
-
-if TYPE_CHECKING:
-    from nonebot.adapters import Adapter
+from nonebot.adapters import Adapter
+from nonebot.internal.driver import ASGIMixin
 
 
 def setup_logger() -> None:
@@ -88,7 +87,7 @@ def load_adapters(adapters: list[str]) -> None:
             continue
 
         try:
-            adapter: type[Adapter] = module.Adapter
+            adapter= cast(type[Adapter], module.Adapter)
         except AttributeError:
             logger.warning(f"Module <y>{full_name}</y> is not a valid adapter")
             continue
@@ -117,7 +116,7 @@ def load_plugins(plugins: list[str]) -> None:
     )
 
 
-def init_nonebot() -> None:
+def init_nonebot() -> ASGIMixin:
     config = load_config()
     adapters = config.pop("adapters", [])
     plugins = config.pop("plugins", [])
@@ -131,4 +130,4 @@ def init_nonebot() -> None:
         f"NoneBot initialized in <y>{time.time()-start:.3f}</y>s"
     )
 
-    return nonebot.get_asgi()
+    return cast(ASGIMixin, nonebot.get_asgi())

@@ -1,3 +1,5 @@
+from typing import final
+
 import paramiko
 from nonebot.utils import run_sync
 
@@ -6,6 +8,7 @@ from .config import plugin_config
 config = plugin_config.ssh
 
 
+@final
 class SSHClient:
     def __init__(self, host: str) -> None:
         self.ssh = paramiko.SSHClient()

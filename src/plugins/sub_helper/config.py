@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import ClassVar
 
 from nonebot.plugin import get_plugin_config
 from pydantic import BaseModel, ConfigDict, SecretStr
@@ -36,7 +37,7 @@ class SSHConfig(BaseModel):
 
 class SubConfig(BaseModel):
     class _Inner(BaseModel):
-        model_config = ConfigDict(extra="allow")
+        model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
 
     d: _Inner
     u: Path

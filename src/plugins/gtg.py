@@ -1,4 +1,4 @@
-import typing as _t
+from collections.abc import Awaitable, Callable
 
 import anyio
 import anyio.abc
@@ -34,7 +34,7 @@ async def _() -> None:
 
 def call_later[**P](
     delay: float,
-    call: _t.Callable[P, _t.Awaitable[_t.Any]],
+    call: Callable[P, Awaitable[object]],
     *arg: P.args,
     **kwargs: P.kwargs,
 ) -> None:
@@ -56,7 +56,7 @@ def call_later[**P](
 
 
 def call_soon[**P](
-    call: _t.Callable[P, _t.Awaitable[_t.Any]],
+    call: Callable[P, Awaitable[object]],
     *arg: P.args,
     **kwargs: P.kwargs,
 ) -> None:
