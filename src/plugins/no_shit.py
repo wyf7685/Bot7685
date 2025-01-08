@@ -5,6 +5,7 @@ from nonebot.adapters.onebot.v11.event import GroupMessageEvent
 from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage, UniMsg
 from nonebot_plugin_waiter import prompt_until, waiter
