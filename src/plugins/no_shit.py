@@ -41,7 +41,7 @@ async def _(bot: Bot, event: GroupMessageEvent, state: T_State) -> None:
     if msg_recv is None:
         return
 
-    ban_duration = int(msg_recv.extract_plain_text())
+    ban_duration = max(1, min(int(msg_recv.extract_plain_text()), 10))
     target: int = state["target_id"]
 
     await (
@@ -49,7 +49,7 @@ async def _(bot: Bot, event: GroupMessageEvent, state: T_State) -> None:
         .at(str(target))
         .text("被指控搬史\n")
         .text(f"预期禁言 {ban_duration} 分钟\n\n")
-        .text("若有2人在3分钟内发送“同意”将实施禁言")
+        .text("若3分钟内有2人发送“同意”将实施禁言")
         .send()
     )
 
