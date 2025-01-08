@@ -9,6 +9,7 @@ require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import (
     Alconna,
     CommandMeta,
+    MsgTarget,
     Subcommand,
     UniMessage,
     on_alconna,
@@ -91,6 +92,10 @@ async def assign_create(bot: Bot, event: Event) -> None:
     except Exception as err:
         await UniMessage.text(f"Error creating instance: {err}").finish()
 
+
 @check_sub.assign("get")
-async def assign_get() -> None:
+async def assign_get(target: MsgTarget) -> None:
+    if not target.private:
+        await check_sub.finish()
+
     await UniMessage.text(generate()).finish()
