@@ -85,6 +85,7 @@ class AliClient:
         resp = await self._request(request)
         inst_id = resp.body.InstanceIdSets.InstanceIdSet[0]
         logger.info(f"Instance <c>{inst_id}</c> created")
+        await anyio.sleep(10)
 
         while True:
             status = await self.describe_instance_status(inst_id)
