@@ -62,7 +62,12 @@ async def _(bot: Bot, event: GroupMessageEvent, state: T_State) -> None:
             and msg.extract_plain_text() == "同意"
         )
 
-    @waiter([event.get_type()], keep_session=False, rule=_rule)
+    @waiter(
+        [event.get_type()],
+        keep_session=False,
+        rule=_rule,
+        block=False,
+    )
     def wait(event: GroupMessageEvent) -> int:
         return event.user_id
 
