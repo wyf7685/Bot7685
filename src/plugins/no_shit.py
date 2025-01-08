@@ -1,13 +1,13 @@
 import anyio
 from nonebot import require
-from nonebot.adapters.onebot.v11 import Bot
+from nonebot.adapters.onebot.v11 import Bot, Message
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent
 from nonebot.typing import T_State
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import on_alconna
-from nonebot_plugin_alconna.uniseg import UniMessage, UniMsg
+from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_waiter import prompt_until, waiter
 
 require("src.plugins.trusted")
@@ -55,7 +55,7 @@ async def _(bot: Bot, event: GroupMessageEvent, state: T_State) -> None:
 
     voted: set[int] = set()
 
-    def _rule(msg: UniMsg, e: GroupMessageEvent) -> bool:
+    def _rule(msg: Message, e: GroupMessageEvent) -> bool:
         return (
             e.group_id == event.group_id
             and e.user_id not in ({event.user_id, target} | voted)
@@ -81,6 +81,7 @@ async def _(bot: Bot, event: GroupMessageEvent, state: T_State) -> None:
     if len(voted) < 2:
         await UniMessage.text("同意人数不足，取消操作").finish()
 
+    await bot.delete_msg(message_id=state["reply"])
     await bot.set_group_ban(
         group_id=event.group_id,
         user_id=target,
