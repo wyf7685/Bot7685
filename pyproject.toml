@@ -172,7 +172,10 @@ disableBytesTypePromotions = true
 # reportImplicitStringConcatenation = false
 
 [tool.uv]
-dev-dependencies = ["ipykernel>=6.29.5"]
+dev-dependencies = [
+    "ipykernel>=6.29.5",
+    "nonebot-session-to-uninfo>=0.0.2",
+]
 
 [tool.uv.sources]
 nonebot-plugin-exe-code = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" }

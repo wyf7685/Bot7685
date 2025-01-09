@@ -356,6 +356,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "ipykernel" },
+    { name = "nonebot-session-to-uninfo" },
 ]
 
 [package.metadata]
@@ -405,7 +406,10 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [{ name = "ipykernel", specifier = ">=6.29.5" }]
+dev = [
+    { name = "ipykernel", specifier = ">=6.29.5" },
+    { name = "nonebot-session-to-uninfo", specifier = ">=0.0.2" },
+]
 
 [[package]]
 name = "cachetools"
@@ -1722,6 +1726,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/60/85/18e765d0aaf573703917a2333cb1f4321f172883e87dbf893a58ba7ecef4/nonebot_plugin_wordle-0.4.5.tar.gz", hash = "sha256:929e107579feb50865fd3eba6c32a104ab26e060e2d18e01b8ea6803b1207b62", size = 2606401 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ca/87/02279c72a30464dbc93c589eb4e0478e626ffcaeacd10e3e4d692c4f4b5c/nonebot_plugin_wordle-0.4.5-py3-none-any.whl", hash = "sha256:c8e88371e2f25c38e3571ca448c2056644e8970ba7ac9bdf715b396cd178c135", size = 2646594 },
+]
+
+[[package]]
+name = "nonebot-session-to-uninfo"
+version = "0.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "alembic" },
+    { name = "sqlalchemy" },
+    { name = "strenum" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/09/04/4ebea55a53c507195c1cf923d31897ef7ab8b7b49532406b2419f61342f9/nonebot_session_to_uninfo-0.0.2.tar.gz", hash = "sha256:10d3540fa85293cdd669065cb3898f07af625e2a640a2ab2fa0360a444eef3ab", size = 4624 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2e/ea/f9e31d29facf907f96aad32ac184b879a6a80d3f4f43437c735a425e26b1/nonebot_session_to_uninfo-0.0.2-py3-none-any.whl", hash = "sha256:6639f252f371ee50f414904011757f480916a771f2cea8dcf5bc24792b168330", size = 5111 },
 ]
 
 [[package]]
