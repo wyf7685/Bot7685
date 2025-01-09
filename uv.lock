@@ -1809,7 +1809,7 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "1.59.5"
+version = "1.59.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1821,9 +1821,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7c/b3/a99ff4f8034383147f853200ff5f6df63a8407a0061d6b3ff47914b94f4c/openai-1.59.5.tar.gz", hash = "sha256:9886e77c02dad9dc6a7b67a11ab372a56842a9b5d376aa476672175ab10e83a0", size = 344773 }
+sdist = { url = "https://files.pythonhosted.org/packages/2e/7a/07fbe7bdabffd0a5be1bfe5903a02c4fff232e9acbae894014752a8e4def/openai-1.59.6.tar.gz", hash = "sha256:c7670727c2f1e4473f62fea6fa51475c8bc098c9ffb47bfb9eef5be23c747934", size = 344915 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4b/a2/a64f495c016234ca4269005b19eb9193a925dcad01af95eb8fea3de4ee9c/openai-1.59.5-py3-none-any.whl", hash = "sha256:e646b44856b0dda9345d3c43639e056334d792d1690e99690313c0ef7ca4d8cc", size = 454815 },
+    { url = "https://files.pythonhosted.org/packages/70/45/6de8e5fd670c804b29c777e4716f1916741c71604d5c7d952eee8432f7d3/openai-1.59.6-py3-none-any.whl", hash = "sha256:b28ed44eee3d5ebe1a3ea045ee1b4b50fea36ecd50741aaa5ce5a5559c900cb6", size = 454817 },
 ]
 
 [[package]]
@@ -2088,16 +2088,16 @@ wheels = [
 
 [[package]]
 name = "pydantic"
-version = "2.10.4"
+version = "2.10.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-types" },
     { name = "pydantic-core" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/70/7e/fb60e6fee04d0ef8f15e4e01ff187a196fa976eb0f0ab524af4599e5754c/pydantic-2.10.4.tar.gz", hash = "sha256:82f12e9723da6de4fe2ba888b5971157b3be7ad914267dea8f05f82b28254f06", size = 762094 }
+sdist = { url = "https://files.pythonhosted.org/packages/6a/c7/ca334c2ef6f2e046b1144fe4bb2a5da8a4c574e7f2ebf7e16b34a6a2fa92/pydantic-2.10.5.tar.gz", hash = "sha256:278b38dbbaec562011d659ee05f63346951b3a248a6f3642e1bc68894ea2b4ff", size = 761287 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/26/3e1bbe954fde7ee22a6e7d31582c642aad9e84ffe4b5fb61e63b87cd326f/pydantic-2.10.4-py3-none-any.whl", hash = "sha256:597e135ea68be3a37552fb524bc7d0d66dcf93d395acd93a00682f1efcb8ee3d", size = 431765 },
+    { url = "https://files.pythonhosted.org/packages/58/26/82663c79010b28eddf29dcdd0ea723439535fa917fce5905885c0e9ba562/pydantic-2.10.5-py3-none-any.whl", hash = "sha256:4dd4e322dbe55472cb7ca7e73f4b63574eecccf2835ffa2af9021ce113c83c53", size = 431426 },
 ]
 
 [[package]]
@@ -2374,22 +2374,16 @@ wheels = [
 
 [[package]]
 name = "sqlalchemy"
-version = "2.0.36"
+version = "2.0.37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "greenlet", marker = "(python_full_version < '3.14' and platform_machine == 'AMD64') or (python_full_version < '3.14' and platform_machine == 'WIN32') or (python_full_version < '3.14' and platform_machine == 'aarch64') or (python_full_version < '3.14' and platform_machine == 'amd64') or (python_full_version < '3.14' and platform_machine == 'ppc64le') or (python_full_version < '3.14' and platform_machine == 'win32') or (python_full_version < '3.14' and platform_machine == 'x86_64')" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/50/65/9cbc9c4c3287bed2499e05033e207473504dc4df999ce49385fb1f8b058a/sqlalchemy-2.0.36.tar.gz", hash = "sha256:7f2767680b6d2398aea7082e45a774b2b0767b5c8d8ffb9c8b683088ea9b29c5", size = 9574485 }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/20/93ea2518df4d7a14ebe9ace9ab8bb92aaf7df0072b9007644de74172b06c/sqlalchemy-2.0.37.tar.gz", hash = "sha256:12b28d99a9c14eaf4055810df1001557176716de0167b91026e648e65229bffb", size = 9626249 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/5c/236398ae3678b3237726819b484f15f5c038a9549da01703a771f05a00d6/SQLAlchemy-2.0.36-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:b5cc79df7f4bc3d11e4b542596c03826063092611e481fcf1c9dfee3c94355ef", size = 2087651 },
-    { url = "https://files.pythonhosted.org/packages/a8/14/55c47420c0d23fb67a35af8be4719199b81c59f3084c28d131a7767b0b0b/SQLAlchemy-2.0.36-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:3c01117dd36800f2ecaa238c65365b7b16497adc1522bf84906e5710ee9ba0e8", size = 2078132 },
-    { url = "https://files.pythonhosted.org/packages/3d/97/1e843b36abff8c4a7aa2e37f9bea364f90d021754c2de94d792c2d91405b/SQLAlchemy-2.0.36-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9bc633f4ee4b4c46e7adcb3a9b5ec083bf1d9a97c1d3854b92749d935de40b9b", size = 3164559 },
-    { url = "https://files.pythonhosted.org/packages/7b/c5/07f18a897b997f6d6b234fab2bf31dccf66d5d16a79fe329aefc95cd7461/SQLAlchemy-2.0.36-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9e46ed38affdfc95d2c958de328d037d87801cfcbea6d421000859e9789e61c2", size = 3177897 },
-    { url = "https://files.pythonhosted.org/packages/b3/cd/e16f3cbefd82b5c40b33732da634ec67a5f33b587744c7ab41699789d492/SQLAlchemy-2.0.36-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:b2985c0b06e989c043f1dc09d4fe89e1616aadd35392aea2844f0458a989eacf", size = 3111289 },
-    { url = "https://files.pythonhosted.org/packages/15/85/5b8a3b0bc29c9928aa62b5c91fcc8335f57c1de0a6343873b5f372e3672b/SQLAlchemy-2.0.36-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:4a121d62ebe7d26fec9155f83f8be5189ef1405f5973ea4874a26fab9f1e262c", size = 3139491 },
-    { url = "https://files.pythonhosted.org/packages/a1/95/81babb6089938680dfe2cd3f88cd3fd39cccd1543b7cb603b21ad881bff1/SQLAlchemy-2.0.36-cp313-cp313-win32.whl", hash = "sha256:0572f4bd6f94752167adfd7c1bed84f4b240ee6203a95e05d1e208d488d0d436", size = 2060439 },
-    { url = "https://files.pythonhosted.org/packages/c1/ce/5f7428df55660d6879d0522adc73a3364970b5ef33ec17fa125c5dbcac1d/SQLAlchemy-2.0.36-cp313-cp313-win_amd64.whl", hash = "sha256:8c78ac40bde930c60e0f78b3cd184c580f89456dd87fc08f9e3ee3ce8765ce88", size = 2084574 },
-    { url = "https://files.pythonhosted.org/packages/b8/49/21633706dd6feb14cd3f7935fc00b60870ea057686035e1a99ae6d9d9d53/SQLAlchemy-2.0.36-py3-none-any.whl", hash = "sha256:fddbe92b4760c6f5d48162aef14824add991aeda8ddadb3c31d56eb15ca69f8e", size = 1883787 },
+    { url = "https://files.pythonhosted.org/packages/b6/04/fcdd103b6871f2110460b8275d1c4828daa806997b0fa5a01c1cd7fd522d/SQLAlchemy-2.0.37-cp313-cp313-win32.whl", hash = "sha256:293f9ade06b2e68dd03cfb14d49202fac47b7bb94bffcff174568c951fbc7af2", size = 2070746 },
+    { url = "https://files.pythonhosted.org/packages/d4/7c/e024719205bdc1465b7b7d3d22ece8e1ad57bc7d76ef6ed78bb5f812634a/SQLAlchemy-2.0.37-cp313-cp313-win_amd64.whl", hash = "sha256:d70f53a0646cc418ca4853da57cf3ddddbccb8c98406791f24426f2dd77fd0e2", size = 2094612 },
 ]
 
 [package.optional-dependencies]
@@ -2470,26 +2464,26 @@ wheels = [
 
 [[package]]
 name = "tencentcloud-sdk-python-common"
-version = "3.0.1299"
+version = "3.0.1300"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6c/8c/c62704d37122cdefbb1b7aacb4222cbf801ea7f86994171d3336c6cad03e/tencentcloud-sdk-python-common-3.0.1299.tar.gz", hash = "sha256:a9cc7f03c101788017223a9a020679f18e6bfafaa50c7d4bfb04713b8b20adaa", size = 16355 }
+sdist = { url = "https://files.pythonhosted.org/packages/a0/af/89d841446318263e839296a9a8c7397fe83a98a7efa8941cd6f9b1a2cb4a/tencentcloud-sdk-python-common-3.0.1300.tar.gz", hash = "sha256:94dd2829ea0fb7e520f4daa64e33f5f2933d3937032144210c2ed3af3cee4526", size = 16342 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d1/b6/d0f5ac15668f40b7a5fe75748db05e8e6671f1355cca4f3206f7db5ccbeb/tencentcloud_sdk_python_common-3.0.1299-py2.py3-none-any.whl", hash = "sha256:9267c641dd352a8dd863734be1489c3472dbed4f1274fb2e5d710c9b132db43c", size = 23403 },
+    { url = "https://files.pythonhosted.org/packages/e0/35/da0bee5d5c3575751357bb6b4897502a54c9b2e96de87aaf2b85df43938e/tencentcloud_sdk_python_common-3.0.1300-py2.py3-none-any.whl", hash = "sha256:ecf2d4ed5fad72bedb694f987d49908e6faee62589e30f66c07a804792091751", size = 23401 },
 ]
 
 [[package]]
 name = "tencentcloud-sdk-python-dnspod"
-version = "3.0.1299"
+version = "3.0.1300"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "tencentcloud-sdk-python-common" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/12/80/8dfdf3e8a8a28c750160d6f1c7d4771e837cfedf55e78b0b540b8ccf8d83/tencentcloud-sdk-python-dnspod-3.0.1299.tar.gz", hash = "sha256:132eb07fb8de87b86c52a67dd1b008467ffd7808489577ecd51c528cc83f75f0", size = 60844 }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/53/b6685df48200e6aec366eafc6a2750faecc379f5512ace9c92f06bbc97e8/tencentcloud-sdk-python-dnspod-3.0.1300.tar.gz", hash = "sha256:303df2fddb08d3766049523a79f7d1f17a6452d6e130217ec346aa180e3f3488", size = 60847 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/f8/fc371acaaa90c5c82c21d3efd01dbd2dbc19be51749d41854ff65132c64b/tencentcloud_sdk_python_dnspod-3.0.1299-py2.py3-none-any.whl", hash = "sha256:01909a8a37dfef92f50d25e7f5f8a3f4deb8fa7860607b2c42c4bf4a1e9c5166", size = 63062 },
+    { url = "https://files.pythonhosted.org/packages/ef/0f/252c19693b9663666f568007973b900948b75b65aa8bc63d705511a97c46/tencentcloud_sdk_python_dnspod-3.0.1300-py2.py3-none-any.whl", hash = "sha256:48aae8e5b2fe51db8df39232efb9418872b1760fd7385ba74db72deb9170de7c", size = 63062 },
 ]
 
 [[package]]
