@@ -35,14 +35,12 @@ async def kuro_signin(
     log: LogFunc = lambda *_: None,
 ) -> None:
     try:
-        result = await api.signin()
+        await api.signin()
     except KuroApiException as err:
         log(f"库街区签到失败: {err.msg}", logger.warning)
         return
 
     log("库街区签到成功")
-    for item in result.gainVoList:
-        log(f" - {item.gainTyp} x{item.gainValue}")
 
     try:
         gold_num = await api.get_gold_num()
@@ -71,15 +69,16 @@ async def game_signin(
         return
 
     for role in roles:
+        role_api = api.get_role_api(role)
         try:
-            result = await api.get_role_api(role).signin()
+            result = await role_api.signin()
         except KuroApiException as err:
             log(f"{role.roleName}({role.roleId}) 签到失败: {err.msg}")
             return
 
         log(f"{role.roleName}({role.roleId}) 签到成功")
         for item in result:
-            log(f" - {item.goodsId} x{item.goodsNum}")
+            log(f" - {item.name} x{item.num}")
 
 
 async def do_signin(

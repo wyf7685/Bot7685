@@ -1,5 +1,7 @@
 # ruff: noqa: ANN201
 
+import contextlib
+import dataclasses
 import datetime
 import functools
 from collections.abc import Sequence
@@ -8,7 +10,7 @@ from typing import Protocol, Self, overload
 from ..common import Response, ValidResponseData
 from ..common.request import Request
 from ..const import PnsGameId, WuwaGameId
-from ..exceptions import AlreadySignin, ApiCallFailed, RoleNotFound
+from ..exceptions import AlreadySignin, ApiCallFailed, KuroApiException, RoleNotFound
 from .aki.roleBox.akiBox.baseData import WuwaBaseDataRequest
 from .aki.roleBox.akiBox.calabashData import WuwaCalabashDataRequest
 from .aki.roleBox.akiBox.challengeDetails import WuwaChallengeDetailsRequest
@@ -22,6 +24,7 @@ from .aki.roleBox.akiBox.skinData import WuwaSkinDataRequest
 from .aki.roleBox.akiBox.towerDataDetail import WuwaTowerDataDetailRequest
 from .aki.roleBox.akiBox.towerIndex import WuwaTowerIndexRequest
 from .encourage.signIn.initSignInV2 import InitSigninV2Request
+from .encourage.signIn.queryRecordV2 import QueryRecordV2Request
 from .encourage.signIn.v2 import SigninV2Request
 from .gamer.role.list import PnsRole, Role, RoleListRequest, WuwaRole
 from .gamer.widget.game3.getData import WuwaWidgetGetDataRequest
@@ -130,6 +133,12 @@ class KuroApi:
         return self.get_role_api(role)
 
 
+@dataclasses.dataclass
+class GoodsData:
+    name: str
+    num: int
+
+
 class KuroRoleApi[R: Role = Role]:
     token: str
     role: R
@@ -138,7 +147,8 @@ class KuroRoleApi[R: Role = Role]:
         self.token = token
         self.role = role
 
-    async def signin(self):
+    async def signin(self) -> list[GoodsData]:
+        now = datetime.datetime.now()
         resp = await InitSigninV2Request(
             gameId=self.role.gameId,
             serverId=self.role.serverId,
@@ -154,10 +164,28 @@ class KuroRoleApi[R: Role = Role]:
             serverId=self.role.serverId,
             roleId=self.role.roleId,
             userId=str(self.role.userId),
-            reqMonth=datetime.datetime.now().month,
+            reqMonth=now.month,
         ).send(self.token)
+        goods = [
+            GoodsData(name=str(item.goodsId), num=item.goodsNum)
+            for item in _extract(resp).todayList
+        ]
 
-        return _extract(resp).todayList
+        with contextlib.suppress(KuroApiException):
+            resp = await QueryRecordV2Request(
+                gameId=self.role.gameId,
+                serverId=self.role.serverId,
+                roleId=self.role.roleId,
+                userId=str(self.role.userId),
+            ).send(self.token)
+            today = now.strftime("%Y-%m-%d")
+            goods = [
+                GoodsData(name=item.goodsName, num=item.goodsNum)
+                for item in sorted(_extract(resp), key=lambda x: (x.type, x.signInDate))
+                if item.signInDate.startswith(today)
+            ]
+
+        return goods
 
 
 class _WuwaFetchReq[T: ValidResponseData](Protocol):

@@ -14,7 +14,7 @@ def log_wrapper(msg: UniMessage) -> LogFunc:
 
 @matcher_signin.assign("~kuro")
 async def assign_kuro(api: ApiFromKey, name: KuroUserName) -> None:
-    msg = UniMessage.text(f"开始执行库街区签到: {name}\n")
+    msg = UniMessage.text(f"开始执行库街区签到: {name}\n\n")
     await kuro_signin(api, log_wrapper(msg))
     await msg.send()
 

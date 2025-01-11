@@ -3,6 +3,8 @@
 from enum import Enum
 from typing import override
 
+from pydantic import Field
+
 from ....common import RequestInfo, ResponseData, WebRequest
 from ....const import GameId
 
@@ -17,6 +19,7 @@ class GoodsType(int, Enum):
     TIMED = 3
     """限时签到"""
 
+
 class GoodsData(ResponseData):
     goodsId: int
     """物品 id"""
@@ -29,14 +32,22 @@ class GoodsData(ResponseData):
     # id: int
     sendState: bool
     sendStateV2: int
-    sigInDate: str
+    signInDate: str = Field(alias="sigInDate")
     """签到日期"""
-    type: GoodsType
+    type: GoodsType | int
     """
     签到类型
 
     0 = 普通签到, 2 = 新手一次性签到活动, 3 = 限时签到
     """
+
+    @property
+    def signin_type(self) -> str:
+        return {
+            GoodsType.NORMAL.value: "签到",
+            GoodsType.NEWBIE.value: "新手签到",
+            GoodsType.TIMED.value: "限时签到",
+        }.get(int(self.type), "特殊签到")
 
 
 QueryRecordV2 = list[GoodsData]
