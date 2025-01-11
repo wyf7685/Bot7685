@@ -1,5 +1,6 @@
 import anyio
-from nonebot import require
+import paramiko
+from nonebot import logger, require
 from nonebot.adapters import Bot, Event
 from nonebot.exception import MatcherException
 from nonebot.permission import SUPERUSER
@@ -71,11 +72,18 @@ async def do_create() -> None:
     info = await anext(ali_client.describe_instances(inst_id))
     host = info.PublicIpAddress.IpAddress[0]
 
-    async with anyio.create_task_group() as tg:
-        tg.start_soon(UniMessage.text(f"Instance public ip: {host}").send)
-        tg.start_soon(TencentClient().update_record, host)
+    await TencentClient().update_record(host)
+    await UniMessage.text(f"Instance public ip: {host}").send()
+
+    retry = 0
+    while retry < 6:
         await anyio.sleep(10)
-        tg.start_soon(SSHClient.setup_server, host)
+        try:
+            await SSHClient.setup_server(host)
+            break
+        except paramiko.SSHException as err:
+            retry += 1
+            logger.warning(f"Error setting up server: {err}")
 
     await UniMessage.text("Instance setup completed").finish()
 
