@@ -1,3 +1,5 @@
+# ruff: noqa: N802
+
 import functools
 import inspect
 from collections.abc import Awaitable, Callable
@@ -40,13 +42,13 @@ def convert_dependent[R](func: AsyncCallable[..., R]) -> type[R]:
 
 @convert_dependent
 @state_cache
-async def IsSuperUser(bot: Bot, event: Event) -> bool:  # noqa: N802
+async def IsSuperUser(bot: Bot, event: Event) -> bool:
     return await SUPERUSER(bot, event)
 
 
 @convert_dependent
 @state_cache
-async def ApiFromKey(session: Uninfo, key: str) -> KuroApi:  # noqa: N802
+async def ApiFromKey(session: Uninfo, key: str) -> KuroApi:
     kuro_token = await KuroTokenDAO(session).find_token(key)
     if kuro_token is None:
         await UniMessage.text("未找到对应的库洛 ID").finish()
@@ -63,5 +65,5 @@ async def ApiFromKey(session: Uninfo, key: str) -> KuroApi:  # noqa: N802
 
 @convert_dependent
 @state_cache
-async def KuroUserName(api: ApiFromKey) -> str:  # noqa: N802
+async def KuroUserName(api: ApiFromKey) -> str:
     return f"{await api.get_user_name()}({await api.get_user_id()})"
