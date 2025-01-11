@@ -34,7 +34,7 @@ class KuroTokenDAO:
             )
         return self._user_id
 
-    async def list_token(self, *, all: bool = False) -> Sequence[KuroToken]:
+    async def list_token(self, *, all: bool = False) -> Sequence[KuroToken]:  # noqa: A002
         stmt = select(KuroToken)
         if not all:
             stmt = stmt.where(KuroToken.user_id == await self._get_user_id())
