@@ -8,6 +8,7 @@ import nonebot
 import yaml
 from nonebot.adapters import Adapter
 from nonebot.internal.driver import ASGIMixin
+from nonebot.utils import deep_update
 
 
 def setup_logger() -> None:
@@ -40,25 +41,28 @@ def setup_logger() -> None:
     )
 
 
-def _load_yaml(file_path: pathlib.Path) -> dict[str, Any]:
+type ConfigType = dict[str, Any]
+
+
+def _load_yaml(file_path: pathlib.Path) -> ConfigType:
     with file_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
-def load_config() -> dict[str, Any]:
+def load_config() -> ConfigType:
     config_dir = pathlib.Path("config")
     root_config = config_dir / "config.yaml"
     if not root_config.exists():
         return {}
 
-    config: dict[str, Any] = _load_yaml(root_config)
+    config = _load_yaml(root_config)
 
     env = str(config.get("environment", "prod"))
     env_config = config_dir / f"{env}.yaml"
     if not env_config.exists():
         return config
 
-    config |= _load_yaml(env_config)
+    config = deep_update(config, _load_yaml(env_config))
 
     env_dir = config_dir / env
     if not env_dir.exists():
@@ -66,7 +70,7 @@ def load_config() -> dict[str, Any]:
 
     for p in env_dir.iterdir():
         if p.suffix == ".yaml":
-            config |= _load_yaml(p)
+            config = deep_update(config, _load_yaml(p))
 
     return config
 
@@ -87,7 +91,7 @@ def load_adapters(adapters: list[str]) -> None:
             continue
 
         try:
-            adapter= cast(type[Adapter], module.Adapter)
+            adapter = cast(type[Adapter], module.Adapter)
         except AttributeError:
             logger.warning(f"Module <y>{full_name}</y> is not a valid adapter")
             continue
@@ -99,18 +103,26 @@ def load_adapters(adapters: list[str]) -> None:
         )
 
 
-def load_plugins(plugins: list[str]) -> None:
-    for p in pathlib.Path("src/dev").iterdir():
-        if (p.is_dir() and (name := p.name) in plugins) or (
-            p.is_file() and p.suffix == ".py" and (name := p.stem) in plugins
-        ):
-            plugins.remove(name)
-            nonebot.logger.opt(colors=True).warning(
-                f'Prefer loading plugin <y>{name}</y> from "<m>src.dev.{name}</m>"'
-            )
+def load_plugins(config: ConfigType) -> None:
+    plugins: list[str] = config.get("plugins") or []
+    plugin_dirs: list[str] = []
+
+    if plugin_dir := config.get("plugin_dir"):
+        plugin_dirs.append(plugin_dir)
+
+    if dev_plugin_dir := config.get("dev_plugin_dir"):
+        plugin_dirs.append(dev_plugin_dir)
+        for p in pathlib.Path(dev_plugin_dir).iterdir():
+            if (p.is_dir() and (name := p.name) in plugins) or (
+                p.is_file() and p.suffix == ".py" and (name := p.stem) in plugins
+            ):
+                plugins.remove(name)
+                nonebot.logger.opt(colors=True).warning(
+                    f'Prefer loading plugin <y>{name}</y> from "<m>src.dev.{name}</m>"'
+                )
 
     start = time.time()
-    nonebot.load_all_plugins(plugins, ["src/plugins", "src/dev"])
+    nonebot.load_all_plugins(plugins, plugin_dirs)
     nonebot.logger.opt(colors=True).success(
         f"Plugins loaded in <y>{time.time()-start:.3f}</y>s"
     )
@@ -119,13 +131,12 @@ def load_plugins(plugins: list[str]) -> None:
 def init_nonebot() -> ASGIMixin:
     config = load_config()
     adapters = config.pop("adapters", [])
-    plugins = config.pop("plugins", [])
 
     start = time.time()
     setup_logger()
     nonebot.init(**config)
     load_adapters(adapters)
-    load_plugins(plugins)
+    load_plugins(config)
     nonebot.logger.opt(colors=True).success(
         f"NoneBot initialized in <y>{time.time()-start:.3f}</y>s"
     )
