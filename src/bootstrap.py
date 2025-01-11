@@ -75,11 +75,11 @@ def load_config() -> ConfigType:
     return config
 
 
-def load_adapters(adapters: list[str]) -> None:
+def load_adapters(config: ConfigType) -> None:
     driver = nonebot.get_driver()
     logger = nonebot.logger.opt(colors=True)
 
-    for module_name in adapters:
+    for module_name in config.get("adapters", []):
         logger.debug(f"Loading adapter: <g>{module_name}</g>")
         start = time.time()
 
@@ -130,12 +130,11 @@ def load_plugins(config: ConfigType) -> None:
 
 def init_nonebot() -> ASGIMixin:
     config = load_config()
-    adapters = config.pop("adapters", [])
 
     start = time.time()
     setup_logger()
     nonebot.init(**config)
-    load_adapters(adapters)
+    load_adapters(config)
     load_plugins(config)
     nonebot.logger.opt(colors=True).success(
         f"NoneBot initialized in <y>{time.time()-start:.3f}</y>s"
