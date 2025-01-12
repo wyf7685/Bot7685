@@ -1,6 +1,7 @@
+import contextlib
 import datetime
 from collections.abc import Callable
-from typing import Literal, Protocol
+from typing import Literal
 
 import nonebot
 import tzlocal
@@ -17,18 +18,21 @@ def from_timestamp(timestamp: int, /) -> datetime.datetime:
     return datetime.datetime.fromtimestamp(timestamp, TZ)
 
 
-class LogFunc(Protocol):
-    def __call__(self, text: str, /) -> object: ...
-
-
 class KuroHandler:
     api: KuroApi
-    _log_func: LogFunc
+    _log_func: Callable[[str], object]
     _msg: str = ""
 
-    def __init__(self, token: str, log: LogFunc | None = None, /) -> None:
+    def __init__(
+        self, token: str, log: Callable[[str], object] | UniMessage | None = None, /
+    ) -> None:
         self.api = KuroApi(token)
-        self._log_func = log or self._default_log
+        if log is None:
+            self._log_func = self._default_log
+        elif isinstance(log, UniMessage):
+            self._log_func = lambda text: log.text(text + "\n")
+        else:
+            self._log_func = log
 
     def _default_log(self, text: str) -> None:
         self._msg += text + "\n"
@@ -107,7 +111,15 @@ class KuroHandler:
         self.logln()
 
     async def check_role_energy(self, role: WuwaRole) -> bool:
-        widget = await self.api.get_role_api(role).get_widget_data()
+        try:
+            widget = await self.api.get_role_api(role).get_widget_data()
+        except KuroApiException as err:
+            self.log(
+                f"{role.roleName}({role.roleId}) 获取数据失败: {err.msg}",
+                logger.warning,
+            )
+            return False
+
         energy = widget.energyData
         self.log(
             f"{role.roleName}({role.roleId}) "
@@ -120,16 +132,16 @@ class KuroHandler:
             refresh = from_timestamp(energy.refreshTimeStamp)
             server_time = from_timestamp(widget.serverTime)
             if (delta := refresh - server_time).total_seconds() > 0:
-                expected = datetime.datetime.now(TZ) + delta
+                expected = (datetime.datetime.now(TZ) + delta).strftime("%H:%M:%S")
                 self.log(f"预计恢复时间: {expected}")
                 if delta.total_seconds() <= 60 * 30:
                     return True
 
         return False
 
-    async def check_energy(self) -> bool:
+    async def check_energy(self, *, do_refresh: bool = False) -> bool:
         mine = await self.api.mine()
-        self.log(f"开始执行体力推送: {mine.userName}({mine.userId})")
+        self.log(f"查询鸣潮结波晶片: {mine.userName}({mine.userId})")
         self.logln()
 
         try:
@@ -145,6 +157,9 @@ class KuroHandler:
         should_push = False
 
         for role in roles:
+            if do_refresh:
+                with contextlib.suppress(KuroApiException):
+                    await self.api.get_role_api(role).refresh_data()
             should_push |= await self.check_role_energy(role)
 
         return should_push

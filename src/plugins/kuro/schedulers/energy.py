@@ -34,7 +34,7 @@ async def auto_energy() -> None:
         try:
             should_push = await handler.check_energy()
         except Exception as err:
-            logger.warning(f"库洛体力推送出错: {err}")
+            logger.warning(f"鸣潮结波晶片推送出错: {err}")
 
         if should_push:
             await push_msg(handler, kuro_token)
