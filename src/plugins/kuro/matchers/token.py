@@ -8,7 +8,7 @@ from nonebot_plugin_waiter import prompt
 from ..database.kuro_token import KuroTokenDAO
 from ..kuro_api import KuroApi, KuroApiException
 from .alc import root_matcher
-from .depends import IsSuperUser
+from .depends import IsSuperUser, TokenDAO, TokenFromKey
 
 matcher_token = root_matcher.dispatch("token")
 
@@ -91,21 +91,17 @@ async def assign_list(
 
 @matcher_token.assign("~update")
 async def assign_update(
-    session: Uninfo,
-    key: str,
-    token: str | None = None,
+    ktd: TokenDAO,
+    kuro_token: TokenFromKey,
+    token: str | EllipsisType = ...,
     note: str | None = None,
 ) -> None:
-    ktd = KuroTokenDAO(session)
-    if (kuro_token := await ktd.find_token(key)) is None:
-        await UniMessage.text(f"未找到 {key} 对应的库洛账号").finish()
-
-    if not any((token, note)):
+    if token is ... and note is None:
         await UniMessage.text("请提供要更新的内容").finish()
 
     kuro_id = kuro_token.kuro_id
 
-    if token is not None:
+    if token is not ...:
         try:
             await KuroApi(token).mine()
         except KuroApiException as err:

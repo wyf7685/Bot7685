@@ -12,7 +12,7 @@ from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_uninfo import Uninfo
 
-from ..database.kuro_token import KuroTokenDAO
+from ..database.kuro_token import KuroToken, KuroTokenDAO
 from ..kuro_api import KuroApi, KuroApiException
 
 type AsyncCallable[**P, R] = Callable[P, Awaitable[R]]
@@ -48,11 +48,23 @@ async def IsSuperUser(bot: Bot, event: Event) -> bool:
 
 @convert_dependent
 @state_cache
-async def ApiFromKey(session: Uninfo, key: str) -> KuroApi:
-    kuro_token = await KuroTokenDAO(session).find_token(key)
-    if kuro_token is None:
-        await UniMessage.text("未找到对应的库洛 ID").finish()
+async def TokenDAO(session: Uninfo) -> KuroTokenDAO:
+    return KuroTokenDAO(session)
 
+
+@convert_dependent
+@state_cache
+async def TokenFromKey(ktd: TokenDAO, key: str) -> KuroToken:
+    kuro_token = await ktd.find_token(key)
+    if kuro_token is None:
+        await UniMessage.text(f"未找到 {key} 对应的库洛账号").finish()
+
+    return kuro_token
+
+
+@convert_dependent
+@state_cache
+async def ApiFromKey(kuro_token: TokenFromKey) -> KuroApi:
     api = KuroApi(kuro_token.token)
 
     try:
