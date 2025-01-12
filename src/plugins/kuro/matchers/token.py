@@ -8,7 +8,7 @@ from nonebot_plugin_waiter import prompt
 from ..database.kuro_token import KuroTokenDAO
 from ..kuro_api import KuroApi, KuroApiException
 from .alc import root_matcher
-from .depends import IsSuperUser, TokenDAO, TokenFromKey
+from .depends import IsSuperUser, KuroTokenFromKey, TokenDAO
 
 matcher_token = root_matcher.dispatch("token")
 
@@ -92,7 +92,7 @@ async def assign_list(
 @matcher_token.assign("~update")
 async def assign_update(
     ktd: TokenDAO,
-    kuro_token: TokenFromKey,
+    kuro_token: KuroTokenFromKey,
     token: str | EllipsisType = ...,
     note: str | None = None,
 ) -> None:

@@ -20,4 +20,4 @@ __plugin_meta__ = PluginMetadata(
 )
 
 from . import matchers as matchers
-from . import signin as signin
+from . import schedulers as schedulers

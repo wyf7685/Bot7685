@@ -1,9 +1,11 @@
 from collections.abc import Sequence
 
+from nonebot_plugin_alconna.uniseg import Target
 from nonebot_plugin_orm import Model, get_scoped_session, get_session
 from nonebot_plugin_uninfo import Session as UniSession
 from nonebot_plugin_uninfo.model import BasicInfo
-from nonebot_plugin_uninfo.orm import UserModel, get_user_persist_id
+from nonebot_plugin_uninfo.orm import UserModel, get_user_model, get_user_persist_id
+from nonebot_plugin_uninfo.target import to_target
 from sqlalchemy import JSON, ForeignKey, Integer, String, or_, select
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -81,3 +83,8 @@ async def list_all_token() -> Sequence[KuroToken]:
     async with get_session() as session:
         result = await session.execute(select(KuroToken))
         return result.scalars().all()
+
+
+async def get_target(kuro_token: KuroToken) -> Target:
+    user_model = await get_user_model(kuro_token.user_id)
+    return to_target(await user_model.to_user(), kuro_token.basic_info)
