@@ -135,7 +135,7 @@ class KuroHandler:
 
     async def check_energy(self, *, do_refresh: bool = False) -> bool:
         mine = await self.api.mine()
-        self.log(f"查询鸣潮结波晶片: {mine.userName}({mine.userId})")
+        self.log(f"鸣潮结波晶片: {mine.userName}({mine.userId})")
         self.logln()
 
         try:
