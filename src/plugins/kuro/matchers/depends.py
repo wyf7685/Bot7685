@@ -54,10 +54,11 @@ async def TokenDAO(session: Uninfo) -> KuroTokenDAO:
 
 @convert_dependent
 @state_cache
-async def KuroTokenFromKey(ktd: TokenDAO, key: str) -> KuroToken:
+async def KuroTokenFromKey(ktd: TokenDAO, key: str | None = None) -> KuroToken:
     kuro_token = await ktd.find_token(key)
     if kuro_token is None:
-        await UniMessage.text(f"未找到 {key} 对应的库洛账号").finish()
+        msg = f"未找到 '{key}' 对应的库洛账号" if key is not None else "未绑定库洛账号"
+        await UniMessage.text(msg).finish()
 
     return kuro_token
 

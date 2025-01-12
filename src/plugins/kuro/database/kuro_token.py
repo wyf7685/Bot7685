@@ -55,16 +55,13 @@ class KuroTokenDAO:
         self._db_session.add(item)
         await self._db_session.commit()
 
-    async def find_token(self, key: str) -> KuroToken | None:
-        where = KuroToken.note == key
-        if key.isdigit():
-            where = or_(where, KuroToken.kuro_id == int(key))
-
-        stmt = (
-            select(KuroToken)
-            .where(KuroToken.user_id == await self._get_user_id())
-            .where(where)
-        )
+    async def find_token(self, key: str | None = None) -> KuroToken | None:
+        stmt = select(KuroToken).where(KuroToken.user_id == await self._get_user_id())
+        if key is not None:
+            where = KuroToken.note == key
+            if key.isdigit():
+                where = or_(where, KuroToken.kuro_id == int(key))
+            stmt = stmt.where(where)
 
         result = await self._db_session.execute(stmt)
         return result.scalar_one_or_none()

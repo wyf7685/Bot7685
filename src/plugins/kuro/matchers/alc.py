@@ -20,7 +20,7 @@ alc = Alconna(
         ),
         Subcommand(
             "remove",
-            Args["key#库洛ID或备注", str],
+            Args["key?#库洛ID或备注", str],
             alias={"rm", "del"},
             help_text="移除账号",
         ),
@@ -37,7 +37,7 @@ alc = Alconna(
         ),
         Subcommand(
             "update",
-            Args["key#库洛ID或备注", str],
+            Args["key?#库洛ID或备注", str],
             Option(
                 "--token|-t",
                 Args["token#库街区token", str],
@@ -54,7 +54,7 @@ alc = Alconna(
     ),
     Subcommand(
         "signin",
-        Args["key#库洛ID或备注", str],
+        Args["key?#库洛ID或备注", str],
         Option("--kuro|-k", help_text="库街区社区签到"),
         Option("--pns|-p", help_text="战双游戏签到"),
         Option("--wuwa|-w|--mc|-m", help_text="鸣潮游戏签到"),
