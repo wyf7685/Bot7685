@@ -126,8 +126,8 @@ class KuroHandler:
             refresh = from_timestamp(energy.refreshTimeStamp)
             server_time = from_timestamp(widget.serverTime)
             if (delta := refresh - server_time).total_seconds() > 0:
-                expected = (datetime.datetime.now(TZ) + delta).strftime("%H:%M:%S")
-                self.log(f"预计恢复时间: {expected}")
+                expected = datetime.datetime.now(TZ) + delta
+                self.log(f"预计恢复时间: {expected:%Y-%m-%d %H:%M:%S}")
                 if delta.total_seconds() <= 60 * 30:
                     return True
 
