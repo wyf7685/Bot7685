@@ -148,12 +148,12 @@ class KuroHandler:
             self.log("未绑定鸣潮角色")
             return False
 
-        should_push = False
+        need_push = False
 
         for role in roles:
             if do_refresh:
                 with contextlib.suppress(KuroApiException):
                     await self.api.get_role_api(role).refresh_data()
-            should_push |= await self.check_role_energy(role)
+            need_push |= await self.check_role_energy(role)
 
-        return should_push
+        return need_push
