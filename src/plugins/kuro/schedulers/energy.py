@@ -26,7 +26,7 @@ async def push_msg(handler: KuroHandler, kuro_token: KuroToken) -> None:
         last_push[user_id] = now
 
 
-@scheduler.scheduled_job(CronTrigger(hour=1), misfire_grace_time=60)
+@scheduler.scheduled_job(CronTrigger(minute="*/30"), misfire_grace_time=60)
 async def auto_energy() -> None:
     for kuro_token in await list_all_token():
         handler = KuroHandler(kuro_token.token)
