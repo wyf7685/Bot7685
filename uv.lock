@@ -2471,26 +2471,26 @@ wheels = [
 
 [[package]]
 name = "tencentcloud-sdk-python-common"
-version = "3.0.1300"
+version = "3.0.1301"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a0/af/89d841446318263e839296a9a8c7397fe83a98a7efa8941cd6f9b1a2cb4a/tencentcloud-sdk-python-common-3.0.1300.tar.gz", hash = "sha256:94dd2829ea0fb7e520f4daa64e33f5f2933d3937032144210c2ed3af3cee4526", size = 16342 }
+sdist = { url = "https://files.pythonhosted.org/packages/03/e2/0fcd8ae7a92b9545b4df9ee428c758c4eaed176078297d4266f58b311e3b/tencentcloud-sdk-python-common-3.0.1301.tar.gz", hash = "sha256:18d6955d54273df08c7637ec646c0105badfddfa58d3fcb721d1f400a008023a", size = 16340 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/35/da0bee5d5c3575751357bb6b4897502a54c9b2e96de87aaf2b85df43938e/tencentcloud_sdk_python_common-3.0.1300-py2.py3-none-any.whl", hash = "sha256:ecf2d4ed5fad72bedb694f987d49908e6faee62589e30f66c07a804792091751", size = 23401 },
+    { url = "https://files.pythonhosted.org/packages/82/cb/6ec63368023b0c76b2a0ffb385e5cb30fa556d3c181d1effaff9f8aef0e0/tencentcloud_sdk_python_common-3.0.1301-py2.py3-none-any.whl", hash = "sha256:53332b9a8fd143cabe7b83676138973c36333bbe831ff8e89be8879d0d979317", size = 23402 },
 ]
 
 [[package]]
 name = "tencentcloud-sdk-python-dnspod"
-version = "3.0.1300"
+version = "3.0.1301"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "tencentcloud-sdk-python-common" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b5/53/b6685df48200e6aec366eafc6a2750faecc379f5512ace9c92f06bbc97e8/tencentcloud-sdk-python-dnspod-3.0.1300.tar.gz", hash = "sha256:303df2fddb08d3766049523a79f7d1f17a6452d6e130217ec346aa180e3f3488", size = 60847 }
+sdist = { url = "https://files.pythonhosted.org/packages/15/2c/c70138f329f312fea2d72cd94dc9e0caba5a7b929ada027c8a92ba942e11/tencentcloud-sdk-python-dnspod-3.0.1301.tar.gz", hash = "sha256:699a0a9ec167dbb4e43c8a181f8ad2f62790c9a99fd46d07afd6425f60874124", size = 60851 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ef/0f/252c19693b9663666f568007973b900948b75b65aa8bc63d705511a97c46/tencentcloud_sdk_python_dnspod-3.0.1300-py2.py3-none-any.whl", hash = "sha256:48aae8e5b2fe51db8df39232efb9418872b1760fd7385ba74db72deb9170de7c", size = 63062 },
+    { url = "https://files.pythonhosted.org/packages/46/6d/c133c758a886bed7e67ec4a1a89f8f3307613e3384501c7ab5b740d15405/tencentcloud_sdk_python_dnspod-3.0.1301-py2.py3-none-any.whl", hash = "sha256:7409e0155babcccf20778a2f9e5c032ca7ba39dc99cdc17ed7991aad41be86e4", size = 63063 },
 ]
 
 [[package]]
