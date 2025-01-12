@@ -25,3 +25,11 @@ class RoleNotFound(KuroApiException):
 
 class AlreadySignin(KuroApiException):
     """已签到"""
+
+
+class GachaApiException(KuroApiException):
+    """抽卡 API 错误基类"""
+
+
+class InvalidGachaUrl(GachaApiException):
+    """无效的抽卡 URL"""
