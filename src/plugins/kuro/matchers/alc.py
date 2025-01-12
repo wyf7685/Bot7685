@@ -68,4 +68,17 @@ alc = Alconna(
     ),
 )
 
+alc.shortcut(
+    r"库洛token ([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)",
+    command="kuro token add {0}",
+)
+alc.shortcut(
+    r"库洛token (.+?) ([A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)",
+    command="kuro token add {1} -n {0}",
+)
+alc.shortcut(r"库街区签到", command="kuro signin --kuro")
+alc.shortcut(r"鸣潮签到", command="kuro signin --wuwa")
+alc.shortcut(r"战双签到", command="kuro signin --pns")
+alc.shortcut(r"鸣潮体力", command="kuro energy")
+
 root_matcher = on_alconna(alc)

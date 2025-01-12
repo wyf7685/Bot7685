@@ -28,7 +28,7 @@ class KuroTokenDAO:
         self._user_id = None
         self._db_session = get_scoped_session()
 
-    async def _get_user_id(self) -> int:
+    async def get_user_id(self) -> int:
         if self._user_id is None:
             self._user_id = await get_user_persist_id(
                 self.session.basic,
@@ -39,14 +39,14 @@ class KuroTokenDAO:
     async def list_token(self, *, all: bool = False) -> Sequence[KuroToken]:  # noqa: A002
         stmt = select(KuroToken)
         if not all:
-            stmt = stmt.where(KuroToken.user_id == await self._get_user_id())
+            stmt = stmt.where(KuroToken.user_id == await self.get_user_id())
         result = await self._db_session.execute(stmt)
         return result.scalars().all()
 
     async def add(self, kuro_id: int, token: str, note: str | None = None) -> None:
         item = KuroToken(
             kuro_id=kuro_id,
-            user_id=await self._get_user_id(),
+            user_id=await self.get_user_id(),
             basic_info=self.session.basic,
             token=token,
             note=note,
@@ -56,7 +56,7 @@ class KuroTokenDAO:
         await self._db_session.commit()
 
     async def find_token(self, key: str | None = None) -> KuroToken | None:
-        stmt = select(KuroToken).where(KuroToken.user_id == await self._get_user_id())
+        stmt = select(KuroToken).where(KuroToken.user_id == await self.get_user_id())
         if key is not None:
             where = KuroToken.note == key
             if key.isdigit():

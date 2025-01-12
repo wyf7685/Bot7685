@@ -40,18 +40,25 @@ async def assign_add(
         await UniMessage.text(f"token 检查失败: {err.msg}").finish()
 
     ktd = KuroTokenDAO(session)
+    info = f"昵称: {mine.userName}\n库洛 ID: {mine.userId}"
 
     for kuro_token in await ktd.list_token():
         if kuro_token.kuro_id == mine.userId:
-            await UniMessage.text(f"库洛 ID {mine.userId} 已被绑定，请检查").finish()
-
-    await ktd.add(mine.userId, token, note)
-    await UniMessage.text(
-        "添加成功\n"
-        f"昵称: {mine.userName}\n"
-        f"库洛 ID: {mine.userId}\n"
-        f"备注: {note or "无"}"
-    ).finish()
+            if kuro_token.user_id != await ktd.get_user_id():
+                await UniMessage.text(
+                    f"库洛 ID {mine.userId} 已被绑定，请检查"
+                ).finish()
+            else:
+                kuro_token.token = token
+                if note is not None:
+                    kuro_token.note = note
+                await ktd.update(kuro_token)
+                await UniMessage.text(
+                    f"账号信息更新成功\n{info}\n备注: {kuro_token.note or "无"}"
+                ).finish()
+    else:
+        await ktd.add(mine.userId, token, note)
+        await UniMessage.text(f"账号添加成功\n{info}\n备注: {note or "无"}").finish()
 
 
 @matcher_token.assign("~remove")
