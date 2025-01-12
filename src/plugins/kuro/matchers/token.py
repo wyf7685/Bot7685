@@ -52,9 +52,11 @@ async def assign_add(
                 kuro_token.token = token
                 if note is not None:
                     kuro_token.note = note
+                else:
+                    note = kuro_token.note
                 await ktd.update(kuro_token)
                 await UniMessage.text(
-                    f"账号信息更新成功\n{info}\n备注: {kuro_token.note or "无"}"
+                    f"账号信息更新成功\n{info}\n备注: {note or "无"}"
                 ).finish()
     else:
         await ktd.add(mine.userId, token, note)
