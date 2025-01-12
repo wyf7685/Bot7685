@@ -6,10 +6,10 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
-from ..const import VERSION
 from ..exceptions import InvalidGachaUrl
-from .const import CARD_POOL_NAME, GACHA_HEADERS, GACHA_QUERY_URL
+from .const import GACHA_HEADERS, GACHA_QUERY_URL
 from .model import (
+    CARD_POOL_NAME,
     WWGF,
     CardPoolType,
     GachaItem,
@@ -38,16 +38,16 @@ class WuwaGachaApi:
     _params: GachaParams
 
     def __init__(self, gacha_url: str) -> None:
-        for k, v in GACHA_QUERY_URL.items():
-            if k in gacha_url:
-                self._url = v
+        for head, query_url in GACHA_QUERY_URL.items():
+            if gacha_url.startswith(head):
+                self._url = f"{query_url}/gacha/record/query"
                 break
         else:
             raise InvalidGachaUrl(f"无效的抽卡 URL: {gacha_url}")
 
         self._params = parse_gacha_url(gacha_url)
 
-    async def query_gacha_record(self, type_: CardPoolType) -> GachaResponse:
+    async def _query(self, type_: CardPoolType) -> GachaResponse:
         self._params.cardPoolType = type_
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -58,7 +58,7 @@ class WuwaGachaApi:
             data = response.raise_for_status().read()
             return GachaResponse.model_validate_json(data)
 
-    def convert_gachalog_format(
+    def _convert(
         self,
         card_pool_type: CardPoolType,
         items: list[GachaItem],
@@ -91,14 +91,12 @@ class WuwaGachaApi:
         items: list[WWGFItem] = []
 
         for i in CardPoolType:
-            resp = await self.query_gacha_record(i)
-            items.extend(self.convert_gachalog_format(i, resp.data))
+            resp = await self._query(i)
+            items.extend(self._convert(i, resp.data))
 
         info = WWGFInfo(
             uid=self._params.playerId,
             export_timestamp=int(datetime.datetime.now().timestamp()),
-            export_app="wyf7685/kuro-api",
-            export_app_version=VERSION,
         )
 
         wwgf = WWGF(info=info, list=items)
