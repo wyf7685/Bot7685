@@ -20,22 +20,13 @@ def from_timestamp(timestamp: int, /) -> datetime.datetime:
 
 class KuroHandler:
     api: KuroApi
-    _log_func: Callable[[str], object]
     _msg: str = ""
 
-    def __init__(
-        self, token: str, log: Callable[[str], object] | UniMessage | None = None, /
-    ) -> None:
-        self.api = KuroApi(token)
-        if log is None:
-            self._log_func = self._default_log
-        elif isinstance(log, UniMessage):
-            self._log_func = lambda text: log.text(text + "\n")
+    def __init__(self, api_or_token: KuroApi | str, /) -> None:
+        if isinstance(api_or_token, KuroApi):
+            self.api = api_or_token
         else:
-            self._log_func = log
-
-    def _default_log(self, text: str) -> None:
-        self._msg += text + "\n"
+            self.api = KuroApi(api_or_token)
 
     def log(
         self,
@@ -43,7 +34,7 @@ class KuroHandler:
         log_meth: Callable[[str], object] = logger.info,
         /,
     ) -> None:
-        self._log_func(text)
+        self._msg += text + "\n"
         log_meth(text)
 
     def logln(self) -> None:
@@ -53,10 +44,13 @@ class KuroHandler:
     def msg(self) -> str:
         return self._msg.strip()
 
-    async def push_msg(self, target: Target) -> None:
+    async def push_msg(self, target: Target | None = None) -> None:
         await UniMessage.text(self.msg).send(target)
+        self._msg = ""
 
     async def kuro_signin(self) -> None:
+        self.log("执行库街区游戏签到...")
+
         try:
             await self.api.signin()
         except KuroApiException as err:

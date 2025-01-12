@@ -13,6 +13,7 @@ from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_uninfo import Uninfo
 
 from ..database.kuro_token import KuroToken, KuroTokenDAO
+from ..handler import KuroHandler
 from ..kuro_api import KuroApi, KuroApiException
 
 type AsyncCallable[**P, R] = Callable[P, Awaitable[R]]
@@ -74,6 +75,12 @@ async def ApiFromKey(kuro_token: KuroTokenFromKey) -> KuroApi:
         await UniMessage.text(f"token 检查失败: {err.msg}").finish()
 
     return api
+
+
+@convert_dependent
+@state_cache
+async def HandlerFromKey(api: ApiFromKey) -> KuroHandler:
+    return KuroHandler(api)
 
 
 @convert_dependent
