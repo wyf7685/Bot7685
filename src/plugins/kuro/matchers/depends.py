@@ -66,6 +66,17 @@ async def KuroTokenFromKey(ktd: TokenDAO, key: str | None = None) -> KuroToken:
 
 @convert_dependent
 @state_cache
+async def KuroTokenFromKeyRequired(ktd: TokenDAO, key: str) -> KuroToken:
+    kuro_token = await ktd.find_token(key)
+    if kuro_token is None:
+        msg = f"未找到 '{key}' 对应的库洛账号"
+        await UniMessage.text(msg).finish()
+
+    return kuro_token
+
+
+@convert_dependent
+@state_cache
 async def ApiFromKey(kuro_token: KuroTokenFromKey) -> KuroApi:
     api = KuroApi(kuro_token.token)
 

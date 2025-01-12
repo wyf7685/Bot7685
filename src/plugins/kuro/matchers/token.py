@@ -2,13 +2,11 @@ from types import EllipsisType
 
 from nonebot_plugin_alconna import Query
 from nonebot_plugin_alconna.uniseg import UniMessage
-from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_waiter import prompt
 
-from ..database.kuro_token import KuroTokenDAO
 from ..kuro_api import KuroApi, KuroApiException
 from .alc import root_matcher
-from .depends import IsSuperUser, KuroTokenFromKey, TokenDAO
+from .depends import IsSuperUser, KuroTokenFromKey, KuroTokenFromKeyRequired, TokenDAO
 
 matcher_token = root_matcher.dispatch("token")
 
@@ -27,7 +25,7 @@ async def prompt_input_token() -> str:
 
 @matcher_token.assign("~add")
 async def assign_add(
-    session: Uninfo,
+    ktd: TokenDAO,
     token: str | EllipsisType = ...,
     note: str | None = None,
 ) -> None:
@@ -39,7 +37,6 @@ async def assign_add(
     except KuroApiException as err:
         await UniMessage.text(f"token 检查失败: {err.msg}").finish()
 
-    ktd = KuroTokenDAO(session)
     info = f"昵称: {mine.userName}\n库洛 ID: {mine.userId}"
 
     for kuro_token in await ktd.list_token():
@@ -64,11 +61,7 @@ async def assign_add(
 
 
 @matcher_token.assign("~remove")
-async def assign_remove(session: Uninfo, key: str) -> None:
-    ktd = KuroTokenDAO(session)
-    if (kuro_token := await ktd.find_token(key)) is None:
-        await UniMessage.text(f"未找到 {key} 对应的库洛账号").finish()
-
+async def assign_remove(ktd: TokenDAO, kuro_token: KuroTokenFromKeyRequired) -> None:
     kuro_id = kuro_token.kuro_id
     await ktd.remove(kuro_token)
     await UniMessage.text(f"已删除库洛账号 {kuro_id}").finish()
@@ -76,14 +69,13 @@ async def assign_remove(session: Uninfo, key: str) -> None:
 
 @matcher_token.assign("~list")
 async def assign_list(
-    session: Uninfo,
+    ktd: TokenDAO,
     is_super_user: IsSuperUser,
     all: Query[bool] = Query("~list.all.value"),  # noqa: A002, B008
 ) -> None:
     if all.result and not is_super_user:
         await UniMessage.text("你无权查看全部账号列表！").finish()
 
-    ktd = KuroTokenDAO(session)
     tokens = await ktd.list_token(all=all.result)
 
     if not tokens:
