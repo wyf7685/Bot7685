@@ -1,6 +1,9 @@
 name: Docker Bot7685
 
 on:
+  push:
+    paths:
+      - "uv.lock"
   workflow_dispatch:
 
 jobs:
