@@ -29,5 +29,7 @@ async def auto_energy() -> None:
                 should_push[kuro_token.user_id] = False
             except Exception as err:
                 logger.warning(f"鸣潮结波晶片推送出错: {err}")
+        elif not need_push:
+            should_push[kuro_token.user_id] = True
 
         await anyio.sleep(random.randint(2, 5))
