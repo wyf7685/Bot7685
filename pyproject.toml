@@ -47,6 +47,7 @@ dependencies = [
     "websockets>=14.1",
     "nonebot-plugin-exe-code>=1.1.4",
     "nonebot-plugin-werewolf>=1.1.7",
+    "nonebot-plugin-akinator>=1.0.1.post1",
 ]
 
 [tool.nonebot]

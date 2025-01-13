@@ -324,6 +324,7 @@ dependencies = [
     { name = "nonebot-adapter-qq" },
     { name = "nonebot-adapter-satori" },
     { name = "nonebot-adapter-telegram" },
+    { name = "nonebot-plugin-akinator" },
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-apscheduler" },
     { name = "nonebot-plugin-chatrecorder" },
@@ -376,6 +377,7 @@ requires-dist = [
     { name = "nonebot-adapter-qq", specifier = ">=1.5.3" },
     { name = "nonebot-adapter-satori", specifier = ">=0.13.0rc3" },
     { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20" },
+    { name = "nonebot-plugin-akinator", specifier = ">=1.0.1.post1" },
     { name = "nonebot-plugin-alconna", specifier = ">=0.54.0" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", specifier = ">=0.7.0" },
@@ -547,6 +549,19 @@ wheels = [
 ]
 
 [[package]]
+name = "cooaki"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cookit", extra = ["pyd"] },
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/75/ea/e8942141d424935357f9ee1b0210aeae63d7c6651b9e5aa2bd7b1d93b7f9/cooaki-0.2.1.tar.gz", hash = "sha256:320d4c7c23e0ebf9be78e1132fe02d60d7af0b751767b127c3a5dbd35f617a44", size = 6161 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/37/d5/7bed2cf6220b1fa9389a064f953889f9490a919adc6cd8fecfd37559d388/cooaki-0.2.1-py3-none-any.whl", hash = "sha256:5b4664b310c7987e6f2ab4a2914edc17b78fed73b70aa889fb77079cae932d17", size = 7557 },
+]
+
+[[package]]
 name = "cookit"
 version = "0.8.4"
 source = { registry = "https://pypi.org/simple" }
@@ -566,10 +581,17 @@ jinja = [
 loguru = [
     { name = "loguru" },
 ]
+nonebot-alconna = [
+    { name = "nonebot-plugin-alconna" },
+    { name = "nonebot2" },
+]
 playwright = [
     { name = "anyio" },
     { name = "playwright" },
     { name = "yarl" },
+]
+pyd = [
+    { name = "pydantic" },
 ]
 pydantic = [
     { name = "pydantic" },
@@ -1325,6 +1347,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/89/18/28944035c60d6cbf9beceefe800cc68e797595effbb439ff253b58fd55ee/nonebot-adapter-telegram-0.1.0b20.tar.gz", hash = "sha256:fc17df61cbdb3162f29dbada1e5712b26f37c185da87602b613694bca32c9ada", size = 29594 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/24/3e/12d823f920fe3b42a474d8a5220e57ea1113a007d47860c23a224b2f570b/nonebot_adapter_telegram-0.1.0b20-py3-none-any.whl", hash = "sha256:a90acf29b8a9c8a16d4aaa93fb930debde4648d514f2050af945e973cd37a8d4", size = 30266 },
+]
+
+[[package]]
+name = "nonebot-plugin-akinator"
+version = "1.0.1.post1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cooaki" },
+    { name = "cookit", extra = ["loguru", "nonebot-alconna"] },
+    { name = "nonebot-plugin-alconna" },
+    { name = "nonebot-plugin-waiter" },
+    { name = "nonebot2" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ba/a6/e5235e6b9f87949a5116c2f387711302f58ff05b5512b8f10e707a46ac41/nonebot_plugin_akinator-1.0.1.post1.tar.gz", hash = "sha256:576e1439b7318cdbc2ad458aa1c7a56deda1d2dc0408867e886305f2e6ceeae7", size = 932250 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/ec/e25adc60d22ce140a86178e07fa3ae51f75f53938b00b8aa8ff3d5319a92/nonebot_plugin_akinator-1.0.1.post1-py3-none-any.whl", hash = "sha256:02a086f62cd45d66ecdc9c7369bc4f9fc698423d4e7d0b57ec03d2fd760f0d1e", size = 933230 },
 ]
 
 [[package]]
