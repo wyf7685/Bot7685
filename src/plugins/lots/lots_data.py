@@ -1,11 +1,18 @@
 from datetime import datetime
+from pathlib import Path
 from random import Random, choice
 
+from nonebot_plugin_alconna.uniseg import UniMessage
 
-def get_lots_msg(qid: str | int) -> tuple[str, str]:
-    msg = Random(f"#{datetime.now().date()}#{qid}#").choice(lots_data)
-    lot = msg.splitlines()[0].strip("—")
+
+def get_lots_msg(qid: str | int) -> tuple[UniMessage, str]:
+    text = Random(f"#{datetime.now().date()}#{qid}#").choice(lots_data)
+    lot = text.splitlines()[0].strip("—")
+    msg = UniMessage(text)
     emoji = choice(lots_emoji.get(lot, ["277"]))  # 默认使用 doge
+    if lot in lots_image:
+        fp = Path(__file__).parent / lots_image[lot]
+        msg = msg.image(raw=fp.read_bytes())
     return msg, emoji
 
 
@@ -16,6 +23,14 @@ lots_emoji = {
     "末吉": ["76"],  # 大拇指
     "凶": ["307", "277"],  # 猫/doge
     "大凶": ["265"],  # 老人手机
+}
+
+lots_image = {
+    "大吉": "neuro/1.png",
+    "吉": "neuro/2.png",
+    "中吉": "neuro/3.png",
+    "小吉": "neuro/4.png",
+    "末吉": "neuro/5.png",
 }
 
 lots_data = [

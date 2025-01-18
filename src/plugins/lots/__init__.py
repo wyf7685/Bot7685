@@ -8,7 +8,7 @@ from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
-from nonebot_plugin_alconna.uniseg import At, UniMessage
+from nonebot_plugin_alconna.uniseg import At
 
 from .depends import LotsTarget, MsgId
 from .lots_data import get_lots_msg
@@ -30,7 +30,7 @@ lots = on_alconna(
 @lots.handle()
 async def _(bot: Bot, target: LotsTarget, msgid: MsgId) -> None:
     msg, emoji = get_lots_msg(target)
-    await UniMessage.text(msg).send(reply_to=True)
+    await msg.send(reply_to=True)
 
     if msgid is not None:
         with contextlib.suppress(Exception):
