@@ -8,7 +8,7 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
-from nonebot_plugin_waiter import prompt_until, waiter
+from nonebot_plugin_waiter import waiter
 
 require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
@@ -31,24 +31,13 @@ no_shit = on_alconna("他在搬史", permission=TrustedUser, rule=check_reply)
 
 @no_shit.handle()
 async def _(bot: Bot, event: GroupMessageEvent, state: T_State) -> None:
-    msg_recv = await prompt_until(
-        "请发送希望禁言的时间(分钟)",
-        checker=lambda msg: msg.extract_plain_text().isdigit(),
-        timeout=60,
-        retry=3,
-        retry_prompt="输入错误，请输入正确的数字。\n剩余次数：{count}",
-    )
-    if msg_recv is None:
-        return
-
-    ban_duration = max(1, min(int(msg_recv.extract_plain_text()), 10))
     target: int = state["target_id"]
 
     await (
         UniMessage.reply(str(state["reply"]))
         .at(str(target))
         .text("被指控搬史\n")
-        .text(f"预期禁言 {ban_duration} 分钟\n\n")
+        .text("预期禁言 1 分钟\n\n")
         .text("若3分钟内有2人发送“同意”将实施禁言")
         .send()
     )
@@ -85,6 +74,6 @@ async def _(bot: Bot, event: GroupMessageEvent, state: T_State) -> None:
     await bot.set_group_ban(
         group_id=event.group_id,
         user_id=target,
-        duration=ban_duration * 60,
+        duration=60,
     )
     await UniMessage.at(str(target)).text("已被禁言").finish()
