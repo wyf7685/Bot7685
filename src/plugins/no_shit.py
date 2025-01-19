@@ -1,6 +1,6 @@
 import anyio
 from nonebot import require
-from nonebot.adapters.onebot.v11 import Bot, Message
+from nonebot.adapters.onebot.v11 import Bot
 from nonebot.adapters.onebot.v11.event import GroupMessageEvent
 from nonebot.typing import T_State
 
@@ -55,11 +55,11 @@ async def _(bot: Bot, event: GroupMessageEvent, state: T_State) -> None:
 
     voted: set[int] = set()
 
-    def _rule(msg: Message, e: GroupMessageEvent) -> bool:
+    def _rule(e: GroupMessageEvent) -> bool:
         return (
             e.group_id == event.group_id
             and e.user_id not in ({event.user_id, target} | voted)
-            and msg.extract_plain_text() == "同意"
+            and e.get_message().extract_plain_text() == "同意"
         )
 
     @waiter(
