@@ -37,8 +37,8 @@ class SignLoopGoodsInfo(BaseGoodsInfo):
 class InitSigninV2(ResponseData):
     disposableGoodsList: list[DisposableGoodsInfo]
     """新手(针对游戏角色)一次性签到签到奖励物品数组	已经做过了就是空数组"""
-    disposableSignNum: int = 5
-    """新手(针对游戏角色)一次性签到活动已签天数? 目前签满了就是 5 天"""
+    # disposableSignNum: int = 5
+    # """新手(针对游戏角色)一次性签到活动已签天数? 目前签满了就是 5 天"""
     eventEndTimes: str
     """本期活动结束时间"""
     eventStartTimes: str
@@ -49,15 +49,15 @@ class InitSigninV2(ResponseData):
     """剩余补签次数	一个月 3 次"""
     isSignIn: bool = Field(alias="isSigIn")
     """今天是否已签到"""
-    loopDescription: str
+    loopDescription: str | None =None
     """限时签到描述"""
-    loopEndTimes: str
+    loopEndTimes: str | None = None
     """限时签到结束时间"""
-    loopSignName: str
+    loopSignName: str | None = None
     """限时签到名称	限时签到 / 限时签到活动"""
-    loopSignNum: int
+    loopSignNum: int | None = None
     """限时签到已签天数"""
-    loopStartTimes: str
+    loopStartTimes: str | None = None
     """限时签到开始时间"""
     nowServerTimes: str
     """当前服务器时间"""
