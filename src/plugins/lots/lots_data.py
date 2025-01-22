@@ -31,6 +31,7 @@ lots_image = {
     "中吉": "neuro/3.png",
     "小吉": "neuro/4.png",
     "末吉": "neuro/5.png",
+    "凶": "neuro/6.png",
 }
 
 lots_data = [
