@@ -84,6 +84,8 @@ async def do_create() -> None:
         except paramiko.SSHException as err:
             retry += 1
             logger.warning(f"Error setting up server: {err}")
+    else:
+        await UniMessage.text("Error setting up server").finish()
 
     await UniMessage.text("Instance setup completed").finish()
 
