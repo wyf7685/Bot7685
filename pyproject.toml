@@ -73,9 +73,6 @@ plugins = [
 plugin_dirs = ["src/plugins"]
 builtin_plugins = []
 
-[tool.pdm.scripts]
-lint = { composite = ["ruff format .", "pyright .", "ruff check ."] }
-
 [tool.ruff]
 line-length = 88
 target-version = "py313"
@@ -174,8 +171,10 @@ disableBytesTypePromotions = true
 
 [tool.uv]
 dev-dependencies = [
+    "basedpyright>=1.24.0",
     "ipykernel>=6.29.5",
     "nonebot-session-to-uninfo>=0.0.2",
+    "ruff>=0.9.3",
 ]
 
 [tool.uv.sources]
