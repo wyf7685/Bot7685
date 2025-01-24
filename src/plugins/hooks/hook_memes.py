@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 
 class Config(BaseModel):
-    memes_disabled_group: set[int]
+    memes_disabled_group: set[int] = set()
 
 
 __plugin_meta__ = PluginMetadata(
