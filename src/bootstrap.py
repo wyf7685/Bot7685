@@ -1,7 +1,7 @@
 import importlib
 import logging
-import pathlib
 import time
+from pathlib import Path
 from typing import Any, cast
 
 import nonebot
@@ -44,13 +44,13 @@ def setup_logger() -> None:
 type ConfigType = dict[str, Any]
 
 
-def _load_yaml(file_path: pathlib.Path) -> ConfigType:
+def _load_yaml(file_path: Path) -> ConfigType:
     with file_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
 def load_config() -> ConfigType:
-    config_dir = pathlib.Path("config")
+    config_dir = Path("config")
     root_config = config_dir / "config.yaml"
     if not root_config.exists():
         return {}
@@ -107,12 +107,12 @@ def load_plugins(config: ConfigType) -> None:
     plugins: list[str] = config.get("plugins") or []
     plugin_dirs: list[str] = []
 
-    if plugin_dir := config.get("plugin_dir"):
+    if (plugin_dir := config.get("plugin_dir")) and Path(plugin_dir).is_dir():
         plugin_dirs.append(plugin_dir)
 
-    if dev_plugin_dir := config.get("dev_plugin_dir"):
-        plugin_dirs.append(dev_plugin_dir)
-        for p in pathlib.Path(dev_plugin_dir).iterdir():
+    if (dev_dir := config.get("dev_plugin_dir")) and Path(dev_dir).is_dir():
+        plugin_dirs.append(dev_dir)
+        for p in Path(dev_dir).iterdir():
             if (p.is_dir() and (name := p.name) in plugins) or (
                 p.is_file() and p.suffix == ".py" and (name := p.stem) in plugins
             ):
