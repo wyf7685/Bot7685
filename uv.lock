@@ -579,15 +579,14 @@ wheels = [
 
 [[package]]
 name = "cookit"
-version = "0.8.5"
+version = "0.9.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "fleep" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/b6/a748e35b58ac25292fc6697e2c2249ab20179b7e290f52ed479c33642ac9/cookit-0.8.5.tar.gz", hash = "sha256:1b8c62eeb28d5502abb2d5594cdf4c3f6cadaa8897c1f0640675badc579581f7", size = 27509 }
+sdist = { url = "https://files.pythonhosted.org/packages/9e/5a/22e3501b3b27ca5bf5e66e6305d8f894820f90c222727b9cb5131670d28f/cookit-0.9.1.tar.gz", hash = "sha256:6a1d3434e1f0765576e1bd7db284673aeed9533914be321f322e94ba6b12add1", size = 28506 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2a/ed/8f7d467a39bedb7d47d1c8fa6544ca67ddefe94ce2f95bda565b7bad1449/cookit-0.8.5-py3-none-any.whl", hash = "sha256:0b4ee7cd45e8a098bc356264e92590fa13409dc93de59ade2339639ba2d78141", size = 29614 },
+    { url = "https://files.pythonhosted.org/packages/47/8a/31854a134a0331915baa0b2a6c2e7a8ce7a9ece3619c355695fef4c7fb2e/cookit-0.9.1-py3-none-any.whl", hash = "sha256:913f2e4f05aec31283e9551d86f5940360c0ef40fe75deb5c819cbd174d52559", size = 30664 },
 ]
 
 [package.optional-dependencies]
@@ -865,6 +864,7 @@ dependencies = [
     { name = "hpack" },
     { name = "hyperframe" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/1b/38/d7f80fd13e6582fb8e0df8c9a653dcc02b03ca34f4d72f34869298c5baf8/h2-4.2.0.tar.gz", hash = "sha256:c8a52129695e88b1a0578d8d2cc6842bbd79128ac685463b887ee278126ad01f", size = 2150682 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d0/9e/984486f2d0a0bd2b024bf4bc1c62688fcafa9e61991f041fb0e2def4a982/h2-4.2.0-py3-none-any.whl", hash = "sha256:479a53ad425bb29af087f3458a61d30780bc818e4ebcf01f0b536ba916462ed0", size = 60957 },
 ]
