@@ -27,11 +27,13 @@ class Highlight(BaseHighlight[MessageSegment]):
             f" <i><y>children</y></i>={cls.apply(segment.children)})"
         )
 
+
 @Patcher
 class PatchEvent(Event):
     @override
     def get_log_string(self) -> str:
         return f"[{self.get_event_name()}]: {Highlight.apply(self)}"
+
 
 @Patcher
 class PatchPrivateMessageCreatedEvent(PrivateMessageCreatedEvent):
@@ -45,6 +47,7 @@ class PatchPrivateMessageCreatedEvent(PrivateMessageCreatedEvent):
             f"{Highlight.apply(self.get_message())}"
         )
 
+
 @Patcher
 class PatchPrivateMessageDeletedEvent(PrivateMessageDeletedEvent):
     @override
@@ -55,6 +58,7 @@ class PatchPrivateMessageDeletedEvent(PrivateMessageDeletedEvent):
             f"<y>{escape_tag(self.user.name or self.user.nick or '')}</y>"
             f"(<c>{escape_tag(self.channel.id)}</c>) deleted"
         )
+
 
 @Patcher
 class PatchPublicMessageCreatedEvent(PublicMessageCreatedEvent):
@@ -71,6 +75,7 @@ class PatchPublicMessageCreatedEvent(PublicMessageCreatedEvent):
             f"{Highlight.apply(self.get_message())}"
         )
 
+
 @Patcher
 class PatchPublicMessageDeletedEvent(PublicMessageDeletedEvent):
     @override
@@ -86,6 +91,7 @@ class PatchPublicMessageDeletedEvent(PublicMessageDeletedEvent):
             "deleted"
         )
 
+
 @Patcher
 class PatchReactionAddedEvent(ReactionAddedEvent):
     @override
@@ -95,6 +101,7 @@ class PatchReactionAddedEvent(ReactionAddedEvent):
             f"Reaction added to <c>{escape_tag(self.msg_id)}</c> "
             f"by <c>{self.user.id}</c>@[Group:<c>{self.guild.id}</c>]"
         )
+
 
 @Patcher
 class PatchReactionRemovedEvent(ReactionRemovedEvent):

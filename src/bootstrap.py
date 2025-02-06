@@ -99,7 +99,7 @@ def load_adapters(config: ConfigType) -> None:
         driver.register_adapter(adapter)
         logger.success(
             f"Adapter <g>{adapter.get_name()}</g> loaded"
-            f" in <y>{time.time()-start:.3f}</y>s"
+            f" in <y>{time.time() - start:.3f}</y>s"
         )
 
 
@@ -124,7 +124,7 @@ def load_plugins(config: ConfigType) -> None:
     start = time.time()
     nonebot.load_all_plugins(plugins, plugin_dirs)
     nonebot.logger.opt(colors=True).success(
-        f"Plugins loaded in <y>{time.time()-start:.3f}</y>s"
+        f"Plugins loaded in <y>{time.time() - start:.3f}</y>s"
     )
 
 
@@ -137,7 +137,7 @@ def init_nonebot() -> ASGIMixin:
     load_adapters(config)
     load_plugins(config)
     nonebot.logger.opt(colors=True).success(
-        f"NoneBot initialized in <y>{time.time()-start:.3f}</y>s"
+        f"NoneBot initialized in <y>{time.time() - start:.3f}</y>s"
     )
 
     return cast(ASGIMixin, nonebot.get_asgi())

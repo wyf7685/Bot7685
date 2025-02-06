@@ -34,11 +34,13 @@ def find_channel_name(guild: "SnowflakeType", channel: "SnowflakeType") -> str |
 class Highlight(BaseHighlight):
     exclude_value: ClassVar[tuple[object, ...]] = (UNSET, None)
 
+
 @Patcher
 class PatchEvent(Event):
     @override
     def get_log_string(self) -> str:
-        return f"[{self.get_event_name()}] " f"{Highlight.apply(model_dump(self))}"
+        return f"[{self.get_event_name()}] {Highlight.apply(model_dump(self))}"
+
 
 @Patcher
 class PatchDirectMessageCreateEvent(DirectMessageCreateEvent):
@@ -52,6 +54,7 @@ class PatchDirectMessageCreateEvent(DirectMessageCreateEvent):
             f"{Highlight.apply(self.get_message())}"
         )
 
+
 @Patcher
 class PatchDirectMessageUpdateEvent(DirectMessageUpdateEvent):
     @override
@@ -63,6 +66,7 @@ class PatchDirectMessageUpdateEvent(DirectMessageUpdateEvent):
             f"(<c>{self.author.id}</c>) updated to "
             f"{Highlight.apply(Message.from_guild_message(self))}"
         )
+
 
 @Patcher
 class PatchGuildMessageCreateEvent(GuildMessageCreateEvent):
@@ -84,6 +88,7 @@ class PatchGuildMessageCreateEvent(GuildMessageCreateEvent):
             f"{Highlight.apply(self.get_message())}"
         )
 
+
 @Patcher
 class PatchGuildMessageUpdateEvent(GuildMessageUpdateEvent):
     @override
@@ -103,6 +108,7 @@ class PatchGuildMessageUpdateEvent(GuildMessageUpdateEvent):
             f"@[Guild:{guild} Channel:{channel}] updated to "
             f"{Highlight.apply(Message.from_guild_message(self))}"
         )
+
 
 @nonebot.on_type(GuildCreateEvent).handle()
 async def _(event: GuildCreateEvent) -> None:

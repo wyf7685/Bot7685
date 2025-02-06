@@ -140,7 +140,7 @@ async def assign_link(target: MsgTarget, code: int) -> None:
         await UniMessage.text("链接码无效或已过期").finish(reply_to=True)
 
     await PipeDAO().create_pipe(listen, target)
-    msg = f"管道创建成功:\n{display_pipe(listen,target)}"
+    msg = f"管道创建成功:\n{display_pipe(listen, target)}"
     await UniMessage.text(msg).finish(reply_to=True)
 
 

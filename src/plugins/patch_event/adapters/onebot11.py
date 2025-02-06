@@ -262,7 +262,7 @@ class PatchPokeNotifyEvent(PokeNotifyEvent):
     def lagrange(self: PokeNotifyEvent, action: str, suffix: str) -> str:
         return (
             f"[{self.get_event_name()}]: "
-            f"{f"{Highlight.group(self.group_id)} " if self.group_id else ''}"
+            f"{f'{Highlight.group(self.group_id)} ' if self.group_id else ''}"
             f"{Highlight.user(self.user_id, self.group_id)} {action} "
             f"{Highlight.user(self.target_id, self.group_id)} {suffix}"
         )
@@ -456,6 +456,7 @@ class ReactionRemoveNoticeEvent(ReactionNoticeEvent):  # Lagrange
 
 
 scheduler_job: dict[Bot, list[SchedulerJob]] = {}
+
 
 @get_driver().on_bot_connect
 async def on_bot_connect(bot: Bot) -> None:

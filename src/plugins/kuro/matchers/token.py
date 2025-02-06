@@ -53,11 +53,11 @@ async def assign_add(
                     note = kuro_token.note
                 await ktd.update(kuro_token)
                 await UniMessage.text(
-                    f"账号信息更新成功\n{info}\n备注: {note or "无"}"
+                    f"账号信息更新成功\n{info}\n备注: {note or '无'}"
                 ).finish()
     else:
         await ktd.add(mine.userId, token, note)
-        await UniMessage.text(f"账号添加成功\n{info}\n备注: {note or "无"}").finish()
+        await UniMessage.text(f"账号添加成功\n{info}\n备注: {note or '无'}").finish()
 
 
 @matcher_token.assign("~remove")

@@ -283,6 +283,13 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                     yield seg
             case "reply":
                 yield await self.convert_reply(segment.data["id"])
+            case "face":
+                if isinstance((raw := segment.data.get("raw")), dict) and (
+                    text := raw.get("faceText")
+                ):
+                    yield u.Text(text)
+                else:
+                    yield u.Text(f"[face:{segment.data['id']}]")
             case "forward":
                 async for seg in self.handle_forward(segment.data):
                     yield seg

@@ -26,9 +26,7 @@ async def _(bot: Bot, event: GroupMessageEvent) -> NoReturn:
     game = Game(bot, event.group_id)
     running_game[event.group_id] = game
     msg = MessageSegment.reply(event.message_id) + (
-        "当前群俄罗斯轮盘已开启\n"
-        f"弹夹有 {game.total} 发子弹\n"
-        "请发送 *开枪* 参与游戏"
+        f"当前群俄罗斯轮盘已开启\n弹夹有 {game.total} 发子弹\n请发送 *开枪* 参与游戏"
     )
     await game_start.finish(msg)
 

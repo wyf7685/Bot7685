@@ -31,6 +31,7 @@ class PatchGroupMessageEvent(GroupMessageEvent):
             f"{Highlight.apply(self.original_message)}"
         )
 
+
 @Patcher
 class PatchForumTopicMessageEvent(ForumTopicMessageEvent):
     @override
@@ -49,6 +50,7 @@ class PatchForumTopicMessageEvent(ForumTopicMessageEvent):
             f"{Highlight.apply(self.original_message)}"
         )
 
+
 @Patcher
 class PatchPrivateMessageEvent(PrivateMessageEvent):
     @override
@@ -62,6 +64,7 @@ class PatchPrivateMessageEvent(PrivateMessageEvent):
             f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>): "
             f"{Highlight.apply(self.original_message)}"
         )
+
 
 @Patcher
 class PatchGroupEditedMessageEvent(GroupEditedMessageEvent):
@@ -80,6 +83,7 @@ class PatchGroupEditedMessageEvent(GroupEditedMessageEvent):
             f"{Highlight.apply(self.get_message())}"
         )
 
+
 @Patcher
 class PatchForumTopicEditedMessageEvent(ForumTopicEditedMessageEvent):
     @override
@@ -97,6 +101,7 @@ class PatchForumTopicEditedMessageEvent(ForumTopicEditedMessageEvent):
             f"Thread <c>{self.message_thread_id}</c>]: "
             f"{Highlight.apply(self.get_message())}"
         )
+
 
 @Patcher
 class PatchPrivateEditedMessageEvent(PrivateEditedMessageEvent):
