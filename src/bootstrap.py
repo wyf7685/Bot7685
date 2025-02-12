@@ -26,7 +26,7 @@ def setup_logger() -> None:
         ),
     )
     nonebot.logger.add(
-        "./logs/{time:YYYY-MM-DD}.colorize.log",
+        "./logs/color/{time:YYYY-MM-DD}.log",
         rotation="00:00",
         level="DEBUG",
         colorize=True,
