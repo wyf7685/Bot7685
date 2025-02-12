@@ -2,6 +2,7 @@
 
 from types import EllipsisType
 
+from nonebot.exception import MatcherException
 from nonebot_plugin_alconna import Query
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_waiter import prompt
@@ -67,6 +68,8 @@ async def assign_add(
 
     try:
         await add_token(ktd, api, note)
+    except MatcherException:
+        raise
     except Exception as err:
         await UniMessage.text(f"添加账号失败: {err}").finish()
 
@@ -148,5 +151,7 @@ async def assign_login(
 
     try:
         await add_token(ktd, api, note)
+    except MatcherException:
+        raise
     except Exception as err:
         await UniMessage.text(f"添加账号失败: {err}").finish()
