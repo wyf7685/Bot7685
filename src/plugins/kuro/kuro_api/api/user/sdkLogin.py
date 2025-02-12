@@ -21,22 +21,18 @@ class SdkLoginRequestHeaders(CommonRequestHeaders):
 
 
 class SdkLogin(ResponseData):
+    enableChildMode: bool
     gender: int
-    signature: str
     headUrl: str
-    headCode: str
-    userName: str
-    """昵称"""
-    userId: str
-    """账号 ID"""
-    isRegister: str
-    isOfficial: str
-    status: str
-    unRegistering: bool
+    isAdmin: bool
+    isRegister: int
+    signature: str
     token: str
     """用户 token"""
-    refreshToken: str
-
+    userId: str
+    """账号 ID"""
+    userName: str
+    """昵称"""
 
 class SdkLoginRequest(RequestWithoutToken[SdkLogin]):
     """验证码登录 APP 端"""

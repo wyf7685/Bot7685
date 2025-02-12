@@ -43,7 +43,7 @@ class CommonRequestHeaders(RequestHeaders):
     @property
     def ip(self) -> str:
         h = sha256(self.token.encode()).hexdigest()
-        return f"192.168.{int(h[:2], 16)}.{int(h[2:4], 16)}"
+        return f"192.168.{int(h[:2],16)}.{int(h[2:4],16)}"
 
     @property
     def distinct_id(self) -> str:

@@ -34,9 +34,7 @@ class Role(ResponseData):
     userId: str
     """库洛 UID"""
 
-
 FindRoleList = list[Role]
-
 
 class FindRoleListRequest(Request[FindRoleList]):
     """取绑定游戏账号列表"""

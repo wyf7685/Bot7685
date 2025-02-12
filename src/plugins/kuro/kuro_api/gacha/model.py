@@ -90,18 +90,23 @@ class WWGFItem(BaseModel):
     >>> f"{cardPoolType:04d}"
     """
     gacha_type: str
+    """卡池类型(名称)
+
+    >>> CARD_POOL_NAME[card_pool_type]
+    """
     item_id: str
+    """resourceId"""
     count: str
     time: str
     name: str
     item_type: str
-    """resourceId"""
+    """resourceType"""
     rank_type: str
     """qualityLevel"""
     id: str
     """抽卡记录ID
 
-    >>> f"{int(timestamp)}{cardPoolType:04d}{seq:05d}"
+    >>> f"{int(timestamp)}{gacha_id}{seq:05d}"
     """
 
 
@@ -112,7 +117,13 @@ class WWGF(BaseModel):
     list: list[WWGFItem]
 
     def sort(self) -> None:
-        self.list.sort(key=lambda item: (int(item.gacha_id), item.id), reverse=True)
+        items = {f"{i.value:04d}": list[WWGFItem]() for i in CardPoolType}
+        for item in self.list:
+            items[item.gacha_id].append(item)
+
+        self.list[:] = []
+        for key in sorted(items.keys()):
+            self.list.extend(items[key])
 
     def merge(self, other: "WWGF") -> None:
         items = self.list[:]

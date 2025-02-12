@@ -49,7 +49,7 @@ class InitSigninV2(ResponseData):
     """剩余补签次数	一个月 3 次"""
     isSignIn: bool = Field(alias="isSigIn")
     """今天是否已签到"""
-    loopDescription: str | None = None
+    loopDescription: str | None =None
     """限时签到描述"""
     loopEndTimes: str | None = None
     """限时签到结束时间"""

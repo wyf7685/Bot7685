@@ -6,7 +6,7 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
-from ..exceptions import InvalidGachaUrl
+from ..exceptions import InvalidGachaUrl, KuroApiException
 from .const import GACHA_HEADERS, GACHA_QUERY_URL
 from .model import (
     CARD_POOL_NAME,
@@ -45,7 +45,10 @@ class WuwaGachaApi:
         else:
             raise InvalidGachaUrl(f"无效的抽卡 URL: {gacha_url}")
 
-        self._params = parse_gacha_url(gacha_url)
+        try:
+            self._params = parse_gacha_url(gacha_url)
+        except KeyError as err:
+            raise InvalidGachaUrl(f"无效的抽卡 URL: {gacha_url}") from err
 
     async def _query(self, type_: CardPoolType) -> GachaResponse:
         self._params.cardPoolType = type_
@@ -56,7 +59,11 @@ class WuwaGachaApi:
                 json=dataclasses.asdict(self._params),
             )
             data = response.raise_for_status().read()
+
+        try:
             return GachaResponse.model_validate_json(data)
+        except Exception as err:
+            raise KuroApiException("获取抽卡数据失败") from err
 
     def _convert(
         self,
@@ -70,11 +77,12 @@ class WuwaGachaApi:
         result: list[WWGFItem] = []
         for item in items:
             time = datetime.datetime.fromisoformat(item.time).timestamp()
-            id = f"{int(time)}{card_pool_type.value:04d}{time_count[item.time]:05d}"
+            gacha_id = f"{card_pool_type.value:04d}"
+            id = f"{int(time)}{gacha_id}{time_count[item.time]:05d}"
             time_count[item.time] -= 1
             result.append(
                 WWGFItem(
-                    gacha_id=str(card_pool_type.value),
+                    gacha_id=gacha_id,
                     gacha_type=CARD_POOL_NAME[card_pool_type],
                     item_id=str(item.resourceId),
                     count=str(item.count),
@@ -85,6 +93,7 @@ class WuwaGachaApi:
                     id=id,
                 )
             )
+
         return result
 
     async def fetch_wwgf(self) -> WWGF:
