@@ -51,6 +51,12 @@ alc = Alconna(
             ),
             help_text="更新账号信息",
         ),
+        Subcommand(
+            "login",
+            Args["mobile#手机号", str]["code#验证码", str],
+            Option("-n|--note", Args["note#备注", str]),
+            help_text="验证码登录",
+        ),
         help_text="管理库街区账号",
     ),
     Subcommand(
