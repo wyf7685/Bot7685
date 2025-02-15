@@ -8,7 +8,9 @@ import nonebot
 import yaml
 from nonebot.adapters import Adapter
 from nonebot.internal.driver import ASGIMixin
-from nonebot.utils import deep_update
+from nonebot.utils import deep_update, logger_wrapper
+
+log = logger_wrapper("Bootstrap")
 
 
 def setup_logger() -> None:
@@ -77,29 +79,29 @@ def load_config() -> ConfigType:
 
 def load_adapters(config: ConfigType) -> None:
     driver = nonebot.get_driver()
-    logger = nonebot.logger.opt(colors=True)
 
     for module_name in config.get("adapters", []):
-        logger.debug(f"Loading adapter: <g>{module_name}</g>")
+        log("DEBUG", f"Loading adapter: <g>{module_name}</g>")
         start = time.time()
 
         full_name = f"nonebot.adapters.{module_name}"
         try:
             module = importlib.import_module(full_name)
         except ImportError:
-            logger.warning(f"Failed to import module: <y>{full_name}</y>")
+            log("WARNING", f"Failed to import module: <y>{full_name}</y>")
             continue
 
         try:
             adapter = cast(type[Adapter], module.Adapter)
         except AttributeError:
-            logger.warning(f"Module <y>{full_name}</y> is not a valid adapter")
+            log("WARNING", f"Module <y>{full_name}</y> is not a valid adapter")
             continue
 
         driver.register_adapter(adapter)
-        logger.success(
+        log(
+            "SUCCESS",
             f"Adapter <g>{adapter.get_name()}</g> loaded"
-            f" in <y>{time.time() - start:.3f}</y>s"
+            f" in <y>{time.time() - start:.3f}</y>s",
         )
 
 
@@ -117,15 +119,14 @@ def load_plugins(config: ConfigType) -> None:
                 p.is_file() and p.suffix == ".py" and (name := p.stem) in plugins
             ):
                 plugins.remove(name)
-                nonebot.logger.opt(colors=True).warning(
-                    f'Prefer loading plugin <y>{name}</y> from "<m>src.dev.{name}</m>"'
+                log(
+                    "WARNING",
+                    f'Prefer loading plugin <y>{name}</y> from "<m>src.dev.{name}</m>"',
                 )
 
     start = time.time()
     nonebot.load_all_plugins(plugins, plugin_dirs)
-    nonebot.logger.opt(colors=True).success(
-        f"Plugins loaded in <y>{time.time() - start:.3f}</y>s"
-    )
+    log("SUCCESS", f"Plugins loaded in <y>{time.time() - start:.3f}</y>s")
 
 
 def init_nonebot() -> ASGIMixin:
@@ -136,8 +137,6 @@ def init_nonebot() -> ASGIMixin:
     nonebot.init(**config)
     load_adapters(config)
     load_plugins(config)
-    nonebot.logger.opt(colors=True).success(
-        f"NoneBot initialized in <y>{time.time() - start:.3f}</y>s"
-    )
+    log("SUCCESS", f"NoneBot initialized in <y>{time.time() - start:.3f}</y>s")
 
     return cast(ASGIMixin, nonebot.get_asgi())
