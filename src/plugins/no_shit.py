@@ -8,13 +8,23 @@ from nonebot.matcher import Matcher
 from nonebot.params import Depends
 
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_localstore")
 require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import on_alconna
 from nonebot_plugin_alconna.uniseg import UniMessage
+from nonebot_plugin_localstore import get_plugin_data_dir
 from nonebot_plugin_waiter import waiter
 
 require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
+
+
+def add_ban_count(user_id: int) -> int:
+    file = get_plugin_data_dir() / "count" / f"{user_id}"
+    cnt = int(file.read_text()) + 1 if file.exists() else 1
+    file.write_text(str(cnt))
+    return cnt
+
 
 no_shit = on_alconna("他在搬史", permission=TrustedUser)
 
@@ -79,4 +89,9 @@ async def _(bot: Bot, event: GroupMessageEvent, r: ReplyInfo) -> None:
 
     await bot.delete_msg(message_id=reply)
     await bot.set_group_ban(group_id=event.group_id, user_id=target, duration=60)
-    await UniMessage.at(str(target)).text(" 已被禁言").finish(reply_to=True)
+    cnt = add_ban_count(target)
+    await (
+        UniMessage.at(str(target))
+        .text(f" 已被禁言, 共计 {cnt} 次")
+        .finish(reply_to=True)
+    )
