@@ -21,6 +21,7 @@ from src.plugins.trusted import TrustedUser
 
 def add_ban_count(user_id: int) -> int:
     file = get_plugin_data_dir() / "count" / f"{user_id}"
+    file.parent.mkdir(parents=True, exist_ok=True)
     cnt = int(file.read_text()) + 1 if file.exists() else 1
     file.write_text(str(cnt))
     return cnt
