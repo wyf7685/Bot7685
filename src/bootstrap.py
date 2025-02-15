@@ -15,17 +15,17 @@ log = logger_wrapper("Bootstrap")
 
 def setup_logger() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
+    log_format = (
+        "<g>{time:HH:mm:ss}</g> "
+        "[<lvl>{level}</lvl>] "
+        "<c><u>{name}</u></c> | "
+        "{message}"
+    )
     nonebot.logger.add(
         "./logs/{time:YYYY-MM-DD}.log",
         rotation="00:00",
         level="DEBUG",
-        format=(
-            "<g>{time:HH:mm:ss}</g> "
-            "[<lvl>{level}</lvl>] "
-            "<c><u>{name}</u></c> | "
-            "<c>{function}:{line}</c> | "
-            "{message}"
-        ),
+        format=log_format,
     )
     nonebot.logger.add(
         "./logs/color/{time:YYYY-MM-DD}.log",
@@ -33,13 +33,7 @@ def setup_logger() -> None:
         level="DEBUG",
         colorize=True,
         diagnose=True,
-        format=(
-            "<g>{time:HH:mm:ss}</g> "
-            "[<lvl>{level}</lvl>] "
-            "<c><u>{name}</u></c> | "
-            "<c>{function}:{line}</c> | "
-            "{message}"
-        ),
+        format=log_format,
     )
 
 
