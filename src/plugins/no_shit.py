@@ -1,5 +1,3 @@
-from typing import Annotated
-
 import anyio
 from nonebot import require
 from nonebot.adapters.onebot.v11 import Bot
@@ -41,11 +39,12 @@ async def check_reply(event: GroupMessageEvent) -> tuple[int, int]:
     return event.reply.message_id, target
 
 
-ReplyInfo = Annotated[tuple[int, int], Depends(check_reply)]
-
-
 @no_shit.handle()
-async def _(bot: Bot, event: GroupMessageEvent, r: ReplyInfo) -> None:
+async def _(
+    bot: Bot,
+    event: GroupMessageEvent,
+    r: tuple[int, int] = Depends(check_reply),
+) -> None:
     reply, target = r
 
     await (
