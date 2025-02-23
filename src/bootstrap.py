@@ -7,11 +7,20 @@ from typing import Any, cast
 import nonebot
 import yaml
 from nonebot.adapters import Adapter
-from nonebot.internal.driver import ASGIMixin
 from nonebot.utils import deep_update, logger_wrapper
+from pydantic import BaseModel, ConfigDict
 
-type ConfigType = dict[str, Any]
 log = logger_wrapper("Bootstrap")
+
+
+class Config(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    adapters: set[str] = set()
+    plugins: set[str] = set()
+    plugin_dir: str = "src/plugins"
+    dev_plugin_dir: str = "src/dev"
+    preload_plugins: set[str] = set()
 
 
 def setup_logger() -> None:
@@ -35,12 +44,12 @@ def setup_logger() -> None:
     )
 
 
-def _load_yaml(file_path: Path) -> ConfigType:
+def _load_yaml(file_path: Path) -> dict[str, Any]:
     with file_path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
-def load_config() -> ConfigType:
+def load_config() -> dict[str, Any]:
     config_dir = Path("config")
     root_config = config_dir / "config.yaml"
     if not root_config.exists():
@@ -66,10 +75,10 @@ def load_config() -> ConfigType:
     return config
 
 
-def load_adapters(config: ConfigType) -> None:
+def load_adapters(config: Config) -> None:
     driver = nonebot.get_driver()
 
-    for module_name in config.get("adapters", []):
+    for module_name in config.adapters:
         log("DEBUG", f"Loading adapter: <g>{module_name}</g>")
         start = time.time()
 
@@ -94,38 +103,38 @@ def load_adapters(config: ConfigType) -> None:
         )
 
 
-def load_plugins(config: ConfigType) -> None:
-    plugins: list[str] = config.get("plugins") or []
+def load_plugins(config: Config) -> None:
     plugin_dirs: list[str] = []
 
-    if (plugin_dir := config.get("plugin_dir")) and Path(plugin_dir).is_dir():
+    if (plugin_dir := config.plugin_dir) and Path(plugin_dir).is_dir():
         plugin_dirs.append(plugin_dir)
 
-    if (dev_dir := config.get("dev_plugin_dir")) and Path(dev_dir).is_dir():
+    if (dev_dir := config.dev_plugin_dir) and Path(dev_dir).is_dir():
         plugin_dirs.append(dev_dir)
         for p in Path(dev_dir).iterdir():
-            if (p.is_dir() and (name := p.name) in plugins) or (
-                p.is_file() and p.suffix == ".py" and (name := p.stem) in plugins
+            if (p.is_dir() and (name := p.name) in config.plugins) or (
+                p.is_file() and p.suffix == ".py" and (name := p.stem) in config.plugins
             ):
-                plugins.remove(name)
+                config.plugins.discard(name)
                 log(
                     "WARNING",
                     f'Prefer loading plugin <y>{name}</y> from "<m>src.dev.{name}</m>"',
                 )
 
     start = time.time()
-    nonebot.load_all_plugins(plugins, plugin_dirs)
+    nonebot.load_all_plugins(config.preload_plugins, [])
+    nonebot.load_all_plugins(config.plugins, plugin_dirs)
     log("SUCCESS", f"Plugins loaded in <y>{time.time() - start:.3f}</y>s")
 
 
-def init_nonebot() -> ASGIMixin:
-    config = load_config()
+def init_nonebot() -> Any:
+    config = Config.model_validate(load_config())
 
     start = time.time()
     setup_logger()
-    nonebot.init(**config)
+    nonebot.init(**config.model_dump())
     load_adapters(config)
     load_plugins(config)
     log("SUCCESS", f"NoneBot initialized in <y>{time.time() - start:.3f}</y>s")
 
-    return cast(ASGIMixin, nonebot.get_asgi())
+    return nonebot.get_app()
