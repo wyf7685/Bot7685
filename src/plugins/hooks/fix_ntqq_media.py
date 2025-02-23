@@ -9,7 +9,7 @@ logger = logger.opt(colors=True)
 
 class _RequestCall[M: HTTPClientMixin](Protocol):
     async def __call__(  # sourcery skip: instance-method-first-arg-name
-        self_,  # pyright:ignore[reportSelfClsParameterName]  # noqa: N805
+        self_,  # type: ignore[]  # noqa: N805
         self: M,
         setup: Request,
     ) -> Response: ...
