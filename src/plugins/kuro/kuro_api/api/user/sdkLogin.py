@@ -34,6 +34,7 @@ class SdkLogin(ResponseData):
     userName: str
     """昵称"""
 
+
 class SdkLoginRequest(RequestWithoutToken[SdkLogin]):
     """验证码登录 APP 端"""
 

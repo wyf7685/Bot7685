@@ -185,10 +185,7 @@ async def _(event: MessageEvent, group_id: GroupId):
     user_id = event.user_id
     group_usage = session_container.get_group_usage(group_id)
     if user_id not in group_usage:
-        text = (
-            "请先加入一个会话，再进行复制当前会话\n"
-            f"或者使用 {menu_chat_str} cp <id> 进行复制"
-        )
+        text = f"请先加入一个会话，再进行复制当前会话\n或者使用 {menu_chat_str} cp <id> 进行复制"
         await UniMessage(text).finish(at_sender=True)
     session = group_usage[user_id]
     session.del_user(user_id)
@@ -398,11 +395,7 @@ async def _(group_id: GroupId):
     session_list: list[Session] = session_container.get_group_sessions(group_id)
     msg: str = f"本群全部会话共{len(session_list)}条：\n"
     for index, session in enumerate(session_list, 1):
-        msg += (
-            f"{index}. {session.name} "
-            f"创建者: {session.creator} "
-            f"时间: {session.creation_datetime}\n"
-        )
+        msg += f"{index}. {session.name} 创建者: {session.creator} 时间: {session.creation_datetime}\n"
     await UniMessage(msg).finish(at_sender=True)
 
 

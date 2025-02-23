@@ -10,16 +10,14 @@ from nonebot.adapters import Adapter
 from nonebot.internal.driver import ASGIMixin
 from nonebot.utils import deep_update, logger_wrapper
 
+type ConfigType = dict[str, Any]
 log = logger_wrapper("Bootstrap")
 
 
 def setup_logger() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     log_format = (
-        "<g>{time:HH:mm:ss}</g> "
-        "[<lvl>{level}</lvl>] "
-        "<c><u>{name}</u></c> | "
-        "{message}"
+        "<g>{time:HH:mm:ss}</g> [<lvl>{level}</lvl>] <c><u>{name}</u></c> | {message}"
     )
     nonebot.logger.add(
         "./logs/{time:YYYY-MM-DD}.log",
@@ -35,9 +33,6 @@ def setup_logger() -> None:
         diagnose=True,
         format=log_format,
     )
-
-
-type ConfigType = dict[str, Any]
 
 
 def _load_yaml(file_path: Path) -> ConfigType:
@@ -94,8 +89,8 @@ def load_adapters(config: ConfigType) -> None:
         driver.register_adapter(adapter)
         log(
             "SUCCESS",
-            f"Adapter <g>{adapter.get_name()}</g> loaded"
-            f" in <y>{time.time() - start:.3f}</y>s",
+            f"Adapter <g>{adapter.get_name()}</g> loaded "
+            f"in <y>{time.time() - start:.3f}</y>s",
         )
 
 

@@ -4,6 +4,7 @@ from typing import Literal
 APP_NAME = "wyf7685/kuro-api"
 VERSION = "0.1.0"
 
+
 class GameId(int, Enum):
     PNS = 2
     WUWA = 3
