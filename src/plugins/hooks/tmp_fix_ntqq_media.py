@@ -17,7 +17,7 @@ def patch_request[M: HTTPClientMixin](original: _RequestCall[M]) -> _RequestCall
     @override
     async def request(self: M, setup: Request) -> Response:
         if setup.url.host == "multimedia.nt.qq.com.cn":
-            setup.url.scheme = "http"
+            setup.url = setup.url.with_scheme("http")
 
         return await original(self, setup)
 
