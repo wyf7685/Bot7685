@@ -1,5 +1,4 @@
 import contextlib
-from typing import Annotated
 
 import anyio
 from nonebot import get_driver, on_message, on_type, require
@@ -8,9 +7,9 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 
 require("nonebot_plugin_alconna")
-require("nonebot_plugin_userinfo")
+require("nonebot_plugin_uninfo")
 from nonebot_plugin_alconna.uniseg import Receipt, Reply, Target, UniMessage, UniMsg
-from nonebot_plugin_userinfo import EventUserInfo, UserInfo
+from nonebot_plugin_uninfo import Uninfo
 
 __plugin_meta__ = PluginMetadata(
     name="friend_add",
@@ -22,13 +21,11 @@ __plugin_meta__ = PluginMetadata(
 
 
 @on_type(FriendRequestEvent).handle()
-async def handle(
-    event: FriendRequestEvent,
-    info: Annotated[UserInfo, EventUserInfo()],
-) -> None:
-    message = UniMessage.text(f"收到好友申请: {info.user_name}({info.user_id})\n")
-    if avatar := info.user_avatar:
-        message.image(raw=await avatar.get_image())
+async def handle(event: FriendRequestEvent, info: Uninfo) -> None:
+    name = info.user.nick or info.user.name or info.user.id
+    message = UniMessage.text(f"收到好友申请: {name}({info.user.id})\n")
+    if avatar := info.user.avatar:
+        message.image(url=avatar)
     message.text("\n回复 “接受” 或 “拒绝”")
 
     receipts: dict[str, Receipt] = {}
