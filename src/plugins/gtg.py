@@ -22,7 +22,7 @@ def call_later[**P](
     **kwargs: P.kwargs,
 ) -> None:
     async def wrapper() -> None:
-        await anyio.sleep(min(0, delay))
+        await anyio.sleep(max(0, delay))
 
         try:
             await call(*arg, **kwargs)
