@@ -1,6 +1,6 @@
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Self, TypedDict
+from typing import NoReturn, Self, TypedDict
 
 import anyio
 import anyio.to_thread
@@ -104,9 +104,12 @@ class MultipartUploadTask:
     upload_id: str
     parts: list[_PartDict]
 
+    def __init__(self) -> NoReturn:
+        raise NotImplementedError
+
     @classmethod
     async def create(cls, key: str, client: AsyncCosS3Client | None = None) -> Self:
-        self = cls()
+        self = super().__new__(cls)
         self.client = client or get_client()
         self.key = (ROOT / key).as_posix()
         self.upload_id = await self.client.create_multipart_upload(key)
@@ -122,7 +125,8 @@ class MultipartUploadTask:
         )
 
     async def complete(self) -> None:
-        self.parts.sort(key=lambda x: x["PartNumber"])
+        assert all(part["ETag"] for part in self.parts)
+        self.parts.sort(key=lambda part: part["PartNumber"])
         await self.client.complete_multipart_upload(
             key=self.key, upload_id=self.upload_id, parts=self.parts
         )
