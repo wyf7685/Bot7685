@@ -1,11 +1,12 @@
 from collections.abc import Awaitable, Callable
+from typing import cast
 
 import anyio
-import anyio.abc
 import nonebot
-import nonebot.plugin
+from nonebot.plugin import PluginMetadata
+from nonebot.utils import is_coroutine_callable, run_sync
 
-__plugin_meta__ = nonebot.plugin.PluginMetadata(
+__plugin_meta__ = PluginMetadata(
     name="GlobalTaskGroup",
     description="提供全局任务组",
     usage="call_later(delay, call) / call_soon(call)",
@@ -17,10 +18,14 @@ driver = nonebot.get_driver()
 
 def call_later[**P](
     delay: float,
-    call: Callable[P, Awaitable[object]],
+    call: Callable[P, object],
     *arg: P.args,
     **kwargs: P.kwargs,
 ) -> None:
+    if not is_coroutine_callable(call):
+        call = run_sync(call)
+    call = cast(Callable[P, Awaitable[object]], call)
+
     async def wrapper() -> None:
         await anyio.sleep(max(0, delay))
 
@@ -33,7 +38,7 @@ def call_later[**P](
 
 
 def call_soon[**P](
-    call: Callable[P, Awaitable[object]],
+    call: Callable[P, object],
     *arg: P.args,
     **kwargs: P.kwargs,
 ) -> None:

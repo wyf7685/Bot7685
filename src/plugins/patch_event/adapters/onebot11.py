@@ -89,7 +89,7 @@ async def update_group_cache(
 
 
 async def update_user_card_cache(bot: Bot) -> None:
-    async def reset(user_id: int, group_id: int | None) -> None:
+    def reset(user_id: int, group_id: int | None) -> None:
         user_card_cache[(user_id, group_id)] = None
 
     for (user_id, group_id), name in list(user_card_cache.items()):

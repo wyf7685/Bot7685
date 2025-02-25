@@ -122,10 +122,7 @@ async def assign_create(target: MsgTarget) -> None:
     key = hash(target)
     pipe_create_cache[key] = target
 
-    async def _() -> None:
-        pipe_create_cache.pop(key, None)
-
-    call_later(60 * 5, _)
+    call_later(60 * 5, pipe_create_cache.pop, key, None)
     await (
         UniMessage.text("请在5分钟内向目标群组中发送以下命令:\n")
         .text(f"/pipe link {key}")
