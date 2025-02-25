@@ -1,6 +1,6 @@
 import contextlib
 import json
-from collections.abc import AsyncGenerator, AsyncIterable, Sequence
+from collections.abc import AsyncGenerator, AsyncIterable, Iterable
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, ClassVar, override
@@ -69,7 +69,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         self.logger.debug(f"从 API 获取 rkey: {p_rkey, g_rkey}")
         return p_rkey, g_rkey
 
-    async def get_rkey(self) -> Sequence[str]:
+    async def get_rkey(self) -> Iterable[str]:
         if "napcat" not in await self.get_platform():
             return await self._get_api_rkey()
 
@@ -235,6 +235,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
     @contextlib.asynccontextmanager
     async def convert_file(self, file_id: str) -> AsyncGenerator[u.Segment]:
+        # note: Docker only
         res = await self.src_bot.call_api("get_file", file_id=file_id)
         path = anyio.Path("/share/QQ/NapCat/temp") / str(res["file_name"])
         with anyio.move_on_after(30):
@@ -248,6 +249,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         await path.unlink(missing_ok=True)
 
     async def convert_record(self, file_path: str) -> u.Segment:
+        # note: Docker only
         path = Path("/share") / Path(file_path).relative_to("/app/.config")
 
         agen = None
