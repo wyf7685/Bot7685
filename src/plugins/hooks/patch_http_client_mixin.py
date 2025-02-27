@@ -1,31 +1,27 @@
 import contextlib
 from typing import Protocol, override
 
-from nonebot import get_driver, get_plugin_config, logger
+import nonebot
 from nonebot.drivers import HTTPClientMixin, Request, Response
 from pydantic import BaseModel
-
-logger = logger.opt(colors=True)
 
 
 class Config(BaseModel):
     http_proxy: str | None = None
 
 
-config = get_plugin_config(Config)
+config = nonebot.get_plugin_config(Config)
+driver = nonebot.get_driver()
+logger = nonebot.logger.opt(colors=True)
 
 
 class _RequestCall[M: HTTPClientMixin](Protocol):
-    async def __call__(  # sourcery skip: instance-method-first-arg-name
-        self_,  # type: ignore[]  # noqa: N805
-        self: M,
-        setup: Request,
-    ) -> Response: ...
+    async def __call__(self, setup: Request) -> Response: ...
 
 
 def patch_request[M: HTTPClientMixin](original: _RequestCall[M]) -> _RequestCall[M]:
     @override
-    async def request(self: M, setup: Request) -> Response:
+    async def request(setup: Request) -> Response:
         if setup.url.host is not None:
             if setup.url.host == "multimedia.nt.qq.com.cn":
                 setup.url = setup.url.with_scheme("http")
@@ -33,7 +29,7 @@ def patch_request[M: HTTPClientMixin](original: _RequestCall[M]) -> _RequestCall
             elif "wakatime.com" in setup.url.host and config.http_proxy is not None:
                 setup.proxy = config.http_proxy
 
-        return await original(self, setup)
+        return await original(setup)
 
     return request
 
@@ -41,13 +37,13 @@ def patch_request[M: HTTPClientMixin](original: _RequestCall[M]) -> _RequestCall
 with contextlib.suppress(ImportError):
     from nonebot.drivers.aiohttp import Mixin as AIOHTTPMixin
 
-    if issubclass(cls := get_driver().__class__, AIOHTTPMixin):
-        cls.request = patch_request(cls.request)
+    if isinstance(driver, AIOHTTPMixin):
+        driver.request = patch_request(driver.request)
         logger.success("Patched AIOHTTPMixin.request")
 
 with contextlib.suppress(ImportError):
     from nonebot.drivers.httpx import Mixin as HTTPXMixin
 
-    if issubclass(cls := get_driver().__class__, HTTPXMixin):
-        cls.request = patch_request(original=cls.request)
+    if isinstance(driver, HTTPXMixin):
+        driver.request = patch_request(original=driver.request)
         logger.success("Patched HTTPXMixin.request")
