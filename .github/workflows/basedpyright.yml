@@ -1,19 +1,19 @@
-name: Pyright Lint
+name: BasedPyright Lint
 
 on:
   push:
     paths:
       - "src/plugins/**"
-      - ".github/workflows/pyright.yml"
+      - ".github/workflows/basedpyright.yml"
       - "pyproject.toml"
       - "uv.lock"
 
 jobs:
-  pyright:
-    name: Pyright Lint
+  basedpyright:
+    name: BasedPyright Lint
     runs-on: ubuntu-latest
     concurrency:
-      group: pyright-${{ github.ref }}
+      group: basedpyright-${{ github.ref }}
       cancel-in-progress: true
 
     steps:
@@ -32,5 +32,5 @@ jobs:
       - name: Configure venv
         run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
 
-      - name: Run Pyright
-        run: uv tool run pyright src/plugins --pythonpath ./.venv/bin/python
+      - name: Run BasedPyright
+        run: uv tool run basedpyright src/plugins --pythonpath ./.venv/bin/python
