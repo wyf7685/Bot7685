@@ -30,7 +30,7 @@ def make_key(target: Target, /) -> int:
     key = "".join(map(str, args)).encode("utf-8")
     result = 0
     for i in key:
-        result = ((result << 5) - result + i)
+        result = (result << 5) - result + i
         result &= 0xFFFFFFFFFFFF
     return result % (1 << 31)
 

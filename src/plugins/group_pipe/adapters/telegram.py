@@ -11,7 +11,7 @@ from nonebot.adapters.telegram.model import InputFile
 from nonebot.adapters.telegram.model import Message as MessageModel
 from nonebot_plugin_alconna import uniseg as u
 
-from src.plugins.upload_cos import upload_from_url
+from src.plugins.upload_cos import upload_cos
 
 from ..utils import download_url, guess_url_type, webm_to_gif
 from ._registry import converter, sender
@@ -77,7 +77,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             return u.Text(f"[image:{info.mime}:{file_id}]")
 
         try:
-            url = await upload_from_url(url, self.get_cos_key(file_path))
+            url = await upload_cos(url, self.get_cos_key(file_path))
         except Exception as err:
             self.logger.opt(exception=err).debug("上传文件失败")
 
@@ -93,7 +93,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             return u.Text(f"[file:{file_id}]")
 
         try:
-            url = await upload_from_url(url, self.get_cos_key(file_path))
+            url = await upload_cos(url, self.get_cos_key(file_path))
         except Exception as err:
             self.logger.opt(exception=err).debug("上传文件失败")
             return u.Text(f"[file:{info.mime}:{file_id}]")

@@ -1,6 +1,5 @@
-import functools
-from collections.abc import Awaitable, Callable
-from typing import Protocol
+from pathlib import Path
+from typing import overload
 
 from .cos_ops import (
     DEFAULT_EXPIRE_SECS,
@@ -12,31 +11,43 @@ from .cos_ops import (
 from .database import update_key
 
 
-class _WrappedCall[T](Protocol):
-    async def __call__(
-        self,
-        _a0: T,
-        /,
-        key: str,
-        expired: int = DEFAULT_EXPIRE_SECS,
-    ) -> str: ...
+@overload
+async def upload_cos(
+    data: bytes,
+    /,
+    key: str,
+    expired: int = ...,
+) -> str: ...
+@overload
+async def upload_cos(
+    url: str,
+    /,
+    key: str,
+    expired: int = ...,
+) -> str: ...
+@overload
+async def upload_cos(
+    path: Path,
+    /,
+    key: str,
+    expired: int = ...,
+) -> str: ...
 
 
-def _wrap[T](call: Callable[[T, str], Awaitable[object]]) -> _WrappedCall[T]:
-    @functools.wraps(call)
-    async def wrapper(
-        data: T,
-        /,
-        key: str,
-        expired: int = DEFAULT_EXPIRE_SECS,
-    ) -> str:
-        await call(data, key)
-        await update_key(key, expired)
-        return await presign(key, expired)
+async def upload_cos(
+    source: bytes | str | Path,
+    key: str,
+    expired: int = DEFAULT_EXPIRE_SECS,
+) -> str:
+    match source:
+        case bytes():
+            await put_file(source, key)
+        case str():
+            await put_file_from_url(source, key)
+        case Path():
+            await put_file_from_local(source, key)
+        case _:
+            raise TypeError(f"unsupported source type: {type(source)}")
 
-    return wrapper
-
-
-upload_from_buffer = _wrap(put_file)
-upload_from_url = _wrap(put_file_from_url)
-upload_from_local = _wrap(put_file_from_local)
+    await update_key(key, expired)
+    return await presign(key, expired)

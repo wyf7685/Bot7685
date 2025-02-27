@@ -23,7 +23,7 @@ from nonebot.utils import escape_tag
 from nonebot_plugin_alconna import uniseg as u
 
 from src.plugins.gtg import call_soon
-from src.plugins.upload_cos import upload_from_local, upload_from_url
+from src.plugins.upload_cos import upload_cos
 
 from ..database import KVCacheDAO
 from ..utils import (
@@ -110,7 +110,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         key = self.get_cos_key(name)
 
         try:
-            url = await upload_from_url(url, key)
+            url = await upload_cos(url, key)
         except Exception as err:
             self.logger.opt(exception=err).debug("上传图片失败，使用原始链接")
 
@@ -204,7 +204,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         key = self.get_cos_key(f"{hash(url)}.mp4")
 
         try:
-            url = await upload_from_url(url, key)
+            url = await upload_cos(url, key)
         except Exception as err:
             self.logger.opt(exception=err).debug("上传视频失败，使用原始链接")
 
@@ -225,7 +225,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         key = self.get_cos_key(f"{hash(path)}/{path.name}")
 
         try:
-            url = await upload_from_local(path, key)
+            url = await upload_cos(path, key)
         except Exception as err:
             self.logger.opt(exception=err).debug("上传文件失败")
             return None

@@ -8,7 +8,7 @@ from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExt
 from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 
 require("src.plugins.upload_cos")
-from src.plugins.upload_cos import upload_from_url
+from src.plugins.upload_cos import upload_cos
 
 from ..adapters import get_sender
 from ..adapters.onebot11 import MessageConverter
@@ -22,7 +22,7 @@ async def url_to_image(url: str) -> Image | None:
         return None
 
     try:
-        url = await upload_from_url(url, f"{hash(url)}.{info.extension}")
+        url = await upload_cos(url, f"{hash(url)}.{info.extension}")
     except Exception as err:
         logger.opt(exception=err).debug("上传图片失败，使用原始链接")
 

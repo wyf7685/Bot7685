@@ -18,7 +18,7 @@ from nonebot.adapters.discord.message import (
 )
 from nonebot_plugin_alconna import uniseg as u
 
-from src.plugins.upload_cos import upload_from_url
+from src.plugins.upload_cos import upload_cos
 
 from ..utils import guess_url_type
 from ._registry import converter, sender
@@ -54,7 +54,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             mime = info and info.mime
 
             try:
-                url = await upload_from_url(url, self.get_cos_key(attachment.filename))
+                url = await upload_cos(url, self.get_cos_key(attachment.filename))
             except Exception as err:
                 self.logger.opt(exception=err).debug("上传文件失败，使用原始链接")
 
