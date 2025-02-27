@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import ClassVar, final, override
 
 from ....common import CommonRequestHeaders, Request, RequestInfo, ResponseData
 from ....const import GameId, PnsGameId, WuwaGameId
@@ -40,44 +41,40 @@ class WuwaRole(BaseRole):
 type Role = PnsRole | WuwaRole
 
 
+@dataclass
 class BaseRoleListRequest[R: Role, T: GameId](Request[list[R]]):
+    _info_: ClassVar[RequestInfo] = RequestInfo(
+        url="https://api.kurobbs.com/gamer/role/list",
+        method="POST",
+    )
+
     gameId: T
 
     @override
     def create_headers(self, token: str) -> RoleListRequestHeaders:
         return RoleListRequestHeaders(token=token)
 
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/gamer/role/list",
-            method="POST",
-        )
 
-
+@final
 class RoleListRequest(BaseRoleListRequest[Role, GameId]):
     """取账号绑定的游戏账号信息"""
 
-    @override
-    def get_response_data_class(self) -> type[list[Role]]:
-        return list[Role]
+    _resp_ = list[Role]
 
 
+@final
 class PnsRoleListRequest(BaseRoleListRequest[PnsRole, PnsGameId]):
     """取账号绑定的战双账号信息"""
 
+    _resp_ = list[PnsRole]
+
     gameId: PnsGameId = GameId.PNS
 
-    @override
-    def get_response_data_class(self) -> type[list[PnsRole]]:
-        return list[PnsRole]
 
-
+@final
 class WuwaRoleListRequest(BaseRoleListRequest[WuwaRole, WuwaGameId]):
     """取账号绑定的鸣潮账号信息"""
 
-    gameId: WuwaGameId = GameId.WUWA
+    _resp_ = list[WuwaRole]
 
-    @override
-    def get_response_data_class(self) -> type[list[WuwaRole]]:
-        return list[WuwaRole]
+    gameId: WuwaGameId = GameId.WUWA

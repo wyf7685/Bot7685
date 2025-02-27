@@ -1,8 +1,7 @@
 # ruff: noqa: N815
 
-from typing import Literal, override
-
-from pydantic import Field
+from dataclasses import dataclass, field
+from typing import Literal, final
 
 from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
@@ -38,22 +37,19 @@ class WuwaWidget(ResponseData):
     battlePassData: list[DataObj[Literal["电台等级", "本周经验"]]]
 
 
+@final
+@dataclass
 class WuwaWidgetGetDataRequest(WebRequest[WuwaWidget]):
     """鸣潮小组件数据"""
 
-    gameId: WuwaGameId = GameId.WUWA
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/gamer/widget/game3/getData",
+        method="POST",
+    )
+    _resp_ = WuwaWidget
+
     roleId: str
     serverId: str
-    type_: Literal[2] = Field(default=2, alias="type")
+    gameId: WuwaGameId = GameId.WUWA
+    type: Literal[2] = field(default=2)
     sizeType: Literal[1] = 1
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/gamer/widget/game3/getData",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[WuwaWidget]:
-        return WuwaWidget

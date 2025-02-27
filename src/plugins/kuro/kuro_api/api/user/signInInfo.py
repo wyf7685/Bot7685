@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from ...common import Request, RequestInfo, ResponseData
 from ...const import GameId
@@ -11,18 +12,15 @@ class SignInInfo(ResponseData):
     hasSignIn: bool
 
 
+@final
+@dataclass
 class SignInInfoRequest(Request[SignInInfo]):
     """社区签到信息"""
 
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/user/signIn/info",
+        method="GET",
+    )
+    _resp_ = SignInInfo
+
     gameId: GameId = GameId.PNS
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/user/signIn/info",
-            method="GET",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[SignInInfo]:
-        return SignInInfo

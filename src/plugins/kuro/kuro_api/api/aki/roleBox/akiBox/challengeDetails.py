@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
@@ -40,22 +41,19 @@ class WuwaChallengeDetails(ResponseData):
     open: bool
 
 
+@final
+@dataclass
 class WuwaChallengeDetailsRequest(WebRequest[WuwaChallengeDetails]):
     """鸣潮全息战略数据详情"""
 
-    gameId: WuwaGameId = GameId.WUWA
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/aki/roleBox/akiBox/challengeDetails",
+        method="POST",
+    )
+    _resp_ = WuwaChallengeDetails
+
     roleId: str
     serverId: str
+    gameId: WuwaGameId = GameId.WUWA
     channelId: int = 19
     countryCode: int = 1
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/aki/roleBox/akiBox/challengeDetails",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[WuwaChallengeDetails]:
-        return WuwaChallengeDetails

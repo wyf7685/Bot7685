@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final, override
 
 from ....common import RequestInfo, Response, ResponseData, WebRequest
 from ....const import GameId
@@ -23,8 +24,15 @@ class SignInV2(ResponseData):
     """明天签到获得的物品信息"""
 
 
+@final
+@dataclass
 class SigninV2Request(WebRequest[SignInV2]):
     """取游戏签到记录 V2"""
+
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/encourage/signIn/v2", method="POST"
+    )
+    _resp_ = SignInV2
 
     gameId: GameId
     serverId: str
@@ -32,17 +40,6 @@ class SigninV2Request(WebRequest[SignInV2]):
     userId: str
     reqMonth: int | str
     """签到的月份"""
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/encourage/signIn/v2",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[SignInV2]:
-        return SignInV2
 
     @override
     async def send(self, token: str) -> Response[SignInV2]:

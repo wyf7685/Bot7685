@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from pydantic import Field
 
@@ -39,22 +40,19 @@ class WuwaChallengeIndex(ResponseData):
     wikiUrl: str
 
 
+@final
+@dataclass
 class WuwaChallengeIndexRequest(WebRequest[WuwaChallengeIndex]):
     """鸣潮全息战略数据概览"""
 
-    gameId: WuwaGameId = GameId.WUWA
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/aki/roleBox/akiBox/challengeIndex",
+        method="POST",
+    )
+    _resp_ = WuwaChallengeIndex
+
     roleId: str
     serverId: str
+    gameId: WuwaGameId = GameId.WUWA
     channelId: int = 19
     countryCode: int = 1
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/aki/roleBox/akiBox/challengeIndex",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[WuwaChallengeIndex]:
-        return WuwaChallengeIndex

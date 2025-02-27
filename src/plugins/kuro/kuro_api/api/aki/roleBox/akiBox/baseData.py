@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from pydantic import Field
 
@@ -47,20 +48,17 @@ class WuwaBaseData(ResponseData):
     worldLevel: int
 
 
+@final
+@dataclass
 class WuwaBaseDataRequest(WebRequest[WuwaBaseData]):
     """鸣潮游戏角色基础数据"""
 
-    gameId: WuwaGameId = GameId.WUWA
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/aki/roleBox/akiBox/baseData",
+        method="POST",
+    )
+    _resp_ = WuwaBaseData
+
     roleId: str
     serverId: str
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/aki/roleBox/akiBox/baseData",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[WuwaBaseData]:
-        return WuwaBaseData
+    gameId: WuwaGameId = GameId.WUWA

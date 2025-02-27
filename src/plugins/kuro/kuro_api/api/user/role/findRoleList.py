@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final, override
 
 from ....common import CommonRequestHeaders, Request, RequestInfo, ResponseData
 from ....const import GameId
@@ -38,22 +39,19 @@ class Role(ResponseData):
 FindRoleList = list[Role]
 
 
+@final
+@dataclass
 class FindRoleListRequest(Request[FindRoleList]):
     """取绑定游戏账号列表"""
+
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/user/role/findRoleList",
+        method="POST",
+    )
+    _resp_ = FindRoleList
 
     gameId: GameId
 
     @override
     def create_headers(self, token: str) -> FindRoleListRequestHeaders:
         return FindRoleListRequestHeaders(token=token)
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/user/role/findRoleList",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[FindRoleList]:
-        return FindRoleList

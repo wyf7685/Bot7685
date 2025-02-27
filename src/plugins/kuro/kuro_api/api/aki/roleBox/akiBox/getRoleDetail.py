@@ -1,6 +1,8 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from enum import Enum
+from typing import Literal, final, override
 
 from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
@@ -62,14 +64,23 @@ class PhantomAttribute(ResponseData):
     attributeValue: str
     """属性值"""
 
+    @property
+    def is_main(self) -> bool:
+        return False
+
 
 class PhantomMainAttribute(PhantomAttribute):
     iconUrl: str
     """属性图标"""
 
+    @property
+    @override
+    def is_main(self) -> Literal[True]:
+        return True
+
 
 class Phantom(ResponseData):
-    cost: int
+    cost: Literal[4, 3, 1]
     """声骸 COST"""
     fetterDetail: FetterDetail
     """声骸套装效果"""
@@ -82,34 +93,55 @@ class Phantom(ResponseData):
 
     金 = 5
     """
-    mainProps: list[PhantomMainAttribute]
+    mainProps: list[PhantomMainAttribute] | None = None
     """声骸主属性列表"""
-    subProps: list[PhantomAttribute]
+    subProps: list[PhantomAttribute] | None = None
     """声骸副属性列表"""
+
+    def get_props(self) -> list[PhantomAttribute]:
+        return [*(self.mainProps or []), *(self.subProps or [])]
 
 
 class PhantomData(ResponseData):
     cost: int
     """声骸总 COST"""
-    equipPhantomList: list[Phantom]
+    equipPhantomList: list[Phantom | None] | None = None
     """已装备的声骸列表"""
+
+
+class AttributeID(int, Enum):
+    GLACIO = 1
+    """冷凝"""
+    FUSION = 2
+    """热熔"""
+    ELECTRO = 3
+    """导电"""
+    AERO = 4
+    """气动"""
+    SPECTRO = 5
+    """衍射"""
+    HAVOC = 6
+    """湮灭"""
+
+
+class WeaponTypeID(int, Enum):
+    BROADBLADE = 1
+    """长刃"""
+    SWORD = 2
+    """迅刀"""
+    PISTOLS = 3
+    """配枪"""
+    GAUNTLETS = 4
+    """臂铠"""
+    RECTIFIER = 5
+    """音感仪"""
 
 
 class Role(ResponseData):
     acronym: str
     """角色名称音序"""
-    attributeId: int
-    """属性 ID
-
-    冷凝 = 1
-    热熔 = 2
-    导电 = 3
-    气动 = 4
-    衍射 = 5
-    湮灭 = 6
-
-    TODO: 枚举值
-    """
+    attributeId: AttributeID
+    """属性 ID"""
     attributeName: str
     """属性名称"""
     breach: int
@@ -125,17 +157,8 @@ class Role(ResponseData):
     rolePicUrl: str
     starLevel: int
     """星级"""
-    weaponTypeId: int
-    """武器类型 ID
-
-    长刃 = 1
-    迅刀 = 2
-    配枪 = 3
-    臂铠 = 4
-    音感仪 = 5
-
-    TODO: 枚举值
-    """
+    weaponTypeId: WeaponTypeID
+    """武器类型 ID"""
     weaponTypeName: str
     """武器类型名称"""
 
@@ -156,10 +179,27 @@ class SkillDetail(ResponseData):
     """技能 ID"""
     name: str
     """技能名称"""
-    type: str
+    type: Literal[
+        "常态攻击",
+        "共鸣技能",
+        "共鸣回路",
+        "共鸣解放",
+        "变奏技能",
+        "延奏技能",
+    ]
     """技能类型"""
     description: str
     """技能描述"""
+
+
+skill_index = [
+    "常态攻击",
+    "共鸣技能",
+    "共鸣回路",
+    "共鸣解放",
+    "变奏技能",
+    "延奏技能",
+].index
 
 
 class Skill(ResponseData):
@@ -176,13 +216,8 @@ class WeaponDetail(ResponseData):
     """武器名称"""
     weaponStarLevel: int
     """武器星级"""
-    weaponType: int
-    """武器类型 ID
-
-    参考角色信息的 weaponTypeId 字段
-
-    TODO: 枚举值
-    """
+    weaponType: WeaponTypeID
+    """武器类型 ID"""
     weaponIcon: str
     """武器图标 URL"""
     weaponEffectName: str
@@ -207,7 +242,7 @@ class RoleDetail(ResponseData):
     """共鸣链"""
     level: int
     """角色等级"""
-    phantomData: PhantomData
+    phantomData: PhantomData | None
     """声骸装备数据"""
     role: Role
     """角色数据"""
@@ -218,22 +253,23 @@ class RoleDetail(ResponseData):
     weaponData: WeaponData
     """武器数据"""
 
+    @property
+    def sorted_skill(self) -> list[Skill]:
+        return sorted(self.skillList, key=lambda x: skill_index(x.skill.type))
 
+
+@final
+@dataclass
 class WuwaGetRoleDetailRequest(WebRequest[RoleDetail]):
-    gameId: WuwaGameId = GameId.WUWA
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/aki/roleBox/akiBox/getRoleDetail",
+        method="POST",
+    )
+    _resp_ = RoleDetail
+
     roleId: str
     serverId: str
+    id: int
+    gameId: WuwaGameId = GameId.WUWA
     channelId: int = 19
     countryCode: int = 1
-    id: int
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/aki/roleBox/akiBox/getRoleDetail",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[RoleDetail]:
-        return RoleDetail

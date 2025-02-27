@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import Literal, override
+from dataclasses import dataclass
+from typing import ClassVar, Literal, override
 
 from ...common import (
     CommonRequestHeaders,
@@ -35,8 +36,15 @@ class SdkLogin(ResponseData):
     """昵称"""
 
 
+@dataclass
 class SdkLoginRequest(RequestWithoutToken[SdkLogin]):
     """验证码登录 APP 端"""
+
+    _info_: ClassVar[RequestInfo] = RequestInfo(
+        url="https://api.kurobbs.com/user/sdkLogin",
+        method="POST",
+    )
+    _resp_: ClassVar[type] = SdkLogin
 
     mobile: str
     """手机号"""
@@ -50,14 +58,3 @@ class SdkLoginRequest(RequestWithoutToken[SdkLogin]):
         headers = SdkLoginRequestHeaders()
         self.devCode = headers.devCode
         return headers
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/user/sdkLogin",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[SdkLogin]:
-        return SdkLogin

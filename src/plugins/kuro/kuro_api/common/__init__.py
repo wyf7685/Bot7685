@@ -10,5 +10,5 @@ from .response import Response as Response
 from .response import ResponseData as ResponseData
 from .response import SuccessResponse as SuccessResponse
 from .response import ValidResponseData as ValidResponseData
-from .utils import is_failed_response as is_failed_response
-from .utils import is_success_response as is_success_response
+from .response import is_failed_response as is_failed_response
+from .response import is_success_response as is_success_response

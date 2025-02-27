@@ -1,5 +1,7 @@
 # ruff: noqa: N815
 import dataclasses
+import datetime
+import functools
 from enum import Enum
 from typing import Literal
 
@@ -61,6 +63,10 @@ class GachaItem(BaseModel):
     """数量"""
     time: str
     """时间"""
+
+    @functools.cached_property
+    def timestamp(self) -> int:
+        return int(datetime.datetime.fromisoformat(self.time).timestamp())
 
 
 class GachaResponse(BaseModel):

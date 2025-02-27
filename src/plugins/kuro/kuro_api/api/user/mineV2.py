@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from ...common import Request, RequestInfo, ResponseData
 
@@ -37,15 +38,12 @@ class MineV2(ResponseData):
     mine: Mine
 
 
+@final
+@dataclass
 class MineV2Request(Request[MineV2]):
     """取个人信息 V2"""
 
+    _info_ = RequestInfo(url="https://api.kurobbs.com/user/mineV2", method="POST")
+    _resp_ = MineV2
+
     otherUserId: str = ""
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(url="https://api.kurobbs.com/user/mineV2", method="POST")
-
-    @override
-    def get_response_data_class(self) -> type[MineV2]:
-        return MineV2

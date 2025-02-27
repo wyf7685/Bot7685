@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
@@ -23,20 +24,17 @@ class Role(ResponseData):
 WuwaGetAllRole = list[Role]
 
 
+@final
+@dataclass
 class WuwaGetAllRoleRequest(WebRequest[WuwaGetAllRole]):
     """鸣潮游戏角色数据"""
 
-    gameId: WuwaGameId = GameId.WUWA
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/aki/roleBox/akiBox/getAllRole",
+        method="POST",
+    )
+    _resp_ = WuwaGetAllRole
+
     roleId: str
     serverId: str
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/aki/roleBox/akiBox/getAllRole",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[WuwaGetAllRole]:
-        return WuwaGetAllRole
+    gameId: WuwaGameId = GameId.WUWA

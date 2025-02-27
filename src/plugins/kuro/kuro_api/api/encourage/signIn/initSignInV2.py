@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from pydantic import Field
 
@@ -77,21 +78,18 @@ class InitSigninV2(ResponseData):
     """限时签到奖励物品数组"""
 
 
+@final
+@dataclass
 class InitSigninV2Request(WebRequest[InitSigninV2]):
     """取游戏签到信息 V2"""
+
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/encourage/signIn/initSignInV2",
+        method="POST",
+    )
+    _resp_ = InitSigninV2
 
     gameId: GameId
     serverId: str
     roleId: str
     userId: str
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/encourage/signIn/initSignInV2",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[InitSigninV2]:
-        return InitSigninV2

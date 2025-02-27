@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from ....common import Request, RequestInfo, ResponseData
 from .list import Role
@@ -13,16 +14,13 @@ class RoleDefault(ResponseData):
     defaultRoleList: list[Role]
 
 
+@final
+@dataclass
 class RoleDefaultRequest(Request[RoleDefault]):
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/gamer/role/default",
+        method="POST",
+    )
+    _resp_ = RoleDefault
+
     queryUserId: str
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/gamer/role/default",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[RoleDefault]:
-        return RoleDefault

@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
@@ -47,20 +48,17 @@ class WuwaCalabashData(ResponseData):
     """声骸信息数组"""
 
 
+@final
+@dataclass
 class WuwaCalabashDataRequest(WebRequest[WuwaCalabashData]):
     """鸣潮游戏角色声骸收集数据"""
 
-    gameId: WuwaGameId = GameId.WUWA
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/aki/roleBox/akiBox/calabashData",
+        method="POST",
+    )
+    _resp_ = WuwaCalabashData
+
     roleId: str
     serverId: str
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/aki/roleBox/akiBox/calabashData",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[WuwaCalabashData]:
-        return WuwaCalabashData
+    gameId: WuwaGameId = GameId.WUWA

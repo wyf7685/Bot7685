@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, TypeGuard
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,3 +40,15 @@ type FailedResponse = (
     TokenExpiredResponse | FailedResponseWithMsg | FailedResponseWithMessage
 )
 type Response[T: ValidResponseData] = SuccessResponse[T] | FailedResponse
+
+
+def is_success_response[T: ValidResponseData](
+    response: SuccessResponse[T] | FailedResponse,
+) -> TypeGuard[SuccessResponse[T]]:
+    return response.success
+
+
+def is_failed_response[T: ValidResponseData](
+    response: SuccessResponse[T] | FailedResponse,
+) -> TypeGuard[FailedResponse]:
+    return not response.success

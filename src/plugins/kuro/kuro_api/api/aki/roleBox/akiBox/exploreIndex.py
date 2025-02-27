@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
@@ -127,22 +128,19 @@ class WuwaExploreIndex(ResponseData):
     """对外显示"""
 
 
+@final
+@dataclass
 class WuwaExploreIndexRequest(WebRequest[WuwaExploreIndex]):
     """鸣潮游戏角色探索数据"""
 
-    gameId: WuwaGameId = GameId.WUWA
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/aki/roleBox/akiBox/exploreIndex",
+        method="POST",
+    )
+    _resp_ = WuwaExploreIndex
+
     roleId: str
     serverId: str
+    gameId: WuwaGameId = GameId.WUWA
     channelId: int = 19
     countryCode: int = 1
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/aki/roleBox/akiBox/exploreIndex",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[WuwaExploreIndex]:
-        return WuwaExploreIndex

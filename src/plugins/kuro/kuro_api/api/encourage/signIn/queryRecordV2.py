@@ -1,7 +1,8 @@
 # ruff: noqa: N815
 
+from dataclasses import dataclass
 from enum import Enum
-from typing import override
+from typing import final
 
 from pydantic import Field
 
@@ -53,21 +54,17 @@ class GoodsData(ResponseData):
 QueryRecordV2 = list[GoodsData]
 
 
+@final
+@dataclass
 class QueryRecordV2Request(WebRequest[QueryRecordV2]):
     """取游戏签到记录 V2"""
+
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/encourage/signIn/queryRecordV2", method="POST"
+    )
+    _resp_ = QueryRecordV2
 
     gameId: GameId
     serverId: str
     roleId: str
     userId: str
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/encourage/signIn/queryRecordV2",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[QueryRecordV2]:
-        return QueryRecordV2

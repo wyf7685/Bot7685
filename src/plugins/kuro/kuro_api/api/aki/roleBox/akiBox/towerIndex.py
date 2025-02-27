@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import ClassVar
 
 from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
@@ -57,20 +58,16 @@ class WuwaTower(ResponseData):
     seasonEndTime: int  # 1057304584 <==== ???
 
 
+@dataclass
 class WuwaTowerIndexRequest(WebRequest[WuwaTower]):
     """鸣潮逆境深塔数据概览"""
 
-    gameId: WuwaGameId = GameId.WUWA
+    _info_: ClassVar[RequestInfo] = RequestInfo(
+        url="https://api.kurobbs.com/aki/roleBox/akiBox/towerIndex",
+        method="POST",
+    )
+    _resp_: ClassVar[type] = WuwaTower
+
     roleId: str
     serverId: str
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/aki/roleBox/akiBox/towerIndex",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[WuwaTower]:
-        return WuwaTower
+    gameId: WuwaGameId = GameId.WUWA

@@ -1,7 +1,7 @@
 # ruff: noqa: N815
 import dataclasses
 import datetime
-from collections import defaultdict
+from collections import Counter
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -70,16 +70,13 @@ class WuwaGachaApi:
         card_pool_type: CardPoolType,
         items: list[GachaItem],
     ) -> list[WWGFItem]:
-        time_count = defaultdict[str, int](lambda: 0)
-        for item in items:
-            time_count[item.time] += 1
+        time_count = Counter(item.timestamp for item in items)
 
         result: list[WWGFItem] = []
         for item in items:
-            time = datetime.datetime.fromisoformat(item.time).timestamp()
             gacha_id = f"{card_pool_type.value:04d}"
-            id = f"{int(time)}{gacha_id}{time_count[item.time]:05d}"
-            time_count[item.time] -= 1
+            id = f"{item.timestamp}{gacha_id}{time_count[item.timestamp]:05d}"
+            time_count[item.timestamp] -= 1
             result.append(
                 WWGFItem(
                     gacha_id=gacha_id,

@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 
-from typing import override
+from dataclasses import dataclass
+from typing import final
 
 from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
@@ -43,20 +44,17 @@ class WuwaSkinData(ResponseData):
     showToGuest: bool
 
 
+@final
+@dataclass
 class WuwaSkinDataRequest(WebRequest[WuwaSkinData]):
     """鸣潮皮肤数据"""
 
-    gameId: WuwaGameId = GameId.WUWA
+    _info_ = RequestInfo(
+        url="https://api.kurobbs.com/aki/roleBox/akiBox/skinData",
+        method="POST",
+    )
+    _resp_ = WuwaSkinData
+
     roleId: str
     serverId: str
-
-    @override
-    def get_info(self) -> RequestInfo:
-        return RequestInfo(
-            url="https://api.kurobbs.com/aki/roleBox/akiBox/skinData",
-            method="POST",
-        )
-
-    @override
-    def get_response_data_class(self) -> type[WuwaSkinData]:
-        return WuwaSkinData
+    gameId: WuwaGameId = GameId.WUWA
