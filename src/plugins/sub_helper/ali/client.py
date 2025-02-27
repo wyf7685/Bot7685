@@ -26,7 +26,7 @@ logger = nonebot.logger.opt(colors=True)
 
 class AliClient:
     def __init__(self) -> None:
-        sdk_config = open_api_models.Config(
+        sdk_config = open_api_models.Config(  # type:ignore[reportArgumentType]
             access_key_id=config.credential.access_key_id.get_secret_value(),
             access_key_secret=config.credential.access_key_secret.get_secret_value(),
             region_id=config.region_id,
@@ -55,8 +55,8 @@ class AliClient:
         query = OpenApiUtilClient.query(request.model_dump(exclude_none=True))
         response = await self.client.call_api_async(
             params=self.create_api_info(action),
-            request=open_api_models.OpenApiRequest(query=query),
-            runtime=util_models.RuntimeOptions(),
+            request=open_api_models.OpenApiRequest(query=query),  # type:ignore[reportArgumentType]
+            runtime=util_models.RuntimeOptions(),  # type:ignore[reportArgumentType]
         )
         return request.parse_response(response)
 
