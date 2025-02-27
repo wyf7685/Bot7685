@@ -42,7 +42,7 @@ with contextlib.suppress(ImportError):
     from nonebot.drivers.aiohttp import Session as AIOHTTPSession
 
     AIOHTTPSession.request = patch_request(AIOHTTPSession.request)
-    logger.success("Patched HTTPXSession.request")
+    logger.success("Patched AIOHTTPSession.request")
 
 with contextlib.suppress(ImportError):
     from nonebot.drivers.httpx import Session as HTTPXSession
