@@ -1,10 +1,18 @@
 import contextlib
 from typing import Protocol, override
 
-from nonebot import get_driver, logger
+from nonebot import get_driver, get_plugin_config, logger
 from nonebot.drivers import HTTPClientMixin, Request, Response
+from pydantic import BaseModel
 
 logger = logger.opt(colors=True)
+
+
+class Config(BaseModel):
+    http_proxy: str | None = None
+
+
+config = get_plugin_config(Config)
 
 
 class _RequestCall[M: HTTPClientMixin](Protocol):
@@ -18,9 +26,12 @@ class _RequestCall[M: HTTPClientMixin](Protocol):
 def patch_request[M: HTTPClientMixin](original: _RequestCall[M]) -> _RequestCall[M]:
     @override
     async def request(self: M, setup: Request) -> Response:
-        if setup.url.host == "multimedia.nt.qq.com.cn":
-            setup.url = setup.url.with_scheme("http")
-            logger.debug(f"Changed scheme to http: <c>{setup.url}</c>")
+        if setup.url.host is not None:
+            if setup.url.host == "multimedia.nt.qq.com.cn":
+                setup.url = setup.url.with_scheme("http")
+                logger.debug(f"Changed scheme to http: <c>{setup.url}</c>")
+            elif "wakatime.com" in setup.url.host and config.http_proxy is not None:
+                setup.proxy = config.http_proxy
 
         return await original(self, setup)
 
