@@ -4,8 +4,8 @@ import pathlib
 from collections.abc import Generator
 from typing import Any, cast
 
-import yaml
 from msgspec import toml as msgtoml
+from msgspec import yaml as msgyaml
 
 root = pathlib.Path(__file__).resolve().parent.parent
 env_file = root / ".env"
@@ -13,8 +13,7 @@ toml_file = root / "pyproject.toml"
 
 
 def _load_yaml(file_path: pathlib.Path) -> dict[str, Any]:
-    with file_path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    return msgyaml.decode(file_path.read_bytes())
 
 
 def load_config() -> dict[str, Any]:

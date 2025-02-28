@@ -348,7 +348,7 @@ dependencies = [
     { name = "cos-python-sdk-v5" },
     { name = "gunicorn" },
     { name = "httpx" },
-    { name = "msgspec", extra = ["toml"] },
+    { name = "msgspec", extra = ["toml", "yaml"] },
     { name = "nonebot-adapter-discord" },
     { name = "nonebot-adapter-onebot" },
     { name = "nonebot-adapter-qq" },
@@ -398,7 +398,7 @@ requires-dist = [
     { name = "cos-python-sdk-v5", specifier = ">=1.9.33" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "msgspec", extras = ["toml"], specifier = ">=0.19.0" },
+    { name = "msgspec", extras = ["toml", "yaml"], specifier = ">=0.19.0" },
     { name = "nonebot-adapter-discord", specifier = ">=0.1.8" },
     { name = "nonebot-adapter-onebot", specifier = ">=2.4.6" },
     { name = "nonebot-adapter-qq", specifier = ">=1.5.3" },
@@ -1304,6 +1304,9 @@ wheels = [
 [package.optional-dependencies]
 toml = [
     { name = "tomli-w" },
+]
+yaml = [
+    { name = "pyyaml" },
 ]
 
 [[package]]

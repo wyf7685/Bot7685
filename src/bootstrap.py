@@ -2,13 +2,15 @@ import importlib
 import logging
 import time
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any
 
 import nonebot
-import yaml
-from nonebot.adapters import Adapter
+from msgspec import yaml as msgyaml
 from nonebot.utils import deep_update, logger_wrapper
 from pydantic import BaseModel, ConfigDict
+
+if TYPE_CHECKING:
+    from nonebot.adapters import Adapter
 
 log = logger_wrapper("Bootstrap")
 
@@ -45,8 +47,7 @@ def setup_logger() -> None:
 
 
 def _load_yaml(file_path: Path) -> dict[str, Any]:
-    with file_path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    return msgyaml.decode(file_path.read_bytes())
 
 
 def load_config() -> dict[str, Any]:
@@ -90,7 +91,7 @@ def load_adapters(config: Config) -> None:
             continue
 
         try:
-            adapter = cast(type[Adapter], module.Adapter)
+            adapter: type[Adapter] = module.Adapter
         except AttributeError:
             log("WARNING", f"Module <y>{full_name}</y> is not a valid adapter")
             continue
