@@ -1,10 +1,15 @@
+import contextlib
 import json
 import pathlib
-from typing import Any
+from collections.abc import Generator
+from typing import Any, cast
 
 import yaml
+from msgspec import toml as msgtoml
 
-env_file = pathlib.Path(__file__).resolve().parent.parent / ".env"
+root = pathlib.Path(__file__).resolve().parent.parent
+env_file = root / ".env"
+toml_file = root / "pyproject.toml"
 
 
 def _load_yaml(file_path: pathlib.Path) -> dict[str, Any]:
@@ -38,11 +43,56 @@ def load_config() -> dict[str, Any]:
     return config
 
 
-def generate_env_file() -> None:
-    (pathlib.Path(__file__).resolve().parent.parent / ".env").write_text(
-        "\n".join(f"{key}={json.dumps(value)}" for key, value in load_config().items())
-    )
+def generate_env_file(config: dict[str, object]) -> None:
+    env = "\n".join(f"{key}={json.dumps(value)}" for key, value in config.items())
+    env_file.write_text(env)
+
+
+def generate_cli_toml(config: dict[str, object]) -> None:
+    adapters = [
+        {
+            "name": adapter.replace(".", " "),
+            "module_name": f"nonebot.adapters.{adapter}",
+        }
+        for adapter in cast(list[str], config["adapters"])
+    ]
+    plugins = cast(list[str], config["plugins"])
+    plugin_dirs = [
+        config["plugin_dir"],
+        config["dev_plugin_dir"],
+    ]
+    for path in pathlib.Path(str(config["dev_plugin_dir"])).iterdir():
+        if path.is_dir() and path.name in plugins:
+            plugins.remove(path.name)
+
+    toml = msgtoml.decode(toml_file.read_text())
+    if "tool" not in toml:
+        toml["tool"] = {}
+    toml["tool"]["nonebot"] = {
+        "adapters": adapters,
+        "plugins": plugins,
+        "plugin_dirs": plugin_dirs,
+        "builtin_plugins": [],
+    }
+    toml_file.write_bytes(msgtoml.encode(toml))
+
+
+def generate() -> None:
+    config = load_config()
+    generate_env_file(config)
+    generate_cli_toml(config)
+
+
+@contextlib.contextmanager
+def ensure_cli() -> Generator[None]:
+    toml = toml_file.read_text()
+    generate()
+    try:
+        yield
+    finally:
+        env_file.unlink()
+        toml_file.write_text(toml)
 
 
 if __name__ == "__main__":
-    generate_env_file()
+    generate()

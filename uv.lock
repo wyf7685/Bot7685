@@ -348,7 +348,7 @@ dependencies = [
     { name = "cos-python-sdk-v5" },
     { name = "gunicorn" },
     { name = "httpx" },
-    { name = "msgspec" },
+    { name = "msgspec", extra = ["toml"] },
     { name = "nonebot-adapter-discord" },
     { name = "nonebot-adapter-onebot" },
     { name = "nonebot-adapter-qq" },
@@ -398,7 +398,7 @@ requires-dist = [
     { name = "cos-python-sdk-v5", specifier = ">=1.9.33" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "msgspec", specifier = ">=0.19.0" },
+    { name = "msgspec", extras = ["toml"], specifier = ">=0.19.0" },
     { name = "nonebot-adapter-discord", specifier = ">=0.1.8" },
     { name = "nonebot-adapter-onebot", specifier = ">=2.4.6" },
     { name = "nonebot-adapter-qq", specifier = ">=1.5.3" },
@@ -1299,6 +1299,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/53/2f/2b1c2b056894fbaa975f68f81e3014bb447516a8b010f1bed3fb0e016ed7/msgspec-0.19.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:ac7f7c377c122b649f7545810c6cd1b47586e3aa3059126ce3516ac7ccc6a6a9", size = 213996 },
     { url = "https://files.pythonhosted.org/packages/aa/5a/4cd408d90d1417e8d2ce6a22b98a6853c1b4d7cb7669153e4424d60087f6/msgspec-0.19.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:a5bc1472223a643f5ffb5bf46ccdede7f9795078194f14edd69e3aab7020d327", size = 219087 },
     { url = "https://files.pythonhosted.org/packages/23/d8/f15b40611c2d5753d1abb0ca0da0c75348daf1252220e5dda2867bd81062/msgspec-0.19.0-cp313-cp313-win_amd64.whl", hash = "sha256:317050bc0f7739cb30d257ff09152ca309bf5a369854bbf1e57dffc310c1f20f", size = 187432 },
+]
+
+[package.optional-dependencies]
+toml = [
+    { name = "tomli-w" },
 ]
 
 [[package]]
@@ -2664,6 +2669,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/7c/c0/3f6228e1da830b08aeefa83fee3a39a4e7e94dba7ba964728c4274bc1aec/tencentcloud-sdk-python-dnspod-3.0.1319.tar.gz", hash = "sha256:35d7e35dcf6ed9463bc510e3384b7dd3051e4e37792904da6f5807efb3f10e74", size = 60846 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8c/77/739b84b7a37dc45b1a3088d9a304b5719beabc019f7f07ec9f5d0fab690f/tencentcloud_sdk_python_dnspod-3.0.1319-py2.py3-none-any.whl", hash = "sha256:ed9618083f58bb7511cd8891cd0e9c8afb3737802fea6d53ec58197a183ce006", size = 63065 },
+]
+
+[[package]]
+name = "tomli-w"
+version = "1.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/19/75/241269d1da26b624c0d5e110e8149093c759b7a286138f4efd61a60e75fe/tomli_w-1.2.0.tar.gz", hash = "sha256:2dd14fac5a47c27be9cd4c976af5a12d87fb1f0b4512f81d69cce3b35ae25021", size = 7184 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c7/18/c86eb8e0202e32dd3df50d43d7ff9854f8e0603945ff398974c1d91ac1ef/tomli_w-1.2.0-py3-none-any.whl", hash = "sha256:188306098d013b691fcadc011abd66727d3c414c571bb01b1a174ba8c983cf90", size = 6675 },
 ]
 
 [[package]]
