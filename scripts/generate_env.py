@@ -13,7 +13,7 @@ toml_file = root / "pyproject.toml"
 
 
 def _load_yaml(file_path: pathlib.Path) -> dict[str, Any]:
-    return msgyaml.decode(file_path.read_bytes())
+    return msgyaml.decode(file_path.read_bytes()) or {}
 
 
 def load_config() -> dict[str, Any]:
