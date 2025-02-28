@@ -1,9 +1,8 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
-from ...common import RequestInfo, RequestWithoutToken, ResponseData
+from ..common import RequestInfo, RequestWithoutToken, ResponseData
 
 
 class GetSmsCode(ResponseData):
@@ -12,7 +11,6 @@ class GetSmsCode(ResponseData):
 
 
 @final
-@dataclass
 class GetSmsCodeRequest(RequestWithoutToken[GetSmsCode]):
     """发送验证码 APP 端"""
 

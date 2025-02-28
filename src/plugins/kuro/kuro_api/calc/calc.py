@@ -1,5 +1,5 @@
+import dataclasses
 import functools
-from dataclasses import dataclass
 from typing import Any
 
 from ..api.models import Phantom, RoleDetail
@@ -9,7 +9,7 @@ from .sonata import WavesSonata, get_sonata_detail
 type _CalcContext = dict[str, Any]
 
 
-@dataclass
+@dataclasses.dataclass
 class RolePhantomCalcResult:
     phantoms: list[PhantomCalcResult | None]
 

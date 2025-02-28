@@ -4,7 +4,6 @@ import json
 from datetime import date
 from pathlib import Path
 
-import chardet
 from nonebot.log import logger
 from pydantic import BaseModel, ValidationError, field_validator
 
@@ -126,13 +125,6 @@ def load_preset(
     return preset
 
 
-def get_encoding(file_path: Path) -> str:
-    """
-    检测文件编码，需要 chardet 依赖
-    """
-    return chardet.detect(file_path.read_bytes()).get("encoding") or "utf-8"
-
-
 def load_all_preset(path: Path) -> list[Preset]:
     """
     加载指定文件夹下所有模板 json文件，返回 Preset列表
@@ -144,7 +136,7 @@ def load_all_preset(path: Path) -> list[Preset]:
     for file in path.rglob("*.json"):
         preset = load_preset(file, len(presets) + 1)
         if preset is None:
-            preset = load_preset(file, len(presets) + 1, encoding=get_encoding(file))
+            preset = load_preset(file, len(presets) + 1, encoding="utf-8")
         if preset is not None:
             presets.append(preset)
     if presets:

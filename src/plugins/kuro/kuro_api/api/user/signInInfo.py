@@ -1,10 +1,9 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
-from ...common import Request, RequestInfo, ResponseData
 from ...const import GameId
+from ..common import Request, RequestInfo, ResponseData
 
 
 class SignInInfo(ResponseData):
@@ -13,7 +12,6 @@ class SignInInfo(ResponseData):
 
 
 @final
-@dataclass
 class SignInInfoRequest(Request[SignInInfo]):
     """社区签到信息"""
 

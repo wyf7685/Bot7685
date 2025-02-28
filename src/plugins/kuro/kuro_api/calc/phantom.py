@@ -1,11 +1,12 @@
 # ref: https://github.com/tyql688/WutheringWavesUID/blob/15c975d/WutheringWavesUID/utils/calculate.py
 
+import dataclasses
 import functools
-import json
 from collections import defaultdict
-from dataclasses import dataclass
-from typing import Literal, NamedTuple, Self, cast
+from pathlib import Path
+from typing import Literal, NamedTuple, Self
 
+from msgspec import json as msgjson
 from pydantic import BaseModel
 
 from ..api.models import Phantom, PhantomAttribute
@@ -37,15 +38,10 @@ type _AttributePropsName = Literal[
 ]
 type _AllPropsName = _CommonPropsName | _SkillPropsName | _AttributePropsName
 type _PropsWeightDict = defaultdict[_NormalizedPropsName | str, float]
+type _SkillWeight = tuple[float, float, float, float]
+_BASIC_PROPS = ("攻击", "生命", "防御")
 _SKILLS = ("普攻", "重击", "共鸣技能", "共鸣解放")
 _ATTRS = ("冷凝", "热熔", "导电", "气动", "衍射", "湮灭")
-
-
-class _SkillWeight(NamedTuple):
-    basic_attack: float
-    heavy_attack: float
-    skill: float
-    liberation: float
 
 
 class _GradeLevel(NamedTuple):
@@ -75,7 +71,14 @@ class _ValidGradeProps(BaseModel):
     valid_b: list[_AllPropsName]
 
 
-@dataclass
+def _check_conditions(ctx: dict[str, object], condition_path: Path) -> str | None:
+    if not condition_path.exists():
+        return None
+    expressions = msgjson.decode(condition_path.read_text(encoding="utf-8"))
+    return find_first_matching_expression(ctx, expressions)
+
+
+@dataclasses.dataclass
 class PhantomCalcResult:
     phantom: Phantom
     score: float
@@ -91,7 +94,7 @@ class PhantomCalc(BaseModel):
     main_props: dict[int, _PropsWeightDict]
     sub_props: _PropsWeightDict
     max_main_props: dict[str, list[_NormalizedPropsName]]  # key: "1.1"/"3.1"/"4.1"
-    skill_weight: _SkillWeight = _SkillWeight(0, 0, 0, 0)
+    skill_weight: _SkillWeight = (0, 0, 0, 0)
     grade: _ValidGradeProps
     total_grade: _GradeLevel
     props_grade: _PropsGrade
@@ -99,18 +102,11 @@ class PhantomCalc(BaseModel):
 
     @classmethod
     def get(cls, role_id: int, ctx: dict[str, object]) -> Self:
-        char_dir = CALC_MAP_PATH / str(role_id)
-        if not char_dir.exists():
+        if not (char_dir := CALC_MAP_PATH / str(role_id)).exists():
             char_dir = CALC_MAP_PATH / "default"
 
-        def check_conditions(file_name: str) -> str | None:
-            condition_path = char_dir / file_name
-            if not condition_path.exists():
-                return None
-            expressions = json.loads(condition_path.read_text(encoding="utf-8"))
-            return find_first_matching_expression(ctx, expressions)
-
-        path = char_dir / (check_conditions("condition.json") or "calc.json")
+        calc_json = _check_conditions(ctx, char_dir / "condition.json")
+        path = char_dir / (calc_json or "calc.json")
         return cls.model_validate_json(path.read_text(encoding="utf-8"))
 
     def calc_phantom_prop_score(
@@ -121,8 +117,8 @@ class PhantomCalc(BaseModel):
         name = prop.attributeName
         value = float(prop.attributeValue.removesuffix("%"))
 
-        if name in ("攻击", "生命", "防御"):
-            score = props_weight[cast(_BasicPropsName, f"{name}{percentage}")] * value
+        if name in _BASIC_PROPS:
+            score = props_weight[name + percentage] * value
         elif (prefix := name.removesuffix("伤害加成")) in (_SKILLS + _ATTRS):
             if prefix in _SKILLS:
                 skill_weight = self.skill_weight[_SKILLS.index(prefix)]

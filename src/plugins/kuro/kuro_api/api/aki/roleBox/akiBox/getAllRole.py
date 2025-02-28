@@ -1,10 +1,9 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
-from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
+from ....common import RequestInfo, ResponseData, WebRequest
 
 
 class Role(ResponseData):
@@ -25,7 +24,6 @@ WuwaGetAllRole = list[Role]
 
 
 @final
-@dataclass
 class WuwaGetAllRoleRequest(WebRequest[WuwaGetAllRole]):
     """鸣潮游戏角色数据"""
 

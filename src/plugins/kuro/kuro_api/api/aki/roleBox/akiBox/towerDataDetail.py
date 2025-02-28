@@ -1,14 +1,12 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
-from .....common import RequestInfo
+from ....common import RequestInfo
 from .towerIndex import WuwaTowerIndexRequest
 
 
 @final
-@dataclass
 class WuwaTowerDataDetailRequest(WuwaTowerIndexRequest):
     """鸣潮逆境深塔数据详细信息"""
 

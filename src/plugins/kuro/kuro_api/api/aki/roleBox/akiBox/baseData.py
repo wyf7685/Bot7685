@@ -1,12 +1,11 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
 from pydantic import Field
 
-from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
+from ....common import RequestInfo, ResponseData, WebRequest
 
 
 class Box(ResponseData):
@@ -49,7 +48,6 @@ class WuwaBaseData(ResponseData):
 
 
 @final
-@dataclass
 class WuwaBaseDataRequest(WebRequest[WuwaBaseData]):
     """鸣潮游戏角色基础数据"""
 

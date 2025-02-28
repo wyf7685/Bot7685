@@ -1,10 +1,9 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final, override
 
-from ....common import RequestInfo, Response, ResponseData, WebRequest
 from ....const import GameId
+from ...common import RequestInfo, Response, ResponseData, WebRequest
 
 
 class GoodsData(ResponseData):
@@ -25,7 +24,6 @@ class SignInV2(ResponseData):
 
 
 @final
-@dataclass
 class SigninV2Request(WebRequest[SignInV2]):
     """取游戏签到记录 V2"""
 

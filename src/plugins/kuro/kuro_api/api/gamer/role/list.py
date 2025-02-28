@@ -1,10 +1,9 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import ClassVar, final, override
 
-from ....common import CommonRequestHeaders, Request, RequestInfo, ResponseData
 from ....const import GameId, PnsGameId, WuwaGameId
+from ...common import CommonRequestHeaders, Request, RequestInfo, ResponseData
 
 
 class RoleListRequestHeaders(CommonRequestHeaders):
@@ -41,7 +40,6 @@ class WuwaRole(BaseRole):
 type Role = PnsRole | WuwaRole
 
 
-@dataclass
 class BaseRoleListRequest[R: Role, T: GameId](Request[list[R]]):
     _info_: ClassVar[RequestInfo] = RequestInfo(
         url="https://api.kurobbs.com/gamer/role/list",

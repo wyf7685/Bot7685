@@ -1,10 +1,9 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass, field
 from typing import Literal, final
 
-from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
+from ....common import RequestInfo, ResponseData, WebRequest
 
 type DataName = Literal["结晶波片", "活跃度", "电台等级", "本周经验"]
 
@@ -38,7 +37,6 @@ class WuwaWidget(ResponseData):
 
 
 @final
-@dataclass
 class WuwaWidgetGetDataRequest(WebRequest[WuwaWidget]):
     """鸣潮小组件数据"""
 
@@ -51,5 +49,5 @@ class WuwaWidgetGetDataRequest(WebRequest[WuwaWidget]):
     roleId: str
     serverId: str
     gameId: WuwaGameId = GameId.WUWA
-    type: Literal[2] = field(default=2)
+    type: Literal[2] = 2
     sizeType: Literal[1] = 1

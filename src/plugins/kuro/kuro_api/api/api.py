@@ -1,4 +1,5 @@
 # ruff: noqa: ANN201
+
 from __future__ import annotations
 
 import contextlib
@@ -8,26 +9,23 @@ import functools
 from typing import TYPE_CHECKING, Protocol, Self, overload
 
 from ..exceptions import AlreadySignin, ApiCallFailed, KuroApiException, RoleNotFound
+from .common import is_success_response
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from ..common import Response, ValidResponseData
-    from ..common.request import Request
     from ..const import PnsGameId, WuwaGameId
-    from .gamer.role.list import PnsRole, Role, WuwaRole
-    from .user.mineV2 import Mine
+    from .common import Request, Response, ValidResponseData
+    from .models import Mine, PnsRole, Role, WuwaRole
 
     type GameId = PnsGameId | WuwaGameId
 
+    class _WuwaFetchReq[T: ValidResponseData](Protocol):
+        def __call__(self, *, roleId: str, serverId: str) -> Request[T]: ...  # noqa: N803
+
 
 def _extract[T: ValidResponseData](resp: Response[T]) -> T:
-    # 使用 if resp.success is True 时
-    #   type checker 可以正常推断 resp 的类型为 SuccessResponse[T]
-    # 但使用 if resp.success 时则不能
-    # 看上去很怪但先用着罢
-
-    if resp.success is True:
+    if is_success_response(resp):
         return resp.data
 
     raise ApiCallFailed(resp.msg)
@@ -46,13 +44,13 @@ class KuroApi:
 
     @classmethod
     async def from_mobile_code(cls, mobile: str, code: str) -> Self:
-        from .user.sdkLogin import SdkLoginRequest
+        from .models import SdkLoginRequest
 
         resp = await SdkLoginRequest(mobile=mobile, code=code).send()
         return cls(_extract(resp).token)
 
     async def mine(self) -> Mine:
-        from .user.mineV2 import MineV2Request
+        from .models import MineV2Request
 
         if self._mine_cache is None:
             resp = await MineV2Request().send(self.token)
@@ -69,13 +67,13 @@ class KuroApi:
         return (await self.mine()).goldNum
 
     async def has_signin(self) -> bool:
-        from .user.signInInfo import SignInInfoRequest
+        from .models import SignInInfoRequest
 
         resp = await SignInInfoRequest().send(self.token)
         return _extract(resp).hasSignIn
 
     async def signin(self):
-        from .user.signIn import SignInRequest
+        from .models import SignInRequest
 
         resp = await SignInRequest().send(self.token)
         return _extract(resp)
@@ -86,7 +84,7 @@ class KuroApi:
     async def role_list(self, game_id: WuwaGameId) -> Sequence[WuwaRole]: ...
 
     async def role_list(self, game_id: GameId) -> Sequence[Role]:
-        from .gamer.role.list import RoleListRequest
+        from .models import RoleListRequest
 
         resp = await RoleListRequest(gameId=game_id).send(self.token)
         return _extract(resp)
@@ -145,9 +143,7 @@ class KuroRoleApi[R: Role = Role]:
         self.role = role
 
     async def signin(self) -> list[GoodsData]:
-        from .encourage.signIn.initSignInV2 import InitSigninV2Request
-        from .encourage.signIn.queryRecordV2 import QueryRecordV2Request
-        from .encourage.signIn.v2 import SigninV2Request
+        from .models import InitSigninV2Request, QueryRecordV2Request, SigninV2Request
 
         now = datetime.datetime.now()
         resp = await InitSigninV2Request(
@@ -189,10 +185,6 @@ class KuroRoleApi[R: Role = Role]:
         return goods
 
 
-class _WuwaFetchReq[T: ValidResponseData](Protocol):
-    def __call__(self, *, roleId: str, serverId: str) -> Request[T]: ...  # noqa: N803
-
-
 class KuroWuwaRoleApi(KuroRoleApi["WuwaRole"]):
     async def _fetch_with[T: ValidResponseData](self, req: _WuwaFetchReq[T], /) -> T:
         resp = await req(
@@ -202,7 +194,7 @@ class KuroWuwaRoleApi(KuroRoleApi["WuwaRole"]):
         return _extract(resp)
 
     async def get_widget_data(self):
-        from .gamer.widget.game3.getData import WuwaWidgetGetDataRequest
+        from .models import WuwaWidgetGetDataRequest
 
         return await self._fetch_with(WuwaWidgetGetDataRequest)
 
@@ -211,63 +203,63 @@ class KuroWuwaRoleApi(KuroRoleApi["WuwaRole"]):
         return widget.energyData.cur, widget.energyData.total
 
     async def get_base_data(self):
-        from .aki.roleBox.akiBox.baseData import WuwaBaseDataRequest
+        from .models import WuwaBaseDataRequest
 
         return await self._fetch_with(WuwaBaseDataRequest)
 
     async def get_calabash_data(self):
-        from .aki.roleBox.akiBox.calabashData import WuwaCalabashDataRequest
+        from .models import WuwaCalabashDataRequest
 
         return await self._fetch_with(WuwaCalabashDataRequest)
 
     async def get_challenge_index(self):
-        from .aki.roleBox.akiBox.challengeIndex import WuwaChallengeIndexRequest
+        from .models import WuwaChallengeIndexRequest
 
         return await self._fetch_with(WuwaChallengeIndexRequest)
 
     async def get_challenge_details(self):
-        from .aki.roleBox.akiBox.challengeDetails import WuwaChallengeDetailsRequest
+        from .models import WuwaChallengeDetailsRequest
 
         return await self._fetch_with(WuwaChallengeDetailsRequest)
 
     async def get_explore_index(self):
-        from .aki.roleBox.akiBox.exploreIndex import WuwaExploreIndexRequest
+        from .models import WuwaExploreIndexRequest
 
         return await self._fetch_with(WuwaExploreIndexRequest)
 
     async def get_all_role(self):
-        from .aki.roleBox.akiBox.getAllRole import WuwaGetAllRoleRequest
+        from .models import WuwaGetAllRoleRequest
 
         return await self._fetch_with(WuwaGetAllRoleRequest)
 
     async def get_role_data(self):
-        from .aki.roleBox.akiBox.roleData import WuwaRoleDataRequest
+        from .models import WuwaRoleDataRequest
 
         return await self._fetch_with(WuwaRoleDataRequest)
 
     async def get_role_detail(self, role_id: int):
-        from .aki.roleBox.akiBox.getRoleDetail import WuwaGetRoleDetailRequest
+        from .models import WuwaGetRoleDetailRequest
 
         call = functools.partial(WuwaGetRoleDetailRequest, id=role_id)
         return await self._fetch_with(call)
 
     async def get_skin_data(self):
-        from .aki.roleBox.akiBox.skinData import WuwaSkinDataRequest
+        from .models import WuwaSkinDataRequest
 
         return await self._fetch_with(WuwaSkinDataRequest)
 
     async def get_tower_data_detail(self):
-        from .aki.roleBox.akiBox.towerDataDetail import WuwaTowerDataDetailRequest
+        from .models import WuwaTowerDataDetailRequest
 
         return await self._fetch_with(WuwaTowerDataDetailRequest)
 
     async def get_tower_index(self):
-        from .aki.roleBox.akiBox.towerIndex import WuwaTowerIndexRequest
+        from .models import WuwaTowerIndexRequest
 
         return await self._fetch_with(WuwaTowerIndexRequest)
 
     async def refresh_data(self):
-        from .aki.roleBox.akiBox.refreshData import WuwaRefreshDataRequest
+        from .models import WuwaRefreshDataRequest
 
         call = functools.partial(WuwaRefreshDataRequest, gameId=self.role.gameId)
         return await self._fetch_with(call)

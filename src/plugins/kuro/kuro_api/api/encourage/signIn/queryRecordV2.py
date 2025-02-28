@@ -1,13 +1,12 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from enum import Enum
 from typing import final
 
 from pydantic import Field
 
-from ....common import RequestInfo, ResponseData, WebRequest
 from ....const import GameId
+from ...common import RequestInfo, ResponseData, WebRequest
 
 
 class GoodsType(int, Enum):
@@ -55,7 +54,6 @@ QueryRecordV2 = list[GoodsData]
 
 
 @final
-@dataclass
 class QueryRecordV2Request(WebRequest[QueryRecordV2]):
     """取游戏签到记录 V2"""
 

@@ -1,10 +1,9 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
-from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
+from ....common import RequestInfo, ResponseData, WebRequest
 
 
 class Phantom(ResponseData):
@@ -49,7 +48,6 @@ class WuwaCalabashData(ResponseData):
 
 
 @final
-@dataclass
 class WuwaCalabashDataRequest(WebRequest[WuwaCalabashData]):
     """鸣潮游戏角色声骸收集数据"""
 

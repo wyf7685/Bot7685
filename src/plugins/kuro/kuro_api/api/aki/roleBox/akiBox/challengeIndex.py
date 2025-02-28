@@ -1,12 +1,11 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
 from pydantic import Field
 
-from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
+from ....common import RequestInfo, ResponseData, WebRequest
 
 
 class Country(ResponseData):
@@ -41,7 +40,6 @@ class WuwaChallengeIndex(ResponseData):
 
 
 @final
-@dataclass
 class WuwaChallengeIndexRequest(WebRequest[WuwaChallengeIndex]):
     """鸣潮全息战略数据概览"""
 

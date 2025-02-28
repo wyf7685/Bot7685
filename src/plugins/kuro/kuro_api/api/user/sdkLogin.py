@@ -1,9 +1,8 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import ClassVar, Literal, override
 
-from ...common import (
+from ..common import (
     CommonRequestHeaders,
     RequestInfo,
     RequestWithoutToken,
@@ -36,7 +35,6 @@ class SdkLogin(ResponseData):
     """昵称"""
 
 
-@dataclass
 class SdkLoginRequest(RequestWithoutToken[SdkLogin]):
     """验证码登录 APP 端"""
 

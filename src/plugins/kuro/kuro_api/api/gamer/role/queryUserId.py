@@ -1,14 +1,12 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
-from ....common import RequestInfo, WebRequest
 from ....const import GameId
+from ...common import RequestInfo, WebRequest
 
 
 @final
-@dataclass
 class QueryUserIdRequest(WebRequest[int]):
     """查询用户 ID
 

@@ -1,12 +1,11 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
 from pydantic import Field
 
-from ....common import RequestInfo, ResponseData, WebRequest
 from ....const import GameId
+from ...common import RequestInfo, ResponseData, WebRequest
 
 
 class BaseGoodsInfo(ResponseData):
@@ -79,7 +78,6 @@ class InitSigninV2(ResponseData):
 
 
 @final
-@dataclass
 class InitSigninV2Request(WebRequest[InitSigninV2]):
     """取游戏签到信息 V2"""
 

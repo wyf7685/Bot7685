@@ -1,10 +1,9 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
-from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
+from ....common import RequestInfo, ResponseData, WebRequest
 
 
 class Item(ResponseData):
@@ -129,7 +128,6 @@ class WuwaExploreIndex(ResponseData):
 
 
 @final
-@dataclass
 class WuwaExploreIndexRequest(WebRequest[WuwaExploreIndex]):
     """鸣潮游戏角色探索数据"""
 

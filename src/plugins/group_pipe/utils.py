@@ -6,11 +6,11 @@ from collections.abc import AsyncGenerator, AsyncIterable
 from typing import NamedTuple
 
 import anyio
-import fleep
 import httpx
 import nonebot
 from nonebot_plugin_alconna.uniseg import Segment, UniMessage
 from nonebot_plugin_alconna.uniseg.segment import Media
+from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
 
@@ -65,10 +65,10 @@ async def guess_url_type(url: str) -> _FileType | None:
 
         head = await anext(resp.aiter_bytes(256))
         info = fleep.get(head)
-        if not info.mime or not info.extension:
+        if not info.mimes or not info.extensions:
             return None
 
-        return _FileType(info.mime[0], info.extension[0], int(size))
+        return _FileType(info.mimes[0], info.extensions[0], int(size))
 
 
 async def solve_url_302(url: str) -> str:
@@ -85,10 +85,10 @@ type _AnyFile = bytes | anyio.Path | pathlib.Path
 async def _fix_file(file: _AnyFile) -> AsyncGenerator[anyio.Path]:
     if isinstance(file, bytes):
         info = fleep.get(file[:128])
-        if not info.extension:
+        if not info.extensions:
             raise ValueError("无法识别的文件类型")
 
-        path = anyio.Path(get_plugin_cache_dir()) / f"{id(file)}.{info.extension[0]}"
+        path = anyio.Path(get_plugin_cache_dir()) / f"{id(file)}.{info.extensions[0]}"
         await path.write_bytes(file)
         try:
             yield path

@@ -1,48 +1,45 @@
 # ruff: noqa: N802, N815
 
 import contextlib
-import json
+import dataclasses
 import warnings
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import ClassVar, Literal, cast, final, override
+from typing import ClassVar, Literal, cast, dataclass_transform, final, override
 
 import httpx
+from msgspec import json as msgjson
 from pydantic import TypeAdapter
 
-from ..exceptions import ApiRequestFailed
+from ...exceptions import ApiRequestFailed
 from .headers import CommonRequestHeaders, RequestHeaders, WebRequestHeaders
 from .response import Response, ValidResponseData
-from .utils import ModelMixin
-
-
-class DatetimeJsonEncoder(json.JSONEncoder):
-    @override
-    def default(self, o: object) -> object:
-        if isinstance(o, datetime):
-            return int(o.timestamp())
-        if isinstance(o, timedelta):
-            return o.total_seconds()
-        return cast(object, json.JSONEncoder.default(self, o))
 
 
 @final
-@dataclass
+@dataclasses.dataclass
 class RequestInfo:
     url: str
     method: Literal["GET", "POST"] = "POST"
 
 
-@dataclass
-class Request[R: ValidResponseData](ModelMixin):
+@dataclasses.dataclass
+@dataclass_transform()
+class Request[R: ValidResponseData]:
     _type_adapter: ClassVar[TypeAdapter[Response[ValidResponseData]] | None] = None
     _info_: ClassVar[RequestInfo]
-    _resp_: ClassVar[type[ValidResponseData]]
+    _resp_: ClassVar[type[ValidResponseData]]  # should be ClassVar[type[R]]
 
-    def _get_type_adapter(self) -> TypeAdapter[Response[R]]:
-        cls = type(self)
+    @override
+    def __init_subclass__(cls) -> None:
+        super().__init_subclass__()
+        _ = dataclasses.dataclass(cls)
+
+    def dump(self) -> dict[str, object]:
+        return msgjson.decode(msgjson.encode(dataclasses.asdict(self)))  # wtf
+
+    @classmethod
+    def _get_type_adapter(cls) -> TypeAdapter[Response[R]]:
         if cls._type_adapter is None:
-            cls._type_adapter = TypeAdapter(Response[self._resp_])
+            cls._type_adapter = TypeAdapter(Response[cls._resp_])
         return cast(TypeAdapter[Response[R]], cls._type_adapter)
 
     def create_headers(self, token: str) -> RequestHeaders:
@@ -69,7 +66,7 @@ class Request[R: ValidResponseData](ModelMixin):
 
         if isinstance(obj := data.get("data"), str):
             with contextlib.suppress(Exception):
-                data["data"] = json.loads(obj)
+                data["data"] = msgjson.decode(obj)
 
         return self._get_type_adapter().validate_python(data, strict=False)
 

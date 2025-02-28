@@ -1,11 +1,10 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from enum import Enum
 from typing import Literal, final, override
 
-from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
+from ....common import RequestInfo, ResponseData, WebRequest
 
 
 class Chain(ResponseData):
@@ -259,7 +258,6 @@ class RoleDetail(ResponseData):
 
 
 @final
-@dataclass
 class WuwaGetRoleDetailRequest(WebRequest[RoleDetail]):
     _info_ = RequestInfo(
         url="https://api.kurobbs.com/aki/roleBox/akiBox/getRoleDetail",

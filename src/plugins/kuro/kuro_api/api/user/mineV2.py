@@ -1,9 +1,8 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
-from ...common import Request, RequestInfo, ResponseData
+from ..common import Request, RequestInfo, ResponseData
 
 
 class Mine(ResponseData):
@@ -39,7 +38,6 @@ class MineV2(ResponseData):
 
 
 @final
-@dataclass
 class MineV2Request(Request[MineV2]):
     """取个人信息 V2"""
 

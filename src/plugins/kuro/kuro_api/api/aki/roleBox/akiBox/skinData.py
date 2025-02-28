@@ -1,10 +1,9 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
-from .....common import RequestInfo, ResponseData, WebRequest
 from .....const import GameId, WuwaGameId
+from ....common import RequestInfo, ResponseData, WebRequest
 
 
 class RoleSkin(ResponseData):
@@ -45,7 +44,6 @@ class WuwaSkinData(ResponseData):
 
 
 @final
-@dataclass
 class WuwaSkinDataRequest(WebRequest[WuwaSkinData]):
     """鸣潮皮肤数据"""
 

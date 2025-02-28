@@ -1,9 +1,8 @@
 # ruff: noqa: N815
 
-from dataclasses import dataclass
 from typing import final
 
-from ....common import Request, RequestInfo, ResponseData
+from ...common import Request, RequestInfo, ResponseData
 
 
 class GetTotalGold(ResponseData):
@@ -12,7 +11,6 @@ class GetTotalGold(ResponseData):
 
 
 @final
-@dataclass
 class GetTotalGoldRequest(Request[GetTotalGold]):
     """取库洛币总数"""
 
