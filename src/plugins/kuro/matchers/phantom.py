@@ -10,6 +10,8 @@ matcher_phantom = root_matcher.dispatch("phantom")
 
 @matcher_phantom.assign("~")
 async def assign_phantom(api: ApiFromKey, role_name: str) -> None:
+    mine = await api.mine()
+
     try:
         role_api = await api.get_default_role_api(GameId.WUWA)
     except KuroApiException as err:
@@ -23,7 +25,10 @@ async def assign_phantom(api: ApiFromKey, role_name: str) -> None:
     result = WuwaCalc(role_detail).calc_phantom()
 
     # TODO: rewrite with htmlrender
-    info = f"角色: {role_detail.role.roleName}({role_detail.role.roleId})\n\n"
+    info = (
+        f"{mine.userName}({mine.userId}): "
+        f"{role_detail.role.roleName}({role_detail.role.roleId})\n\n"
+    )
     if result := WuwaCalc(role_detail).calc_phantom():
         for idx, p in enumerate(result.phantoms, 1):
             pinfo = f" {p.name}: [{p.level}] {p.score}" if p else ": 未装配"

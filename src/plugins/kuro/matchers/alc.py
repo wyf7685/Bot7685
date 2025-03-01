@@ -69,8 +69,8 @@ alc = Alconna(
     Subcommand("energy", arg_key, help_text="查询鸣潮结波晶片"),
     Subcommand(
         "phantom",
-        arg_key,
         Args["role_name#角色名", str],
+        arg_key,
         help_text="查询声骸数据",
     ),
     meta=CommandMeta(
