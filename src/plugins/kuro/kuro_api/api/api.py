@@ -10,13 +10,14 @@ from typing import TYPE_CHECKING, Protocol, Self, overload
 
 from ..exceptions import AlreadySignin, ApiCallFailed, KuroApiException, RoleNotFound
 from .common import is_success_response
+from .utils import wuwa_find_role_id
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from ..const import PnsGameId, WuwaGameId
     from .common import Request, Response, ValidResponseData
-    from .models import Mine, PnsRole, Role, WuwaRole
+    from .models import Mine, PnsRole, Role, RoleDetail, WuwaRole
 
     type GameId = PnsGameId | WuwaGameId
 
@@ -186,6 +187,10 @@ class KuroRoleApi[R: Role = Role]:
 
 
 class KuroWuwaRoleApi(KuroRoleApi["WuwaRole"]):
+    @staticmethod
+    def find_role_id(name: str) -> int | None:
+        return wuwa_find_role_id(name)
+
     async def _fetch_with[T: ValidResponseData](self, req: _WuwaFetchReq[T], /) -> T:
         resp = await req(
             roleId=self.role.roleId,
@@ -237,7 +242,20 @@ class KuroWuwaRoleApi(KuroRoleApi["WuwaRole"]):
 
         return await self._fetch_with(WuwaRoleDataRequest)
 
-    async def get_role_detail(self, role_id: int):
+    @overload
+    async def get_role_detail(self, role_id: int) -> RoleDetail: ...
+    @overload
+    async def get_role_detail(self, role_name: str, /) -> RoleDetail: ...
+
+    async def get_role_detail(self, role_id: int | str) -> RoleDetail:
+        if isinstance(role_id, str):
+            if role_id.isdigit():
+                role_id = int(role_id)
+            elif (id := self.find_role_id(role_id)) is None:
+                raise RoleNotFound(f"未找到角色: {role_id!r}")
+            else:
+                role_id = id
+
         from .models import WuwaGetRoleDetailRequest
 
         call = functools.partial(WuwaGetRoleDetailRequest, id=role_id)
