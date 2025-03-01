@@ -67,6 +67,12 @@ alc = Alconna(
         Option("--wuwa|-w|--mc|-m", help_text="鸣潮游戏签到"),
     ),
     Subcommand("energy", arg_key, help_text="查询鸣潮结波晶片"),
+    Subcommand(
+        "phantom",
+        arg_key,
+        Args["role_name#角色名", str],
+        help_text="查询声骸数据",
+    ),
     meta=CommandMeta(
         description="库洛插件",
         usage="kuro -h",
