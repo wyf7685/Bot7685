@@ -1,5 +1,6 @@
 # ruff: noqa: N802
 
+import asyncio
 import functools
 import inspect
 from collections.abc import Awaitable, Callable
@@ -9,6 +10,7 @@ from nonebot.adapters import Bot, Event
 from nonebot.internal.matcher import current_matcher
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER
+from nonebot.typing import T_State
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_uninfo import Uninfo
 
@@ -16,45 +18,47 @@ from ..database.kuro_token import KuroToken, KuroTokenDAO
 from ..handler import KuroHandler
 from ..kuro_api import KuroApi, KuroApiException
 
-type AsyncCallable[**P, R] = Callable[P, Awaitable[R]]
+
+def _get_current_state() -> T_State | None:
+    try:
+        return current_matcher.get().state
+    except LookupError:
+        return None
 
 
-def state_cache[**P, R](func: AsyncCallable[P, R]) -> AsyncCallable[P, R]:
+def convert_dependent[**P, R](func: Callable[P, Awaitable[R]]) -> type[R]:
     key = f"##state_cache##{func.__name__}##"
 
     @functools.wraps(func)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            state = current_matcher.get().state
-        except LookupError:
-            state = {}
+        if (state := _get_current_state()) is None:
+            return await func(*args, **kwargs)
 
-        if key not in state:
-            state[key] = await func(*args, **kwargs)
-        return state[key]
+        if key in state:
+            fut: asyncio.Future[R] = state[key]
+            result = await fut
+        else:
+            state[key] = fut = asyncio.Future()
+            result = await func(*args, **kwargs)
+            fut.set_result(result)
 
-    return wrapper
+        return result
 
-
-def convert_dependent[R](func: AsyncCallable[..., R]) -> type[R]:
     r = inspect.signature(func).return_annotation
-    return cast(type[R], Annotated[r, Depends(func)])
+    return cast(type[R], Annotated[r, Depends(wrapper)])
 
 
 @convert_dependent
-@state_cache
 async def IsSuperUser(bot: Bot, event: Event) -> bool:
     return await SUPERUSER(bot, event)
 
 
 @convert_dependent
-@state_cache
 async def TokenDAO(session: Uninfo) -> KuroTokenDAO:
     return KuroTokenDAO(session)
 
 
 @convert_dependent
-@state_cache
 async def KuroTokenFromKey(ktd: TokenDAO, key: str | None = None) -> KuroToken:
     kuro_token = await ktd.find_token(key)
     if kuro_token is None:
@@ -65,7 +69,6 @@ async def KuroTokenFromKey(ktd: TokenDAO, key: str | None = None) -> KuroToken:
 
 
 @convert_dependent
-@state_cache
 async def KuroTokenFromKeyRequired(ktd: TokenDAO, key: str) -> KuroToken:
     kuro_token = await ktd.find_token(key)
     if kuro_token is None:
@@ -76,7 +79,6 @@ async def KuroTokenFromKeyRequired(ktd: TokenDAO, key: str) -> KuroToken:
 
 
 @convert_dependent
-@state_cache
 async def ApiFromKey(kuro_token: KuroTokenFromKey) -> KuroApi:
     api = KuroApi(kuro_token.token)
 
@@ -89,12 +91,10 @@ async def ApiFromKey(kuro_token: KuroTokenFromKey) -> KuroApi:
 
 
 @convert_dependent
-@state_cache
 async def HandlerFromKey(api: ApiFromKey) -> KuroHandler:
     return KuroHandler(api)
 
 
 @convert_dependent
-@state_cache
 async def KuroUserName(api: ApiFromKey) -> str:
     return f"{await api.get_user_name()}({await api.get_user_id()})"

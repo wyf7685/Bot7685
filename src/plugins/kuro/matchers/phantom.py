@@ -3,15 +3,17 @@ from nonebot_plugin_alconna import UniMessage
 from ..kuro_api import GameId, KuroApiException
 from ..kuro_api.calc import WuwaCalc
 from .alc import root_matcher
-from .depends import ApiFromKey
+from .depends import ApiFromKey, KuroUserName
 
 matcher_phantom = root_matcher.dispatch("phantom")
 
 
 @matcher_phantom.assign("~")
-async def assign_phantom(api: ApiFromKey, role_name: str) -> None:
-    mine = await api.mine()
-
+async def assign_phantom(
+    api: ApiFromKey,
+    user_name: KuroUserName,
+    role_name: str,
+) -> None:
     try:
         role_api = await api.get_default_role_api(GameId.WUWA)
     except KuroApiException as err:
@@ -25,10 +27,7 @@ async def assign_phantom(api: ApiFromKey, role_name: str) -> None:
     result = WuwaCalc(role_detail).calc_phantom()
 
     # TODO: rewrite with htmlrender
-    info = (
-        f"{mine.userName}({mine.userId}): "
-        f"{role_detail.role.roleName}({role_detail.role.roleId})\n\n"
-    )
+    info = f"{user_name}: {role_detail.role.roleName}({role_detail.role.roleId})\n\n"
     if result := WuwaCalc(role_detail).calc_phantom():
         for idx, p in enumerate(result.phantoms, 1):
             pinfo = f" {p.name}: [{p.level}] {p.score}" if p else ": 未装配"
