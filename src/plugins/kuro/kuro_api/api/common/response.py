@@ -35,6 +35,7 @@ class FailedResponseWithMessage(BaseModel):
     msg: str = Field(alias="message")
     success: Literal[False] = False
 
+
 type _CommonFailedResponse = FailedResponseWithMsg | FailedResponseWithMessage
 type FailedResponse = TokenExpiredResponse | _CommonFailedResponse
 type Response[T: ValidResponseData] = SuccessResponse[T] | FailedResponse

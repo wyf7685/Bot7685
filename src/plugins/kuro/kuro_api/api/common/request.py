@@ -2,6 +2,7 @@
 
 import contextlib
 import dataclasses
+import json
 import warnings
 from typing import ClassVar, Literal, cast, dataclass_transform, final, override
 
@@ -9,7 +10,7 @@ import httpx
 from msgspec import json as msgjson
 from pydantic import TypeAdapter
 
-from ...exceptions import ApiRequestFailed
+from ...exceptions import ApiRequestFailed, ApiResponseValidationFailed
 from .headers import CommonRequestHeaders, RequestHeaders, WebRequestHeaders
 from .response import Response, ValidResponseData
 
@@ -61,14 +62,19 @@ class Request[R: ValidResponseData]:
 
             try:
                 data: dict[str, object] = response.raise_for_status().json()
-            except httpx.HTTPStatusError as err:
+            except (httpx.HTTPStatusError, json.JSONDecodeError) as err:
                 raise ApiRequestFailed(str(response.status_code)) from err
 
         if isinstance(obj := data.get("data"), str):
             with contextlib.suppress(Exception):
                 data["data"] = msgjson.decode(obj)
 
-        return self._get_type_adapter().validate_python(data, strict=False)
+        try:
+            return self._get_type_adapter().validate_python(data, strict=False)
+        except ValueError as err:
+            raise ApiResponseValidationFailed(
+                f"接口返回值校验失败:\n{err}", data
+            ) from err
 
 
 class RequestWithoutToken[R: ValidResponseData](Request[R]):

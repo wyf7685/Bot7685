@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Protocol, Self, overload
 
 from ..exceptions import AlreadySignin, ApiCallFailed, KuroApiException, RoleNotFound
 from .common import is_success_response
-from .utils import wuwa_find_role_id
+from .utils import wuwa_find_role_id, wuwa_id2name
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -259,7 +259,11 @@ class KuroWuwaRoleApi(KuroRoleApi["WuwaRole"]):
         from .models import WuwaGetRoleDetailRequest
 
         call = functools.partial(WuwaGetRoleDetailRequest, id=role_id)
-        return await self._fetch_with(call)
+        if result := await self._fetch_with(call):
+            return result
+
+        name = wuwa_id2name(role_id) or role_id
+        raise RoleNotFound(f"未持有角色: {name}")
 
     async def get_skin_data(self):
         from .models import WuwaSkinDataRequest

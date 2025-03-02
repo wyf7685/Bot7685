@@ -17,3 +17,7 @@ def wuwa_find_role_id(name: str) -> int | None:
         if name in role_name:
             return int(role_id)
     return None
+
+
+def wuwa_id2name(role_id: int) -> str | None:
+    return _get_wuwa_id2name().get(str(role_id))

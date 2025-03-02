@@ -15,6 +15,16 @@ class ApiRequestFailed(KuroApiException):
     """API 请求失败"""
 
 
+class ApiResponseValidationFailed(KuroApiException):
+    """API 返回值验证失败"""
+
+    raw: dict[str, object]
+
+    def __init__(self, msg: str, raw: dict[str, object]) -> None:
+        super().__init__(msg)
+        self.raw = raw
+
+
 class ApiCallFailed(KuroApiException):
     """API 调用失败"""
 

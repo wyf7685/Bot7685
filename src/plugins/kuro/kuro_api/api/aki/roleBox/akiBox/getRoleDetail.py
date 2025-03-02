@@ -257,13 +257,18 @@ class RoleDetail(ResponseData):
         return sorted(self.skillList, key=lambda x: skill_index(x.skill.type))
 
 
+class EmptyResponse(ResponseData):
+    def __bool__(self) -> Literal[False]:
+        return False
+
+
 @final
-class WuwaGetRoleDetailRequest(WebRequest[RoleDetail]):
+class WuwaGetRoleDetailRequest(WebRequest[RoleDetail | EmptyResponse]):
     _info_ = RequestInfo(
         url="https://api.kurobbs.com/aki/roleBox/akiBox/getRoleDetail",
         method="POST",
     )
-    _resp_ = RoleDetail
+    _resp_ = RoleDetail | EmptyResponse  # pyright: ignore[reportAssignmentType]
 
     roleId: str
     serverId: str
