@@ -8,7 +8,6 @@ from nonebot_plugin_alconna import (
     store_true,
 )
 
-arg_key = Args["key?#库洛ID或备注", str]
 alc = Alconna(
     "kuro",
     Subcommand(
@@ -21,7 +20,7 @@ alc = Alconna(
         ),
         Subcommand(
             "remove",
-            arg_key,
+            Args["key#库洛ID或备注", str],
             alias={"rm", "del"},
             help_text="移除账号",
         ),
@@ -38,7 +37,7 @@ alc = Alconna(
         ),
         Subcommand(
             "update",
-            arg_key,
+            Args["key?#库洛ID或备注", str],
             Option(
                 "--token|-t",
                 Args["token#库街区token", str],
@@ -61,16 +60,21 @@ alc = Alconna(
     ),
     Subcommand(
         "signin",
-        arg_key,
+        Args["key?#库洛ID或备注", str],
         Option("--kuro|-k", help_text="库街区社区签到"),
         Option("--pns|-p", help_text="战双游戏签到"),
         Option("--wuwa|-w|--mc|-m", help_text="鸣潮游戏签到"),
     ),
-    Subcommand("energy", arg_key, help_text="查询鸣潮结波晶片"),
+    Subcommand(
+        "energy",
+        Args["key?#库洛ID或备注", str],
+        help_text="查询鸣潮结波晶片",
+    ),
     Subcommand(
         "phantom",
         Args["role_name#角色名", str],
-        arg_key,
+        Args["index?#声骸序号", int],
+        Option("-k", Args["key#库洛ID或备注", str]),
         help_text="查询声骸数据",
     ),
     meta=CommandMeta(
