@@ -28,21 +28,24 @@ def _get_current_state() -> T_State | None:
 
 
 def convert_dependent[**P, R](func: Callable[P, Awaitable[R]]) -> type[R]:
-    key = f"##state_cache##{func.__name__}##"
+    name = func.__name__
+    key = f"##state_cache##{name}##"
 
     @functools.wraps(func)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         if (state := _get_current_state()) is None:
+            logger.debug("State not available, skip cache")
             return await func(*args, **kwargs)
 
         if key in state:
             fut: asyncio.Future[R] = state[key]
             result = await fut
+            logger.debug(f"Used cached dependent {name}: {result}")
         else:
             state[key] = fut = asyncio.Future()
             result = await func(*args, **kwargs)
             fut.set_result(result)
-            logger.debug(f"Cached dependent: {func.__name__}")
+            logger.debug(f"Cached dependent {name}: {result}")
 
         return result
 
