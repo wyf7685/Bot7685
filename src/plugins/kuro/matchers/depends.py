@@ -6,6 +6,7 @@ import inspect
 from collections.abc import Awaitable, Callable
 from typing import Annotated, cast
 
+from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.internal.matcher import current_matcher
 from nonebot.params import Depends
@@ -41,6 +42,7 @@ def convert_dependent[**P, R](func: Callable[P, Awaitable[R]]) -> type[R]:
             state[key] = fut = asyncio.Future()
             result = await func(*args, **kwargs)
             fut.set_result(result)
+            logger.debug(f"Cached dependent: {func.__name__}")
 
         return result
 
@@ -72,8 +74,7 @@ async def KuroTokenFromKey(ktd: TokenDAO, key: str | None = None) -> KuroToken:
 async def KuroTokenFromKeyRequired(ktd: TokenDAO, key: str) -> KuroToken:
     kuro_token = await ktd.find_token(key)
     if kuro_token is None:
-        msg = f"未找到 '{key}' 对应的库洛账号"
-        await UniMessage.text(msg).finish()
+        await UniMessage.text(f"未找到 '{key}' 对应的库洛账号").finish()
 
     return kuro_token
 
