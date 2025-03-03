@@ -4,7 +4,7 @@ import dataclasses
 import functools
 from collections import defaultdict
 from pathlib import Path
-from typing import Literal, NamedTuple, Self
+from typing import Literal, NamedTuple, Self, cast
 
 from msgspec import json as msgjson
 from pydantic import BaseModel
@@ -87,6 +87,24 @@ class PhantomCalcResult:
     @functools.cached_property
     def name(self) -> str:
         return self.phantom.phantomProp.name
+
+    type _SumResultKey = _CommonPropsName | Literal["属性伤害加成"] | _SkillPropsName
+    type SumResult = dict[_SumResultKey, float]
+
+    def sum(self) -> SumResult:
+        result: dict[str, float] = defaultdict(float)
+        result["攻击"] = result["生命"] = result["防御"] = 0.0
+
+        for prop in self.phantom.get_props():
+            name = prop.attributeName
+            if name in _BASIC_PROPS and "%" in prop.attributeValue:
+                name += "%"
+            value = float(prop.attributeValue.removesuffix("%"))
+            if name.startswith(_ATTRS):
+                name = "属性伤害加成"
+            result[name] += value
+
+        return cast(PhantomCalcResult.SumResult, result)
 
 
 class PhantomCalc(BaseModel):

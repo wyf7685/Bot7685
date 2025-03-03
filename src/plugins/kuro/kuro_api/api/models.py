@@ -1,3 +1,5 @@
+from ..utils import lazy_import
+
 _LOCATION = {
     # Requests
     "WuwaBaseDataRequest": "aki.roleBox.akiBox.baseData",
@@ -38,18 +40,5 @@ _LOCATION = {
     "WuwaRole": "gamer.role.list",
     "Mine": "user.mineV2",
 }
-_CACHE: dict[str, object] = {}
-__all__ = list(_LOCATION.keys())  # pyright:ignore[reportUnsupportedDunderAll]
 
-
-def __getattr__(name: str) -> object:
-    if name in _LOCATION:
-        if name not in _CACHE:
-            import importlib
-
-            module = importlib.import_module(f".{_LOCATION[name]}", __package__)
-            _CACHE[name] = getattr(module, name)
-        return _CACHE[name]
-    if name in globals():
-        return globals()[name]
-    raise AttributeError(f"module {__name__} has no attribute {name}")
+lazy_import(_LOCATION)

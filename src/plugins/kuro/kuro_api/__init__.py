@@ -1,6 +1,14 @@
-from .api import KuroApi as KuroApi
 from .const import VERSION
-from .const import GameId as GameId
-from .exceptions import KuroApiException as KuroApiException
+from .utils import lazy_import
 
 __version__ = VERSION
+
+lazy_import(
+    {
+        "KuroApi": "api",
+        "GameId": "const",
+        "KuroApiException": "exceptions",
+        "WuwaGachaApi": "gacha",
+        "WuwaCalc": "calc",
+    }
+)

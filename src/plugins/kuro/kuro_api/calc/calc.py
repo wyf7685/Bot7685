@@ -1,5 +1,6 @@
 import dataclasses
 import functools
+import operator
 from typing import Any
 
 from ..api.models import Phantom, RoleDetail
@@ -16,6 +17,13 @@ class RolePhantomCalcResult:
     @functools.cached_property
     def total(self) -> float:
         return sum(p.score for p in self.phantoms if p)
+
+    def sum(self) -> PhantomCalcResult.SumResult:
+        return (
+            functools.reduce(operator.or_, (p.sum() for p in self.phantoms if p))
+            if any(self.phantoms)
+            else {}
+        )
 
 
 class WuwaCalc:
