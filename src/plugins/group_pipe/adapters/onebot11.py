@@ -60,7 +60,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return self.bot_platform_cache[self.src_bot]
 
-    async def _get_api_rkey(self) -> tuple[str, str]:
+    async def _get_rkey_api(self) -> tuple[str, str]:
         rkey_api = "https://llob.linyuchen.net/rkey"
         resp = await async_client().get(rkey_api)
         data: dict[str, str] = resp.json()
@@ -69,22 +69,41 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         self.logger.debug(f"从 API 获取 rkey: {p_rkey, g_rkey}")
         return p_rkey, g_rkey
 
-    async def get_rkey(self) -> Iterable[str]:
-        if "napcat" not in await self.get_platform():
-            return await self._get_api_rkey()
-
+    async def _get_rkey_napcat(self) -> Iterable[str]:
         try:
             res = type_validate_python(
                 list[dict[str, str]],
                 await self.src_bot.call_api("nc_get_rkey"),
             )
         except Exception:
-            self.logger.debug("nc_get_rkey 出错，使用 rkey API")
-            return await self._get_api_rkey()
+            self.logger.debug("Napcat nc_get_rkey 出错，使用 rkey API")
+            return await self._get_rkey_api()
 
         rkeys = [item["rkey"].removeprefix("&rkey=") for item in res]
         self.logger.debug(f"从 NapCat 获取 rkey: {rkeys}")
         return rkeys
+
+    async def _get_rkey_lagrange(self) -> Iterable[str]:
+        try:
+            res = type_validate_python(
+                dict[str, list[dict[str, str]]],
+                await self.src_bot.call_api("get_rkey"),
+            )
+        except Exception:
+            self.logger.debug("Lagrange get_rkey 出错，使用 rkey API")
+            return await self._get_rkey_api()
+
+        rkeys = [item["rkey"].removeprefix("&rkey=") for item in res["rkeys"]]
+        self.logger.debug(f"从 Lagrange 获取 rkey: {rkeys}")
+        return rkeys
+
+    async def get_rkey(self) -> Iterable[str]:
+        platform = await self.get_platform()
+        if "lagrange" in platform:
+            return await self._get_rkey_lagrange()
+        if "napcat" in platform:
+            return await self._get_rkey_napcat()
+        return await self._get_rkey_api()
 
     async def check_rkey(self, url: str) -> str | None:
         if await check_url_ok(url):
