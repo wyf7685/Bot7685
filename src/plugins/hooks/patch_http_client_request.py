@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 
 class Config(BaseModel):
-    http_proxy: str | None = None
+    proxy: str | None = None
 
 
 config = nonebot.get_plugin_config(Config)
@@ -30,8 +30,8 @@ def patch_request[T](original: _RequestCall[T]) -> _RequestCall[T]:
             if setup.url.host == "multimedia.nt.qq.com.cn":
                 setup.url = setup.url.with_scheme("http")
                 logger.debug(f"Changed scheme to http: <c>{setup.url}</c>")
-            elif "wakatime.com" in setup.url.host and config.http_proxy is not None:
-                setup.proxy = config.http_proxy
+            elif "wakatime.com" in setup.url.host and config.proxy is not None:
+                setup.proxy = config.proxy
 
         return await original(self, setup)
 
