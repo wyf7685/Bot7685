@@ -20,14 +20,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup uv
-        uses: astral-sh/setup-uv@v2
+        uses: astral-sh/setup-uv@v5
         with:
+          python-version: "3.13"
           enable-cache: true
 
       - name: Install dependencies
-        run: |
-          uv python install 3.13
-          uv sync --python 3.13
+        run: uv sync
 
       - name: Configure venv
         run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
