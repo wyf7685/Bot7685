@@ -2,7 +2,7 @@ import importlib
 import logging
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import nonebot
 from msgspec import yaml as msgyaml
@@ -16,7 +16,7 @@ log = logger_wrapper("Bootstrap")
 
 
 class Config(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
 
     adapters: set[str] = set()
     plugins: set[str] = set()
