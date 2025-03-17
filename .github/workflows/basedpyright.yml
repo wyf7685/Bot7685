@@ -3,7 +3,8 @@ name: BasedPyright Lint
 on:
   push:
     paths:
-      - "src/plugins/**"
+      - "src/**"
+      - "bot.py"
       - ".github/workflows/basedpyright.yml"
       - "pyproject.toml"
       - "uv.lock"
