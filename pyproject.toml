@@ -48,6 +48,8 @@ dependencies = [
     # plugins
     "nonebot-plugin-exe-code>=1.1.4",
     "nonebot-plugin-werewolf>=1.1.7",
+    "jmcomic>=2.5.32",
+    "img2pdf>=0.6.0",
 ]
 
 # used by nb-cli
