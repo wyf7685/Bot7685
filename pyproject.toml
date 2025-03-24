@@ -29,7 +29,7 @@ dependencies = [
     "nonebot-plugin-skland-arksign[sm-local]>=0.8.0",
     "nonebot-plugin-userinfo>=0.2.6",
     "nonebot-plugin-wakatime>=0.2.6",
-    "nonebot-plugin-wordcloud>=0.8.1",
+    "nonebot-plugin-wordcloud>=0.9.0",
     # plugin deps
     "alibabacloud-tea-openapi>=0.3.12",
     "anyio>=4.6.2.post1",
@@ -188,5 +188,3 @@ dev-dependencies = [
 nonebot-plugin-exe-code = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" }
 # Forked from https://github.com/GuGuMur/nonebot-plugin-skland-arksign
 nonebot-plugin-skland-arksign = { git = "https://github.com/wyf7685/nonebot-plugin-skland-arksign.git" }
-# For unreleased commit 56074cc
-nonebot-plugin-wordcloud = { git = "https://github.com/he0119/nonebot-plugin-wordcloud.git" }
