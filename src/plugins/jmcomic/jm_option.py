@@ -23,7 +23,7 @@ option_dict = {
     "dir_rule": {
         "base_dir": str(DOWNLOAD_DIR),
     },
-    "threading": {"image": 4, "photo": 4},
+    "download": {"threading": {"image": 4, "photo": 4}},
     "plugins": {
         "after_album": [
             {
