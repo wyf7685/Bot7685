@@ -53,9 +53,9 @@ def generate_cli_toml(config: dict[str, object]) -> None:
             "name": adapter.replace(".", " "),
             "module_name": f"nonebot.adapters.{adapter}",
         }
-        for adapter in cast(list[str], config["adapters"])
+        for adapter in cast("list[str]", config["adapters"])
     ]
-    plugins = cast(list[str], config["plugins"])
+    plugins = cast("list[str]", config["plugins"])
     plugin_dirs = [
         config["plugin_dir"],
         config["dev_plugin_dir"],
@@ -94,4 +94,4 @@ def ensure_cli() -> Generator[None]:
 
 
 if __name__ == "__main__":
-    generate()
+    generate_env_file(load_config())
