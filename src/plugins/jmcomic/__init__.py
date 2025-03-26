@@ -1,8 +1,8 @@
+import itertools
 from functools import partial
 
 from nonebot import require
 from nonebot.adapters.onebot import v11
-from nonebot.adapters.onebot.v11 import Message as V11Msg
 from nonebot.adapters.onebot.v11 import MessageSegment as V11Seg
 from nonebot.exception import ActionFailed
 from nonebot.params import Depends
@@ -12,12 +12,7 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
 
-from .jm_option import (
-    DOWNLOAD_DIR,
-    download_album,
-    download_album_pdf,
-    get_album_detail,
-)
+from .jm_option import download_album_pdf, get_album_detail
 
 __plugin_meta__ = PluginMetadata(
     name="jmcomic",
@@ -46,32 +41,16 @@ async def _(
     except Exception as err:
         await matcher.finish(V11Seg.text(f"获取信息失败：{err}"))
 
+    segs = [V11Seg.image(image.download_url) for photo in detail for image in photo]
+
     await matcher.send(
         V11Seg.text(
             f"标题：{detail.title}\n"
             f"作者：{detail.author}\n"
             f"标签：{', '.join(detail.tags)}\n"
-            f"页数：{detail.page_count}\n"
+            f"页数：{len(segs)}\n"
         )
     )
-
-    fwds: list[list[V11Seg]] = []
-    nodes: list[V11Seg] = []
-
-    try:
-        await download_album(album_id)
-    except Exception as err:
-        await matcher.finish(V11Seg.text(f"下载失败：{err}"))
-
-    for idx, file in enumerate((DOWNLOAD_DIR / str(album_id)).iterdir(), 1):
-        msg = V11Msg(V11Seg.image(file.read_bytes()))
-        node = V11Seg.node_custom(10086, f"P {idx}", msg)
-        nodes.append(node)
-        if len(nodes) >= 50:
-            fwds.append(nodes.copy())
-            nodes.clear()
-    if nodes:
-        fwds.append(nodes.copy())
 
     if isinstance(event, v11.GroupMessageEvent):
         send = partial(bot.send_group_forward_msg, group_id=event.group_id)
@@ -79,7 +58,7 @@ async def _(
         send = partial(bot.send_private_forward_msg, user_id=event.user_id)
 
     try:
-        for nodes in fwds:
+        for nodes in itertools.batched(segs, 50):
             await send(messages=nodes)
     except ActionFailed as err:
         await matcher.finish(V11Seg.text(f"发送失败：{err}"))

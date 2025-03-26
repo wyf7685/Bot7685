@@ -58,5 +58,4 @@ async def get_album_detail(album_id: int) -> jmcomic.JmAlbumDetail:
 
 
 async def download_album(album_id: int) -> jmcomic.JmAlbumDetail:
-    downloader = jmcomic.new_downloader(option)
-    return await run_sync(downloader.download_album)(album_id)
+    return await run_sync(jmcomic.new_downloader(option).download_album)(album_id)
