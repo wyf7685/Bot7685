@@ -1,7 +1,10 @@
+from functools import partial
+
 from nonebot import require
 from nonebot.adapters.onebot import v11
 from nonebot.adapters.onebot.v11 import Message as V11Msg
 from nonebot.adapters.onebot.v11 import MessageSegment as V11Seg
+from nonebot.exception import ActionFailed
 from nonebot.params import Depends
 from nonebot.plugin import PluginMetadata
 
@@ -38,7 +41,11 @@ async def _(
     event: v11.PrivateMessageEvent | v11.GroupMessageEvent,
     album_id: int,
 ) -> None:
-    detail = await get_album_detail(album_id)
+    try:
+        detail = await get_album_detail(album_id)
+    except Exception as err:
+        await matcher.finish(V11Seg.text(f"获取信息失败：{err}"))
+
     await matcher.send(
         V11Seg.text(
             f"标题：{detail.title}\n"
@@ -51,7 +58,11 @@ async def _(
     fwds: list[list[V11Seg]] = []
     nodes: list[V11Seg] = []
 
-    await download_album(album_id)
+    try:
+        await download_album(album_id)
+    except Exception as err:
+        await matcher.finish(V11Seg.text(f"下载失败：{err}"))
+
     for idx, file in enumerate((DOWNLOAD_DIR / str(album_id)).iterdir(), 1):
         msg = V11Msg(V11Seg.image(file.read_bytes()))
         node = V11Seg.node_custom(10086, f"P {idx}", msg)
@@ -62,11 +73,16 @@ async def _(
     if nodes:
         fwds.append(nodes.copy())
 
-    for nodes in fwds:
-        if isinstance(event, v11.GroupMessageEvent):
-            await bot.send_group_forward_msg(group_id=event.group_id, messages=nodes)
-        else:
-            await bot.send_private_forward_msg(user_id=event.user_id, messages=nodes)
+    if isinstance(event, v11.GroupMessageEvent):
+        send = partial(bot.send_group_forward_msg, group_id=event.group_id)
+    else:
+        send = partial(bot.send_private_forward_msg, user_id=event.user_id)
+
+    try:
+        for nodes in fwds:
+            await send(messages=nodes)
+    except ActionFailed as err:
+        await matcher.finish(V11Seg.text(f"发送失败：{err}"))
 
     await matcher.finish()
 
