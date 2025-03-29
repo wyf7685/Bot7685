@@ -77,7 +77,7 @@ async def _(album_id: int, send: Annotated[SendFunc, Depends(send_func)]) -> Non
     )
 
     try:
-        async for nodes in abatched(segs, 50):
+        async for nodes in abatched(segs, 20):
             await send(nodes)
     except ActionFailed as err:
         logger.opt(exception=err).warning(f"发送失败：{err}")
