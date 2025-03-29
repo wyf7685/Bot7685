@@ -104,7 +104,7 @@ async def download_image(image: jmcomic.JmImageDetail) -> bytes:
             try:
                 response = (await client.get(image.download_url)).raise_for_status()
             except Exception as err:
-                logger.warning(f"下载失败：{err}，尝试重试 {try_count + 1} 次")
+                logger.warning(f"下载失败：{err!r}, 尝试重试 {try_count + 1} 次")
                 if try_count == 4:
                     raise
                 await asyncio.sleep(0.5)
