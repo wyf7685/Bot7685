@@ -1,7 +1,12 @@
+import asyncio
 import contextlib
+import io
+import math
 import pathlib
 from collections.abc import AsyncGenerator
 
+import httpx
+import PIL.Image
 from nonebot.log import logger
 from nonebot.utils import escape_tag, run_sync
 from nonebot_plugin_localstore import get_plugin_cache_dir
@@ -57,5 +62,53 @@ async def get_album_detail(album_id: int) -> jmcomic.JmAlbumDetail:
     return await run_sync(option.new_jm_client().get_album_detail)(album_id)
 
 
+async def check_photo(photo: jmcomic.JmPhotoDetail) -> jmcomic.JmPhotoDetail:
+    await run_sync(option.new_jm_client().check_photo)(photo)
+    return photo
+
+
 async def download_album(album_id: int) -> jmcomic.JmAlbumDetail:
     return await run_sync(jmcomic.new_downloader(option).download_album)(album_id)
+
+
+def decode_image(raw: bytes, num: int) -> bytes:
+    img = PIL.Image.open(io.BytesIO(raw))
+    decoded = PIL.Image.new("RGB", img.size)
+
+    w, h = img.size
+    over = h % num
+    for i in range(num):
+        move = math.floor(h / num)
+        y_src = h - (move * (i + 1)) - over
+        y_dst = move * i
+
+        if i == 0:
+            move += over
+        else:
+            y_dst += over
+
+        decoded.paste(
+            img.crop((0, y_src, w, y_src + move)),
+            (0, y_dst, w, y_dst + move),
+        )
+
+    with io.BytesIO() as output:
+        decoded.save(output, format="JPEG")
+        return output.getvalue()
+
+
+async def download_image(image: jmcomic.JmImageDetail) -> bytes:
+    num = jmcomic.JmImageTool.get_num_by_url(image.scramble_id, image.download_url)
+    async with httpx.AsyncClient() as client:
+        for try_count in range(5):
+            try:
+                response = (await client.get(image.download_url)).raise_for_status()
+            except Exception as err:
+                logger.warning(f"下载失败：{err}，尝试重试 {try_count + 1} 次")
+                if try_count == 4:
+                    raise err
+                await asyncio.sleep(0.5)
+            else:
+                return decode_image(response.content, num)
+        else:
+            raise RuntimeError("下载失败")
