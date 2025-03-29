@@ -1,13 +1,15 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterable, Awaitable, Callable
 from typing import Annotated
 
+import anyio
 from nonebot import logger, require
 from nonebot.adapters.onebot import v11
 from nonebot.adapters.onebot.v11 import Message as V11Msg
 from nonebot.adapters.onebot.v11 import MessageSegment as V11Seg
-from nonebot.exception import ActionFailed
 from nonebot.params import Depends
 from nonebot.plugin import PluginMetadata
+
+import jmcomic
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
@@ -51,38 +53,83 @@ def send_func(
     )
 
 
+class Task[T]:
+    event: anyio.Event
+    result: T
+
+    def __init__(self) -> None:
+        self.event = anyio.Event()
+
+    def set_result(self, value: T) -> None:
+        self.result = value
+        self.event.set()
+
+    async def wait(self) -> T:
+        await self.event.wait()
+        return self.result
+
+
+async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> None:
+    async def check(p: int, photo: jmcomic.JmPhotoDetail) -> None:
+        try:
+            checked[p] = await check_photo(photo)
+        except Exception as err:
+            logger.opt(exception=err).warning(f"检查失败：{err}")
+            checked[p] = None
+
+    checked: dict[int, jmcomic.JmPhotoDetail | None] = {}
+    async with anyio.create_task_group() as tg:
+        for p, photo in enumerate(album, 1):
+            tg.start_soon(check, p, photo)
+
+    async def download(task: Task[bytes | None], image: jmcomic.JmImageDetail) -> None:
+        try:
+            async with sem:
+                task.set_result(await download_image(image))
+        except Exception as err:
+            logger.opt(exception=err).warning(f"下载失败：{err}")
+            task.set_result(None)
+
+    async def iter_images() -> AsyncIterable[tuple[tuple[int, int], bytes | None]]:
+        for key, task in download_tasks:
+            yield (key, await task.wait())
+
+    async def send_segs() -> None:
+        async for batch in abatched(iter_images(), 20):
+            segs = [
+                V11Seg.node_custom(
+                    user_id=10086,
+                    nickname=f"P_{p}_{i}",
+                    content=V11Msg(V11Seg.image(raw)) if raw else "图片下载失败",
+                )
+                for (p, i), raw in batch
+            ]
+            await send(segs)
+
+    sem = anyio.Semaphore(4)
+    async with anyio.create_task_group() as tg:
+        download_tasks: list[tuple[tuple[int, int], Task[bytes | None]]] = []
+        for p, photo in sorted(checked.items(), key=lambda x: x[0]):
+            if photo is None:
+                continue
+            for i, image in enumerate(photo, 1):
+                download_tasks.append(((p, i), task := Task()))
+                tg.start_soon(download, task, image)
+        tg.start_soon(send_segs)
+
+
 @matcher.assign("album_id", parameterless=[Depends(check_lagrange)])
 async def _(album_id: int, send: Annotated[SendFunc, Depends(send_func)]) -> None:
     try:
         album = await get_album_detail(album_id)
     except Exception as err:
-        await matcher.finish(V11Seg.text(f"获取信息失败：{err}"))
+        await UniMessage.text(f"获取信息失败：{err!r}").finish()
 
-    await matcher.send(
-        V11Seg.text(
-            f"标题：{album.title}\n"
-            f"作者：{album.author}\n"
-            f"标签：{', '.join(album.tags)}\n"
-        )
-    )
+    await UniMessage.text(
+        f"标题：{album.title}\n作者：{album.author}\n标签：{', '.join(album.tags)}\n"
+    ).send()
 
-    segs = (
-        V11Seg.node_custom(
-            user_id=10086,
-            nickname=f"P_{p}_{i}",
-            content=V11Msg(V11Seg.image(await download_image(image))),
-        )
-        for p, photo in enumerate(album, 1)
-        for i, image in enumerate(await check_photo(photo), 1)
-    )
-
-    try:
-        async for nodes in abatched(segs, 20):
-            await send(nodes)
-    except ActionFailed as err:
-        logger.opt(exception=err).warning(f"发送失败：{err}")
-        await matcher.finish(V11Seg.text(f"发送失败：{err}"))
-
+    await send_album_forward(album, send)
     await matcher.finish()
 
 
