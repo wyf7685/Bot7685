@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterable, Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import Annotated
 
 import anyio
@@ -92,7 +92,7 @@ async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> No
             logger.opt(exception=err).warning(f"下载失败：{err}")
             task.set_result(None)
 
-    async def iter_images() -> AsyncIterable[tuple[tuple[int, int], bytes | None]]:
+    async def iter_images() -> AsyncGenerator[tuple[tuple[int, int], bytes | None]]:
         for key, task in download_tasks:
             yield (key, await task.wait())
 
@@ -108,7 +108,7 @@ async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> No
             ]
             await send(segs)
 
-    sem = anyio.Semaphore(4)
+    sem = anyio.Semaphore(8)
     async with anyio.create_task_group() as tg:
         download_tasks: list[tuple[tuple[int, int], Task[bytes | None]]] = []
         for p, photo in sorted(checked.items(), key=lambda x: x[0]):
@@ -120,6 +120,7 @@ async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> No
 
         tg.start_soon(
             UniMessage.text(
+                f"ID: {album.id}\n"
                 f"标题: {album.title}\n"
                 f"作者: {album.author}\n"
                 f"标签: {', '.join(album.tags)}\n"
@@ -135,6 +136,8 @@ async def _(
     album_id: int,
     send: Annotated[SendFunc, Depends(send_func)],
 ) -> None:
+    await UniMessage(f"开始 {album_id} 的下载任务...").send(reply_to=True)
+
     try:
         album = await get_album_detail(album_id)
     except Exception as err:
@@ -149,6 +152,7 @@ async def _(
         async for msg in wait():
             if msg and msg.strip() in words:
                 tg.cancel_scope.cancel()
+                await UniMessage(f"中止 {album_id} 的下载任务").send(reply_to=True)
                 return
 
     async def send_forward() -> None:
@@ -157,11 +161,14 @@ async def _(
         finally:
             tg.cancel_scope.cancel()
 
-    async with anyio.create_task_group() as tg:
-        tg.start_soon(wait_for_terminate)
-        tg.start_soon(send_forward)
-
-    await matcher.finish()
+    try:
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(wait_for_terminate)
+            tg.start_soon(send_forward)
+    except Exception as err:
+        await UniMessage.text(f"下载失败：{err!r}").finish(reply_to=True)
+    else:
+        await UniMessage(f"完成 {album_id} 的下载任务").finish(reply_to=True)
 
 
 @matcher.assign("album_id")
