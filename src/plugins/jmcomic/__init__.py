@@ -13,7 +13,9 @@ import jmcomic
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
+require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
+from nonebot_plugin_waiter import waiter
 
 require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
@@ -115,21 +117,50 @@ async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> No
             for i, image in enumerate(photo, 1):
                 download_tasks.append(((p, i), task := Task()))
                 tg.start_soon(download, task, image)
+
+        tg.start_soon(
+            UniMessage.text(
+                f"标题: {album.title}\n"
+                f"作者: {album.author}\n"
+                f"标签: {', '.join(album.tags)}\n"
+                f"页数: {len(download_tasks)}"
+            ).send
+        )
         tg.start_soon(send_segs)
 
 
 @matcher.assign("album_id", parameterless=[Depends(check_lagrange)])
-async def _(album_id: int, send: Annotated[SendFunc, Depends(send_func)]) -> None:
+async def _(
+    event: v11.MessageEvent,
+    album_id: int,
+    send: Annotated[SendFunc, Depends(send_func)],
+) -> None:
     try:
         album = await get_album_detail(album_id)
     except Exception as err:
         await UniMessage.text(f"获取信息失败：{err!r}").finish()
 
-    await UniMessage.text(
-        f"标题：{album.title}\n作者：{album.author}\n标签：{', '.join(album.tags)}\n"
-    ).send()
+    async def wait_for_terminate() -> None:
+        @waiter([event.get_type()], keep_session=True)
+        def wait(e: v11.MessageEvent) -> str:
+            return e.get_message().extract_plain_text()
 
-    await send_album_forward(album, send)
+        words = {"terminate", "stop", "cancel", "中止", "停止", "取消"}
+        async for msg in wait():
+            if msg and msg.strip() in words:
+                tg.cancel_scope.cancel()
+                return
+
+    async def send_forward() -> None:
+        try:
+            await send_album_forward(album, send)
+        finally:
+            tg.cancel_scope.cancel()
+
+    async with anyio.create_task_group() as tg:
+        tg.start_soon(wait_for_terminate)
+        tg.start_soon(send_forward)
+
     await matcher.finish()
 
 
