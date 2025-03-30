@@ -1,10 +1,12 @@
+from enum import Enum
+
 import httpx
 from nonebot import require
 from nonebot.adapters import Bot
 from nonebot.compat import type_validate_json
 from nonebot.exception import ActionFailed
 from nonebot.plugin import PluginMetadata
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import (
@@ -24,6 +26,19 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
+class AiType(int, Enum):
+    UNKNOWN = 0
+    NO = 1
+    YES = 2
+
+
+AI_TYPE_CONVERT = {
+    0: "未知",
+    1: "否",
+    2: "是",
+}
+
+
 class RespDataModel(BaseModel):
     pid: int
     p: int
@@ -35,8 +50,8 @@ class RespDataModel(BaseModel):
     height: int
     tags: list[str]
     ext: str
-    aiType: int  # noqa: N815
-    uploadDate: int  # noqa: N815
+    ai_type: AiType = Field(alias="aiType")
+    upload_date: int = Field(alias="uploadDate")
     urls: dict[str, str]
 
 
@@ -87,13 +102,12 @@ async def _(arp: Arparma) -> None:
 
     img_data = data.data[0]
     url = img_data.urls["original"]
-    ai_type = {0: "未知", 1: "否", 2: "是"}.get(img_data.aiType)
     description = (
         f"PID: {img_data.pid}\n"
         f"标题: {img_data.title}\n"
         f"作者: {img_data.author}\n"
         f"R18: {img_data.r18}\n"
-        f"AI: {ai_type}\n"
+        f"AI: {AI_TYPE_CONVERT[img_data.ai_type]}\n"
         f"标签: {', '.join(img_data.tags)}\n"
     )
 
