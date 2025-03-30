@@ -119,7 +119,8 @@ def load_plugins(config: Config) -> None:
                 config.plugins.discard(name)
                 log(
                     "WARNING",
-                    f'Prefer loading plugin <y>{name}</y> from "<m>src.dev.{name}</m>"',
+                    f'Prefer loading plugin "<y>{name}</y>"'
+                    f' from "<m>src.dev.{name}</m>"',
                 )
 
     start = time.time()

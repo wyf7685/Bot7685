@@ -15,6 +15,7 @@ import jmcomic
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_waiter")
+from nonebot.utils import escape_tag
 from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
 from nonebot_plugin_waiter import waiter
 
@@ -76,7 +77,9 @@ async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> No
             async with sem_check:
                 checked[p] = await check_photo(photo)
         except Exception as err:
-            logger.opt(exception=err).warning(f"检查失败: {p}, {photo!r}")
+            logger.opt(colors=True, exception=err).warning(
+                f"检查失败: <y>{p}</y> - <c>{escape_tag(repr(photo))}</c>"
+            )
 
     checked: dict[int, jmcomic.JmPhotoDetail] = {}
     sem_check = anyio.Semaphore(8)
@@ -89,7 +92,7 @@ async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> No
             async with sem_download:
                 task.set_result(await download_image(image))
         except Exception as err:
-            logger.opt(exception=err).warning(f"下载失败：{err}")
+            logger.opt(exception=err).warning(f"下载失败: {err}")
             task.set_result(None)
 
     async def iter_images() -> AsyncGenerator[tuple[tuple[int, int], bytes | None]]:
@@ -165,8 +168,8 @@ async def _(
     except MatcherException:
         raise
     except Exception as err:
-        logger.opt(exception=err).warning(f"下载失败：{err}")
-        await UniMessage(f"下载失败：{err!r}").finish(reply_to=True)
+        logger.opt(exception=err).warning(f"下载失败: {err}")
+        await UniMessage(f"下载失败: {err!r}").finish(reply_to=True)
     else:
         await UniMessage(f"完成 {album_id} 的下载任务").finish(reply_to=True)
 
