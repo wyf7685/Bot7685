@@ -24,7 +24,7 @@ def call_later[**P](
 ) -> None:
     if not is_coroutine_callable(call):
         call = run_sync(call)
-    call = cast(Callable[P, Awaitable[object]], call)
+    call = cast("Callable[P, Awaitable[object]]", call)
 
     async def wrapper() -> None:
         await anyio.sleep(max(0, delay))

@@ -1,5 +1,3 @@
-# noqa: A005
-
 from types import EllipsisType
 
 from nonebot.exception import MatcherException

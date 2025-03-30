@@ -26,7 +26,7 @@ class MessageConverter[
     @override
     @classmethod
     def get_message(cls, event: Event) -> TM | None:
-        return cast(TM, event.get_message())
+        return cast("TM", event.get_message())
 
     @override
     @classmethod
@@ -69,7 +69,7 @@ class MessageConverter[
     @override
     async def convert(self, msg: TM) -> u.UniMessage[u.Segment]:
         if builder := u.get_builder(self.src_bot):
-            msg = cast(TM, builder.preprocess(msg))
+            msg = cast("TM", builder.preprocess(msg))
 
         result = u.UniMessage[u.Segment]()
         segment: TMS

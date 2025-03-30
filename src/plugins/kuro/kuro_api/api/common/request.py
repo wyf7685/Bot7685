@@ -41,7 +41,7 @@ class Request[R: ValidResponseData]:
     def _get_type_adapter(cls) -> TypeAdapter[Response[R]]:
         if cls._type_adapter is None:
             cls._type_adapter = TypeAdapter(Response[cls._resp_])
-        return cast(TypeAdapter[Response[R]], cls._type_adapter)
+        return cast("TypeAdapter[Response[R]]", cls._type_adapter)
 
     def create_headers(self, token: str) -> RequestHeaders:
         return CommonRequestHeaders(token=token)

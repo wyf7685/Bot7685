@@ -39,7 +39,7 @@ class Patcher[T: Event]:
             (self.__target,),
             {name: original for name, (_, original) in self.__patched.items()},
         )
-        self.origin = cast(type[T], origin)
+        self.origin = cast("type[T]", origin)
         self.patcher = cls
         _PATCHERS.add(self)
 

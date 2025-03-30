@@ -50,7 +50,7 @@ def convert_dependent[**P, R](func: Callable[P, Awaitable[R]]) -> type[R]:
         return result
 
     r = inspect.signature(func).return_annotation
-    return cast(type[R], Annotated[r, Depends(wrapper)])
+    return cast("type[R]", Annotated[r, Depends(wrapper)])
 
 
 @convert_dependent

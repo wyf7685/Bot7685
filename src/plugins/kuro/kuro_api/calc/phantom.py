@@ -104,7 +104,7 @@ class PhantomCalcResult:
                 name = "属性伤害加成"
             result[name] += value
 
-        return cast(PhantomCalcResult.SumResult, result)
+        return cast("PhantomCalcResult.SumResult", result)
 
 
 class PhantomCalc(BaseModel):

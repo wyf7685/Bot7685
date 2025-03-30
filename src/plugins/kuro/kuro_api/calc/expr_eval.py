@@ -16,7 +16,7 @@ def convert_wrapper[T1, T2](func: Callable[[T1, T2], bool]) -> Callable[[T1, T2]
                 with contextlib.suppress(ValueError):
                     value = float(value)
             elif isinstance(value, list):
-                return [convert(item) for item in cast(list[object], value)]
+                return [convert(item) for item in cast("list[object]", value)]
             return value
 
         return func(convert(a), convert(b))
@@ -27,7 +27,7 @@ def convert_wrapper[T1, T2](func: Callable[[T1, T2], bool]) -> Callable[[T1, T2]
 @convert_wrapper
 def func_in(a: object, b: Container[object]) -> bool:
     if isinstance(a, list):
-        return any(i in b for i in cast(list[object], a))
+        return any(i in b for i in cast("list[object]", a))
 
     return a in b
 
@@ -35,7 +35,7 @@ def func_in(a: object, b: Container[object]) -> bool:
 @convert_wrapper
 def func_not_in(a: object, b: Container[object]) -> bool:
     if isinstance(a, list):
-        return all(i not in b for i in cast(list[object], a))
+        return all(i not in b for i in cast("list[object]", a))
     return a not in b
 
 

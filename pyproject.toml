@@ -151,6 +151,7 @@ ignore = [
     "PYI041", # redundant-numeric-union  # int | float
     "S101",   # assert
     "B911",   # batched-without-explicit-strict
+    "PGH004"  # blanket-noqa
 ]
 
 [tool.ruff.lint.flake8-builtins]

@@ -40,8 +40,8 @@ proxy_client = httpx.AsyncClient()
 def get_group_id(event: MessageEvent) -> str:
     if isinstance(event, GroupMessageEvent):  # 当在群聊中时
         return str(event.group_id)
-    else:  # 当在私聊中时
-        return f"{PRIVATE_GROUP}_{event.get_user_id()}"
+
+    return f"{PRIVATE_GROUP}_{event.get_user_id()}"
 
 
 class SessionContainer:
