@@ -1,10 +1,10 @@
-import asyncio
 import contextlib
 import io
 import math
 import pathlib
 from collections.abc import AsyncGenerator
 
+import anyio
 import httpx
 import PIL.Image
 from nonebot.log import logger
@@ -55,7 +55,7 @@ async def download_album_pdf(album_id: int) -> AsyncGenerator[pathlib.Path]:
     try:
         yield pdf_file
     finally:
-        pdf_file.unlink()
+        await anyio.Path(pdf_file).unlink()
 
 
 async def get_album_detail(album_id: int) -> jmcomic.JmAlbumDetail:
@@ -72,6 +72,9 @@ async def download_album(album_id: int) -> jmcomic.JmAlbumDetail:
 
 
 def decode_image(raw: bytes, num: int) -> bytes:
+    if not num:
+        return raw
+
     img = PIL.Image.open(io.BytesIO(raw))
     decoded = PIL.Image.new("RGB", img.size)
 
@@ -98,7 +101,7 @@ def decode_image(raw: bytes, num: int) -> bytes:
 
 
 async def download_image(image: jmcomic.JmImageDetail) -> bytes:
-    num = jmcomic.JmImageTool.get_num_by_url(image.scramble_id, image.download_url)
+    num = jmcomic.JmImageTool.get_num_by_detail(image)
     async with httpx.AsyncClient() as client:
         for try_count in range(5):
             try:
@@ -107,7 +110,7 @@ async def download_image(image: jmcomic.JmImageDetail) -> bytes:
                 logger.warning(f"下载失败：{err!r}, 尝试重试 {try_count + 1} 次")
                 if try_count == 4:
                     raise
-                await asyncio.sleep(0.5)
+                await anyio.sleep(0.5)
             else:
                 return decode_image(response.content, num)
         raise RuntimeError("下载失败")

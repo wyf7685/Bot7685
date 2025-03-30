@@ -6,6 +6,7 @@ from nonebot import logger, require
 from nonebot.adapters.onebot import v11
 from nonebot.adapters.onebot.v11 import Message as V11Msg
 from nonebot.adapters.onebot.v11 import MessageSegment as V11Seg
+from nonebot.exception import MatcherException
 from nonebot.params import Depends
 from nonebot.plugin import PluginMetadata
 
@@ -45,9 +46,7 @@ async def check_lagrange(bot: v11.Bot) -> None:
 type SendFunc = Callable[[list[V11Seg]], Awaitable[object]]
 
 
-def send_func(
-    bot: v11.Bot, event: v11.PrivateMessageEvent | v11.GroupMessageEvent
-) -> SendFunc:
+def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
     return (
         (lambda m: bot.send_group_forward_msg(group_id=event.group_id, messages=m))
         if isinstance(event, v11.GroupMessageEvent)
@@ -74,19 +73,20 @@ class Task[T]:
 async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> None:
     async def check(p: int, photo: jmcomic.JmPhotoDetail) -> None:
         try:
-            checked[p] = await check_photo(photo)
+            async with sem_check:
+                checked[p] = await check_photo(photo)
         except Exception as err:
-            logger.opt(exception=err).warning(f"检查失败：{err}")
-            checked[p] = None
+            logger.opt(exception=err).warning(f"检查失败: {p}, {photo!r}")
 
-    checked: dict[int, jmcomic.JmPhotoDetail | None] = {}
+    checked: dict[int, jmcomic.JmPhotoDetail] = {}
+    sem_check = anyio.Semaphore(8)
     async with anyio.create_task_group() as tg:
         for p, photo in enumerate(album, 1):
             tg.start_soon(check, p, photo)
 
     async def download(task: Task[bytes | None], image: jmcomic.JmImageDetail) -> None:
         try:
-            async with sem:
+            async with sem_download:
                 task.set_result(await download_image(image))
         except Exception as err:
             logger.opt(exception=err).warning(f"下载失败：{err}")
@@ -108,12 +108,10 @@ async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> No
             ]
             await send(segs)
 
-    sem = anyio.Semaphore(8)
+    sem_download = anyio.Semaphore(8)
     async with anyio.create_task_group() as tg:
         download_tasks: list[tuple[tuple[int, int], Task[bytes | None]]] = []
         for p, photo in sorted(checked.items(), key=lambda x: x[0]):
-            if photo is None:
-                continue
             for i, image in enumerate(photo, 1):
                 download_tasks.append(((p, i), task := Task()))
                 tg.start_soon(download, task, image)
@@ -141,7 +139,7 @@ async def _(
     try:
         album = await get_album_detail(album_id)
     except Exception as err:
-        await UniMessage.text(f"获取信息失败：{err!r}").finish()
+        await UniMessage(f"获取信息失败：{err!r}").finish()
 
     async def wait_for_terminate() -> None:
         @waiter([event.get_type()], keep_session=True)
@@ -150,10 +148,9 @@ async def _(
 
         words = {"terminate", "stop", "cancel", "中止", "停止", "取消"}
         async for msg in wait():
-            if msg and msg.strip() in words:
+            if msg is not None and msg.strip() in words:
                 tg.cancel_scope.cancel()
-                await UniMessage(f"中止 {album_id} 的下载任务").send(reply_to=True)
-                return
+                await UniMessage(f"中止 {album_id} 的下载任务").finish(reply_to=True)
 
     async def send_forward() -> None:
         try:
@@ -165,8 +162,11 @@ async def _(
         async with anyio.create_task_group() as tg:
             tg.start_soon(wait_for_terminate)
             tg.start_soon(send_forward)
+    except MatcherException:
+        raise
     except Exception as err:
-        await UniMessage.text(f"下载失败：{err!r}").finish(reply_to=True)
+        logger.opt(exception=err).warning(f"下载失败：{err}")
+        await UniMessage(f"下载失败：{err!r}").finish(reply_to=True)
     else:
         await UniMessage(f"完成 {album_id} 的下载任务").finish(reply_to=True)
 
