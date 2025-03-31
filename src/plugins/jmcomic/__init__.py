@@ -26,7 +26,7 @@ require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 
 from .jm_option import check_photo, download_album_pdf, download_image, get_album_detail
-from .utils import abatched, queued
+from .utils import abatched
 
 __plugin_meta__ = PluginMetadata(
     name="jmcomic",
@@ -51,7 +51,7 @@ type SendFunc = Callable[[list[V11Seg]], Awaitable[object]]
 
 
 def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
-    return queued(
+    return (
         (lambda m: bot.send_group_forward_msg(group_id=event.group_id, messages=m))
         if isinstance(event, v11.GroupMessageEvent)
         else (lambda m: bot.send_private_forward_msg(user_id=event.user_id, messages=m))
@@ -133,13 +133,6 @@ async def send_album_forward(
             if pending:
                 put_one()
 
-    def node(p: int, i: int, raw: bytes | None) -> V11Seg:
-        return V11Seg.node_custom(
-            user_id=10086,
-            nickname=f"P_{p}_{i}",
-            content=V11Msg(V11Seg.image(raw)) if raw is not None else "图片下载失败",
-        )
-
     async def send_segs() -> None:
         async for batch in abatched(iter_images(), 20):
             segs = [
@@ -179,8 +172,10 @@ async def _(
 
     try:
         album = await get_album_detail(album_id)
+    except jmcomic.JmcomicException as err:
+        await UniMessage(f"获取信息失败:\n{err}").finish()
     except Exception as err:
-        await UniMessage(f"获取信息失败：{err!r}").finish()
+        await UniMessage(f"获取信息失败: 未知错误\n{err!r}").finish()
 
     async def wait_for_terminate() -> None:
         @waiter([event.get_type()], keep_session=True)
@@ -194,7 +189,7 @@ async def _(
 
     async def send_forward() -> None:
         try:
-            await send_album_forward(album, send, 16)
+            await send_album_forward(album, send, 8)
         finally:
             tg.cancel_scope.cancel()
 
