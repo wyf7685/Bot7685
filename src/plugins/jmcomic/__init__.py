@@ -83,21 +83,34 @@ async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> No
 
     checked: dict[int, jmcomic.JmPhotoDetail] = {}
     sem_check = anyio.Semaphore(8)
-    async with anyio.create_task_group() as tg:
+    async with anyio.create_task_group() as tg_check:
         for p, photo in enumerate(album, 1):
-            tg.start_soon(check, p, photo)
+            tg_check.start_soon(check, p, photo)
 
     async def download(task: Task[bytes | None], image: jmcomic.JmImageDetail) -> None:
         try:
-            async with sem_download:
-                task.set_result(await download_image(image))
+            task.set_result(await download_image(image))
         except Exception as err:
             logger.opt(exception=err).warning(f"下载失败: {err}")
             task.set_result(None)
 
     async def iter_images() -> AsyncGenerator[tuple[tuple[int, int], bytes | None]]:
-        for key, task in download_tasks:
+        running: list[tuple[tuple[int, int], Task[bytes | None]]] = []
+
+        def put_one() -> None:
+            key, image = pending.pop(0)
+            task: Task[bytes | None] = Task()
+            tg.start_soon(download, task, image)
+            running.append((key, task))
+
+        for _ in range(min(8, len(pending))):
+            put_one()
+
+        while running:
+            key, task = running.pop(0)
             yield (key, await task.wait())
+            if pending:
+                put_one()
 
     async def send_segs() -> None:
         async for batch in abatched(iter_images(), 20):
@@ -109,28 +122,26 @@ async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> No
                 )
                 for (p, i), raw in batch
             ]
-            await send(segs)
-            logger.opt(colors=True).success(
-                f"发送合并转发: <c>{batch[0][0]}</c> - <c>{batch[-1][0]}</c>"
+            logger.opt(colors=True).info(
+                f"开始发送合并转发: <c>{batch[0][0]}</c> - <c>{batch[-1][0]}</c>"
             )
+            tg.start_soon(send, segs)
 
-    sem_download = anyio.Semaphore(8)
+    pending = [
+        ((p, i), image)
+        for p, photo in sorted(checked.items(), key=lambda x: x[0])
+        for i, image in enumerate(photo, 1)
+    ]
+
+    await UniMessage.text(
+        f"ID: {album.id}\n"
+        f"标题: {album.title}\n"
+        f"作者: {album.author}\n"
+        f"标签: {', '.join(album.tags)}\n"
+        f"页数: {len(pending)}"
+    ).send(reply_to=True)
+
     async with anyio.create_task_group() as tg:
-        download_tasks: list[tuple[tuple[int, int], Task[bytes | None]]] = []
-        for p, photo in sorted(checked.items(), key=lambda x: x[0]):
-            for i, image in enumerate(photo, 1):
-                download_tasks.append(((p, i), task := Task()))
-                tg.start_soon(download, task, image)
-
-        tg.start_soon(
-            UniMessage.text(
-                f"ID: {album.id}\n"
-                f"标题: {album.title}\n"
-                f"作者: {album.author}\n"
-                f"标签: {', '.join(album.tags)}\n"
-                f"页数: {len(download_tasks)}"
-            ).send
-        )
         tg.start_soon(send_segs)
 
 
@@ -167,9 +178,9 @@ async def _(
         async with anyio.create_task_group() as tg:
             tg.start_soon(wait_for_terminate)
             tg.start_soon(send_forward)
-    except *MatcherException:
+    except* MatcherException:
         raise
-    except *Exception as err:
+    except* Exception as err:
         logger.opt(exception=err).warning(f"下载失败: {err}")
         await UniMessage(f"下载失败: {err!r}").finish(reply_to=True)
     else:
