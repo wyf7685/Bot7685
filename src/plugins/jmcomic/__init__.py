@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import Annotated
 
 import anyio
+from exceptiongroup import catch
 from nonebot import logger, require
 from nonebot.adapters.onebot import v11
 from nonebot.adapters.onebot.v11 import Message as V11Msg
@@ -10,6 +11,7 @@ from nonebot.adapters.onebot.v11 import MessageSegment as V11Seg
 from nonebot.exception import MatcherException
 from nonebot.params import Depends
 from nonebot.plugin import PluginMetadata
+from nonebot.utils import flatten_exception_group
 
 import jmcomic
 
@@ -196,17 +198,22 @@ async def _(
         finally:
             tg.cancel_scope.cancel()
 
-    try:
+    excs: list[str] = []
+
+    def handle_exc(exc_group: BaseExceptionGroup) -> None:
+        for exc in flatten_exception_group(exc_group):
+            if isinstance(exc, MatcherException):
+                raise exc
+            excs.append(repr(exc))
+            logger.opt(exception=exc).warning(f"下载失败: {exc}")
+
+    with catch({Exception: handle_exc}):
         async with anyio.create_task_group() as tg:
             tg.start_soon(wait_for_terminate)
             tg.start_soon(send_forward)
-    except* MatcherException:
-        raise
-    except* Exception as err:
-        logger.opt(exception=err).warning(f"下载失败: {err}")
-        await UniMessage(f"下载失败: {err!r}").finish(reply_to=True)
-    else:
-        await UniMessage(f"完成 {album_id} 的下载任务").finish(reply_to=True)
+
+    msg = ("下载失败:\n" + "\n".join(excs)) if excs else f"完成 {album_id} 的下载任务"
+    await UniMessage(msg).finish(reply_to=True)
 
 
 @matcher.assign("album_id")
