@@ -155,7 +155,6 @@ async def _(
         words = {"terminate", "stop", "cancel", "中止", "停止", "取消"}
         async for msg in wait():
             if msg is not None and msg.strip() in words:
-                tg.cancel_scope.cancel()
                 await UniMessage(f"中止 {album_id} 的下载任务").finish(reply_to=True)
 
     async def send_forward() -> None:
@@ -168,9 +167,9 @@ async def _(
         async with anyio.create_task_group() as tg:
             tg.start_soon(wait_for_terminate)
             tg.start_soon(send_forward)
-    except MatcherException:
+    except *MatcherException:
         raise
-    except Exception as err:
+    except *Exception as err:
         logger.opt(exception=err).warning(f"下载失败: {err}")
         await UniMessage(f"下载失败: {err!r}").finish(reply_to=True)
     else:
