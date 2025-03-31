@@ -110,6 +110,9 @@ async def send_album_forward(album: jmcomic.JmAlbumDetail, send: SendFunc) -> No
                 for (p, i), raw in batch
             ]
             await send(segs)
+            logger.opt(colors=True).success(
+                f"发送合并转发: <c>{batch[0][0]}</c> - <c>{batch[-1][0]}</c>"
+            )
 
     sem_download = anyio.Semaphore(8)
     async with anyio.create_task_group() as tg:
