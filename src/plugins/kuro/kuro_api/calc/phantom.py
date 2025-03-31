@@ -96,10 +96,10 @@ class PhantomCalcResult:
         result["攻击"] = result["生命"] = result["防御"] = 0.0
 
         for prop in self.phantom.get_props():
-            name = prop.attributeName
-            if name in _BASIC_PROPS and "%" in prop.attributeValue:
+            name = prop.name
+            if name in _BASIC_PROPS and "%" in prop.value:
                 name += "%"
-            value = float(prop.attributeValue.removesuffix("%"))
+            value = float(prop.value.removesuffix("%"))
             if name.startswith(_ATTRS):
                 name = "属性伤害加成"
             result[name] += value
@@ -131,20 +131,19 @@ class PhantomCalc(BaseModel):
         self, prop: PhantomAttribute, cost: _PhantomCost
     ) -> float:
         props_weight = self.main_props[cost] if prop.is_main else self.sub_props
-        percentage = "%" if "%" in prop.attributeValue else ""
-        name = prop.attributeName
-        value = float(prop.attributeValue.removesuffix("%"))
+        percentage = "%" if "%" in prop.value else ""
+        value = float(prop.value.removesuffix("%"))
 
-        if name in _BASIC_PROPS:
-            score = props_weight[name + percentage] * value
-        elif (prefix := name.removesuffix("伤害加成")) in (_SKILLS + _ATTRS):
+        if prop.name in _BASIC_PROPS:
+            score = props_weight[prop.name + percentage] * value
+        elif (prefix := prop.name.removesuffix("伤害加成")) in (_SKILLS + _ATTRS):
             if prefix in _SKILLS:
                 skill_weight = self.skill_weight[_SKILLS.index(prefix)]
                 score = props_weight["技能伤害加成"] * skill_weight * value
             else:
                 score = props_weight["属性伤害加成"] * value
         else:
-            score = props_weight[name] * value
+            score = props_weight[prop.name] * value
 
         return score
 

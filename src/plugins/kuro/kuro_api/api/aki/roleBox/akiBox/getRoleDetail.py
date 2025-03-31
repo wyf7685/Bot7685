@@ -1,5 +1,6 @@
 # ruff: noqa: N815
 
+import functools
 from enum import Enum
 from typing import Literal, final, override
 
@@ -66,6 +67,14 @@ class PhantomAttribute(ResponseData):
     @property
     def is_main(self) -> bool:
         return False
+
+    @functools.cached_property
+    def name(self) -> str:
+        return self.attributeName
+
+    @functools.cached_property
+    def value(self) -> str:
+        return self.attributeValue
 
 
 class PhantomMainAttribute(PhantomAttribute):
