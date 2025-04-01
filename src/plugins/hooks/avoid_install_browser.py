@@ -7,4 +7,4 @@ from nonebot_plugin_htmlrender import browser
 async def _() -> None: ...
 
 
-browser.init_browser = _
+browser.install_browser = _
