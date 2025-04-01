@@ -48,22 +48,28 @@ matcher = on_alconna(
 
 @matcher.assign("add.user")
 async def add_user(user: At | str) -> None:
-    set_trusted("add", "user", user.target if isinstance(user, At) else user)
+    user = user.target if isinstance(user, At) else user
+    set_trusted("add", "user", user)
+    await matcher.send(f"成功添加可信用户 {user}")
 
 
 @matcher.assign("add.group")
 async def add_group(group: str) -> None:
     set_trusted("add", "group", group)
+    await matcher.send(f"成功添加可信群组 {group}")
 
 
 @matcher.assign("remove.user")
 async def remove_user(user: At | str) -> None:
-    set_trusted("remove", "user", user.target if isinstance(user, At) else user)
+    user = user.target if isinstance(user, At) else user
+    set_trusted("remove", "user", user)
+    await matcher.send(f"成功移除可信用户 {user}")
 
 
 @matcher.assign("remove.group")
 async def remove_group(group: str) -> None:
     set_trusted("remove", "group", group)
+    await matcher.send(f"成功移除可信群组 {group}")
 
 
 @matcher.assign("list.user")
@@ -73,10 +79,7 @@ async def list_user(bot: Bot) -> None:
         for user in load_trust_data(use_cache=False).user
         if user.startswith(bot.type)
     ]
-    await matcher.send(
-        ("可信用户\n" + "\n".join(users)) if users else "没有可信用户",
-        at_sender=True,
-    )
+    await matcher.send(("可信用户\n" + "\n".join(users)) if users else "没有可信用户")
 
 
 @matcher.assign("list.group")
@@ -86,7 +89,4 @@ async def list_group(bot: Bot) -> None:
         for group in load_trust_data(use_cache=False).group
         if group.startswith(bot.type)
     ]
-    await matcher.send(
-        ("可信群组\n" + "\n".join(groups)) if groups else "没有可信群组",
-        at_sender=True,
-    )
+    await matcher.send(("可信群组\n" + "\n".join(groups)) if groups else "没有可信群组")

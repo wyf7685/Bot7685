@@ -44,7 +44,7 @@ def set_trusted(
     type: TrustedType,  # noqa: A002
     id: str,
 ) -> None:
-    data = load_trust_data()
+    data = load_trust_data(use_cache=False)
     s = data.user if type == "user" else data.group
     (s.add if action == "add" else s.discard)(f"{current_bot.get().type}:{id}")
     dump_trust_data(data)
