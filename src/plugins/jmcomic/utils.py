@@ -1,5 +1,11 @@
 import functools
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable
+from collections.abc import (
+    AsyncGenerator,
+    AsyncIterable,
+    Awaitable,
+    Callable,
+    Generator,
+)
 
 import anyio
 
@@ -26,3 +32,13 @@ def queued[**P, R](func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]
             return await func(*args, **kwargs)
 
     return wrapper
+
+
+def flatten_exception_group[E: BaseException](
+    exc_group: BaseExceptionGroup[E],
+) -> Generator[E]:
+    for exc in exc_group.exceptions:
+        if isinstance(exc, BaseExceptionGroup):
+            yield from flatten_exception_group(exc)
+        else:
+            yield exc

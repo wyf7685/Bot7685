@@ -11,14 +11,13 @@ from nonebot.adapters.onebot.v11 import MessageSegment as V11Seg
 from nonebot.exception import MatcherException
 from nonebot.params import Depends
 from nonebot.plugin import PluginMetadata
-from nonebot.utils import flatten_exception_group
+from nonebot.utils import escape_tag
 
 import jmcomic
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_waiter")
-from nonebot.utils import escape_tag
 from nonebot_plugin_alconna import Alconna, Args, UniMessage, on_alconna
 from nonebot_plugin_waiter import waiter
 
@@ -26,7 +25,7 @@ require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 
 from .jm_option import check_photo, download_album_pdf, download_image, get_album_detail
-from .utils import abatched
+from .utils import abatched, flatten_exception_group
 
 __plugin_meta__ = PluginMetadata(
     name="jmcomic",
