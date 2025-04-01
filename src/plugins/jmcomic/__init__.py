@@ -3,7 +3,6 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import Annotated
 
 import anyio
-from exceptiongroup import catch
 from nonebot import logger, require
 from nonebot.adapters.onebot import v11
 from nonebot.adapters.onebot.v11 import Message as V11Msg
@@ -51,10 +50,11 @@ type SendFunc = Callable[[list[V11Seg]], Awaitable[object]]
 
 
 def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
+    # fmt: off
     return (
         (lambda m: bot.send_group_forward_msg(group_id=event.group_id, messages=m))
-        if isinstance(event, v11.GroupMessageEvent)
-        else (lambda m: bot.send_private_forward_msg(user_id=event.user_id, messages=m))
+        if isinstance(event, v11.GroupMessageEvent) else
+        (lambda m: bot.send_private_forward_msg(user_id=event.user_id, messages=m))
     )
 
 
@@ -77,7 +77,7 @@ class Task[T]:
 async def check_album(
     album: jmcomic.JmAlbumDetail,
 ) -> list[tuple[int, jmcomic.JmPhotoDetail]]:
-    async def check(p: int, photo: jmcomic.JmPhotoDetail, sem: anyio.Semaphore) -> None:
+    async def check(p: int, photo: jmcomic.JmPhotoDetail) -> None:
         try:
             async with sem:
                 checked[p] = await check_photo(photo)
@@ -92,7 +92,7 @@ async def check_album(
         anyio.Semaphore(9) as sem,
     ):
         for p, photo in enumerate(album, 1):
-            tg.start_soon(check, p, photo, sem)
+            tg.start_soon(check, p, photo)
 
     return sorted(checked.items(), key=lambda x: x[0])
 
@@ -120,8 +120,7 @@ async def send_album_forward(
 
         def put_one() -> None:
             key, image = pending.pop(0)
-            task: Task[bytes | None] = Task()
-            tg.start_soon(download, task, image)
+            tg.start_soon(download, task := Task[bytes | None](), image)
             running.append((key, task))
 
         for _ in range(min(batch_size, len(pending))):
@@ -193,22 +192,23 @@ async def _(
         finally:
             tg.cancel_scope.cancel()
 
-    excs: list[str] = []
-
-    def handle_exc(exc_group: BaseExceptionGroup) -> None:
-        for exc in flatten_exception_group(exc_group):
-            if isinstance(exc, MatcherException):
-                raise exc
-            excs.append(repr(exc))
-            logger.opt(exception=exc).warning(f"下载失败: {exc}")
-
-    with catch({Exception: handle_exc}):
+    try:
         async with anyio.create_task_group() as tg:
             tg.start_soon(wait_for_terminate)
             tg.start_soon(send_forward)
-
-    msg = ("下载失败:\n" + "\n".join(excs)) if excs else f"完成 {album_id} 的下载任务"
-    await UniMessage(msg).finish(reply_to=True)
+    except* MatcherException:
+        raise
+    except* Exception as exc_group:
+        logger.opt(exception=exc_group).warning("下载失败")
+        await UniMessage(
+            "下载失败:\n"
+            + "\n".join(
+                (str if isinstance(exc, jmcomic.JmcomicException) else repr)(exc)
+                for exc in flatten_exception_group(exc_group)
+            )
+        ).finish(reply_to=True)
+    else:
+        await UniMessage(f"完成 {album_id} 的下载任务").finish(reply_to=True)
 
 
 @matcher.assign("album_id")
