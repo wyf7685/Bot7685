@@ -36,9 +36,8 @@ class Config(BaseModel):
 
 async def get_url(api: str) -> str:
     async with httpx.AsyncClient() as client:
-        resp = await client.get(api)
-        resp.raise_for_status()
-    return resp.json()["imageUrl"]
+        resp: dict[str, str] = (await client.get(api)).raise_for_status().json()
+    return resp["imageUrl"]
 
 
 async def read60s(config: Read60sConfig) -> None:

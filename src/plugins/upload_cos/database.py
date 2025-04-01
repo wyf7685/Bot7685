@@ -1,6 +1,5 @@
 from collections.abc import AsyncGenerator
 from datetime import datetime
-from typing import Any, ClassVar
 
 import nonebot
 from nonebot.utils import escape_tag
@@ -13,8 +12,6 @@ from .cos_ops import delete_file
 
 
 class CosUploadFile(Model):
-    __table_args__: ClassVar[Any] = {"extend_existing": True}
-
     key: Mapped[str] = mapped_column(TEXT, primary_key=True)
     expire_at: Mapped[float] = mapped_column(FLOAT)
 
@@ -44,8 +41,6 @@ async def pop_expired_keys() -> AsyncGenerator[str]:
 
 
 class CosUploadPermission(Model):
-    __table_args__: ClassVar[Any] = {"extend_existing": True}
-
     user_id: Mapped[str] = mapped_column(TEXT, primary_key=True)
     expire_at: Mapped[float] = mapped_column(FLOAT)
 

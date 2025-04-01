@@ -1,5 +1,4 @@
 import enum
-from typing import Any
 
 from pydantic import BaseModel
 
@@ -58,7 +57,7 @@ class Request[B: ResponseBody, H: ResponseHeaders](BaseModel):
         raise TypeError(f"{cls} doesnt inherit from Request")
 
     @classmethod
-    def parse_response(cls, response: dict[str, Any]) -> Response[B, H]:
+    def parse_response(cls, response: dict[str, object]) -> Response[B, H]:
         body, headers = cls._find_model()
         return Response[body, headers].model_validate(response)
 
@@ -168,7 +167,7 @@ class InstanceInfo(BaseModel):
             PrimaryIpAddress: str
             MacAddress: str
             NetworkInterfaceId: str
-            PrivateIpSets: dict[str, Any]
+            PrivateIpSets: dict[str, object]
 
         NetworkInterface: list[_NetworkInterface]
 

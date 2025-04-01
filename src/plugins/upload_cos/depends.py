@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
@@ -10,7 +10,7 @@ from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, imag
 from .database import user_has_perm
 
 
-def _event_image() -> Any:
+def _event_image() -> Image:
     async def event_image(msg: UniMsg) -> Image:
         if msg.has(Image):
             return msg[Image, 0]
@@ -23,7 +23,7 @@ def _event_image() -> Any:
     return Depends(event_image)
 
 
-def _event_image_raw() -> Any:
+def _event_image_raw() -> bytes:
     async def event_image_raw(
         event: Event,
         bot: Bot,

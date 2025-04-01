@@ -1,5 +1,3 @@
-from typing import Any
-
 from nonebot import require
 from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters.onebot.v11 import Bot, Message
@@ -80,7 +78,7 @@ SEND_MSG_API = "send_msg", "send_group_msg", "send_private_msg"
 
 
 @BaseBot.on_calling_api
-async def _(bot: BaseBot, api: str, data: dict[str, Any]) -> None:
+async def _(bot: BaseBot, api: str, data: dict[str, object]) -> None:
     if not enabled:
         return
 

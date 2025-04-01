@@ -1,13 +1,12 @@
 import dataclasses
 import functools
 import operator
-from typing import Any
 
 from ..api.models import Phantom, RoleDetail
 from .phantom import PhantomCalc, PhantomCalcResult
 from .sonata import WavesSonata, get_sonata_detail
 
-type _CalcContext = dict[str, Any]
+type _CalcContext = dict[str, object]
 
 
 @dataclasses.dataclass

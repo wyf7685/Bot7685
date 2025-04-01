@@ -12,11 +12,11 @@ env_file = root / ".env"
 toml_file = root / "pyproject.toml"
 
 
-def _load_yaml(file_path: pathlib.Path) -> dict[str, Any]:
+def _load_yaml(file_path: pathlib.Path) -> dict[str, Any]:  # pyright:ignore[reportExplicitAny]
     return msgyaml.decode(file_path.read_bytes()) or {}
 
 
-def load_config() -> dict[str, Any]:
+def load_config() -> dict[str, Any]:  # pyright:ignore[reportExplicitAny]
     config_dir = pathlib.Path("config")
     root_config = config_dir / "config.yaml"
     if not root_config.exists():

@@ -22,7 +22,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     exclude_value: ClassVar[tuple[object, ...]] = ()
 
     @classmethod
-    def repr(cls, data: Any, /, *color: str) -> str:
+    def repr(cls, data: object, /, *color: str) -> str:
         text = escape_tag(repr(data))
         for c in reversed(color):
             text = f"<{c}>{text}</{c}>"
@@ -30,13 +30,13 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
 
     @functools.singledispatchmethod
     @classmethod
-    def _handle(cls, data: Any) -> str:
+    def _handle(cls, data: Any) -> str:  # pyright:ignore[reportExplicitAny]
         return cls.repr(data)
 
     register = _handle.register  # pyright:ignore[reportUnannotatedClassAttribute]
 
     @classmethod
-    def apply(cls, data: Any, /) -> str:
+    def apply(cls, data: object, /) -> str:
         return cls._handle(data)
 
     @classmethod
@@ -73,7 +73,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
 
     @register(dict)
     @classmethod
-    def _(cls, data: dict[str, Any]) -> str:
+    def _(cls, data: dict[str, object]) -> str:
         kv = [
             f"{cls.repr(key, 'le', 'i')}: {cls.apply(value)}"
             for key, value in data.items()
@@ -83,17 +83,17 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
 
     @register(list)
     @classmethod
-    def _(cls, data: list[Any]) -> str:
+    def _(cls, data: list[object]) -> str:
         return f"[{', '.join(cls.apply(item) for item in data)}]"
 
     @register(set)
     @classmethod
-    def _(cls, data: set[Any]) -> str:
+    def _(cls, data: set[object]) -> str:
         return f"{{{', '.join(cls.apply(item) for item in data)}}}"
 
     @register(tuple)
     @classmethod
-    def _(cls, data: tuple[Any]) -> str:
+    def _(cls, data: tuple[object]) -> str:
         return f"({', '.join(cls.apply(item) for item in data)})"
 
     @register(datetime.datetime)

@@ -151,7 +151,7 @@ ignore = [
     "PYI041", # redundant-numeric-union  # int | float
     "S101",   # assert
     "B911",   # batched-without-explicit-strict
-    "PGH004"  # blanket-noqa
+    "PGH004", # blanket-noqa
 ]
 
 [tool.ruff.lint.flake8-builtins]
@@ -174,16 +174,16 @@ pythonPlatform = "All"
 typeCheckingMode = "recommended"
 reportShadowedImports = false
 disableBytesTypePromotions = true
-reportUnusedCallResult = false  # Receipt
-reportUnknownVariableType = false
-reportUnknownMemberType = false
-reportUnknownArgumentType = false
-reportImplicitStringConcatenation = false
-reportMissingTypeStubs = false
-reportAny = false
-reportExplicitAny = false
-reportMissingTypeArgument = false  # UniMessage
-reportUnknownParameterType = false  # Message
+reportUnusedCallResult = false            # Receipt
+reportUnknownVariableType = false         # Message/UniMessage
+reportUnknownMemberType = false           # Message/UniMessage
+reportUnknownArgumentType = false         # Message/UniMessage
+reportImplicitStringConcatenation = false # Ruff ISC003
+reportMissingTypeStubs = false            # third-party modules
+reportAny = false                         # Alconna Args, ...
+# reportExplicitAny = false
+reportMissingTypeArgument = false         # UniMessage
+reportUnknownParameterType = false        # Message
 
 [tool.uv]
 dev-dependencies = [

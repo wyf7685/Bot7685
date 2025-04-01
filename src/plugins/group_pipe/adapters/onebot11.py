@@ -149,12 +149,12 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
     async def cache_forward(
         self,
         forward_id: str,
-        content: list[dict[str, Any]],
+        content: list[dict[str, Any]],  # pyright:ignore[reportExplicitAny]
     ) -> bool:
         if not content:
             return False
 
-        cache_data: list[dict[str, Any]] = []
+        cache_data: list[dict[str, object]] = []
         processor = MessageConverter(self.src_bot)
         processor.do_resolve_url = False
 
@@ -185,9 +185,9 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return False
 
-    async def handle_forward(self, data: dict[str, Any]) -> AsyncIterable[u.Segment]:
+    async def handle_forward(self, data: dict[str, Any]) -> AsyncIterable[u.Segment]:  # pyright:ignore[reportExplicitAny]
         cached = False
-        forward_id = data["id"]
+        forward_id: str = data["id"]
         if "napcat" in await self.get_platform() and (content := data.get("content")):
             cached = await self.cache_forward(forward_id, content)
         yield u.Text(f"[forward:{forward_id}:cache={cached}]")
@@ -199,7 +199,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             )
             yield u.Keyboard([btn])
 
-    async def handle_json_msg(self, data: dict[str, Any]) -> AsyncIterable[u.Segment]:
+    async def handle_json_msg(self, data: dict[str, Any]) -> AsyncIterable[u.Segment]:  # pyright:ignore[reportExplicitAny]
         def default() -> u.Segment:
             return u.Text(f"[json消息:{data}]")
 
@@ -339,10 +339,10 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
 
 @sender(Adapter)
-class MessageSender(BaseMessageSender[Bot, dict[str, Any]]):
+class MessageSender(BaseMessageSender[Bot, dict[str, object]]):
     @override
     @staticmethod
-    def extract_msg_id(data: dict[str, Any]) -> str:
+    def extract_msg_id(data: dict[str, object]) -> str:
         return str(data["message_id"]) if data else ""
 
     @staticmethod

@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any, cast
+from typing import cast
 
 import nonebot
 from nonebot.adapters import Event
@@ -18,7 +18,7 @@ async def _() -> None:
 class Patcher[T: Event]:
     __target: type
     __name: str
-    __patched: dict[str, tuple[Callable[..., Any], Callable[..., Any]]]
+    __patched: dict[str, tuple[Callable[..., object], Callable[..., object]]]
     origin: type[T]
     patcher: type[T]
 
