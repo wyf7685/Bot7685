@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import final
 
 from nonebot_plugin_alconna.uniseg import Target
 from nonebot_plugin_orm import Model, get_scoped_session, get_session
@@ -22,6 +23,7 @@ class KuroToken(Model):
     note: Mapped[str | None] = mapped_column(String(), nullable=True)
 
 
+@final
 class KuroTokenDAO:
     def __init__(self, session: UniSession) -> None:
         self.session = session

@@ -1,7 +1,7 @@
 # ruff: noqa: S605, S607
 import os
 
-from generate_env import ensure_cli
+from generate_env import ensure_cli  # pyright: ignore[reportImplicitRelativeImport]
 
 
 def orm_upgrade() -> None:

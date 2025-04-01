@@ -1,3 +1,4 @@
+import abc
 from typing import ClassVar, override
 
 import nonebot
@@ -36,7 +37,7 @@ class Highlight(BaseHighlight):
 
 
 @Patcher
-class PatchEvent(Event):
+class PatchEvent(Event, abc.ABC):
     @override
     def get_log_string(self) -> str:
         return f"[{self.get_event_name()}] {Highlight.apply(model_dump(self))}"

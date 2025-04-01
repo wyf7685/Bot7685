@@ -3,13 +3,14 @@ from typing import overload
 
 from nonebot.adapters import Adapter, Bot, Message, MessageSegment
 
-from . import abstract
+from ..adapter import MessageConverter as AbstractMessageConverter
+from ..adapter import MessageSender as AbstractMessageSender
 
-CONVERTERS: dict[str | None, type[abstract.MessageConverter]] = {}
-SENDERS: dict[str | None, type[abstract.MessageSender]] = {}
+CONVERTERS: dict[str | None, type[AbstractMessageConverter]] = {}
+SENDERS: dict[str | None, type[AbstractMessageSender]] = {}
 
 
-def converter[T: type[abstract.MessageConverter]](
+def converter[T: type[AbstractMessageConverter]](
     type_: type[Adapter] | None,
 ) -> Callable[[T], T]:
     key = type_.get_name() if type_ is not None else None
@@ -21,7 +22,7 @@ def converter[T: type[abstract.MessageConverter]](
     return decorator
 
 
-def sender[T: type[abstract.MessageSender]](
+def sender[T: type[AbstractMessageSender]](
     type_: type[Adapter] | None,
 ) -> Callable[[T], T]:
     key = type_.get_name() if type_ is not None else None
@@ -34,8 +35,8 @@ def sender[T: type[abstract.MessageSender]](
 
 
 type _M = Message[MessageSegment[_M]]
-type MessageConverter = abstract.MessageConverter[Bot, _M]
-type MessageSender = abstract.MessageSender[Bot]
+type MessageConverter = AbstractMessageConverter[Bot, _M]
+type MessageSender = AbstractMessageSender[Bot]
 
 
 @overload

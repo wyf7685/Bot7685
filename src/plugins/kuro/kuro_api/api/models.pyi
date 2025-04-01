@@ -98,4 +98,3 @@ __all__ = [
     "WuwaUpdateShowSettingRequest",
     "WuwaWidgetGetDataRequest",
 ]
-

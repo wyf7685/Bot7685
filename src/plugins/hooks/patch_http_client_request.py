@@ -17,7 +17,7 @@ logger = nonebot.logger.opt(colors=True)
 
 class _RequestCall[T](Protocol):
     async def __call__(  # sourcery skip: instance-method-first-arg-name
-        self_,  # noqa: N805  # type: ignore[]
+        self_,  # noqa: N805  # pyright: ignore[reportSelfClsParameterName]
         self: T,
         setup: Request,
     ) -> Response: ...
@@ -42,10 +42,10 @@ with contextlib.suppress(ImportError):
     from nonebot.drivers.aiohttp import Session as AIOHTTPSession
 
     AIOHTTPSession.request = patch_request(AIOHTTPSession.request)
-    logger.success("Patched AIOHTTPSession.request")
+    logger.success("Patched <g>AIOHTTPSession</g>.<y>request</y>")
 
 with contextlib.suppress(ImportError):
     from nonebot.drivers.httpx import Session as HTTPXSession
 
     HTTPXSession.request = patch_request(HTTPXSession.request)
-    logger.success("Patched HTTPXSession.request")
+    logger.success("Patched <g>HTTPXSession</g>.<y>request</y>")

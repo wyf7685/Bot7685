@@ -1,4 +1,5 @@
 import datetime
+from typing import final
 
 from nonebot_plugin_orm import Model, get_session
 from sqlalchemy import Integer, String, select
@@ -26,6 +27,7 @@ class KVCache(Model):
     """
 
 
+@final
 class KVCacheDAO:
     def __init__(self) -> None:
         self.session = get_session()

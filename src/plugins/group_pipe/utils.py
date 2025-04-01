@@ -15,7 +15,7 @@ from nonebot_plugin_localstore import get_plugin_cache_dir
 
 
 class _GlobalAsyncClient:
-    client: httpx.AsyncClient
+    client: httpx.AsyncClient | None = None
 
     @nonebot.get_driver().on_startup
     async def _() -> None:
@@ -24,10 +24,12 @@ class _GlobalAsyncClient:
 
     @nonebot.get_driver().on_shutdown
     async def _() -> None:
-        await _GlobalAsyncClient.client.__aexit__(None, None, None)
+        if _GlobalAsyncClient.client is not None:
+            await _GlobalAsyncClient.client.__aexit__(None, None, None)
 
 
 def async_client() -> httpx.AsyncClient:
+    assert _GlobalAsyncClient.client is not None, "Async client not initialized"
     return _GlobalAsyncClient.client
 
 

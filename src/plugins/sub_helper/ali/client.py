@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from typing import final
 
 import anyio
 import nonebot
@@ -24,6 +25,7 @@ config = plugin_config.ali
 logger = nonebot.logger.opt(colors=True)
 
 
+@final
 class AliClient:
     def __init__(self) -> None:
         sdk_config = open_api_models.Config(  # type:ignore[reportArgumentType]

@@ -2,7 +2,7 @@ import importlib
 import logging
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar, cast
 
 import nonebot
 from msgspec import yaml as msgyaml
@@ -46,11 +46,11 @@ def setup_logger() -> None:
     )
 
 
-def _load_yaml(file_path: Path) -> dict[str, Any]:
+def _load_yaml(file_path: Path) -> dict[str, object]:
     return msgyaml.decode(file_path.read_bytes()) or {}
 
 
-def load_config() -> dict[str, Any]:
+def load_config() -> dict[str, object]:
     config_dir = Path("config")
     root_config = config_dir / "config.yaml"
     if not root_config.exists():
@@ -91,7 +91,7 @@ def load_adapters(config: Config) -> None:
             continue
 
         try:
-            adapter: type[Adapter] = module.Adapter
+            adapter = cast("type[Adapter]", module.Adapter)
         except AttributeError:
             log("WARNING", f"Module <y>{full_name}</y> is not a valid adapter")
             continue
@@ -129,7 +129,7 @@ def load_plugins(config: Config) -> None:
     log("SUCCESS", f"Plugins loaded in <y>{time.time() - start:.3f}</y>s")
 
 
-def init_nonebot() -> Any:
+def init_nonebot() -> object:
     config = Config.model_validate(load_config())
 
     start = time.time()
@@ -139,4 +139,4 @@ def init_nonebot() -> Any:
     load_plugins(config)
     log("SUCCESS", f"NoneBot initialized in <y>{time.time() - start:.3f}</y>s")
 
-    return nonebot.get_app()
+    return cast("object", nonebot.get_app())

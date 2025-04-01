@@ -52,6 +52,8 @@ class Request[B: ResponseBody, H: ResponseHeaders](BaseModel):
             match c:
                 case type(__pydantic_generic_metadata__={"args": (_, _) as args}):
                     return tuple(args)
+                case _:
+                    pass
 
         raise TypeError(f"{cls} doesnt inherit from Request")
 

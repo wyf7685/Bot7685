@@ -1,13 +1,17 @@
 from collections.abc import AsyncIterable
-from typing import Any, cast, override
+from typing import TYPE_CHECKING, Any, ClassVar, cast, override
 
 import nonebot
 from nonebot.adapters import Bot, Event, Message, MessageSegment
 from nonebot_plugin_alconna import uniseg as u
 
+from ..adapter import MessageConverter as AbstractMessageConverter
+from ..adapter import MessageSender as AbstractMessageSender
 from ..database import MsgIdCacheDAO
-from . import abstract
 from ._registry import converter, sender
+
+if TYPE_CHECKING:
+    import loguru
 
 
 @converter(None)
@@ -15,13 +19,13 @@ class MessageConverter[
     TMS: MessageSegment = MessageSegment,
     TB: Bot = Bot,
     TM: Message = Message,
-](abstract.MessageConverter[TB, TM]):
-    logger = nonebot.logger.opt(colors=True)
+](AbstractMessageConverter[TB, TM]):
+    logger: ClassVar["loguru.Logger"] = nonebot.logger.opt(colors=True)
 
     @override
     def __init__(self, src_bot: TB, dst_bot: Bot | None = None) -> None:
-        self.src_bot = src_bot
-        self.dst_bot = dst_bot
+        self.src_bot: TB = src_bot
+        self.dst_bot: Bot | None = dst_bot
 
     @override
     @classmethod
@@ -84,7 +88,7 @@ class MessageConverter[
 
 
 @sender(None)
-class MessageSender[TB: Bot, TR: Any](abstract.MessageSender[TB]):
+class MessageSender[TB: Bot, TR: Any](AbstractMessageSender[TB]):
     @staticmethod
     def extract_msg_id(data: TR) -> str:
         return str(data)

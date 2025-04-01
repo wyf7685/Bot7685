@@ -22,7 +22,7 @@ def load_config() -> dict[str, Any]:
     if not root_config.exists():
         return {}
 
-    config: dict[str, Any] = _load_yaml(root_config)
+    config: dict[str, object] = _load_yaml(root_config)
 
     env = str(config.get("environment", "prod"))
     env_config = config_dir / f"{env}.yaml"
@@ -64,7 +64,7 @@ def generate_cli_toml(config: dict[str, object]) -> None:
         if path.is_dir() and path.name in plugins:
             plugins.remove(path.name)
 
-    toml = msgtoml.decode(toml_file.read_text())
+    toml: dict[str, dict[str, object]] = msgtoml.decode(toml_file.read_text())
     if "tool" not in toml:
         toml["tool"] = {}
     toml["tool"]["nonebot"] = {

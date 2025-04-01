@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import overload
+from typing import assert_never, overload
 
 from .cos_ops import (
     DEFAULT_EXPIRE_SECS,
@@ -47,7 +47,7 @@ async def upload_cos(
         case Path():
             await put_file_from_local(source, key)
         case _:
-            raise TypeError(f"unsupported source type: {type(source)}")
+            assert_never(source)
 
     await update_key(key, expired)
     return await presign(key, expired)

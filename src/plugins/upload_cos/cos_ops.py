@@ -1,6 +1,6 @@
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import NoReturn, Self, TypedDict
+from typing import Self, TypedDict, final
 
 import anyio
 import anyio.to_thread
@@ -20,6 +20,7 @@ class _PartDict(TypedDict):
     ETag: str
 
 
+@final
 class AsyncCosS3Client:
     def __init__(self, client: CosS3Client) -> None:
         self._client = client
@@ -104,16 +105,16 @@ class MultipartUploadTask:
     upload_id: str
     parts: list[_PartDict]
 
-    def __init__(self) -> NoReturn:
-        raise NotImplementedError
+    def __init__(self, key: str, client: AsyncCosS3Client | None = None) -> None:
+        self.client = client or get_client()
+        self.key = (ROOT / key).as_posix()
+        self.upload_id = ""
+        self.parts = []
 
     @classmethod
     async def create(cls, key: str, client: AsyncCosS3Client | None = None) -> Self:
-        self = super().__new__(cls)
-        self.client = client or get_client()
-        self.key = (ROOT / key).as_posix()
+        self = cls(key, client)
         self.upload_id = await self.client.create_multipart_upload(key)
-        self.parts = []
         return self
 
     async def put_chunk(self, chunk: bytes) -> None:

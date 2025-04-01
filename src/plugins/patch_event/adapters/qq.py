@@ -1,3 +1,4 @@
+import abc
 from typing import override
 
 from nonebot.adapters.qq.event import (
@@ -21,7 +22,7 @@ class Highlight(BaseHighlight):
 
 
 @Patcher
-class PatchEvent(Event):
+class PatchEvent(Event, abc.ABC):
     @override
     def get_log_string(self) -> str:
         return f"[{Highlight.apply(self.__type__)}] {Highlight.apply(self)}"

@@ -171,14 +171,19 @@ keep-runtime-typing = true
 [tool.pyright]
 pythonVersion = "3.13"
 pythonPlatform = "All"
-typeCheckingMode = "standard"
+typeCheckingMode = "recommended"
 reportShadowedImports = false
 disableBytesTypePromotions = true
-# reportUnusedCallResult = false
-# reportUnknownVariableType = false
-# reportUnknownMemberType = false
-# reportUnknownArgumentType = false
-# reportImplicitStringConcatenation = false
+reportUnusedCallResult = false  # Receipt
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportImplicitStringConcatenation = false
+reportMissingTypeStubs = false
+reportAny = false
+reportExplicitAny = false
+reportMissingTypeArgument = false  # UniMessage
+reportUnknownParameterType = false  # Message
 
 [tool.uv]
 dev-dependencies = [

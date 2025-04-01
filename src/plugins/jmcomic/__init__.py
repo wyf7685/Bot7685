@@ -43,7 +43,8 @@ matcher = on_alconna(
 
 async def check_lagrange(bot: v11.Bot) -> None:
     info = await bot.get_version_info()
-    if "lagrange" not in str(info.get("app_name", "unkown")).lower():
+    app_name: str = info.get("app_name", "unknown")
+    if "lagrange" not in app_name.lower():
         matcher.skip()
 
 
@@ -60,7 +61,7 @@ def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
 
 class Task[T]:
     event: anyio.Event
-    result: T
+    result: T  # pyright: ignore[reportUninitializedInstanceVariable]
 
     def __init__(self) -> None:
         self.event = anyio.Event()

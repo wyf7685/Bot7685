@@ -17,7 +17,6 @@ class TimingSwitchResponse(ResponseData):
     openGameScan: bool
 
 
-
 @final
 class TimingSwitchRequest(Request[TimingSwitchResponse]):
     _info_ = RequestInfo(

@@ -349,7 +349,7 @@ async def on_startup() -> None:
 
 @custom_model
 class MessageSentEvent(Event):  # NapCat
-    post_type: Literal["message_sent"]  # type: ignore[override]
+    post_type: Literal["message_sent"]  # pyright: ignore[reportIncompatibleVariableOverride]
     message_type: str
     sub_type: str
     message_sent_type: str
@@ -376,7 +376,7 @@ class MessageSentEvent(Event):  # NapCat
 
 @custom_model
 class PrivateMessageSentEvent(MessageSentEvent):  # NapCat
-    message_type: Literal["private"]  # type: ignore[override]
+    message_type: Literal["private"]  # pyright: ignore[reportIncompatibleVariableOverride]
 
     @override
     def get_log_string(self) -> str:
@@ -390,7 +390,7 @@ class PrivateMessageSentEvent(MessageSentEvent):  # NapCat
 
 @custom_model
 class GroupMessageSentEvent(MessageSentEvent):  # NapCat
-    message_type: Literal["group"]  # type: ignore[override]
+    message_type: Literal["group"]  # pyright: ignore[reportIncompatibleVariableOverride]
     group_id: int
 
     @override
@@ -408,7 +408,7 @@ class GroupMessageSentEvent(MessageSentEvent):  # NapCat
 
 @custom_model
 class ReactionNoticeEvent(NoticeEvent):  # Lagrange
-    notice_type: Literal["reaction"]  # type: ignore[override]
+    notice_type: Literal["reaction"]  # pyright: ignore[reportIncompatibleVariableOverride]
     sub_type: str
     group_id: int
     message_id: int
@@ -427,7 +427,7 @@ class ReactionNoticeEvent(NoticeEvent):  # Lagrange
 
 @custom_model
 class ReactionAddNoticeEvent(ReactionNoticeEvent):  # Lagrange
-    sub_type: Literal["add"]  # type: ignore[override]
+    sub_type: Literal["add"]  # pyright: ignore[reportIncompatibleVariableOverride]
 
     @override
     def get_log_string(self) -> str:
@@ -442,7 +442,7 @@ class ReactionAddNoticeEvent(ReactionNoticeEvent):  # Lagrange
 
 @custom_model
 class ReactionRemoveNoticeEvent(ReactionNoticeEvent):  # Lagrange
-    sub_type: Literal["remove"]  # type: ignore[override]
+    sub_type: Literal["remove"]  # pyright: ignore[reportIncompatibleVariableOverride]
 
     @override
     def get_log_string(self) -> str:

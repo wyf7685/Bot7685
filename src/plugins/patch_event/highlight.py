@@ -33,7 +33,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     def _handle(cls, data: Any) -> str:
         return cls.repr(data)
 
-    register = _handle.register
+    register = _handle.register  # pyright:ignore[reportUnannotatedClassAttribute]
 
     @classmethod
     def apply(cls, data: Any, /) -> str:

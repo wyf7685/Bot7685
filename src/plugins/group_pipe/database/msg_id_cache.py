@@ -1,5 +1,5 @@
 import datetime
-from typing import overload
+from typing import final, overload
 
 from nonebot_plugin_orm import Model, get_scoped_session
 from sqlalchemy import Integer, String, select
@@ -21,6 +21,7 @@ class MsgIdCache(Model):
     """ 创建时间 """
 
 
+@final
 class MsgIdCacheDAO:
     def __init__(self) -> None:
         self.session = get_scoped_session()

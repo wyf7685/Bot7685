@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import final
 
 import anyio
 import anyio.to_thread
@@ -11,6 +12,7 @@ from .model import DescribeRecordListResponse, ModifyRecordResponse, Response
 config = plugin_config.tencent
 
 
+@final
 class TencentClient:
     def __init__(self) -> None:
         cred = credential.Credential(
@@ -30,7 +32,8 @@ class TencentClient:
         model: type[R],
     ) -> R:
         resp = await anyio.to_thread.run_sync(call, req)
-        return model.model_validate(resp._serialize(allow_none=True))  # noqa: SLF001
+        obj = resp._serialize(allow_none=True)  # noqa: SLF001 # pyright: ignore[reportPrivateUsage]
+        return model.model_validate(obj)
 
     async def _describe_record_list(
         self,

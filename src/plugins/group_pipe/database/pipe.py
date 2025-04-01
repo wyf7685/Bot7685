@@ -1,6 +1,6 @@
 import functools
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, final
 
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_orm import Model, get_scoped_session
@@ -56,6 +56,7 @@ class Pipe(Model):
         return Target.load(self.target_t)
 
 
+@final
 class PipeDAO:
     def __init__(self) -> None:
         self.session = get_scoped_session()

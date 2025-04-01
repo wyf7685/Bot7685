@@ -83,7 +83,7 @@ async def assign_remove(ktd: TokenDAO, kuro_token: KuroTokenFromKeyRequired) -> 
 async def assign_list(
     ktd: TokenDAO,
     is_super_user: IsSuperUser,
-    all: Query[bool] = Query("~list.all.value"),  # noqa: A002, B008
+    all: Query[bool] = Query("~list.all.value"),  # noqa: A002, B008  # pyright: ignore[reportCallInDefaultInitializer]
 ) -> None:
     if all.result and not is_super_user:
         await UniMessage.text("你无权查看全部账号列表！").finish()
