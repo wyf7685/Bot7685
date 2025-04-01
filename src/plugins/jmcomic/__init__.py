@@ -36,7 +36,7 @@ __plugin_meta__ = PluginMetadata(
 
 matcher = on_alconna(
     Alconna("jm", Args["album_id", int]),
-    permission=TrustedUser,
+    permission=TrustedUser(),
 )
 
 

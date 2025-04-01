@@ -46,7 +46,7 @@ check_sub = on_alconna(
         ),
     ),
     use_cmd_start=True,
-    permission=TrustedUser,
+    permission=TrustedUser(),
 )
 
 

@@ -30,8 +30,8 @@ def add_ban_count(group_id: int, user_id: int) -> int:
     return cnt
 
 
-no_shit = on_alconna("他在搬史", permission=TrustedUser)
-shit_rank = on_alconna("搬史榜", permission=TrustedUser)
+no_shit = on_alconna("他在搬史", permission=TrustedUser())
+shit_rank = on_alconna("搬史榜", permission=TrustedUser())
 
 
 async def check_reply(event: GroupMessageEvent) -> tuple[int, int]:

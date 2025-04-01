@@ -18,19 +18,30 @@ class TrustData(BaseModel):
 
 
 _ta = TypeAdapter(TrustData)
+_cache: TrustData | None = None
 
 
-def load_trust_data() -> TrustData:
-    return _ta.validate_json(DATA_FILE.read_text())
+def load_trust_data(*, use_cache: bool = True) -> TrustData:
+    global _cache
+    if _cache is None or not use_cache:
+        _cache = _ta.validate_json(DATA_FILE.read_text())
+
+    return _cache
 
 
 def dump_trust_data(data: TrustData) -> None:
+    global _cache
+    _cache = data
+
     DATA_FILE.write_text(data.model_dump_json(indent=2))
+
+
+type TrustedType = Literal["user", "group"]
 
 
 def set_trusted(
     action: Literal["add", "remove"],
-    type: Literal["user", "group"],  # noqa: A002
+    type: TrustedType,  # noqa: A002
     id: str,
 ) -> None:
     data = load_trust_data()
@@ -41,19 +52,20 @@ def set_trusted(
 
 def query_trusted(
     adapter: str,
-    type: Literal["user", "group"],  # noqa: A002
+    type: TrustedType,  # noqa: A002
     id: str,
+    *,
+    use_cache: bool = True,
 ) -> bool:
-    data = load_trust_data()
+    data = load_trust_data(use_cache=use_cache)
     return f"{adapter}:{id}" in (data.user if type == "user" else data.group)
 
 
-@Permission
-async def _trusted(bot: Bot, info: Uninfo) -> bool:
-    return query_trusted(bot.type, "user", info.user.id) or (
-        (scene := info.group or info.channel) is not None
-        and query_trusted(bot.type, "group", scene.id)
-    )
+def TrustedUser(*, use_cache: bool = True) -> Permission:  # noqa: N802
+    async def _trusted(bot: Bot, info: Uninfo) -> bool:
+        return query_trusted(bot.type, "user", info.user.id, use_cache=use_cache) or (
+            (scene := info.group or info.channel) is not None
+            and query_trusted(bot.type, "group", scene.id, use_cache=use_cache)
+        )
 
-
-TrustedUser = SUPERUSER | _trusted
+    return SUPERUSER | _trusted
