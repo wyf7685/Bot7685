@@ -1,4 +1,5 @@
 import functools
+import hashlib
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, NamedTuple, final
 
@@ -28,11 +29,8 @@ def make_key(target: Target, /) -> int:
     for k, v in target.extra.items():
         args += (k, v)
     key = "".join(map(str, args)).encode("utf-8")
-    result = 0
-    for i in key:
-        result = (result << 5) - result + i
-        result &= 0xFFFFFFFFFFFF
-    return result % (1 << 31)
+    # NOTE: unsafe hash
+    return int(hashlib.md5(key).hexdigest(), 16) % (1 << 31)  # noqa: S324
 
 
 if not TYPE_CHECKING:
