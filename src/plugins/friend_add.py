@@ -45,8 +45,10 @@ async def handle(event: FriendRequestEvent, info: Uninfo) -> None:
         return (
             (receipt := receipts.get(event.get_user_id())) is not None
             and (reply := receipt.get_reply()) is not None
+            and len(reply) > 0
+            and (r := reply[0])
             and msg.has(Reply)
-            and msg[Reply, 0].id == reply.id
+            and msg[Reply, 0].id == r.id
             and msg.extract_plain_text() in {"接受", "拒绝"}
         )
 

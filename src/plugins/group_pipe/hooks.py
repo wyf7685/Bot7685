@@ -2,7 +2,7 @@ import anyio
 from nonebot import logger
 from nonebot.adapters import Bot, Event, Message
 from nonebot.message import event_preprocessor
-from nonebot_plugin_alconna import Target, UniMessage
+from nonebot_plugin_alconna import Target, UniMessage, get_target
 from nonebot_plugin_uninfo import get_session
 
 from .adapters import get_converter, get_sender
@@ -52,7 +52,7 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         return
 
     try:
-        listen = UniMessage.get_target(event, bot)
+        listen = get_target(event, bot)
         info = await get_session(bot, event)
     except Exception as err:
         logger.trace(f"获取消息信息失败: {err}")

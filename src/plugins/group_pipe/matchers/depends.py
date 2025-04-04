@@ -4,7 +4,7 @@ from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
 from nonebot.typing import T_State
-from nonebot_plugin_alconna import Target, UniMessage
+from nonebot_plugin_alconna import Target, get_target
 
 _STATE_KEY_TARGET = "STATE_KEY_TARGET"
 
@@ -14,7 +14,7 @@ async def _target(bot: Bot, event: Event, state: T_State) -> Target:
         return state[_STATE_KEY_TARGET]
 
     try:
-        target = UniMessage.get_target(event, bot)
+        target = get_target(event, bot)
     except Exception:
         Matcher.skip()
     else:
