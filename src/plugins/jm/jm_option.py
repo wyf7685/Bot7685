@@ -6,12 +6,11 @@ from collections.abc import AsyncGenerator
 
 import anyio
 import httpx
+import jmcomic
 import PIL.Image
 from nonebot.log import logger
 from nonebot.utils import escape_tag, run_sync
 from nonebot_plugin_localstore import get_plugin_cache_dir
-
-import jmcomic
 
 logger = logger.opt(colors=True)
 

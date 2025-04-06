@@ -1,8 +1,10 @@
 import functools
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable
+from types import EllipsisType
 from typing import Annotated
 
 import anyio
+import jmcomic
 from nonebot import logger, require
 from nonebot.adapters.onebot import v11
 from nonebot.adapters.onebot.v11 import Message as V11Msg
@@ -12,8 +14,6 @@ from nonebot.params import Depends
 from nonebot.permission import SUPERUSER, User
 from nonebot.plugin import PluginMetadata
 from nonebot.utils import escape_tag
-
-import jmcomic
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
@@ -25,7 +25,7 @@ require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 
 from .jm_option import check_photo, download_album_pdf, download_image, get_album_detail
-from .utils import abatched, flatten_exception_group
+from .utils import abatched, flatten_exception_group, queued
 
 __plugin_meta__ = PluginMetadata(
     name="jmcomic",
@@ -52,7 +52,7 @@ type SendFunc = Callable[[list[V11Seg]], Awaitable[object]]
 
 def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
     # fmt: off
-    return (
+    return queued(
         (lambda m: bot.send_group_forward_msg(group_id=event.group_id, messages=m))
         if isinstance(event, v11.GroupMessageEvent) else
         (lambda m: bot.send_private_forward_msg(user_id=event.user_id, messages=m))
@@ -61,7 +61,7 @@ def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
 
 class Task[T]:
     event: anyio.Event
-    result: T  # pyright: ignore[reportUninitializedInstanceVariable]
+    result: T | EllipsisType = ...
 
     def __init__(self) -> None:
         self.event = anyio.Event()
@@ -72,12 +72,13 @@ class Task[T]:
 
     async def wait(self) -> T:
         await self.event.wait()
+        assert self.result is not ..., "Task result not set"
         return self.result
 
 
 async def check_album(
     album: jmcomic.JmAlbumDetail,
-) -> list[tuple[int, jmcomic.JmPhotoDetail]]:
+) -> Iterable[tuple[int, jmcomic.JmPhotoDetail]]:
     async def check(p: int, photo: jmcomic.JmPhotoDetail) -> None:
         try:
             async with sem:
