@@ -1,7 +1,7 @@
 import functools
 from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable
 from types import EllipsisType
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 import anyio
 import jmcomic
@@ -9,7 +9,7 @@ from nonebot import logger, require
 from nonebot.adapters.onebot import v11
 from nonebot.adapters.onebot.v11 import Message as V11Msg
 from nonebot.adapters.onebot.v11 import MessageSegment as V11Seg
-from nonebot.exception import MatcherException
+from nonebot.exception import ActionFailed, MatcherException
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER, User
 from nonebot.plugin import PluginMetadata
@@ -47,16 +47,30 @@ async def check_lagrange(bot: v11.Bot) -> None:
         matcher.skip()
 
 
-type SendFunc = Callable[[list[V11Seg]], Awaitable[object]]
+type SendFunc = Callable[[list[V11Seg]], Awaitable[None]]
 
 
 def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
-    # fmt: off
-    return queued(
-        (lambda m: bot.send_group_forward_msg(group_id=event.group_id, messages=m))
-        if isinstance(event, v11.GroupMessageEvent) else
-        (lambda m: bot.send_private_forward_msg(user_id=event.user_id, messages=m))
-    )
+    if isinstance(event, v11.GroupMessageEvent):
+        api, params = "send_group_forward_msg", {"group_id": event.group_id}
+    else:
+        api, params = "send_private_msg", {"user_id": event.user_id}
+
+    async def send(m: list[V11Seg]) -> None:
+        max_retry = 3
+
+        for retry in range(max_retry):
+            try:
+                await bot.call_api(api, **params, messages=m)
+            except Exception as err:
+                if retry == 2:
+                    msg = f"发送合并转发失败 ({max_retry}/{max_retry})"
+                    logger.opt(exception=err).error(msg)
+                    raise
+
+                logger.warning(f"发送合并转发失败, 重试中... ({retry + 1}/{max_retry})")
+
+    return queued(send)
 
 
 class Task[T]:
@@ -89,10 +103,8 @@ async def check_album(
             )
 
     checked: dict[int, jmcomic.JmPhotoDetail] = {}
-    async with (
-        anyio.create_task_group() as tg,
-        anyio.Semaphore(9) as sem,
-    ):
+    sem = anyio.Semaphore(8)
+    async with anyio.create_task_group() as tg:
         for p, photo in enumerate(album, 1):
             tg.start_soon(check, p, photo)
 
@@ -196,21 +208,26 @@ async def _(
         finally:
             tg.cancel_scope.cancel()
 
+    async def handle_exc(exc_group: ExceptionGroup, msg: str) -> NoReturn:
+        logger.opt(exception=exc_group).warning(msg)
+        await UniMessage(
+            f"{msg}:\n"
+            + "\n".join(
+                (str if isinstance(exc, jmcomic.JmcomicException) else repr)(exc)
+                for exc in flatten_exception_group(exc_group)
+            )
+        ).finish(reply_to=True)
+
     try:
         async with anyio.create_task_group() as tg:
             tg.start_soon(wait_for_terminate)
             tg.start_soon(send_forward)
     except* MatcherException:
         raise
+    except* ActionFailed as exc_group:
+        await handle_exc(exc_group, "发送失败")
     except* Exception as exc_group:
-        logger.opt(exception=exc_group).warning("下载失败")
-        await UniMessage(
-            "下载失败:\n"
-            + "\n".join(
-                (str if isinstance(exc, jmcomic.JmcomicException) else repr)(exc)
-                for exc in flatten_exception_group(exc_group)
-            )
-        ).finish(reply_to=True)
+        await handle_exc(exc_group, "下载失败")
     else:
         await UniMessage(f"完成 {album_id} 的下载任务").finish(reply_to=True)
 
