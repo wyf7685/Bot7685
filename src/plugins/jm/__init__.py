@@ -62,12 +62,10 @@ def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
         for retry in range(max_retry):
             try:
                 await bot.call_api(api, **params, messages=m)
-            except Exception as err:
+            except Exception:
                 if retry == 2:
-                    msg = f"发送合并转发失败 ({max_retry}/{max_retry})"
-                    logger.opt(exception=err).error(msg)
+                    logger.error(f"发送合并转发失败 ({max_retry}/{max_retry})")
                     raise
-
                 logger.warning(f"发送合并转发失败, 重试中... ({retry + 1}/{max_retry})")
 
     return queued(send)
