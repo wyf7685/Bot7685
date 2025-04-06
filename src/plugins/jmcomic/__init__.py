@@ -9,6 +9,7 @@ from nonebot.adapters.onebot.v11 import Message as V11Msg
 from nonebot.adapters.onebot.v11 import MessageSegment as V11Seg
 from nonebot.exception import MatcherException
 from nonebot.params import Depends
+from nonebot.permission import SUPERUSER, User
 from nonebot.plugin import PluginMetadata
 from nonebot.utils import escape_tag
 
@@ -177,7 +178,9 @@ async def _(
         await UniMessage(f"获取信息失败: 未知错误\n{err!r}").finish()
 
     async def wait_for_terminate() -> None:
-        @waiter([event.get_type()], keep_session=True)
+        permission = SUPERUSER | User.from_event(event, perm=matcher.permission)
+
+        @waiter([event.get_type()], permission=permission)
         def wait(e: v11.MessageEvent) -> str:
             return e.get_message().extract_plain_text()
 
