@@ -24,6 +24,28 @@ async def abatched[T](
 
 
 def queued[**P, R](func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
+    """Decorator that ensures only one instance of the decorated
+    coroutine can run at a time. This decorator uses a semaphore
+    to queue concurrent calls to the decorated async function,
+    allowing only one execution at a time. Subsequent calls will
+    wait until the running function completes.
+
+    Args:
+        func (Callable[P, Awaitable[R]]): The async function to be decorated
+
+    Returns:
+        Callable[P, Awaitable[R]]: A wrapped version of the function
+        that enforces queued execution
+
+    Example:
+        ```python
+        @queued
+        async def my_async_func():
+            # Only one instance of this function can run at a time
+            await some_operation()
+        ```
+    """
+
     sem = anyio.Semaphore(1)
 
     @functools.wraps(func)
