@@ -1,8 +1,11 @@
+from collections.abc import AsyncGenerator
+
 import anyio
 import paramiko
 from nonebot import logger, require
 from nonebot.adapters import Bot, Event
 from nonebot.exception import MatcherException
+from nonebot.params import Depends
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 
@@ -90,7 +93,17 @@ async def do_create() -> None:
     await UniMessage.text("Instance setup completed").finish()
 
 
-@check_sub.assign("create")
+def with_lock() -> object:
+    lock = anyio.Lock()
+
+    async def _() -> AsyncGenerator[None]:
+        async with lock:
+            yield
+
+    return Depends(_)
+
+
+@check_sub.assign("create", parameterless=[with_lock()])
 async def assign_create(bot: Bot, event: Event) -> None:
     if not await SUPERUSER(bot, event):
         await UniMessage.text("Permission denied").finish()
