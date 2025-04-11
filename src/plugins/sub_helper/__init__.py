@@ -93,17 +93,17 @@ async def do_create() -> None:
     await UniMessage.text("Instance setup completed").finish()
 
 
-def with_lock() -> object:
-    lock = anyio.Lock()
+def queued() -> object:
+    sem = anyio.Semaphore(1)
 
     async def _() -> AsyncGenerator[None]:
-        async with lock:
+        async with sem:
             yield
 
     return Depends(_)
 
 
-@check_sub.assign("create", parameterless=[with_lock()])
+@check_sub.assign("create", parameterless=[queued()])
 async def assign_create(bot: Bot, event: Event) -> None:
     if not await SUPERUSER(bot, event):
         await UniMessage.text("Permission denied").finish()
