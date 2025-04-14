@@ -3,7 +3,7 @@ import json
 from collections.abc import AsyncGenerator, AsyncIterable, Iterable
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, ClassVar, override
+from typing import Any, override
 from weakref import WeakKeyDictionary
 
 import anyio
@@ -37,10 +37,11 @@ from ._registry import converter, sender
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
+bot_platform_cache: WeakKeyDictionary[Bot, str] = WeakKeyDictionary()
+
 
 @converter(Adapter)
 class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
-    bot_platform_cache: ClassVar[WeakKeyDictionary[Bot, str]] = WeakKeyDictionary()
     do_resolve_url: bool = True
 
     @override
@@ -52,13 +53,13 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         return deepcopy(event.original_message)
 
     async def get_platform(self) -> str:
-        if self.src_bot not in self.bot_platform_cache:
+        if self.src_bot not in bot_platform_cache:
             data = await self.src_bot.get_version_info()
             platform = str(data.get("app_name", "unkown")).lower()
-            self.bot_platform_cache[self.src_bot] = platform
+            bot_platform_cache[self.src_bot] = platform
             self.logger.debug(f"获取 {self.src_bot} 平台: {platform}")
 
-        return self.bot_platform_cache[self.src_bot]
+        return bot_platform_cache[self.src_bot]
 
     async def _get_rkey_api(self) -> tuple[str, str]:
         rkey_api = "https://llob.linyuchen.net/rkey"

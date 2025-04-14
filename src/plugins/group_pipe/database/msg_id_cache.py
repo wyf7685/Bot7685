@@ -5,8 +5,6 @@ from nonebot_plugin_orm import Model, get_scoped_session
 from sqlalchemy import Integer, String, select
 from sqlalchemy.orm import Mapped, mapped_column
 
-SECONDS_PER_WEEK = 7 * 24 * 60 * 60
-
 
 class MsgIdCache(Model):
     src_adapter: Mapped[str] = mapped_column(String(), nullable=False, primary_key=True)

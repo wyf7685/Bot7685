@@ -62,7 +62,7 @@ def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
 
         for retry in range(max_retry):
             try:
-                await bot.call_api(api, **params, messages=m)
+                await bot.call_api(api, **params, messages=m, _timeout=60)
             except v11.NetworkError:
                 return
             except Exception:

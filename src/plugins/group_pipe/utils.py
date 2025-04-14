@@ -8,6 +8,7 @@ from typing import NamedTuple
 import anyio
 import httpx
 import nonebot
+import yarl
 from nonebot_plugin_alconna.uniseg import Segment, UniMessage
 from nonebot_plugin_alconna.uniseg.segment import Media
 from nonebot_plugin_alconna.uniseg.utils import fleep
@@ -26,6 +27,7 @@ class _GlobalAsyncClient:
     async def _() -> None:
         if _GlobalAsyncClient.client is not None:
             await _GlobalAsyncClient.client.__aexit__(None, None, None)
+            _GlobalAsyncClient.client = None
 
 
 def async_client() -> httpx.AsyncClient:
@@ -33,7 +35,15 @@ def async_client() -> httpx.AsyncClient:
     return _GlobalAsyncClient.client
 
 
+def fix_url(url: str) -> str:
+    parsed = yarl.URL(url)
+    if parsed.host == "multimedia.nt.qq.com.cn":
+        parsed = parsed.with_scheme("http")
+    return parsed.human_repr()
+
+
 async def download_url(url: str) -> bytes:
+    url = fix_url(url)
     try:
         resp = await async_client().get(url)
         resp.raise_for_status()
@@ -44,6 +54,7 @@ async def download_url(url: str) -> bytes:
 
 
 async def check_url_ok(url: str) -> bool:
+    url = fix_url(url)
     try:
         async with async_client().stream("GET", url) as resp:
             resp.raise_for_status()
@@ -60,6 +71,7 @@ class _FileType(NamedTuple):
 
 
 async def guess_url_type(url: str) -> _FileType | None:
+    url = fix_url(url)
     async with async_client().stream("GET", url) as resp:
         size = resp.headers.get("Content-Length")
         if not size:
@@ -74,6 +86,7 @@ async def guess_url_type(url: str) -> _FileType | None:
 
 
 async def solve_url_302(url: str) -> str:
+    url = fix_url(url)
     async with async_client().stream("GET", url) as resp:
         if resp.status_code == 302:
             return await solve_url_302(resp.headers["Location"].partition("?")[0])
