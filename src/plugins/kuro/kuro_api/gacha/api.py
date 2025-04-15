@@ -2,11 +2,16 @@
 import dataclasses
 import datetime
 from collections import Counter
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 
-from ..exceptions import InvalidGachaUrl, KuroApiException
+from ..exceptions import (
+    GachaApiRequestFailed,
+    GachaApiResponseValidationFailed,
+    InvalidGachaUrl,
+)
 from .const import GACHA_HEADERS, GACHA_QUERY_URL
 from .model import (
     CARD_POOL_NAME,
@@ -47,23 +52,26 @@ class WuwaGachaApi:
 
         try:
             self._params = parse_gacha_url(gacha_url)
-        except KeyError as err:
+        except Exception as err:
             raise InvalidGachaUrl(f"无效的抽卡 URL: {gacha_url}") from err
 
     async def _query(self, type_: CardPoolType) -> GachaResponse:
         self._params.cardPoolType = type_
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self._url,
-                headers=GACHA_HEADERS,
-                json=dataclasses.asdict(self._params),
-            )
-            data = response.raise_for_status().read()
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self._url,
+                    headers=GACHA_HEADERS,
+                    json=dataclasses.asdict(self._params),
+                )
+                data = response.raise_for_status().json()
+        except Exception as err:
+            raise GachaApiRequestFailed("获取抽卡数据失败") from err
 
         try:
-            return GachaResponse.model_validate_json(data)
+            return GachaResponse.model_validate(data)
         except Exception as err:
-            raise KuroApiException("获取抽卡数据失败") from err
+            raise GachaApiResponseValidationFailed("获取抽卡数据失败", data) from err
 
     def _convert(
         self,
@@ -109,3 +117,11 @@ class WuwaGachaApi:
         wwgf.sort()
 
         return wwgf
+
+    @classmethod
+    def load_json(cls, json: str) -> WWGF:
+        return WWGF.model_validate_json(json)
+
+    @classmethod
+    def load_file(cls, file: Path) -> WWGF:
+        return cls.load_json(file.read_text(encoding="utf-8"))

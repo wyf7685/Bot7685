@@ -14,6 +14,7 @@ from nonebot.permission import SUPERUSER
 from nonebot.typing import T_State
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_uninfo import Uninfo
+from nonebot_plugin_uninfo.orm import get_user_persist_id
 
 from ..database.kuro_token import KuroToken, KuroTokenDAO
 from ..handler import KuroHandler
@@ -60,7 +61,10 @@ async def IsSuperUser(bot: Bot, event: Event) -> bool:
 
 @convert_dependent
 async def TokenDAO(session: Uninfo) -> KuroTokenDAO:
-    return KuroTokenDAO(session)
+    return KuroTokenDAO(
+        user_id=await get_user_persist_id(session.basic, session.user),
+        basic_info=session.basic,
+    )
 
 
 @convert_dependent

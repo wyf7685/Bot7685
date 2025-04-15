@@ -24,29 +24,33 @@ async def prompt_input_token() -> str:
     return text
 
 
-async def add_token(ktd: TokenDAO, api: KuroApi, note: str | None) -> None:
+async def add_token(
+    ktd: TokenDAO,
+    api: KuroApi,
+    note: str | None,
+) -> None:
     mine = await api.mine()
     info = f"昵称: {mine.userName}\n库洛 ID: {mine.userId}"
 
     for kuro_token in await ktd.list_token():
         if kuro_token.kuro_id == mine.userId:
-            if kuro_token.user_id != await ktd.get_user_id():
+            if kuro_token.user_id != ktd.user_id:
                 await UniMessage.text(
                     f"库洛 ID {mine.userId} 已被绑定，请检查"
                 ).finish()
+
+            kuro_token.token = api.token
+            if note is not None:
+                kuro_token.note = note
             else:
-                kuro_token.token = api.token
-                if note is not None:
-                    kuro_token.note = note
-                else:
-                    note = kuro_token.note
-                await ktd.update(kuro_token)
-                await UniMessage.text(
-                    f"账号信息更新成功\n{info}\n备注: {note or '无'}"
-                ).finish()
-    else:
-        await ktd.add(mine.userId, api.token, note)
-        await UniMessage.text(f"账号添加成功\n{info}\n备注: {note or '无'}").finish()
+                note = kuro_token.note
+            await ktd.update(kuro_token)
+            await UniMessage.text(
+                f"账号信息更新成功\n{info}\n备注: {note or '无'}"
+            ).finish()
+
+    await ktd.add(mine.userId, api.token, note)
+    await UniMessage.text(f"账号添加成功\n{info}\n备注: {note or '无'}").finish()
 
 
 @matcher_token.assign("~add")

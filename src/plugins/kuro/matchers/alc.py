@@ -77,6 +77,12 @@ alc = Alconna(
         Option("-k", Args["key#库洛ID或备注", str]),
         help_text="查询声骸数据",
     ),
+    Subcommand(
+        "gacha",
+        Subcommand("import", Args["url#抽卡记录链接", str], help_text="导入抽卡记录"),
+        Subcommand("export", Args["key?#库洛ID或备注", str], help_text="导出抽卡记录"),
+        help_text="鸣潮抽卡记录",
+    ),
     meta=CommandMeta(
         description="库洛插件",
         usage="kuro -h",

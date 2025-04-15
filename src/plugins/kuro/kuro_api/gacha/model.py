@@ -3,6 +3,7 @@ import dataclasses
 import datetime
 import functools
 from enum import Enum
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel
@@ -88,6 +89,9 @@ class WWGFInfo(BaseModel):
     wwgf_version: str = "v0.1b"
     region_time_zone: int = 8
 
+    def update(self) -> None:
+        self.export_timestamp = int(datetime.datetime.now().timestamp())
+
 
 class WWGFItem(BaseModel):
     gacha_id: str
@@ -116,6 +120,16 @@ class WWGFItem(BaseModel):
     """
 
 
+@dataclasses.dataclass
+class WWGFMergeStatistics:
+    old: int = 0
+    """旧的记录数"""
+    common: int = 0
+    """重复的记录数"""
+    new: int = 0
+    """新的记录数"""
+
+
 class WWGF(BaseModel):
     """WutheringWaves Gachalog Format"""
 
@@ -131,12 +145,32 @@ class WWGF(BaseModel):
         for key in sorted(items.keys()):
             self.list.extend(items[key])
 
-    def merge(self, other: "WWGF") -> None:
+    def merge(self, other: "WWGF") -> WWGFMergeStatistics:
         items = self.list[:]
         seen = {item.id for item in items}
+        stats = WWGFMergeStatistics(old=len(seen))
+
         for item in other.list:
-            if item.id not in seen:
+            if item.id in seen:
+                stats.common += 1
+            else:
                 items.append(item)
                 seen.add(item.id)
+                stats.new += 1
+        stats.old -= stats.common
+
         self.list[:] = items
         self.sort()
+        self.info.update()
+        return stats
+
+    def dump(self, indent: int | None = None) -> str:
+        self.info.update()
+        return self.model_dump_json(indent=indent)
+
+    def dump_file(self, file: Path) -> None:
+        _ = file.write_text(self.dump(), encoding="utf-8")
+
+    @property
+    def size(self) -> int:
+        return len(self.list)

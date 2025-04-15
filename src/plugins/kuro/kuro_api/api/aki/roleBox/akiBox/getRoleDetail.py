@@ -87,6 +87,13 @@ class PhantomMainAttribute(PhantomAttribute):
         return True
 
 
+class PhantomSubAttribute(PhantomAttribute):
+    @property
+    @override
+    def is_main(self) -> Literal[False]:
+        return False
+
+
 class Phantom(ResponseData):
     cost: Literal[4, 3, 1]
     """声骸 COST"""
@@ -103,10 +110,10 @@ class Phantom(ResponseData):
     """
     mainProps: list[PhantomMainAttribute] | None = None
     """声骸主属性列表"""
-    subProps: list[PhantomAttribute] | None = None
+    subProps: list[PhantomSubAttribute] | None = None
     """声骸副属性列表"""
 
-    def get_props(self) -> list[PhantomAttribute]:
+    def get_props(self) -> list[PhantomMainAttribute | PhantomSubAttribute]:
         return [*(self.mainProps or []), *(self.subProps or [])]
 
 

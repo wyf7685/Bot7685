@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from .common import Request, Response, ValidResponseData
     from .models import Mine, PnsRole, Role, RoleDetail, WuwaRole
 
-    type GameId = PnsGameId | WuwaGameId
+    type AnyGameId = PnsGameId | WuwaGameId
 
     class _WuwaFetchReq[T: ValidResponseData](Protocol):
         def __call__(self, *, roleId: str, serverId: str) -> Request[T]: ...  # noqa: N803
@@ -84,7 +84,7 @@ class KuroApi:
     @overload
     async def role_list(self, game_id: WuwaGameId) -> Sequence[WuwaRole]: ...
 
-    async def role_list(self, game_id: GameId) -> Sequence[Role]:
+    async def role_list(self, game_id: AnyGameId) -> Sequence[Role]:
         from .models import RoleListRequest
 
         resp = await RoleListRequest(gameId=game_id).send(self.token)
@@ -95,7 +95,7 @@ class KuroApi:
     @overload
     async def find_default_role(self, game_id: WuwaGameId) -> WuwaRole: ...
 
-    async def find_default_role(self, game_id: GameId) -> Role:
+    async def find_default_role(self, game_id: AnyGameId) -> Role:
         role_list = await self.role_list(game_id)
         for role in role_list:
             if role.isDefault:
@@ -123,7 +123,7 @@ class KuroApi:
     async def get_default_role_api(self, game_id: WuwaGameId) -> KuroWuwaRoleApi: ...
 
     async def get_default_role_api(
-        self, game_id: GameId
+        self, game_id: AnyGameId
     ) -> KuroRoleApi | KuroWuwaRoleApi:
         role = await self.find_default_role(game_id)
         return self.get_role_api(role)

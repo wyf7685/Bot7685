@@ -3,9 +3,8 @@ from typing import final
 
 from nonebot_plugin_alconna.uniseg import Target
 from nonebot_plugin_orm import Model, get_scoped_session, get_session
-from nonebot_plugin_uninfo import Session as UniSession
 from nonebot_plugin_uninfo.model import BasicInfo
-from nonebot_plugin_uninfo.orm import UserModel, get_user_model, get_user_persist_id
+from nonebot_plugin_uninfo.orm import UserModel, get_user_model
 from nonebot_plugin_uninfo.target import to_target
 from sqlalchemy import JSON, ForeignKey, Integer, String, or_, select
 from sqlalchemy.orm import Mapped, mapped_column
@@ -25,31 +24,23 @@ class KuroToken(Model):
 
 @final
 class KuroTokenDAO:
-    def __init__(self, session: UniSession) -> None:
-        self.session = session
-        self._user_id = None
+    def __init__(self, user_id: int, basic_info: BasicInfo) -> None:
+        self.user_id = user_id
+        self._basic = basic_info
         self._db_session = get_scoped_session()
-
-    async def get_user_id(self) -> int:
-        if self._user_id is None:
-            self._user_id = await get_user_persist_id(
-                self.session.basic,
-                self.session.user,
-            )
-        return self._user_id
 
     async def list_token(self, *, all: bool = False) -> Sequence[KuroToken]:  # noqa: A002
         stmt = select(KuroToken)
         if not all:
-            stmt = stmt.where(KuroToken.user_id == await self.get_user_id())
+            stmt = stmt.where(KuroToken.user_id == self.user_id)
         result = await self._db_session.execute(stmt)
         return result.scalars().all()
 
     async def add(self, kuro_id: int, token: str, note: str | None = None) -> None:
         item = KuroToken(
             kuro_id=kuro_id,
-            user_id=await self.get_user_id(),
-            basic_info=self.session.basic,
+            user_id=self.user_id,
+            basic_info=self._basic,
             token=token,
             note=note,
         )
@@ -58,7 +49,7 @@ class KuroTokenDAO:
         await self._db_session.commit()
 
     async def find_token(self, key: str | None = None) -> KuroToken | None:
-        stmt = select(KuroToken).where(KuroToken.user_id == await self.get_user_id())
+        stmt = select(KuroToken).where(KuroToken.user_id == self.user_id)
         if key is not None:
             where = KuroToken.note == key
             if key.isdigit():
