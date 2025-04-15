@@ -24,7 +24,6 @@ dependencies = [
     "nonebot-plugin-memes-api>=0.4.13",
     "nonebot-plugin-orm[asyncpg,postgresql]>=0.7.7",
     "nonebot-plugin-picstatus>=2.1.2",
-    "nonebot-plugin-resolver2>=1.8.0",
     "nonebot-plugin-session>=0.3.2",
     "nonebot-plugin-skland-arksign[sm-local]>=0.8.0",
     "nonebot-plugin-uninfo>=0.7.2",
