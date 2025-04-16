@@ -11,7 +11,6 @@ RUN fc-cache -f -v
 
 COPY ./assets/* /
 RUN python -m pip install --no-cache-dir --force-reinstall --root-user-action ignore -r /requirements.txt && \
-    python /patch_satori.py && \
     chmod +x /start.sh
 
 VOLUME [ "/app" ]
