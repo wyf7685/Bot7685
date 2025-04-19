@@ -1,4 +1,3 @@
-import importlib
 import logging
 import time
 from pathlib import Path
@@ -6,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, cast
 
 import nonebot
 from msgspec import yaml as msgyaml
-from nonebot.utils import deep_update, logger_wrapper
+from nonebot.utils import deep_update, logger_wrapper, resolve_dot_notation
 from pydantic import BaseModel, ConfigDict
 
 if TYPE_CHECKING:
@@ -22,7 +21,6 @@ class Config(BaseModel):
     plugins: set[str] = set()
     plugin_dir: str = "src/plugins"
     dev_plugin_dir: str = "src/dev"
-    preload_plugins: set[str] = set()
 
 
 def setup_logger() -> None:
@@ -92,17 +90,14 @@ def load_adapters(config: Config) -> None:
         log("DEBUG", f"Loading adapter: <g>{module_name}</g>")
         start = time.time()
 
-        full_name = f"nonebot.adapters.{module_name}"
         try:
-            module = importlib.import_module(full_name)
-        except ImportError:
-            log("WARNING", f"Failed to import module: <y>{full_name}</y>")
-            continue
-
-        try:
-            adapter = cast("type[Adapter]", module.Adapter)
-        except AttributeError:
-            log("WARNING", f"Module <y>{full_name}</y> is not a valid adapter")
+            adapter: type[Adapter] = resolve_dot_notation(
+                obj_str=module_name,
+                default_attr="Adapter",
+                default_prefix="nonebot.adapters.",
+            )
+        except (ImportError, AttributeError):
+            log("WARNING", f"Failed to resolve adapter: <y>{module_name}</y>")
             continue
 
         driver.register_adapter(adapter)
@@ -133,7 +128,6 @@ def load_plugins(config: Config) -> None:
                 )
 
     start = time.time()
-    nonebot.load_all_plugins(config.preload_plugins, [])
     nonebot.load_all_plugins(config.plugins, plugin_dirs)
     log("SUCCESS", f"Plugins loaded in <y>{time.time() - start:.3f}</y>s")
 
