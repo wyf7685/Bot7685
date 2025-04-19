@@ -13,7 +13,35 @@ toml_file = root / "pyproject.toml"
 
 
 def _load_yaml(file_path: pathlib.Path) -> dict[str, Any]:  # pyright:ignore[reportExplicitAny]
-    return msgyaml.decode(file_path.read_bytes()) or {}
+    data = msgyaml.decode(file_path.read_bytes()) or {}
+
+    if data.pop("scope_compat", None):
+        for key, value in list(data.items()):
+            if isinstance(value, dict):
+                del data[key]
+                for k, v in value.items():
+                    data[f"{key}_{k}"] = v
+
+    return data
+
+
+def deep_update(
+    mapping: dict[str, Any],  # pyright:ignore[reportExplicitAny]
+    *updating_mappings: dict[str, Any],  # pyright:ignore[reportExplicitAny]
+) -> dict[str, Any]:  # pyright:ignore[reportExplicitAny]
+    """深度更新合并字典"""
+    updated_mapping = mapping.copy()
+    for updating_mapping in updating_mappings:
+        for k, v in updating_mapping.items():
+            if (
+                k in updated_mapping
+                and isinstance(updated_mapping[k], dict)
+                and isinstance(v, dict)
+            ):
+                updated_mapping[k] = deep_update(updated_mapping[k], v)
+            else:
+                updated_mapping[k] = v
+    return updated_mapping
 
 
 def load_config() -> dict[str, Any]:  # pyright:ignore[reportExplicitAny]
@@ -29,7 +57,7 @@ def load_config() -> dict[str, Any]:  # pyright:ignore[reportExplicitAny]
     if not env_config.exists():
         return config
 
-    config |= _load_yaml(env_config)
+    config = deep_update(config, _load_yaml(env_config))
 
     env_dir = config_dir / env
     if not env_dir.exists():
@@ -37,7 +65,7 @@ def load_config() -> dict[str, Any]:  # pyright:ignore[reportExplicitAny]
 
     for p in env_dir.iterdir():
         if p.suffix == ".yaml":
-            config |= _load_yaml(p)
+            config = deep_update(config, _load_yaml(p))
 
     return config
 
@@ -79,7 +107,7 @@ def generate_cli_toml(config: dict[str, object]) -> None:
 def generate() -> None:
     config = load_config()
     generate_env_file(config)
-    generate_cli_toml(config)
+    generate_cli_toml(config["bootstrap"])
 
 
 @contextlib.contextmanager

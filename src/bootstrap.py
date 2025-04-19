@@ -47,7 +47,16 @@ def setup_logger() -> None:
 
 
 def _load_yaml(file_path: Path) -> dict[str, object]:
-    return msgyaml.decode(file_path.read_bytes()) or {}
+    data = msgyaml.decode(file_path.read_bytes()) or {}
+
+    if data.pop("scope_compat", None):
+        for key, value in list(data.items()):
+            if isinstance(value, dict):
+                del data[key]
+                for k, v in value.items():
+                    data[f"{key}_{k}"] = v
+
+    return data
 
 
 def load_config() -> dict[str, object]:
@@ -130,13 +139,15 @@ def load_plugins(config: Config) -> None:
 
 
 def init_nonebot() -> object:
-    config = Config.model_validate(load_config())
+    config = load_config()
+    config.pop("_env_file", None)
+    bootstrap_config = Config.model_validate(config.get("bootstrap", {}))
 
     start = time.time()
     setup_logger()
-    nonebot.init(**config.model_dump())
-    load_adapters(config)
-    load_plugins(config)
+    nonebot.init(**config)  # pyright: ignore[reportArgumentType]
+    load_adapters(bootstrap_config)
+    load_plugins(bootstrap_config)
     log("SUCCESS", f"NoneBot initialized in <y>{time.time() - start:.3f}</y>s")
 
     return cast("object", nonebot.get_app())
