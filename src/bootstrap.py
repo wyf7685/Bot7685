@@ -1,7 +1,7 @@
 import logging
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, cast
+from typing import TYPE_CHECKING, ClassVar
 
 import nonebot
 from msgspec import yaml as msgyaml
@@ -144,4 +144,4 @@ def init_nonebot() -> object:
     load_plugins(bootstrap_config)
     log("SUCCESS", f"NoneBot initialized in <y>{time.time() - start:.3f}</y>s")
 
-    return cast("object", nonebot.get_app())
+    return nonebot.get_app()
