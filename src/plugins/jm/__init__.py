@@ -65,11 +65,15 @@ def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
                 await bot.call_api(api, **params, messages=m, _timeout=60)
             except v11.NetworkError:
                 return
-            except Exception:
+            except Exception as exc:
                 if retry == 2:
                     logger.error(f"发送合并转发失败 ({max_retry}/{max_retry})")
                     raise
-                logger.warning(f"发送合并转发失败, 重试中... ({retry + 1}/{max_retry})")
+                logger.opt(exception=exc).warning(
+                    f"发送合并转发失败, 重试中... ({retry + 1}/{max_retry})"
+                )
+            else:
+                return
 
     return send
 
