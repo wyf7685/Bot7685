@@ -1,16 +1,22 @@
-def __load() -> None:
-    from contextlib import suppress
+import importlib
 
-    with suppress(ImportError):
-        from . import discord as discord
-    with suppress(ImportError):
-        from . import onebot11 as onebot11
-    with suppress(ImportError):
-        from . import qq as qq
-    with suppress(ImportError):
-        from . import satori as satori
-    with suppress(ImportError):
-        from . import telegram as telegram
+import nonebot
+import nonebot.utils
 
+ADAPTERS = {
+    "Discord": "discord",
+    "OneBot V11": "onebot11",
+    "QQ": "qq",
+    "Satori": "satori",
+    "Telegram": "telegram",
+}
 
-__load()
+for adapter in nonebot.get_adapters():
+    if module := ADAPTERS.get(adapter):
+        try:
+            importlib.import_module(f".{module}", __package__)
+        except ImportError as e:
+            nonebot.logger.opt(colors=True).warning(
+                f"Failed to load patcher for <g>{adapter}</g>:"
+                f" <r>{nonebot.utils.escape_tag(str(e))}</r>"
+            )

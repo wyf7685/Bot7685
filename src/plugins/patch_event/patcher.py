@@ -1,12 +1,22 @@
+import functools
+import inspect
 from collections.abc import Callable
-from typing import cast
+from typing import Protocol, cast
 
 import nonebot
 from nonebot.adapters import Event
-from nonebot.utils import escape_tag
+
+
+class PatcherHandle[T: Event](Protocol):
+    __call__: Callable[[T], str]
+    original: Callable[[T], str]
+
+    def patch(self) -> None: ...
+    def restore(self) -> None: ...
+
 
 logger = nonebot.logger.opt(colors=True)
-_PATCHERS: set["Patcher"] = set()
+_PATCHERS: set[PatcherHandle] = set()
 
 
 @nonebot.get_driver().on_startup
@@ -15,52 +25,27 @@ async def _() -> None:
         patcher.patch()
 
 
-class Patcher[T: Event]:
-    __target: type
-    __name: str
-    __patched: dict[str, tuple[Callable[..., object], Callable[..., object]]]
-    origin: type[T]
-    patcher: type[T]
+def patcher[T: Event](call: Callable[[T], str]) -> PatcherHandle[T]:
+    cls: type[T] = inspect.get_annotations(call)["self"]
+    assert issubclass(cls, Event)
+    original = cls.get_log_string
+    colored = f"<g>{cls.__name__}</g>.<y>get_log_string</y>"
 
-    def __init__(self, cls: type[T]) -> None:
-        self.__target = cls.mro()[1]
-        self.__name = self.__target.__name__
-        self.__patched = {
-            name: (patched, original)
-            for name, patched in cls.__dict__.items()
-            if not name.startswith("model_")
-            and callable(patched)
-            and hasattr(self.__target, name)
-            and callable(original := getattr(self.__target, name))
-            and original is not patched
-        }
-        origin = type(
-            self.__name,
-            (self.__target,),
-            {name: original for name, (_, original) in self.__patched.items()},
-        )
-        self.origin = cast("type[T]", origin)
-        self.patcher = cls
-        _PATCHERS.add(self)
+    @functools.wraps(original)
+    def wrapper(self: T) -> str:
+        return call(self)
 
-    def patch(self) -> None:
-        for name, (patched, _) in self.__patched.items():
-            colored = f"<g>{self.__name}</g>.<y>{name}</y>"
-            try:
-                setattr(self.__target, name, patched)
-            except Exception as err:
-                err = f"<r>{escape_tag(repr(err))}</r>"
-                logger.warning(f"Patch {colored} failed: {err}")
-            else:
-                logger.debug(f"Patch {colored}")
+    def patch() -> None:
+        cls.get_log_string = wrapper
+        logger.debug(f"Patch {colored}")
 
-    def restore(self) -> None:
-        for name, (_, original) in self.__patched.items():
-            colored = f"<g>{self.__name}</g>.<y>{name}</y>"
-            try:
-                setattr(self.__target, name, original)
-            except Exception as err:
-                err = f"<r>{escape_tag(repr(err))}</r>"
-                logger.warning(f"Restore {colored} failed: {err}")
-            else:
-                logger.debug(f"Restore {colored}")
+    def restore() -> None:
+        cls.get_log_string = original
+        logger.debug(f"Restore {colored}")
+
+    call.original = original  # pyright: ignore[reportFunctionMemberAccess]
+    call.patch = patch  # pyright: ignore[reportFunctionMemberAccess]
+    call.restore = restore  # pyright: ignore[reportFunctionMemberAccess]
+    handle = cast("PatcherHandle[T]", call)
+    _PATCHERS.add(handle)
+    return handle

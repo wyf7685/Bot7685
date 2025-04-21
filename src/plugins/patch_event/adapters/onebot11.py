@@ -26,15 +26,15 @@ from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
 require("nonebot_plugin_apscheduler")
-require("src.plugins.gtg")
 from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
+require("src.plugins.gtg")
 from src.plugins.gtg import call_later, call_soon
 
 from ..highlight import Highlight as BaseHighlight
-from ..patcher import Patcher
+from ..patcher import patcher
 
 
 class GroupInfo(BaseModel):
@@ -174,162 +174,142 @@ class Highlight(BaseHighlight[MessageSegment, Message]):
         )
 
 
-@Patcher
-class PatchEvent(Event):
-    @override
-    def get_log_string(self) -> str:
-        return f"[{self.get_event_name()}]: {Highlight.apply(model_dump(self))}"
+@patcher
+def patch_event(self: Event) -> str:
+    return f"[{self.get_event_name()}]: {Highlight.apply(model_dump(self))}"
 
 
-@Patcher
-class PatchPrivateMessageEvent(PrivateMessageEvent):
-    @override
-    def get_log_string(self) -> str:
-        return (
-            f"[{self.get_event_name()}]: "
-            f"Message <c>{self.message_id}</c> from "
-            f"{Highlight.user(self.sender)} "
-            f"{Highlight.apply(self.original_message)}"
-        )
+@patcher
+def patch_private_message_event(self: PrivateMessageEvent) -> str:
+    return (
+        f"[{self.get_event_name()}]: "
+        f"Message <c>{self.message_id}</c> from "
+        f"{Highlight.user(self.sender)} "
+        f"{Highlight.apply(self.original_message)}"
+    )
 
 
-@Patcher
-class PatchGroupMessageEvent(GroupMessageEvent):
-    @override
-    def get_log_string(self) -> str:
-        return (
-            f"[{self.get_event_name()}]: "
-            f"Message <c>{self.message_id}</c> from "
-            f"{Highlight.user(self.sender, self.group_id)}"
-            f"@{Highlight.group(self.group_id)} "
-            f"{Highlight.apply(self.original_message)}"
-        )
+@patcher
+def patch_group_message_event(self: GroupMessageEvent) -> str:
+    return (
+        f"[{self.get_event_name()}]: "
+        f"Message <c>{self.message_id}</c> from "
+        f"{Highlight.user(self.sender, self.group_id)}"
+        f"@{Highlight.group(self.group_id)} "
+        f"{Highlight.apply(self.original_message)}"
+    )
 
 
-@Patcher
-class PatchFriendRecallNoticeEvent(FriendRecallNoticeEvent):
-    @override
-    def get_log_string(self) -> str:
-        return (
-            f"[{self.get_event_name()}]: "
-            f"Message <c>{self.message_id}</c> from "
-            f"{Highlight.user(self.user_id)} deleted"
-        )
+@patcher
+def patch_friend_recall_notice_event(self: FriendRecallNoticeEvent) -> str:
+    return (
+        f"[{self.get_event_name()}]: "
+        f"Message <c>{self.message_id}</c> from "
+        f"{Highlight.user(self.user_id)} deleted"
+    )
 
 
-@Patcher
-class PatchGroupRecallNoticeEvent(GroupRecallNoticeEvent):
-    @override
-    def get_log_string(self) -> str:
-        return (
-            f"[{self.get_event_name()}]: "
-            f"Message <c>{self.message_id}</c> from "
-            f"{Highlight.user(self.user_id, self.group_id)}"
-            f"@{Highlight.group(self.group_id)} "
-            f"deleted by {Highlight.user(self.operator_id, self.group_id)}"
-        )
+@patcher
+def patch_group_recall_notice_event(self: GroupRecallNoticeEvent) -> str:
+    return (
+        f"[{self.get_event_name()}]: "
+        f"Message <c>{self.message_id}</c> from "
+        f"{Highlight.user(self.user_id, self.group_id)}"
+        f"@{Highlight.group(self.group_id)} "
+        f"deleted by {Highlight.user(self.operator_id, self.group_id)}"
+    )
 
 
-@Patcher
-class PatchNotifyEvent(NotifyEvent):
-    @override
-    def get_log_string(self) -> str:
-        if self.sub_type == "input_status":
-            raise NoLogException
-        return PatchNotifyEvent.origin.get_log_string(self)
+@patcher
+def patch_notify_event(self: NotifyEvent) -> str:
+    if self.sub_type == "input_status":
+        raise NoLogException
+    return patch_notify_event.original(self)
 
 
-@Patcher
-class PatchPokeNotifyEvent(PokeNotifyEvent):
-    def napcat(self: PokeNotifyEvent, raw_info: list[dict[str, str]]) -> str:
-        text = f"[{self.get_event_name()}]: "
-        user = [self.user_id, self.target_id]
+def poke_napcat(self: PokeNotifyEvent, raw_info: list[dict[str, str]]) -> str:
+    text = f"[{self.get_event_name()}]: "
+    user = [self.user_id, self.target_id]
 
-        if self.group_id is not None:
-            text += f"{Highlight.group(self.group_id)} "
-        else:
-            gen = (idx for idx, item in enumerate(raw_info) if item["type"] == "qq")
-            raw_info.insert(next(gen, 0) + 1, {"type": "nor", "txt": "戳了戳"})
+    if self.group_id is not None:
+        text += f"{Highlight.group(self.group_id)} "
+    else:
+        gen = (idx for idx, item in enumerate(raw_info) if item["type"] == "qq")
+        raw_info.insert(next(gen, 0) + 1, {"type": "nor", "txt": "戳了戳"})
 
-        for item in raw_info:
-            if item["type"] == "qq":
-                text += f"{Highlight.user(user.pop(0), self.group_id)} "
-            elif item["type"] == "nor":
-                text += f"{item['txt']} "
+    for item in raw_info:
+        if item["type"] == "qq":
+            text += f"{Highlight.user(user.pop(0), self.group_id)} "
+        elif item["type"] == "nor":
+            text += f"{item['txt']} "
 
-        return text
-
-    def lagrange(self: PokeNotifyEvent, action: str, suffix: str) -> str:
-        return (
-            f"[{self.get_event_name()}]: "
-            f"{f'{Highlight.group(self.group_id)} ' if self.group_id else ''}"
-            f"{Highlight.user(self.user_id, self.group_id)} {action} "
-            f"{Highlight.user(self.target_id, self.group_id)} {suffix}"
-        )
-
-    @override
-    def get_log_string(self) -> str:
-        data = model_dump(self)
-        if raw_info := data.get("raw_info"):
-            return PatchPokeNotifyEvent.patcher.napcat(self, raw_info)
-        if ((action := data.get("action")) is not None) and (
-            (suffix := data.get("suffix")) is not None
-        ):
-            return PatchPokeNotifyEvent.patcher.lagrange(self, action, suffix)
-        return PatchPokeNotifyEvent.origin.get_log_string(self)
+    return text
 
 
-@Patcher
-class PatchGroupDecreaseNoticeEvent(GroupDecreaseNoticeEvent):
-    @override
-    def get_log_string(self) -> str:
-        result = (
-            f"[{self.get_event_name()}]: "
-            f"GroupDecrease[{self.sub_type}] "
-            f"{Highlight.user(self.user_id, self.group_id)}"
-            f"@{Highlight.group(self.group_id)} "
-            f"by {Highlight.user(self.operator_id, self.group_id)}"
-        )
-        if (key := (self.user_id, self.group_id)) in user_card_cache:
-            del user_card_cache[key]
-        return result
+def poke_lagrange(self: PokeNotifyEvent, action: str, suffix: str) -> str:
+    return (
+        f"[{self.get_event_name()}]: "
+        f"{f'{Highlight.group(self.group_id)} ' if self.group_id else ''}"
+        f"{Highlight.user(self.user_id, self.group_id)} {action} "
+        f"{Highlight.user(self.target_id, self.group_id)} {suffix}"
+    )
 
 
-@Patcher
-class PatchGroupIncreaseNoticeEvent(GroupIncreaseNoticeEvent):
-    @override
-    def get_log_string(self) -> str:
-        return (
-            f"[{self.get_event_name()}]: "
-            f"GroupIncrease[{self.sub_type}] "
-            f"{Highlight.user(self.user_id, self.group_id)}"
-            f"@{Highlight.group(self.group_id)} "
-            f"by {Highlight.user(self.operator_id, self.group_id)}"
-        )
+@patcher
+def patch_poke_notify_event(self: PokeNotifyEvent) -> str:
+    data = model_dump(self)
+    if raw_info := data.get("raw_info"):
+        return poke_napcat(self, raw_info)
+    if ((action := data.get("action")) is not None) and (
+        (suffix := data.get("suffix")) is not None
+    ):
+        return poke_lagrange(self, action, suffix)
+    return patch_poke_notify_event.original(self)
 
 
-@Patcher
-class PatchFriendRequestEvent(FriendRequestEvent):
-    @override
-    def get_log_string(self) -> str:
-        return (
-            f"[{self.get_event_name()}]: "
-            f"FriendRequest {Highlight.user(self.user_id)} "
-            f"with flag=<c>{escape_tag(self.flag)}</c>"
-        )
+@patcher
+def patch_group_decrease_notice_event(self: GroupDecreaseNoticeEvent) -> str:
+    result = (
+        f"[{self.get_event_name()}]: "
+        f"GroupDecrease[{self.sub_type}] "
+        f"{Highlight.user(self.user_id, self.group_id)}"
+        f"@{Highlight.group(self.group_id)} "
+        f"by {Highlight.user(self.operator_id, self.group_id)}"
+    )
+    if (key := (self.user_id, self.group_id)) in user_card_cache:
+        del user_card_cache[key]
+    return result
 
 
-@Patcher
-class PatchGroupRequestEvent(GroupRequestEvent):
-    @override
-    def get_log_string(self) -> str:
-        return (
-            f"[{self.get_event_name()}]: "
-            f"GroupRequest[{self.sub_type}] "
-            f"{Highlight.user(self.user_id, self.group_id)}"
-            f"@{Highlight.group(self.group_id)} "
-            f"with flag=<c>{escape_tag(self.flag)}</c>"
-        )
+@patcher
+def patch_group_increase_notice_event(self: GroupIncreaseNoticeEvent) -> str:
+    return (
+        f"[{self.get_event_name()}]: "
+        f"GroupIncrease[{self.sub_type}] "
+        f"{Highlight.user(self.user_id, self.group_id)}"
+        f"@{Highlight.group(self.group_id)} "
+        f"by {Highlight.user(self.operator_id, self.group_id)}"
+    )
+
+
+@patcher
+def patch_friend_request_event(self: FriendRequestEvent) -> str:
+    return (
+        f"[{self.get_event_name()}]: "
+        f"FriendRequest {Highlight.user(self.user_id)} "
+        f"with flag=<c>{escape_tag(self.flag)}</c>"
+    )
+
+
+@patcher
+def patch_group_request_event(self: GroupRequestEvent) -> str:
+    return (
+        f"[{self.get_event_name()}]: "
+        f"GroupRequest[{self.sub_type}] "
+        f"{Highlight.user(self.user_id, self.group_id)}"
+        f"@{Highlight.group(self.group_id)} "
+        f"with flag=<c>{escape_tag(self.flag)}</c>"
+    )
 
 
 CUSTOM_MODELS: set[type[Event]] = set()
@@ -455,12 +435,12 @@ class ReactionRemoveNoticeEvent(ReactionNoticeEvent):  # Lagrange
         )
 
 
-scheduler_job: dict[Bot, list[SchedulerJob]] = {}
+scheduler_job: dict[Bot, tuple[SchedulerJob, ...]] = {}
 
 
 @get_driver().on_bot_connect
 async def on_bot_connect(bot: Bot) -> None:
-    scheduler_job[bot] = [
+    scheduler_job[bot] = (
         scheduler.add_job(
             update_group_cache,
             args=(bot,),
@@ -471,7 +451,7 @@ async def on_bot_connect(bot: Bot) -> None:
             args=(bot,),
             trigger=CronTrigger(second="0/15"),
         ),
-    ]
+    )
 
     async def update() -> None:
         if bot in scheduler_job:

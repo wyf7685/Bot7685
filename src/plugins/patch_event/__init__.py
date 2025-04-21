@@ -1,7 +1,7 @@
 from nonebot.plugin import PluginMetadata
 
 from . import adapters as adapters
-from .patcher import Patcher as Patcher
+from .patcher import patcher as patcher
 
 __plugin_meta__ = PluginMetadata(
     name="patch_event",

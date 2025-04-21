@@ -1,5 +1,4 @@
-import abc
-from typing import ClassVar, override
+from typing import ClassVar
 
 import nonebot
 from nonebot.adapters.discord import Event, Message
@@ -15,7 +14,7 @@ from nonebot.compat import model_dump
 from nonebot.utils import escape_tag
 
 from ..highlight import Highlight as BaseHighlight
-from ..patcher import Patcher
+from ..patcher import patcher
 
 guild_name_cache: dict["SnowflakeType", str] = {}
 guild_channel_cache: dict["SnowflakeType", list["Channel"]] = {}
@@ -36,79 +35,69 @@ class Highlight(BaseHighlight):
     exclude_value: ClassVar[tuple[object, ...]] = (UNSET, None)
 
 
-@Patcher
-class PatchEvent(Event, abc.ABC):
-    @override
-    def get_log_string(self) -> str:
-        return f"[{self.get_event_name()}] {Highlight.apply(model_dump(self))}"
+@patcher
+def patch_event(self: Event) -> str:
+    return f"[{self.get_event_name()}] {Highlight.apply(model_dump(self))}"
 
 
-@Patcher
-class PatchDirectMessageCreateEvent(DirectMessageCreateEvent):
-    @override
-    def get_log_string(self) -> str:
-        return (
-            f"[{self.get_event_name()}] "
-            f"Message <c>{self.id}</c> from "
-            f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
-            f"(<c>{self.author.id}</c>) "
-            f"{Highlight.apply(self.get_message())}"
-        )
+@patcher
+def patch_direct_message_create_event(self: DirectMessageCreateEvent) -> str:
+    return (
+        f"[{self.get_event_name()}] "
+        f"Message <c>{self.id}</c> from "
+        f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
+        f"(<c>{self.author.id}</c>) "
+        f"{Highlight.apply(self.get_message())}"
+    )
 
 
-@Patcher
-class PatchDirectMessageUpdateEvent(DirectMessageUpdateEvent):
-    @override
-    def get_log_string(self) -> str:
-        return (
-            f"[{self.get_event_name()}] "
-            f"Message <c>{self.id}</c> from "
-            f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
-            f"(<c>{self.author.id}</c>) updated to "
-            f"{Highlight.apply(Message.from_guild_message(self))}"
-        )
+@patcher
+def patch_direct_message_update_event(self: DirectMessageUpdateEvent) -> str:
+    return (
+        f"[{self.get_event_name()}] "
+        f"Message <c>{self.id}</c> from "
+        f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
+        f"(<c>{self.author.id}</c>) updated to "
+        f"{Highlight.apply(Message.from_guild_message(self))}"
+    )
 
 
-@Patcher
-class PatchGuildMessageCreateEvent(GuildMessageCreateEvent):
-    @override
-    def get_log_string(self) -> str:
-        guild = f"<c>{self.guild_id}</c>"
-        if name := find_guild_name(self.guild_id):
-            guild = f"<y>{escape_tag(name)}</y>({guild})"
-        channel = f"<c>{self.channel_id}</c>"
-        if name := find_channel_name(self.guild_id, self.channel_id):
-            channel = f"<y>{escape_tag(name)}</y>({channel})"
+@patcher
+def patch_guild_message_create_event(self: GuildMessageCreateEvent) -> str:
+    guild = f"<c>{self.guild_id}</c>"
+    if name := find_guild_name(self.guild_id):
+        guild = f"<y>{escape_tag(name)}</y>({guild})"
+    channel = f"<c>{self.channel_id}</c>"
+    if name := find_channel_name(self.guild_id, self.channel_id):
+        channel = f"<y>{escape_tag(name)}</y>({channel})"
 
-        return (
-            f"[{self.get_event_name()}] "
-            f"Message <c>{self.id}</c> from "
-            f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
-            f"(<c>{self.author.id}</c>)"
-            f"@[Guild:{guild} Channel:{channel}] "
-            f"{Highlight.apply(self.get_message())}"
-        )
+    return (
+        f"[{self.get_event_name()}] "
+        f"Message <c>{self.id}</c> from "
+        f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
+        f"(<c>{self.author.id}</c>)"
+        f"@[Guild:{guild} Channel:{channel}] "
+        f"{Highlight.apply(self.get_message())}"
+    )
 
 
-@Patcher
-class PatchGuildMessageUpdateEvent(GuildMessageUpdateEvent):
-    @override
-    def get_log_string(self) -> str:
-        guild = f"<c>{self.guild_id}</c>"
-        if name := find_guild_name(self.guild_id):
-            guild = f"<y>{escape_tag(name)}</y>({guild})"
-        channel = f"<c>{self.channel_id}</c>"
-        if name := find_channel_name(self.guild_id, self.channel_id):
-            channel = f"<y>{escape_tag(name)}</y>({channel})"
+@patcher
+def patch_guild_message_update_event(self: GuildMessageUpdateEvent) -> str:
+    guild = f"<c>{self.guild_id}</c>"
+    if name := find_guild_name(self.guild_id):
+        guild = f"<y>{escape_tag(name)}</y>({guild})"
+    channel = f"<c>{self.channel_id}</c>"
+    if name := find_channel_name(self.guild_id, self.channel_id):
+        channel = f"<y>{escape_tag(name)}</y>({channel})"
 
-        return (
-            f"[{self.get_event_name()}] "
-            f"Message <c>{self.id}</c> from "
-            f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
-            f"(<c>{self.author.id}</c>)"
-            f"@[Guild:{guild} Channel:{channel}] updated to "
-            f"{Highlight.apply(Message.from_guild_message(self))}"
-        )
+    return (
+        f"[{self.get_event_name()}] "
+        f"Message <c>{self.id}</c> from "
+        f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
+        f"(<c>{self.author.id}</c>)"
+        f"@[Guild:{guild} Channel:{channel}] updated to "
+        f"{Highlight.apply(Message.from_guild_message(self))}"
+    )
 
 
 @nonebot.on_type(GuildCreateEvent).handle()
