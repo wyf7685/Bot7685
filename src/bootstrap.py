@@ -114,9 +114,9 @@ def load_plugins(config: Config) -> None:
     if (plugin_dir := config.plugin_dir) and Path(plugin_dir).is_dir():
         plugin_dirs.append(plugin_dir)
 
-    if (dev_dir := config.dev_plugin_dir) and Path(dev_dir).is_dir():
+    if (dev_dir := config.dev_plugin_dir) and (path := Path(dev_dir)).is_dir():
         plugin_dirs.append(dev_dir)
-        for p in Path(dev_dir).iterdir():
+        for p in path.iterdir():
             if (p.is_dir() and (name := p.name) in config.plugins) or (
                 p.is_file() and p.suffix == ".py" and (name := p.stem) in config.plugins
             ):
@@ -124,7 +124,7 @@ def load_plugins(config: Config) -> None:
                 log(
                     "WARNING",
                     f'Prefer loading plugin "<y>{name}</y>"'
-                    f' from "<m>src.dev.{name}</m>"',
+                    f' from "<m>{".".join(path.parts)}.{name}</m>"',
                 )
 
     start = time.time()
