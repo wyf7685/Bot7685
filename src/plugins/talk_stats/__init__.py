@@ -22,6 +22,10 @@ alc = Alconna(
 
 
 matcher = on_alconna(alc, permission=TrustedUser())
+matcher.shortcut(
+    r"我的水群瓷砖",
+    {"command": "talk_stats --my {*}"},
+)
 
 
 @matcher.assign("my")
