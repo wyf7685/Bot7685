@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>聊天统计</title>
+  {% set container_width = (min(max_x, 5) + 1) * 16 %}
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      margin: 20px;
+      background-color: #f6f8fa;
+      color: #24292e;
+    }
+
+    .container {
+      max-width: {{ container_width }}px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+
+    .calendar {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .calendar-row {
+      display: flex;
+      gap: 4px;
+    }
+
+    .day {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    .calendar-wrapper {
+      display: flex;
+      align-items: center;
+    }
+
+    .color-scale {
+      margin-top: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .color-item {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container" id="calendar-container">
+    <div class="calendar-wrapper">
+      <div class="calendar">
+        {% for y in range(7) %}
+        <div class="calendar-row">
+          {% for x in range(max_x, -1, -1) %}
+          {% if (x, y) in cells %}
+          <div class="day" style="background-color: {{ count_color(cells[(x, y)]) }};"></div>
+          {% else %}
+          <div class="day"></div>
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="color-scale">
+      <div class="color-item" style="background-color: #ebedf0;"></div>
+      <div class="color-item" style="background-color: #9be9a8;"></div>
+      <div class="color-item" style="background-color: #40c463;"></div>
+      <div class="color-item" style="background-color: #30a14e;"></div>
+      <div class="color-item" style="background-color: #216e39;"></div>
+    </div>
+  </div>
+</body>
+
+</html>
