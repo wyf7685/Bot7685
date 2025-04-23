@@ -18,7 +18,7 @@ ENV PATH="$VIRTUAL_ENV/bin:/opt/uv-bin/:$PATH"
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked && \
+    uv sync --locked --active && \
     fc-cache -f -v && \
     chmod +x /start.sh
 
