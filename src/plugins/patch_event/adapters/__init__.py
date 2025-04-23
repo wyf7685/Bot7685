@@ -5,6 +5,7 @@ import nonebot.utils
 
 ADAPTERS = {
     "Discord": "discord",
+    "Feishu": "feishu",
     "OneBot V11": "onebot11",
     "QQ": "qq",
     "Satori": "satori",
