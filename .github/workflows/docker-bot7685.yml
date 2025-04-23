@@ -15,16 +15,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v2
-        with:
-          enable-cache: true
-
-      - name: Export requirements.txt
-        run: |
-          uv export --no-dev --no-hashes > docker/bot7685/assets/requirements.txt
-          cat docker/bot7685/assets/requirements.txt
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
