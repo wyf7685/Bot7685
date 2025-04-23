@@ -47,7 +47,8 @@ jobs:
       - name: Build and Publish
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/bot7685/.
+          context: .
+          file: ./docker/bot7685/Dockerfile
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
@@ -64,7 +65,6 @@ jobs:
       - name: Build CLI and Publish
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/bot7685/.
           file: ./docker/bot7685/Dockerfile.cli
           push: true
           tags: ${{ steps.metadata-cli.outputs.tags }}
