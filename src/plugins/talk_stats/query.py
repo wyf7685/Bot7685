@@ -68,7 +68,7 @@ async def query_scene(session: Session, days: int = 7) -> dict[str, tuple[User, 
         .join(UserModel, UserModel.id == SessionModel.user_persist_id)
         .group_by(UserModel.id)
     )
-    data: dict[int, int] = dict(result.scalars())
+    data: dict[int, int] = {row[0]: row[1] for row in result}
     return {
         m.user_id: (await m.to_user(), data[m.id])
         for m in await db.scalars(sa.select(UserModel).where(UserModel.id.in_(data)))

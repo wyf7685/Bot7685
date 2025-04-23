@@ -7,17 +7,18 @@ template_dir = Path(__file__).parent / "templates"
 
 
 def _get_count_color(count: int, total: int) -> str:
-    # sourcery skip: assign-if-exp, reintroduce-else
     if count == 0:
         return "#ebedf0"
-    r = count / total
-    if r < 0.25:
-        return "#9be9a8"
-    if r < 0.5:
-        return "#40c463"
-    if r < 0.75:
-        return "#30a14e"
-    return "#216e39"
+
+    match count * 4 // total:
+        case 0:  # (0, 0.25)
+            return "#9be9a8"
+        case 1:  # [0.25, 0.5)
+            return "#40c463"
+        case 2:  # [0.5, 0.75)
+            return "#30a14e"
+        case _:  # [0.75, 1]
+            return "#216e39"
 
 
 def construct_cell(
