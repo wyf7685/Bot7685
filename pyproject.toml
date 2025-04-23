@@ -49,6 +49,7 @@ dependencies = [
     # plugins
     "nonebot-plugin-exe-code>=1.1.5",
     "nonebot-plugin-werewolf>=1.1.8",
+    "nonebot-adapter-feishu>=2.6.2",
 ]
 
 # used by nb-cli
