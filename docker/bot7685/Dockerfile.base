@@ -15,9 +15,9 @@ RUN git clone https://github.com/kn007/silk-v3-decoder.git /silk-v3-decoder && \
     chmod +x /silk-v3-decoder/converter.sh && \
     /silk-v3-decoder/converter.sh
 
-RUN python -m pip install --no-cache-dir playwright && \
-    playwright install chromium && \
-    playwright install-deps && \
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+RUN uvx --no-cache playwright install chromium --with-deps && \
     apt-get purge -y --auto-remove
 
 CMD [ "bash" ]
