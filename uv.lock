@@ -2053,7 +2053,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-zssm"
 version = "0.3.1"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git#1566a6e422ad81705625838e5035c6abb7745701" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git#0f294ad30eab6fa9803b5580c3446505ebf12c41" }
 dependencies = [
     { name = "httpx" },
     { name = "nonebot-plugin-alconna" },
