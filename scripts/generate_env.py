@@ -78,8 +78,8 @@ def generate_env_file(config: dict[str, object]) -> None:
 def generate_cli_toml(config: dict[str, object]) -> None:
     adapters = [
         {
-            "name": adapter.replace(".", " "),
-            "module_name": f"nonebot.adapters.{adapter}",
+            "name": adapter.replace(".", " ").replace("~", ""),
+            "module_name": adapter.replace("~", "nonebot.adapters."),
         }
         for adapter in cast("list[str]", config["adapters"])
     ]
