@@ -50,6 +50,7 @@ dependencies = [
     # plugins
     "nonebot-plugin-exe-code>=1.1.5",
     "nonebot-plugin-werewolf>=1.1.8",
+    "nonebot-plugin-zssm",
 ]
 
 [tool.ruff]
@@ -172,3 +173,5 @@ dev-dependencies = [
 nonebot-plugin-exe-code = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" }
 # Forked from https://github.com/GuGuMur/nonebot-plugin-skland-arksign
 nonebot-plugin-skland-arksign = { git = "https://github.com/wyf7685/nonebot-plugin-skland-arksign.git" }
+# Forked from https://github.com/djkcyl/nonebot-plugin-zssm
+nonebot-plugin-zssm = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git" }
