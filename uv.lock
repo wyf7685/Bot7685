@@ -1530,18 +1530,18 @@ wheels = [
 
 [[package]]
 name = "nodejs-wheel-binaries"
-version = "22.14.0"
+version = "22.15.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d7/c7/4fd3871d2b7fd5122216245e273201ab98eda92bbd6fe9ad04846b758c56/nodejs_wheel_binaries-22.14.0.tar.gz", hash = "sha256:c1dc43713598c7310d53795c764beead861b8c5021fe4b1366cb912ce1a4c8bf", size = 8055, upload_time = "2025-02-11T18:15:17.714Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/45/5b/6c5f973765b96793d4e4d03684bcbd273b17e471ecc7e9bec4c32b595ebd/nodejs_wheel_binaries-22.15.0.tar.gz", hash = "sha256:ff81aa2a79db279c2266686ebcb829b6634d049a5a49fc7dc6921e4f18af9703", size = 8054, upload_time = "2025-04-23T16:57:40.338Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/61/b6/66ef4ef75ea7389ea788f2d5505bf9a8e5c3806d56c7a90cf46a6942f1cf/nodejs_wheel_binaries-22.14.0-py2.py3-none-macosx_11_0_arm64.whl", hash = "sha256:d8ab8690516a3e98458041286e3f0d6458de176d15c14f205c3ea2972131420d", size = 50326597, upload_time = "2025-02-11T18:14:18.467Z" },
-    { url = "https://files.pythonhosted.org/packages/7d/78/023d91a293ba73572a643bc89d11620d189f35f205a309dd8296aa45e69a/nodejs_wheel_binaries-22.14.0-py2.py3-none-macosx_11_0_x86_64.whl", hash = "sha256:b2f200f23b3610bdbee01cf136279e005ffdf8ee74557aa46c0940a7867956f6", size = 51158258, upload_time = "2025-02-11T18:14:25.693Z" },
-    { url = "https://files.pythonhosted.org/packages/af/86/324f6342c79e5034a13319b02ba9ed1f4ac8813af567d223c9a9e56cd338/nodejs_wheel_binaries-22.14.0-py2.py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d0877832abd7a9c75c8c5caafa37f986c9341ee025043c2771213d70c4c1defa", size = 57180264, upload_time = "2025-02-11T18:14:34.123Z" },
-    { url = "https://files.pythonhosted.org/packages/6d/9f/42bdaab26137e31732bff00147b9aca2185d475b5752b57a443e6c7ba93f/nodejs_wheel_binaries-22.14.0-py2.py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8fded5a70a8a55c2135e67bd580d8b7f2e94fcbafcc679b6a2d5b92f88373d69", size = 57693251, upload_time = "2025-02-11T18:14:42.071Z" },
-    { url = "https://files.pythonhosted.org/packages/ab/d7/94f8f269aa86cf35f9ed2b70d09aca48dc971fb5656fdc4a3b69364b189f/nodejs_wheel_binaries-22.14.0-py2.py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:c1ade6f3ece458b40c02e89c91d5103792a9f18aaad5026da533eb0dcb87090e", size = 58841717, upload_time = "2025-02-11T18:14:49.971Z" },
-    { url = "https://files.pythonhosted.org/packages/2d/a0/43b7316eaf22b4ee9bfb897ee36c724efceac7b89d7d1bedca28057b7be1/nodejs_wheel_binaries-22.14.0-py2.py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:34fa5ed4cf3f65cbfbe9b45c407ffc2fc7d97a06cd8993e6162191ff81f29f48", size = 59808791, upload_time = "2025-02-11T18:14:59.428Z" },
-    { url = "https://files.pythonhosted.org/packages/10/0a/814491f751a25136e37de68a2728c9a9e3c1d20494aba5ff3c230d5f9c2d/nodejs_wheel_binaries-22.14.0-py2.py3-none-win_amd64.whl", hash = "sha256:ca7023276327455988b81390fa6bbfa5191c1da7fc45bc57c7abc281ba9967e9", size = 40478921, upload_time = "2025-02-11T18:15:07.3Z" },
-    { url = "https://files.pythonhosted.org/packages/f4/5c/cab444afaa387dceac8debb817b52fd00596efcd2d54506c27311c6fe6a8/nodejs_wheel_binaries-22.14.0-py2.py3-none-win_arm64.whl", hash = "sha256:fd59c8e9a202221e316febe1624a1ae3b42775b7fb27737bf12ec79565983eaf", size = 36206637, upload_time = "2025-02-11T18:15:13.39Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/a8/a32e5bb99e95c536e7dac781cffab1e7e9f8661b8ee296b93df77e4df7f9/nodejs_wheel_binaries-22.15.0-py2.py3-none-macosx_11_0_arm64.whl", hash = "sha256:aa16366d48487fff89446fb237693e777aa2ecd987208db7d4e35acc40c3e1b1", size = 50514526, upload_time = "2025-04-23T16:57:07.478Z" },
+    { url = "https://files.pythonhosted.org/packages/05/e8/eb024dbb3a7d3b98c8922d1c306be989befad4d2132292954cb902f43b07/nodejs_wheel_binaries-22.15.0-py2.py3-none-macosx_11_0_x86_64.whl", hash = "sha256:a54bb3fee9170003fa8abc69572d819b2b1540344eff78505fcc2129a9175596", size = 51409179, upload_time = "2025-04-23T16:57:11.599Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/0f/baa968456c3577e45c7d0e3715258bd175dcecc67b683a41a5044d5dae40/nodejs_wheel_binaries-22.15.0-py2.py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:867121ccf99d10523f6878a26db86e162c4939690e24cfb5bea56d01ea696c93", size = 57364460, upload_time = "2025-04-23T16:57:15.725Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/a2/977f63cd07ed8fc27bc0d0cd72e801fc3691ffc8cd40a51496ff18a6d0a2/nodejs_wheel_binaries-22.15.0-py2.py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0ab0fbcda2ddc8aab7db1505d72cb958f99324b3834c4543541a305e02bfe860", size = 57889101, upload_time = "2025-04-23T16:57:19.643Z" },
+    { url = "https://files.pythonhosted.org/packages/67/7f/57b9c24a4f0d25490527b043146aa0fdff2d8fdc82f90667cdaf6f00cfc9/nodejs_wheel_binaries-22.15.0-py2.py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:2bde1d8e00cd955b9ce9ee9ac08309923e2778a790ee791b715e93e487e74bfd", size = 59190817, upload_time = "2025-04-23T16:57:23.875Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/7f/970acbe33b81c22b3c7928f52e32347030aa46d23d779cf781cf9a9cf557/nodejs_wheel_binaries-22.15.0-py2.py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:acdd4ef73b6701aab9fbe02ac5e104f208a5e3c300402fa41ad7bc7f49499fbf", size = 60220316, upload_time = "2025-04-23T16:57:28.276Z" },
+    { url = "https://files.pythonhosted.org/packages/07/4c/030243c04bb60f0de66c2d7ee3be289c6d28ef09113c06ffa417bdfedf8f/nodejs_wheel_binaries-22.15.0-py2.py3-none-win_amd64.whl", hash = "sha256:51deaf13ee474e39684ce8c066dfe86240edb94e7241950ca789befbbbcbd23d", size = 40718853, upload_time = "2025-04-23T16:57:32.651Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/49/011d472814af4fabeaab7d7ce3d5a1a635a3dadc23ae404d1f546839ecb3/nodejs_wheel_binaries-22.15.0-py2.py3-none-win_arm64.whl", hash = "sha256:01a3fe4d60477f93bf21a44219db33548c75d7fed6dc6e6f4c05cf0adf015609", size = 36436645, upload_time = "2025-04-23T16:57:36.326Z" },
 ]
 
 [[package]]
@@ -2053,7 +2053,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-zssm"
 version = "0.3.1"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git#7320e70af512d2bdd693b8974f4259481b140d0b" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git#1566a6e422ad81705625838e5035c6abb7745701" }
 dependencies = [
     { name = "httpx" },
     { name = "nonebot-plugin-alconna" },
@@ -2832,26 +2832,26 @@ wheels = [
 
 [[package]]
 name = "tencentcloud-sdk-python-common"
-version = "3.0.1364"
+version = "3.0.1365"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/18/8518c3d88e4dadfe21a9f0d01bf6d624c2dc9615cf8e0a5d87460724a52a/tencentcloud-sdk-python-common-3.0.1364.tar.gz", hash = "sha256:c4153069da06018f3a46ab7b668476ea2960b8babec0c9ff5ae9b7c05eac2c53", size = 16900, upload_time = "2025-04-22T20:56:04.244Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/78/5c/29fd2ae8db669d9fd301f0a133c3d1c3face3a617bda34277ad5ce410a0b/tencentcloud-sdk-python-common-3.0.1365.tar.gz", hash = "sha256:5464831c7bcf9d40ff70c5ad674ebf9bbccd82b818fe76ad90406155b2cbffa0", size = 17149, upload_time = "2025-04-23T20:52:04.042Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/6e/0ac55ec96a865f814203b49a1987eb78ab7c9e7eb37b4079d0a2fe0d2519/tencentcloud_sdk_python_common-3.0.1364-py2.py3-none-any.whl", hash = "sha256:bfdac3e5377f3074de2eac9be7b2f53d683cd825745c2d321afd1d3edf5fedc6", size = 24709, upload_time = "2025-04-22T20:56:02.043Z" },
+    { url = "https://files.pythonhosted.org/packages/98/d4/bd0e86e23a08cc68f0078a3a10d1a19e1109e23d32ebc0867af08f238294/tencentcloud_sdk_python_common-3.0.1365-py2.py3-none-any.whl", hash = "sha256:ee475457f43161fccbfe9fca928b18600a89dd87c13f181289faaa1c7f2f0936", size = 24713, upload_time = "2025-04-23T20:52:02.086Z" },
 ]
 
 [[package]]
 name = "tencentcloud-sdk-python-dnspod"
-version = "3.0.1364"
+version = "3.0.1365"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "tencentcloud-sdk-python-common" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/51/12/1bd1f806490afa9f84b847d66b87116064fb49e55f2a56fe76a6ce2f6d5f/tencentcloud-sdk-python-dnspod-3.0.1364.tar.gz", hash = "sha256:79dd09db7ba25fd4c9ae3721e4cfe814da0204e3cf72c6f24f4e01bb9b3e06db", size = 63025, upload_time = "2025-04-22T20:57:33.411Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/73/2c/83f1388a8faf8372745ad4b07ed6661704af92aa14c374905c23783c5c10/tencentcloud-sdk-python-dnspod-3.0.1365.tar.gz", hash = "sha256:82787a8b9c7167430808e98133a4166c60765fd4a15f878a5a5429a78dd5840d", size = 63743, upload_time = "2025-04-23T20:53:35.978Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/5d/e26bb186b979b08e225056759dc5296702b17c833d7b63a0be5c8d98917d/tencentcloud_sdk_python_dnspod-3.0.1364-py2.py3-none-any.whl", hash = "sha256:e41652f6b56ce8366f5019a6da77038c567451b07b069bdd891980d66298fccb", size = 65598, upload_time = "2025-04-22T20:57:31.59Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/c7/1bb252215bc1a25841107aadad2e209cd38cfbd92ac23838794d5177da79/tencentcloud_sdk_python_dnspod-3.0.1365-py2.py3-none-any.whl", hash = "sha256:57ba72d70f7b6ad96d1092e5802465c64fcfce8cd4466df6a7b06810f8862c3b", size = 65596, upload_time = "2025-04-23T20:53:33.466Z" },
 ]
 
 [[package]]
