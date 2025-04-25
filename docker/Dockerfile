@@ -6,8 +6,8 @@ ENV PYTHONPATH=/app
 ENV APP_MODULE=bot:app
 ENV MAX_WORKERS=1
 
-ADD docker/bot7685/fonts/*.ttf /usr/share/fonts/
-ADD docker/bot7685/assets/* /
+ADD docker/fonts/*.ttf /usr/share/fonts/
+ADD docker/assets/* /
 
 ENV UV_LINK_MODE=copy
 ENV UV_TOOL_BIN_DIR=/opt/uv-bin/
