@@ -104,16 +104,13 @@ def generate_cli_toml(config: dict[str, object]) -> None:
     toml_file.write_bytes(msgtoml.encode(toml))
 
 
-def generate() -> None:
+@contextlib.contextmanager
+def ensure_cli() -> Generator[None]:
+    toml = toml_file.read_text()
     config = load_config()
     generate_env_file(config)
     generate_cli_toml(config["bootstrap"])
 
-
-@contextlib.contextmanager
-def ensure_cli() -> Generator[None]:
-    toml = toml_file.read_text()
-    generate()
     try:
         yield
     finally:

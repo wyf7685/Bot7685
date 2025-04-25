@@ -135,11 +135,11 @@ def load_plugins(config: Config) -> None:
 def init_nonebot() -> object:
     config = load_config()
     config.pop("_env_file", None)
-    bootstrap_config = Config.model_validate(config.get("bootstrap", {}))
+    bootstrap_config = Config.model_validate(config.pop("bootstrap", {}))
 
     start = time.time()
     setup_logger()
-    nonebot.init(**config)  # pyright: ignore[reportArgumentType]
+    nonebot.init(_env_file=None, **config)
     load_adapters(bootstrap_config)
     load_plugins(bootstrap_config)
     log("SUCCESS", f"NoneBot initialized in <y>{time.time() - start:.3f}</y>s")
