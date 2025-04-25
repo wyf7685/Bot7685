@@ -1,3 +1,7 @@
+# /// script
+# dependencies = ["msgspec[toml,yaml]>=0.19.0"]
+# ///
+
 import os
 
 from generate_env import ensure_cli  # pyright: ignore[reportImplicitRelativeImport]

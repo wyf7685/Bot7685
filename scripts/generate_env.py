@@ -1,3 +1,7 @@
+# /// script
+# dependencies = ["msgspec[toml,yaml]>=0.19.0"]
+# ///
+
 import contextlib
 import json
 import pathlib
