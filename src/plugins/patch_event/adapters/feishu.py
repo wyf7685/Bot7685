@@ -1,3 +1,5 @@
+import datetime as dt
+import functools
 from typing import LiteralString, override
 
 import nonebot
@@ -66,6 +68,10 @@ class P2PChatEnteredEvent(NoticeEvent):
     def is_tome(self) -> bool:
         return True
 
+    @functools.cached_property
+    def last_message_create_time(self) -> dt.datetime:
+        return dt.datetime.fromtimestamp(int(self.event.last_message_create_time))  # noqa: DTZ006
+
     @override
     def get_log_string(self) -> str:
         return (
@@ -73,7 +79,7 @@ class P2PChatEnteredEvent(NoticeEvent):
             f"<c>{self.get_user_id()}</c>"
             f"@[<y>p2p</y>:<c>{self.event.chat_id}</c>] entered chat, "
             f"last message: <c>{self.event.last_message_id}</c> "
-            f"at <c>{self.event.last_message_create_time}</c>"
+            f"at <c>{self.last_message_create_time:%Y-%m-%d %H:%M:%S}</c>"
         )
 
 
