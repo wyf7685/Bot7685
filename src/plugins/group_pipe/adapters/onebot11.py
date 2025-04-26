@@ -1,12 +1,11 @@
 import contextlib
 import json
-from collections.abc import AsyncGenerator, AsyncIterable, Iterable
+from collections.abc import AsyncIterable, Iterable
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, override
 from weakref import WeakKeyDictionary
 
-import anyio
 import nonebot
 import yarl
 from nonebot.adapters import Event as BaseEvent
@@ -27,7 +26,6 @@ from src.plugins.upload_cos import upload_cos
 
 from ..database import KVCacheDAO
 from ..utils import (
-    amr_to_mp3,
     async_client,
     check_url_ok,
     guess_url_type,
@@ -253,44 +251,6 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         self.logger.debug(f"上传文件: {escape_tag(url)}")
         return u.File(url=url)
 
-    @contextlib.asynccontextmanager
-    async def convert_file(self, file_id: str) -> AsyncGenerator[u.Segment]:
-        # note: Docker only
-        res = await self.src_bot.call_api("get_file", file_id=file_id)
-        path = anyio.Path("/share/QQ/NapCat/temp") / str(res["file_name"])
-        with anyio.move_on_after(30):
-            while not await path.exists():  # noqa: ASYNC110
-                await anyio.sleep(3)
-
-        if await path.exists() and (seg := await self.upload_local_file(Path(path))):
-            yield seg
-        else:
-            yield u.Text(f"[file:{file_id}]")
-        await path.unlink(missing_ok=True)
-
-    async def convert_record(self, file_path: str) -> u.Segment:
-        # note: Docker only
-        path = Path("/share") / Path(file_path).relative_to("/app/.config")
-
-        agen = None
-        if path.name.endswith(".amr"):
-            if not path.exists():
-                await anyio.sleep(1)
-            if not path.exists():
-                return u.Text(f"[record:{path.name}]")
-            agen = aiter(amr_to_mp3(path))
-            path = await anext(agen)
-
-        seg = await self.upload_local_file(path)
-        if seg is None:
-            seg = u.Text(f"[record:{path}]")
-
-        if agen is not None:
-            with contextlib.suppress(StopAsyncIteration):
-                await anext(agen)
-
-        return seg
-
     @override
     async def convert_segment(
         self, segment: MessageSegment
@@ -323,15 +283,6 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             case "video":
                 if (url := segment.data.get("url")) and (
                     seg := await self.convert_video(url)
-                ):
-                    yield seg
-            case "file":
-                if file_id := segment.data.get("file_id"):
-                    async with self.convert_file(file_id) as seg:
-                        yield seg
-            case "record":
-                if (path := segment.data.get("path")) and (
-                    seg := await self.convert_record(path)
                 ):
                     yield seg
             case _:
