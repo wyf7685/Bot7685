@@ -1,7 +1,4 @@
-import importlib
-
 import nonebot
-import nonebot.utils
 
 ADAPTERS = {
     "Discord": "discord",
@@ -12,12 +9,9 @@ ADAPTERS = {
     "Telegram": "telegram",
 }
 
-for adapter in nonebot.get_adapters():
-    if module := ADAPTERS.get(adapter):
-        try:
-            importlib.import_module(f".{module}", __package__)
-        except ImportError as e:
-            nonebot.logger.opt(colors=True).warning(
-                f"Failed to load patcher for <g>{adapter}</g>:"
-                f" <r>{nonebot.utils.escape_tag(str(e))}</r>"
-            )
+
+[
+    nonebot.load_plugin(f"{__package__}.{module}")
+    for adapter in nonebot.get_adapters()
+    if (module := ADAPTERS.get(adapter))
+]

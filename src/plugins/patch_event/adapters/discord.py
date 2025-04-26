@@ -1,7 +1,7 @@
 from typing import ClassVar
 
 import nonebot
-from nonebot.adapters.discord import Event, Message
+from nonebot.adapters.discord import Bot, Event, Message
 from nonebot.adapters.discord.api import UNSET, Channel, SnowflakeType
 from nonebot.adapters.discord.event import (
     DirectMessageCreateEvent,
@@ -16,15 +16,15 @@ from nonebot.utils import escape_tag
 from ..highlight import Highlight as BaseHighlight
 from ..patcher import patcher
 
-guild_name_cache: dict["SnowflakeType", str] = {}
-guild_channel_cache: dict["SnowflakeType", list["Channel"]] = {}
+guild_name_cache: dict[SnowflakeType, str] = {}
+guild_channel_cache: dict[SnowflakeType, list["Channel"]] = {}
 
 
-def find_guild_name(guild: "SnowflakeType") -> str | None:
+def find_guild_name(guild: SnowflakeType) -> str | None:
     return guild_name_cache.get(guild)
 
 
-def find_channel_name(guild: "SnowflakeType", channel: "SnowflakeType") -> str | None:
+def find_channel_name(guild: SnowflakeType, channel: SnowflakeType) -> str | None:
     for c in guild_channel_cache.get(guild, []):
         if c.id == channel:
             return c.name or None
@@ -100,9 +100,17 @@ def patch_guild_message_update_event(self: GuildMessageUpdateEvent) -> str:
     )
 
 
-@nonebot.on_type(GuildCreateEvent).handle()
-async def _(event: GuildCreateEvent) -> None:
-    if event.name is not UNSET:
-        guild_name_cache[event.id] = event.name
-    if event.channels is not UNSET:
-        guild_channel_cache[event.id] = event.channels
+@nonebot.get_driver().on_bot_connect
+async def _(bot: Bot) -> None:
+    bot_ = bot
+
+    async def check_bot(bot: Bot) -> bool:
+        return bot is bot_
+
+    @(matcher := nonebot.on_type(GuildCreateEvent, check_bot)).handle()
+    async def _(event: GuildCreateEvent) -> None:
+        if event.name is not UNSET:
+            guild_name_cache[event.id] = event.name
+        if event.channels is not UNSET:
+            guild_channel_cache[event.id] = event.channels
+        matcher.destroy()

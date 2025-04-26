@@ -322,8 +322,8 @@ def custom_model[E: type[Event]](e: E) -> E:
 
 @get_driver().on_startup
 async def on_startup() -> None:
+    Adapter.add_custom_model(*CUSTOM_MODELS)
     for e in CUSTOM_MODELS:
-        Adapter.add_custom_model(e)
         logger.debug(f"Register v11 model: <g>{e.__name__}</g>")
 
 

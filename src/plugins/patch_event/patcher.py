@@ -29,7 +29,8 @@ def patcher[T: Event](call: Callable[[T], str]) -> PatcherHandle[T]:
     cls: type[T] = inspect.get_annotations(call)["self"]
     assert issubclass(cls, Event)
     original = cls.get_log_string
-    colored = f"<g>{cls.__name__}</g>.<y>get_log_string</y>"
+    module_name = cls.__module__.replace("nonebot.adapters.", "~")
+    colored = f"<m>{module_name}</m>.<g>{cls.__name__}</g>.<y>get_log_string</y>"
 
     @functools.wraps(original)
     def wrapper(self: T) -> str:
