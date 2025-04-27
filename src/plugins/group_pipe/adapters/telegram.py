@@ -1,7 +1,6 @@
-from collections.abc import AsyncIterable
 from copy import deepcopy
 from io import BytesIO
-from typing import override
+from typing import ClassVar, override
 
 import anyio
 from nonebot.adapters import Event as BaseEvent
@@ -13,16 +12,17 @@ from nonebot_plugin_alconna import uniseg as u
 
 from src.plugins.upload_cos import upload_cos
 
-from ..utils import download_url, guess_url_type, webm_to_gif
-from ._registry import converter, sender
+from ..adapter import mark
+from ..utils import download_url, guess_url_type, make_generator, webm_to_gif
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
 TG_MSGID_MARK = "$telegram$"
 
 
-@converter(Adapter)
 class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
+    _adapter_: ClassVar[str | None] = Adapter.get_name()
+
     @override
     @classmethod
     def get_message(cls, event: BaseEvent) -> Message | None:
@@ -61,7 +61,27 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         file_path = (await self.src_bot.get_file(file_id)).file_path
         return file_path, f"https://api.telegram.org/file/bot{token}/{file_path}"
 
-    async def convert_image(self, file_id: str) -> u.Segment:
+    @override
+    async def convert_reply(self, src_msg_id: str | int) -> u.Segment:
+        if reply_id := await self.get_reply_id(str(src_msg_id)):
+            if TG_MSGID_MARK in reply_id:
+                reply_id = reply_id.partition(TG_MSGID_MARK)[2]
+            return u.Reply(reply_id)
+
+        if isinstance(src_msg_id, str) and TG_MSGID_MARK in src_msg_id:
+            src_msg_id = src_msg_id.partition(TG_MSGID_MARK)[2]
+
+        return u.Text(f"[reply:{src_msg_id}]")
+
+    @mark("mention")
+    @make_generator
+    async def mention(self, segment: MessageSegment) -> u.Segment:
+        return u.Text(segment.data["text"])
+
+    @mark("sticker", "photo")
+    @make_generator
+    async def sticker(self, segment: MessageSegment) -> u.Segment:
+        file_id = segment.data["file"]
         file_path, url = await self.get_file_info(file_id)
         if file_path is None:
             return u.Text(f"[image:{file_id}]")
@@ -83,7 +103,10 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return u.Image(url=url, mimetype=info.mime)
 
-    async def convert_file(self, file_id: str) -> u.Segment:
+    @mark("document", "video")
+    @make_generator
+    async def document(self, segment: MessageSegment) -> u.Segment:
+        file_id = segment.data["file"]
         file_path, url = await self.get_file_info(file_id)
         if file_path is None:
             return u.Text(f"[file:{file_id}]")
@@ -105,38 +128,15 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             name=file_path.rpartition("/")[-1],
         )
 
-    @override
-    async def convert_reply(self, src_msg_id: str | int) -> u.Segment:
-        if reply_id := await self.get_reply_id(str(src_msg_id)):
-            if TG_MSGID_MARK in reply_id:
-                reply_id = reply_id.partition(TG_MSGID_MARK)[2]
-            return u.Reply(reply_id)
-
-        if isinstance(src_msg_id, str) and TG_MSGID_MARK in src_msg_id:
-            src_msg_id = src_msg_id.partition(TG_MSGID_MARK)[2]
-
-        return u.Text(f"[reply:{src_msg_id}]")
-
-    @override
-    async def convert_segment(
-        self, segment: MessageSegment
-    ) -> AsyncIterable[u.Segment]:
-        match segment.type:
-            case "mention":
-                yield u.Text(segment.data["text"])
-            case "sticker" | "photo":
-                yield await self.convert_image(segment.data["file"])
-            case "document" | "video":
-                yield await self.convert_file(segment.data["file"])
-            case "reply":
-                yield await self.convert_reply(segment.data["message_id"])
-            case _:
-                async for seg in super().convert_segment(segment):
-                    yield seg
+    @mark("reply")
+    @make_generator
+    async def reply(self, segment: MessageSegment) -> u.Segment:
+        return await self.convert_reply(segment.data["message_id"])
 
 
-@sender(Adapter)
 class MessageSender(BaseMessageSender[Bot, MessageModel]):
+    _adapter_: ClassVar[str | None] = Adapter.get_name()
+
     @override
     @staticmethod
     def extract_msg_id(data: MessageModel) -> str:

@@ -8,6 +8,7 @@ require("nonebot_plugin_uninfo")
 require("src.plugins.gtg")
 require("src.plugins.upload_cos")
 
+from . import adapters as adapters
 from . import hooks as hooks
 from . import matchers as matchers
 

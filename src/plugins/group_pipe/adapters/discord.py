@@ -1,5 +1,5 @@
 import datetime as dt
-from collections.abc import AsyncIterable
+from collections.abc import AsyncGenerator
 from copy import deepcopy
 from typing import ClassVar, override
 from weakref import WeakKeyDictionary
@@ -22,16 +22,16 @@ from nonebot_plugin_alconna import uniseg as u
 
 from src.plugins.upload_cos import upload_cos
 
-from ..utils import guess_url_type
-from ._registry import converter, sender
+from ..adapter import mark
+from ..utils import guess_url_type, make_generator
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
 UTC8 = dt.timezone(dt.timedelta(hours=8))
 
 
-@converter(Adapter)
 class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
+    _adapter_: ClassVar[str | None] = Adapter.get_name()
     attachment_url: ClassVar[WeakKeyDictionary[AttachmentSend, str]] = (
         WeakKeyDictionary()
     )
@@ -52,7 +52,19 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return message
 
-    async def convert_attachment(self, attachment: AttachmentSend) -> u.Segment:
+    @mark(
+        MentionRoleSegment,
+        MentionUserSegment,
+        MentionChannelSegment,
+        MentionEveryoneSegment,
+    )
+    async def mention(self, segment: MessageSegment) -> AsyncGenerator[u.Segment]:
+        yield u.Text(str(segment))
+
+    @mark(AttachmentSegment)
+    @make_generator
+    async def attachment(self, segment: AttachmentSegment) -> u.Segment:
+        attachment = segment.data["attachment"]
         if url := self.attachment_url.get(attachment):
             info = await guess_url_type(url)
             mime = info and info.mime
@@ -65,34 +77,22 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             return u.Image(url=url, mimetype=mime)
         return u.Text(f"[image:{attachment.filename}]")
 
-    @override
-    async def convert_segment(
-        self, segment: MessageSegment
-    ) -> AsyncIterable[u.Segment]:
-        match segment:
-            case (
-                MentionRoleSegment()
-                | MentionUserSegment()
-                | MentionChannelSegment()
-                | MentionEveryoneSegment()
-            ):
-                yield u.Text(str(segment))
-            case AttachmentSegment():
-                yield await self.convert_attachment(segment.data["attachment"])
-            case ReferenceSegment():
-                msg_id = segment.data["reference"].message_id
-                if msg_id is not UNSET:
-                    yield await self.convert_reply(msg_id)
-            case TimestampSegment():
-                t = dt.datetime.fromtimestamp(segment.data["timestamp"], dt.UTC)
-                yield u.Text(f"[time:{t.astimezone(UTC8):%Y-%m-%d %H:%M:%S}]")
-            case _:
-                async for seg in super().convert_segment(segment):
-                    yield seg
+    @mark(ReferenceSegment)
+    @make_generator
+    async def reference(self, segment: ReferenceSegment) -> u.Segment | None:
+        msg_id = segment.data["reference"].message_id
+        return await self.convert_reply(msg_id) if msg_id is not UNSET else None
+
+    @mark(TimestampSegment)
+    @make_generator
+    async def timestamp(self, segment: TimestampSegment) -> u.Segment:
+        t = dt.datetime.fromtimestamp(segment.data["timestamp"], dt.UTC)
+        return u.Text(f"[time:{t.astimezone(UTC8):%Y-%m-%d %H:%M:%S}]")
 
 
-@sender(Adapter)
 class MessageSender(BaseMessageSender[Bot, MessageGet]):
+    _adapter_: ClassVar[str | None] = Adapter.get_name()
+
     @override
     @staticmethod
     def extract_msg_id(data: MessageGet) -> str:

@@ -5,7 +5,7 @@ from nonebot.message import event_preprocessor
 from nonebot_plugin_alconna import Target, UniMessage, get_target
 from nonebot_plugin_uninfo import get_session
 
-from .adapters import get_converter, get_sender
+from .adapter import get_converter, get_sender
 from .database import PipeDAO, display_pipe
 from .utils import repr_unimsg
 

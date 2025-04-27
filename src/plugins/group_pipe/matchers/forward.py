@@ -10,7 +10,7 @@ from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 require("src.plugins.upload_cos")
 from src.plugins.upload_cos import upload_cos
 
-from ..adapters import get_sender
+from ..adapter import get_sender
 from ..adapters.onebot11 import MessageConverter
 from ..database import KVCacheDAO
 from ..utils import guess_url_type

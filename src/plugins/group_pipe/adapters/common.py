@@ -8,18 +8,17 @@ from nonebot_plugin_alconna import uniseg as u
 from ..adapter import MessageConverter as AbstractMessageConverter
 from ..adapter import MessageSender as AbstractMessageSender
 from ..database import MsgIdCacheDAO
-from ._registry import converter, sender
 
 if TYPE_CHECKING:
     import loguru
 
 
-@converter(None)
 class MessageConverter[
     TMS: MessageSegment = MessageSegment,
     TB: Bot = Bot,
     TM: Message = Message,
 ](AbstractMessageConverter[TB, TM]):
+    _adapter_: ClassVar[str | None] = None
     logger: ClassVar["loguru.Logger"] = nonebot.logger.opt(colors=True)
 
     @override
@@ -61,7 +60,7 @@ class MessageConverter[
             return u.Reply(reply_id)
         return u.Text(f"[reply:{src_msg_id}]")
 
-    async def convert_segment(self, segment: TMS) -> AsyncIterable[u.Segment]:
+    async def _convert_default(self, segment: TMS) -> AsyncIterable[u.Segment]:
         if fn := u.get_builder(self.src_bot):
             result = fn.convert(segment)
             if isinstance(result, list):
@@ -78,8 +77,10 @@ class MessageConverter[
         result = u.UniMessage[u.Segment]()
         segment: TMS
         for segment in msg:
+            fn = self._find_fn(segment) or self._convert_default
+
             try:
-                async for seg in self.convert_segment(segment):
+                async for seg in fn(segment):
                     result.append(seg)
             except Exception as err:
                 self.logger.opt(exception=err).warning("处理消息段失败")
@@ -87,8 +88,9 @@ class MessageConverter[
         return result
 
 
-@sender(None)
 class MessageSender[TB: Bot, TR: Any](AbstractMessageSender[TB]):
+    _adapter_: ClassVar[str | None] = None
+
     @staticmethod
     def extract_msg_id(data: TR) -> str:
         return str(data)
