@@ -1,3 +1,4 @@
+import datetime as dt
 from collections.abc import AsyncIterable
 from copy import deepcopy
 from typing import ClassVar, override
@@ -15,6 +16,7 @@ from nonebot.adapters.discord.message import (
     Message,
     MessageSegment,
     ReferenceSegment,
+    TimestampSegment,
 )
 from nonebot_plugin_alconna import uniseg as u
 
@@ -24,6 +26,8 @@ from ..utils import guess_url_type
 from ._registry import converter, sender
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
+
+UTC8 = dt.timezone(dt.timedelta(hours=8))
 
 
 @converter(Adapter)
@@ -79,6 +83,9 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                 msg_id = segment.data["reference"].message_id
                 if msg_id is not UNSET:
                     yield await self.convert_reply(msg_id)
+            case TimestampSegment():
+                t = dt.datetime.fromtimestamp(segment.data["timestamp"], dt.UTC)
+                yield u.Text(f"[time:{t.astimezone(UTC8):%Y-%m-%d %H:%M:%S}]")
             case _:
                 async for seg in super().convert_segment(segment):
                     yield seg
