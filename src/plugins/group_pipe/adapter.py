@@ -47,7 +47,7 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
         cls._converter_ = cls._converter_ | {
             cast("ConverterCall[Self, MessageSegment]", call)
             for name in dir(cls)
-            if (call := getattr(cls, name))
+            if (call := getattr(cls, name, None)) is not None
             and callable(call)
             and hasattr(call, "__predicates__")
         }
