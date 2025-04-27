@@ -1,12 +1,12 @@
 import logging
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 import nonebot
 from msgspec import yaml as msgyaml
 from nonebot.utils import deep_update, logger_wrapper, resolve_dot_notation
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from nonebot.adapters import Adapter
@@ -15,8 +15,6 @@ log = logger_wrapper("Bootstrap")
 
 
 class Config(BaseModel):
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
-
     adapters: set[str] = set()
     plugins: set[str] = set()
     plugin_dir: str = "src/plugins"
