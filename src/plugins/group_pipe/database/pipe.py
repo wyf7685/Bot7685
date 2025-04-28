@@ -1,7 +1,6 @@
-import functools
 import hashlib
 from collections.abc import Iterable
-from typing import TYPE_CHECKING, NamedTuple, final
+from typing import NamedTuple, final
 
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_orm import Model, get_scoped_session
@@ -32,10 +31,6 @@ def make_key(target: Target, /) -> int:
     h = hashlib.md5(key).hexdigest()  # noqa: S324
     # NOTE: unsafe hash
     return int(h, 16) % (1 << 31)
-
-
-if not TYPE_CHECKING:
-    make_key = functools.lru_cache(maxsize=16)(make_key)
 
 
 class Pipe(Model):
