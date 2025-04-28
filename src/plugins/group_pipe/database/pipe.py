@@ -29,8 +29,9 @@ def make_key(target: Target, /) -> int:
     for k, v in target.extra.items():
         args += (k, v)
     key = "".join(map(str, args)).encode("utf-8")
+    h = hashlib.md5(key).hexdigest()  # noqa: S324
     # NOTE: unsafe hash
-    return int(hashlib.md5(key).hexdigest(), 16) % (1 << 31)  # noqa: S324
+    return int(h, 16) % (1 << 31)
 
 
 if not TYPE_CHECKING:

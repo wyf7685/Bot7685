@@ -5,7 +5,7 @@ from typing import ClassVar, override
 import anyio
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Adapter, Bot, Message, MessageSegment
-from nonebot.adapters.telegram.event import MessageEvent
+from nonebot.adapters.telegram.event import ForumTopicMessageEvent, MessageEvent
 from nonebot.adapters.telegram.model import InputFile
 from nonebot.adapters.telegram.model import Message as MessageModel
 from nonebot_plugin_alconna import uniseg as u
@@ -31,13 +31,20 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         message = deepcopy(event.original_message)
         if event.reply_to_message:
-            chat_id = event.reply_to_message.chat.id
             msg_id = event.reply_to_message.message_id
-            reply = MessageSegment(
-                "reply",
-                {"message_id": f"{chat_id}{TG_MSGID_MARK}{msg_id}"},
-            )
-            message.insert(0, reply)
+            if (
+                isinstance(event, ForumTopicMessageEvent)
+                and msg_id == event.message_thread_id
+            ):
+                msg_id = None
+            if msg_id is not None:
+                chat_id = event.reply_to_message.chat.id
+                reply = MessageSegment(
+                    "reply",
+                    {"message_id": f"{chat_id}{TG_MSGID_MARK}{msg_id}"},
+                )
+                message.insert(0, reply)
+
         return message
 
     @override
