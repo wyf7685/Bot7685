@@ -33,7 +33,6 @@ jobs:
       - name: Build and Publish
         uses: docker/build-push-action@v6
         with:
-          context: ./docker/bot7685/.
           file: ./docker/Dockerfile.base
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
