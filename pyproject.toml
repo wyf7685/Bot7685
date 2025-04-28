@@ -149,6 +149,7 @@ keep-runtime-typing = true
 pythonVersion = "3.13"
 pythonPlatform = "All"
 typeCheckingMode = "recommended"
+ignore = ["data"]                         # nbp-orm stuff
 reportShadowedImports = false
 disableBytesTypePromotions = true
 reportUnusedCallResult = false            # Receipt
@@ -157,10 +158,10 @@ reportUnknownMemberType = false           # Message/UniMessage
 reportUnknownArgumentType = false         # Message/UniMessage
 reportImplicitStringConcatenation = false # Ruff ISC003
 reportMissingTypeStubs = false            # third-party modules
-reportAny = false                         # Alconna Args, ...
-# reportExplicitAny = false
 reportMissingTypeArgument = false         # UniMessage
 reportUnknownParameterType = false        # Message
+reportAny = false                         # Alconna Args, ...
+# reportExplicitAny = false
 
 [tool.uv]
 dev-dependencies = [
