@@ -7,6 +7,7 @@ require("nonebot_plugin_localstore")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_uninfo")
 require("nonebot_plugin_waiter")
+require("src.plugins.cache")
 
 from .config import Config
 
