@@ -14,13 +14,13 @@ ENV UV_TOOL_BIN_DIR=/opt/uv-bin/
 RUN uv venv /opt/venv
 
 ENV VIRTUAL_ENV=/opt/venv
-ENV PATH="$VIRTUAL_ENV/bin:/opt/uv-bin/:$PATH"
+ENV PATH="$VIRTUAL_ENV/bin:$UV_TOOL_BIN_DIR:$PATH"
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --locked --active --no-dev && \
     fc-cache -f -v && \
-    chmod +x /start.sh
+    chmod +x /entrypoint.sh
 
 VOLUME [ "/app" ]
-CMD [ "/bin/bash", "-c", "/start.sh" ]
+CMD [ "/bin/bash", "-c", "/entrypoint.sh" ]
