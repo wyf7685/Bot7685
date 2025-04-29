@@ -21,6 +21,8 @@ from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExt
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_waiter import prompt, suggest
 
+require("src.plugins.cache")
+
 from .todo_list import UserTodo
 
 __plugin_meta__ = PluginMetadata(

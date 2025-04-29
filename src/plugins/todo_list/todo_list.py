@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Annotated
 
 import anyio
-from async_lru import alru_cache
 from nonebot.adapters import Bot, Event
 from nonebot.compat import type_validate_json
 from nonebot.params import Depends
@@ -15,8 +14,10 @@ from nonebot_plugin_localstore import get_plugin_data_dir
 from nonebot_plugin_session import SessionIdType, extract_session
 from pydantic import BaseModel, Field
 
+from src.plugins.cache import cache_with, get_cache
 
-@alru_cache(1 << 4, ttl=120)
+
+@(cache_with[str](get_cache("todo_list_md_render"), hash))
 async def render_markdown(md: str) -> bytes:
     return await md_to_pic(md)
 

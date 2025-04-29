@@ -12,7 +12,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 
-from src.plugins.gtg import call_later
+from src.plugins.cache import get_cache
 
 from ..database import PipeDAO, PipeTuple, display_pipe
 from .depends import MsgTarget
@@ -114,15 +114,14 @@ async def assign_list(target: MsgTarget) -> None:
     await UniMessage.text(msg.rstrip("\n")).finish(reply_to=True)
 
 
-pipe_create_cache: dict[int, Target] = {}
+cache = get_cache("pipe")
 
 
 @pipe_cmd.assign("create")
 async def assign_create(target: MsgTarget) -> None:
     key = hash(target)
-    pipe_create_cache[key] = target
+    await cache.set(key, target.dump(), ttl=60 * 5)
 
-    call_later(60 * 5, pipe_create_cache.pop, key, None)
     await (
         UniMessage.text("请在5分钟内向目标群组中发送以下命令:\n")
         .text(f"/pipe link {key}")
@@ -132,10 +131,10 @@ async def assign_create(target: MsgTarget) -> None:
 
 @pipe_cmd.assign("link")
 async def assign_link(target: MsgTarget, code: int) -> None:
-    listen = pipe_create_cache.pop(code, None)
-    if listen is None:
+    if not (data := await cache.get(code)):
         await UniMessage.text("链接码无效或已过期").finish(reply_to=True)
 
+    listen = Target.load(data)
     await PipeDAO().create_pipe(listen, target)
     msg = f"管道创建成功:\n{display_pipe(listen, target)}"
     await UniMessage.text(msg).finish(reply_to=True)

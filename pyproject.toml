@@ -35,6 +35,7 @@ dependencies = [
     "nonebot-plugin-wakatime>=0.2.6",
     "nonebot-plugin-wordcloud>=0.9.0",
     # plugin deps
+    "aiocache[memcached,msgpack,redis]>=0.12.3",
     "alibabacloud-tea-openapi>=0.3.13",
     "anyio>=4.9.0",
     "async-lru>=2.0.5",

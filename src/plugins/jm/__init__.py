@@ -24,7 +24,7 @@ from nonebot_plugin_waiter import waiter
 require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 
-from .jm_option import check_photo, download_album_pdf, download_image, get_album_detail
+from .option import check_photo, download_album_pdf, download_image, get_album_detail
 from .utils import abatched, flatten_exception_group, queued
 
 __plugin_meta__ = PluginMetadata(
