@@ -2,7 +2,7 @@ import functools
 from collections.abc import Awaitable
 
 from aiocache import BaseCache, RedisCache, SimpleMemoryCache
-from aiocache.serializers import MsgPackSerializer, PickleSerializer
+from aiocache.serializers import PickleSerializer
 from common import Callable
 from nonebot import get_plugin_config
 from pydantic import BaseModel
@@ -21,7 +21,7 @@ class Config(BaseModel):
 
 def get_cache(namespace: str, *, pickle: bool = False) -> BaseCache:
     namespace = f"bot7685:{namespace}:"
-    serializer = PickleSerializer() if pickle else MsgPackSerializer()
+    serializer = PickleSerializer() if pickle else None
     if redis_config := get_plugin_config(Config).redis:
         return RedisCache(
             serializer,
