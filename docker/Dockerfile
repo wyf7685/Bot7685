@@ -47,7 +47,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends nano ffmpeg fontconfig \
     locales locales-all fonts-noto libnss3-dev libxss1 libasound2 libxrandr2 libatk1.0-0 libgtk-3-0 libgbm-dev libxshmfence1 && \
     fc-cache -f -v && \
-    uvx --no-cache playwright install chromium --with-deps && \
+    uvx --no-cache playwright@1.52.0 install chromium --with-deps && \
     apt-get purge -y --auto-remove && \
     chmod +x /entrypoint.sh
 
