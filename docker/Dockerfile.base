@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim as build
+FROM debian:bookworm-slim AS build
 
 ADD https://github.com/kn007/silk-v3-decoder.git /data
 
@@ -10,14 +10,14 @@ RUN apt-get update && \
     mv /data/converter.sh /out && \
     mv /data/silk/decoder /out/silk
 
-FROM python:3.13-slim-bookworm as app
+FROM python:3.13-slim-bookworm AS app
 
 WORKDIR /app
 
-ENV TZ=Asia/Shanghai
-ENV LANG=zh_CN.UTF-8
-ENV LANGUAGE=zh_CN.UTF-8
-ENV LC_ALL=zh_CN.UTF-8
+ENV TZ=Asia/Shanghai \
+    LANG=zh_CN.UTF-8 \
+    LANGUAGE=zh_CN.UTF-8 \
+    LC_ALL=zh_CN.UTF-8
 
 ADD docker/fonts/*.ttf /usr/share/fonts/
 
@@ -25,13 +25,16 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         locales locales-all fonts-noto libnss3-dev libxss1 libasound2 libxrandr2 libatk1.0-0 libgtk-3-0 libgbm-dev libxshmfence1 \
         nano ffmpeg fontconfig && \
-    apt-get purge -y --auto-remove && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
     fc-cache -f -v
 
 COPY --from=build /out /opt/silk-decoder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN uvx --no-cache playwright install chromium --with-deps && \
-    apt-get purge -y --auto-remove
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /root/.cache/* 
 
 CMD [ "bash" ]
