@@ -4,7 +4,6 @@ on:
   push:
     paths:
       - "uv.lock"
-      - "docker/Dockerfile"
   workflow_dispatch:
 
 jobs:

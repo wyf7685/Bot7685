@@ -1,9 +1,6 @@
 name: Docker Bot7685-base
 
 on:
-  push:
-    paths:
-      - "docker/Dockerfile.base"
   schedule: [{ cron: "0 5 * * 1" }]
   workflow_dispatch:
 
