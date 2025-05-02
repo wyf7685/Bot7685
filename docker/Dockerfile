@@ -22,16 +22,17 @@ FROM wyf7685/bot7685:base AS app
 
 WORKDIR /app
 
+ADD docker/assets/* /
+RUN chmod +x /entrypoint.sh
+
 ENV PYTHONPATH=/app \
     APP_MODULE=bot:app \
     MAX_WORKERS=1 \
-    UV_LINK_MODE=copy \
-    UV_TOOL_BIN_DIR=/opt/uv-bin/ \
     VIRTUAL_ENV=/opt/venv \
-    PATH="$VIRTUAL_ENV/bin:$UV_TOOL_BIN_DIR:$PATH"
+    UV_LINK_MODE=copy \
+    UV_TOOL_BIN_DIR=/opt/uv-bin/
 
-ADD docker/assets/* /
-RUN chmod +x /entrypoint.sh
+ENV PATH="$VIRTUAL_ENV/bin:$UV_TOOL_BIN_DIR:$PATH"
 
 COPY --from=build /opt/venv /opt/venv
 
