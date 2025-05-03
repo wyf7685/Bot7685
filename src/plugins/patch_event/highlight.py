@@ -74,11 +74,11 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     @register(dict)
     @classmethod
     def _(cls, data: dict[str, object]) -> str:
-        kv = [
+        kv = (
             f"{cls.repr(key, 'le', 'i')}: {cls.apply(value)}"
             for key, value in data.items()
             if value not in cls.exclude_value
-        ]
+        )
         return f"{{{', '.join(kv)}}}"
 
     @register(list)
@@ -108,11 +108,11 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     @classmethod
     def _(cls, data: BaseModel) -> str:
         model = type(data)
-        kv = [
+        kv = (
             f"<i><y>{name}</y></i>={cls.apply(value)}"
             for name in model.model_fields
             if (value := getattr(data, name)) not in cls.exclude_value
-        ]
+        )
         return f"<lm>{model.__name__}</lm>({', '.join(kv)})"
 
     @classmethod

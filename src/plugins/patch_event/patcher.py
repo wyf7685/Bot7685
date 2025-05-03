@@ -44,9 +44,9 @@ def patcher[T: Event](call: Callable[[T], str]) -> PatcherHandle[T]:
         cls.get_log_string = original
         logger.debug(f"Restore {colored}")
 
-    call.original = original  # pyright: ignore[reportFunctionMemberAccess]
-    call.patch = patch  # pyright: ignore[reportFunctionMemberAccess]
-    call.restore = restore  # pyright: ignore[reportFunctionMemberAccess]
     handle = cast("PatcherHandle[T]", call)
+    handle.original = original
+    handle.patch = patch
+    handle.restore = restore
     _PATCHERS.add(handle)
     return handle
