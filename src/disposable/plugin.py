@@ -1,5 +1,6 @@
 # ruff: noqa: SLF001
 
+import inspect
 import sys
 from collections.abc import Callable
 from types import ModuleType
@@ -84,7 +85,23 @@ _original_require = nonebot.plugin.require
 
 
 def get_current_plugin() -> Plugin | None:
-    return nonebot.plugin._current_plugin.get()  # pyright: ignore[reportPrivateUsage]
+    if plugin := nonebot.plugin._current_plugin.get():  # pyright: ignore[reportPrivateUsage]
+        return plugin
+
+    current_frame = inspect.currentframe()
+    if current_frame is None:
+        return None
+
+    frame = current_frame
+    while frame := frame.f_back:
+        module_name = (module := inspect.getmodule(frame)) and module.__name__
+        if module_name is None:
+            return None
+
+        if plugin := get_plugin_by_module_name(module_name):
+            return plugin
+
+    return None
 
 
 def _new_plugin(module_name: str, module: ModuleType, manager: PluginManager) -> Plugin:
