@@ -1,3 +1,4 @@
+import contextlib
 from typing import override
 
 from nonebot.internal.matcher import Matcher
@@ -17,7 +18,8 @@ class DisposableMatcher(Matcher):
     @classmethod
     def destroy(cls) -> None:
         log("TRACE", f"Destroying matcher {escape_tag(repr(cls))}")
-        return super().destroy()
+        with contextlib.suppress(ValueError):  # list.remove
+            super().destroy()
 
 
 def setup_disposable() -> None:
