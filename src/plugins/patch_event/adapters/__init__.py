@@ -1,3 +1,5 @@
+import importlib
+
 import nonebot
 
 ADAPTERS = {
@@ -11,7 +13,7 @@ ADAPTERS = {
 
 
 [
-    nonebot.load_plugin(f"{__package__}.{module}")
+    importlib.import_module(f"{__package__}.{module}")
     for adapter in nonebot.get_adapters()
     if (module := ADAPTERS.get(adapter))
 ]

@@ -50,3 +50,8 @@ def patcher[T: Event](call: Callable[[T], str]) -> PatcherHandle[T]:
     handle.restore = restore
     _PATCHERS.add(handle)
     return handle
+
+
+def dispose() -> None:
+    for patcher in _PATCHERS:
+        patcher.restore()

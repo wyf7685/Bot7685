@@ -1,0 +1,4 @@
+from nonebot.utils import escape_tag as escape_tag
+from nonebot.utils import logger_wrapper
+
+log = logger_wrapper("Disposable")

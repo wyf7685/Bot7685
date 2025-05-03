@@ -1,10 +1,8 @@
 import contextlib
-from typing import TYPE_CHECKING, cast
 
 import anyio
 from nonebot import get_plugin_config, on_message, require
 from nonebot.adapters import Bot, Event
-from nonebot.adapters.onebot.v11 import Bot as V11Bot
 from nonebot.exception import ActionFailed
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot.typing import T_State
@@ -12,19 +10,7 @@ from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_session")
-from nonebot_plugin_alconna import MsgTarget
-from nonebot_plugin_session import EventSession
-
-if TYPE_CHECKING:
-    from nonebot_plugin_exe_code.interface import get_api_class
-    from nonebot_plugin_exe_code.interface.adapters.onebot11 import API as V11API
-else:
-    try:
-        require("src.dev.nonebot_plugin_exe_code")
-        from src.dev.nonebot_plugin_exe_code.interface import get_api_class
-    except Exception:
-        require("nonebot_plugin_exe_code")
-        from nonebot_plugin_exe_code.interface import get_api_class
+from nonebot_plugin_alconna import MsgTarget, message_reaction
 
 from .bubble_check import check_bubble_word
 
@@ -73,10 +59,9 @@ bubble = on_message(_rule_bubble)
 
 
 @bubble.handle()
-async def handle_bubble(bot: V11Bot, event: Event, session: EventSession) -> None:
-    api = cast("V11API", get_api_class(bot)(bot, event, session, {}))
+async def handle_bubble() -> None:
     with contextlib.suppress(ActionFailed):
-        await api.set_reaction(38, api.mid)
+        await message_reaction("38")
 
 
 def _rule(bot: Bot, event: Event, target: MsgTarget, state: T_State) -> bool:
@@ -96,15 +81,11 @@ matcher = on_message(rule=_rule, block=False)
 
 
 @matcher.handle()
-async def _(bot: Bot, event: Event, session: EventSession, state: T_State) -> None:
+async def _(state: T_State) -> None:
     if not (reactions := state["reactions"]):
-        return
-
-    api = get_api_class(bot)(bot, event, session, {})
-    if not (set_reaction := getattr(api, "set_reaction", None)):
         return
 
     with contextlib.suppress(ActionFailed):
         for reaction in reactions:
-            await set_reaction(reaction, api.mid)
+            await message_reaction(str(reaction))
             await anyio.sleep(0.5)
