@@ -107,12 +107,13 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     @register(BaseModel)
     @classmethod
     def _(cls, data: BaseModel) -> str:
+        model = type(data)
         kv = [
             f"<i><y>{name}</y></i>={cls.apply(value)}"
-            for name in data.model_fields
+            for name in model.model_fields
             if (value := getattr(data, name)) not in cls.exclude_value
         ]
-        return f"<lm>{type(data).__name__}</lm>({', '.join(kv)})"
+        return f"<lm>{model.__name__}</lm>({', '.join(kv)})"
 
     @classmethod
     def segment(cls, segment: TMS) -> str:
