@@ -9,7 +9,6 @@ from nonebot.internal.driver import Driver
 from nonebot.internal.driver._lifespan import LIFESPAN_FUNC
 from nonebot.internal.driver.abstract import BOT_HOOK_PARAMS
 from nonebot.typing import T_BotConnectionHook, T_BotDisconnectionHook
-from nonebot.utils import is_coroutine_callable, run_sync
 
 from .common import get_current_plugin, internal_dispose
 
@@ -31,10 +30,6 @@ class DisposableDriver(Driver, abc.ABC):
                 plugin.id_,
                 lambda: self._lifespan._shutdown_funcs.remove(func),  # pyright: ignore[reportPrivateUsage]
             )
-            coro_call = func
-            if not is_coroutine_callable(coro_call):
-                coro_call = run_sync(coro_call)
-            internal_dispose(plugin.id_, lambda: self.task_group.start_soon(coro_call))
         return super().on_shutdown(func)
 
     @override
