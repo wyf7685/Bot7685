@@ -19,7 +19,7 @@ _LOCATION = {
     "WuwaUpdateShowSettingRequest": "aki.roleBox.akiBox.updateShowSetting",
     "GetSdkLoginUrlRequest": "config.dict.getSdkLoginUrl",
     "TimingSwitchRequest": "config.dict.timingSwitch",
-    "GetOpenScreenRequest": "config.dict.getOpenScreen",
+    "GetOpenScreenRequest": "config.getOpenScreen",
     "GetGoldLogsRequest": "encourage.gold.getGoldLogs",
     "GetTotalGoldRequest": "encourage.gold.getTotalGold",
     "InitSigninV2Request": "encourage.signIn.initSignInV2",
