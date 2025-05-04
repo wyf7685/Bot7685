@@ -11,7 +11,7 @@ from nonebot.internal.driver.abstract import BOT_HOOK_PARAMS
 from nonebot.typing import T_BotConnectionHook, T_BotDisconnectionHook
 from nonebot.utils import is_coroutine_callable, run_sync
 
-from .plugin import get_current_plugin, internal_dispose
+from .common import get_current_plugin, internal_dispose
 
 
 class DisposableDriver(Driver, abc.ABC):

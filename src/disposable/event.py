@@ -17,7 +17,7 @@ from nonebot.typing import (
     T_RunPreProcessor,
 )
 
-from .plugin import get_current_plugin, internal_dispose
+from .common import get_current_plugin, internal_dispose
 
 
 def event_preprocessor(func: T_EventPreProcessor) -> T_EventPreProcessor:

@@ -4,7 +4,7 @@ from typing import override
 from nonebot.internal.adapter import Bot
 from nonebot.typing import T_CalledAPIHook, T_CallingAPIHook
 
-from .plugin import get_current_plugin, internal_dispose
+from .common import get_current_plugin, internal_dispose
 
 
 class DisposableBot(Bot, abc.ABC):

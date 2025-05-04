@@ -3,7 +3,7 @@ from typing import override
 
 from nonebot.internal.matcher import Matcher
 
-from .plugin import internal_dispose
+from .common import internal_dispose
 from .utils import escape_tag, log
 
 
