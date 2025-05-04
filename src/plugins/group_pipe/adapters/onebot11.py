@@ -138,7 +138,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
     async def cache_forward(
         self,
         forward_id: str,
-        content: list[dict[str, Any]],  # pyright:ignore[reportExplicitAny]
+        content: list[dict[str, Any]],
     ) -> bool:
         if not content:
             return False
@@ -174,7 +174,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return False
 
-    async def handle_json_msg(self, data: dict[str, Any]) -> list[u.Segment]:  # pyright:ignore[reportExplicitAny]
+    async def handle_json_msg(self, data: dict[str, Any]) -> list[u.Segment]:
         meta = data.get("meta", {})
         if not meta:
             return [u.Text(f"[json消息:{data}]")]

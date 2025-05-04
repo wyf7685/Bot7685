@@ -24,7 +24,7 @@ async def _() -> None:
     for job in scheduler.get_jobs():
         setup_job_disposer(job)
 
-    def patched_add_job(*args: Any, **kwargs: Any) -> "Job":  # pyright: ignore[reportExplicitAny]
+    def patched_add_job(*args: Any, **kwargs: Any) -> "Job":
         job = original(*args, **kwargs)
         setup_job_disposer(job)
         return job

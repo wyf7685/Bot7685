@@ -7,20 +7,15 @@ import anyio
 from nonebot.adapters import Bot, Event
 from nonebot.compat import type_validate_json
 from nonebot.params import Depends
-from nonebot.typing import T_State
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_localstore import get_plugin_data_dir
 from nonebot_plugin_session import SessionIdType, extract_session
 from pydantic import BaseModel, Field
 
-from src.plugins.cache import cache_with, get_cache
+from src.plugins.cache import cache_with
 
-
-@(cache_with[str](get_cache("todo_list_md_render"), hash))
-async def render_markdown(md: str) -> bytes:
-    return await md_to_pic(md)
-
+render_markdown = cache_with[str]("todo_list:md_render", hash)(md_to_pic)
 
 class Todo(BaseModel):
     content: str
@@ -101,13 +96,7 @@ class TodoList:
         self.current = None
 
 
-_STATE_CACHE_KEY = "user_todo_list"
-
-
-async def _user_todo(bot: Bot, event: Event, state: T_State) -> TodoList:
-    if _STATE_CACHE_KEY in state:
-        return state[_STATE_CACHE_KEY]
-
+async def _user_todo(bot: Bot, event: Event) -> TodoList:
     session_id = extract_session(bot, event).get_id(SessionIdType.USER)
     fp = anyio.Path(get_plugin_data_dir()) / f"{session_id}.json"
     if not await fp.exists():
@@ -115,8 +104,7 @@ async def _user_todo(bot: Bot, event: Event, state: T_State) -> TodoList:
         return TodoList(session_id, [])
 
     data = type_validate_json(list[Todo], await fp.read_text(encoding="utf-8"))
-    state[_STATE_CACHE_KEY] = user_todo = TodoList(session_id, data)
-    return user_todo
+    return TodoList(session_id, data)
 
 
 UserTodo = Annotated[TodoList, Depends(_user_todo)]

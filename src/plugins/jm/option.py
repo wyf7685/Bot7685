@@ -12,7 +12,7 @@ from nonebot.log import logger
 from nonebot.utils import escape_tag, run_sync
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
-from src.plugins.cache import cache_with, get_cache
+from src.plugins.cache import cache_with
 
 logger = logger.opt(colors=True)
 
@@ -59,15 +59,20 @@ async def download_album_pdf(album_id: int) -> AsyncGenerator[pathlib.Path]:
         await anyio.Path(pdf_file).unlink()
 
 
-cache = get_cache("jmcomic_option", pickle=True)
-
-
-@(cache_with[int](cache, lambda album_id: f"album_{album_id}"))
+@cache_with[int](
+    "jmcomic_option:album",
+    lambda album_id: f"album_{album_id}",
+    pickle=True,
+)
 async def get_album_detail(album_id: int) -> jmcomic.JmAlbumDetail:
     return await run_sync(option.new_jm_client().get_album_detail)(album_id)
 
 
-@(cache_with[jmcomic.JmPhotoDetail](cache, lambda photo: f"photo_{photo.photo_id}"))
+@cache_with[jmcomic.JmPhotoDetail](
+    "jmcomic_option:photo",
+    lambda photo: f"photo_{photo.photo_id}",
+    pickle=True,
+)
 async def check_photo(photo: jmcomic.JmPhotoDetail) -> jmcomic.JmPhotoDetail:
     await run_sync(option.new_jm_client().check_photo)(photo)
     return photo

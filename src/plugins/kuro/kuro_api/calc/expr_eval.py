@@ -10,7 +10,7 @@ type _Value = str | float | list[_Value]
 def convert_wrapper[T1, T2](func: Callable[[T1, T2], bool]) -> Callable[[T1, T2], bool]:
     @functools.wraps(func)
     def wrapper(a: T1, b: T2) -> bool:
-        def convert(value: object) -> Any:  # pyright:ignore[reportExplicitAny]
+        def convert(value: object) -> Any:
             if isinstance(value, str):
                 value = value.removesuffix("%")
                 with contextlib.suppress(ValueError):
@@ -39,7 +39,7 @@ def func_not_in(a: object, b: Container[object]) -> bool:
     return a not in b
 
 
-COMPARISON_OPERATIONS: dict[str, Callable[[Any, Any], object]] = {  # pyright:ignore[reportExplicitAny]
+COMPARISON_OPERATIONS: dict[str, Callable[[Any, Any], object]] = {
     "=": convert_wrapper(operator.eq),
     "!=": convert_wrapper(operator.ne),
     "<": convert_wrapper(operator.lt),

@@ -25,7 +25,7 @@ def event_preprocessor(func: T_EventPreProcessor) -> T_EventPreProcessor:
 
     装饰一个函数，使它在每次接收到事件并分发给各响应器之前执行。
     """
-    dependent = Dependent[Any].parse(call=func, allow_types=EVENT_PCS_PARAMS)  # pyright: ignore[reportExplicitAny]
+    dependent = Dependent[Any].parse(call=func, allow_types=EVENT_PCS_PARAMS)
     _event_preprocessors.add(dependent)
     if plugin := get_current_plugin():
         internal_dispose(plugin.id_, lambda: _event_preprocessors.discard(dependent))
@@ -37,7 +37,7 @@ def event_postprocessor(func: T_EventPostProcessor) -> T_EventPostProcessor:
 
     装饰一个函数，使它在每次接收到事件并分发给各响应器之后执行。
     """
-    dependent = Dependent[Any].parse(call=func, allow_types=EVENT_PCS_PARAMS)  # pyright: ignore[reportExplicitAny]
+    dependent = Dependent[Any].parse(call=func, allow_types=EVENT_PCS_PARAMS)
     _event_postprocessors.add(dependent)
     if plugin := get_current_plugin():
         internal_dispose(plugin.id_, lambda: _event_postprocessors.discard(dependent))
@@ -49,7 +49,7 @@ def run_preprocessor(func: T_RunPreProcessor) -> T_RunPreProcessor:
 
     装饰一个函数，使它在每次事件响应器运行前执行。
     """
-    dependent = Dependent[Any].parse(call=func, allow_types=RUN_PREPCS_PARAMS)  # pyright: ignore[reportExplicitAny]
+    dependent = Dependent[Any].parse(call=func, allow_types=RUN_PREPCS_PARAMS)
     _run_preprocessors.add(dependent)
     if plugin := get_current_plugin():
         internal_dispose(plugin.id_, lambda: _run_preprocessors.discard(dependent))
@@ -61,7 +61,7 @@ def run_postprocessor(func: T_RunPostProcessor) -> T_RunPostProcessor:
 
     装饰一个函数，使它在每次事件响应器运行后执行。
     """
-    dependent = Dependent[Any].parse(call=func, allow_types=RUN_POSTPCS_PARAMS)  # pyright: ignore[reportExplicitAny]
+    dependent = Dependent[Any].parse(call=func, allow_types=RUN_POSTPCS_PARAMS)
     _run_postprocessors.add(dependent)
     if plugin := get_current_plugin():
         internal_dispose(plugin.id_, lambda: _run_postprocessors.discard(dependent))

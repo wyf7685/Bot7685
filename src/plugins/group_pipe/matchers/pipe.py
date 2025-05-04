@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Any
 
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import (
@@ -114,7 +115,7 @@ async def assign_list(target: MsgTarget) -> None:
     await UniMessage.text(msg.rstrip("\n")).finish(reply_to=True)
 
 
-cache = get_cache("pipe")
+cache = get_cache[int, dict[str, Any]]("pipe")
 
 
 @pipe_cmd.assign("create")

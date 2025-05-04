@@ -16,7 +16,7 @@ env_file = root / ".env"
 toml_file = root / "pyproject.toml"
 
 
-def _load_yaml(file_path: pathlib.Path) -> dict[str, Any]:  # pyright:ignore[reportExplicitAny]
+def _load_yaml(file_path: pathlib.Path) -> dict[str, Any]:
     data = msgyaml.decode(file_path.read_bytes()) or {}
 
     if data.pop("scope_compat", None):
@@ -30,9 +30,9 @@ def _load_yaml(file_path: pathlib.Path) -> dict[str, Any]:  # pyright:ignore[rep
 
 
 def deep_update(
-    mapping: dict[str, Any],  # pyright:ignore[reportExplicitAny]
-    *updating_mappings: dict[str, Any],  # pyright:ignore[reportExplicitAny]
-) -> dict[str, Any]:  # pyright:ignore[reportExplicitAny]
+    mapping: dict[str, Any],
+    *updating_mappings: dict[str, Any],
+) -> dict[str, Any]:
     """深度更新合并字典"""
     updated_mapping = mapping.copy()
     for updating_mapping in updating_mappings:
@@ -48,7 +48,7 @@ def deep_update(
     return updated_mapping
 
 
-def load_config() -> dict[str, Any]:  # pyright:ignore[reportExplicitAny]
+def load_config() -> dict[str, Any]:
     config_dir = pathlib.Path("config")
     root_config = config_dir / "config.yaml"
     if not root_config.exists():

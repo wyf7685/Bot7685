@@ -12,7 +12,7 @@ from ..database.kuro_token import get_target, list_all_token
 from ..handler import KuroHandler
 
 logger = nonebot.logger.opt(colors=True)
-push_cache = get_cache("kuro:energy")
+push_cache = get_cache[int, bool]("kuro:energy")
 
 
 @scheduler.scheduled_job(CronTrigger(minute="*/30"), misfire_grace_time=60)

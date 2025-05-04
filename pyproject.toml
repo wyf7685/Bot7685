@@ -162,7 +162,7 @@ reportMissingTypeStubs = false            # third-party modules
 reportMissingTypeArgument = false         # UniMessage
 reportUnknownParameterType = false        # Message
 reportAny = false                         # Alconna Args, ...
-# reportExplicitAny = false
+reportExplicitAny = false
 
 [tool.uv]
 dev-dependencies = [

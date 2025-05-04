@@ -30,7 +30,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
 
     @functools.singledispatchmethod
     @classmethod
-    def _handle(cls, data: Any) -> str:  # pyright:ignore[reportExplicitAny]
+    def _handle(cls, data: Any) -> str:
         return cls.repr(data)
 
     register = _handle.register  # pyright:ignore[reportUnannotatedClassAttribute]

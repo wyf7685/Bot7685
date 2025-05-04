@@ -35,7 +35,7 @@ class DisposableDriver(Driver, abc.ABC):
     @override
     @classmethod
     def on_bot_connect(cls, func: T_BotConnectionHook) -> T_BotConnectionHook:
-        dependent = Dependent[Any].parse(call=func, allow_types=BOT_HOOK_PARAMS)  # pyright:ignore[reportExplicitAny]
+        dependent = Dependent[Any].parse(call=func, allow_types=BOT_HOOK_PARAMS)
         cls._bot_connection_hook.add(dependent)
         if plugin := get_current_plugin():
             internal_dispose(
@@ -47,7 +47,7 @@ class DisposableDriver(Driver, abc.ABC):
     @override
     @classmethod
     def on_bot_disconnect(cls, func: T_BotDisconnectionHook) -> T_BotDisconnectionHook:
-        dependent = Dependent[Any].parse(call=func, allow_types=BOT_HOOK_PARAMS)  # pyright:ignore[reportExplicitAny]
+        dependent = Dependent[Any].parse(call=func, allow_types=BOT_HOOK_PARAMS)
         cls._bot_disconnection_hook.add(dependent)
         if plugin := get_current_plugin():
             internal_dispose(
