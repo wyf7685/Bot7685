@@ -2,6 +2,7 @@ from . import bot, driver, event, matcher, plugin
 from .common import dispose_all as dispose_all
 from .common import dispose_plugin as dispose_plugin
 from .common import external_dispose as external_dispose
+from .common import internal_dispose as internal_dispose
 
 
 def setup_disposable() -> None:

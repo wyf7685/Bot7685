@@ -82,7 +82,7 @@ class PluginNode:
 
     async def dispose(self) -> None:
         if not self.disposable:
-            raise RuntimeError(f"Plugin {self.plugin.id_} not disposable!")
+            raise RuntimeError(f"Plugin {self.plugin.id_} is not disposable!")
 
         if self.plugin.id_ not in plugin_nodes:
             return
@@ -98,8 +98,12 @@ class PluginNode:
             node.dependencies.remove(self)
             self.dependents.remove(node)
 
-        dispose = self.get_disposer()
-        await dispose()
+        disposer = self.get_disposer()
+        try:
+            await disposer()
+        except Exception as exc:
+            log("ERROR", f"Failed to dispose plugin {colored}", exc)
+            raise
 
         for name in list(sys.modules):
             if name.startswith(self.plugin.module_name):
