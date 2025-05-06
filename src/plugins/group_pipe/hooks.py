@@ -55,11 +55,7 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         listen = get_target(event, bot)
         info = await get_session(bot, event)
     except Exception as err:
-        logger.trace(f"获取消息信息失败: {err}")
-        return
-
-    if info is None:
-        logger.trace("无法获取群组信息，跳过管道消息处理")
+        logger.opt(exception=err).debug(f"获取消息信息失败: {err}")
         return
 
     pipes = await PipeDAO().get_pipes(listen=listen)
@@ -76,11 +72,16 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
     try:
         msg_id = converter.get_message_id(event, bot)
     except Exception as err:
-        logger.trace(f"获取消息 ID 失败: {err}")
+        logger.opt(exception=err).debug(f"获取消息 ID 失败: {err}")
         return
 
-    group_name = ((g := info.group or info.guild) and g.name) or listen.id
-    user_name = info.user.nick or info.user.name or info.user.id
+    if info is None:
+        group_name = user_name = "<Unknown>"
+    else:
+        group_name = (
+            (g := info.group or info.channel or info.guild) and g.name
+        ) or listen.id
+        user_name = info.user.nick or info.user.name or info.user.id
     msg_head = UniMessage.text(f"[ {group_name} - {user_name} ]\n")
 
     async def _send(target: Target) -> None:
