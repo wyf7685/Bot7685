@@ -5,7 +5,7 @@ from typing import Literal, Protocol, overload
 from aiocache import BaseCache, RedisCache, SimpleMemoryCache
 from aiocache.serializers import PickleSerializer
 from common import Callable
-from nonebot import get_plugin_config
+from nonebot import get_driver, get_plugin_config
 from pydantic import BaseModel
 
 
@@ -130,6 +130,7 @@ class cache_with[*Ts]:  # noqa: N801
         return decorator
 
 
+@get_driver().on_shutdown
 async def dispose() -> None:
     if _cache:
         await _cache.close()

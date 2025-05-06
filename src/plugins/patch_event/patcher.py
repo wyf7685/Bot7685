@@ -52,6 +52,7 @@ def patcher[T: Event](call: Callable[[T], str]) -> PatcherHandle[T]:
     return handle
 
 
+@nonebot.get_driver().on_shutdown
 def dispose() -> None:
     for patcher in _PATCHERS:
         patcher.restore()

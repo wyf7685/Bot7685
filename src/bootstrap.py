@@ -8,8 +8,6 @@ from msgspec import yaml as msgyaml
 from nonebot.utils import deep_update, logger_wrapper, resolve_dot_notation
 from pydantic import BaseModel
 
-from .disposable import setup_disposable
-
 if TYPE_CHECKING:
     from nonebot.adapters import Adapter
 
@@ -139,7 +137,6 @@ def init_nonebot() -> object:
 
     start = time.time()
     setup_logger()
-    setup_disposable()
     nonebot.init(_env_file=None, **config)
     load_adapters(bootstrap_config)
     load_plugins(bootstrap_config)
