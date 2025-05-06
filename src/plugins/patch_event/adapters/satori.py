@@ -10,13 +10,14 @@ from nonebot.adapters.satori.event import (
     ReactionAddedEvent,
     ReactionRemovedEvent,
 )
+from nonebot.adapters.satori.models import Channel, Guild, Member, User
 from nonebot.utils import escape_tag
 
-from ..highlight import Highlight as BaseHighlight
+from ..highlight import Highlight
 from ..patcher import patcher
 
 
-class Highlight(BaseHighlight[MessageSegment]):
+class H(Highlight[MessageSegment]):
     @classmethod
     @override
     def segment(cls, segment: MessageSegment) -> str:
@@ -27,20 +28,27 @@ class Highlight(BaseHighlight[MessageSegment]):
             f" <i><y>children</y></i>={cls.apply(segment.children)})"
         )
 
+    @classmethod
+    def user(cls, user: User, member: Member | None = None) -> str:
+        return cls._name(user.id, (member and member.nick) or user.name or user.nick)
+
+    @classmethod
+    def scene(cls, scene: Channel | Guild) -> str:
+        return cls._name(scene.id, scene.name)
+
 
 @patcher
 def patch_event(self: Event) -> str:
-    return f"[{self.get_event_name()}]: {Highlight.apply(self)}"
+    return f"[{self.get_event_name()}]: {H.apply(self)}"
 
 
 @patcher
 def patch_private_message_created_event(self: PrivateMessageCreatedEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{escape_tag(self.msg_id)}</c> from "
-        f"<y>{escape_tag(self.user.name or self.user.nick or '')}</y>"
-        f"(<c>{escape_tag(self.channel.id)}</c>): "
-        f"{Highlight.apply(self.get_message())}"
+        f"Message {H.id(self.msg_id)} "
+        f"from {H.user(self.user)}: "
+        f"{H.apply(self.get_message())}"
     )
 
 
@@ -48,36 +56,30 @@ def patch_private_message_created_event(self: PrivateMessageCreatedEvent) -> str
 def patch_private_message_deleted_event(self: PrivateMessageDeletedEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{escape_tag(self.msg_id)}</c> from "
-        f"<y>{escape_tag(self.user.name or self.user.nick or '')}</y>"
-        f"(<c>{escape_tag(self.channel.id)}</c>) deleted"
+        f"Message {H.id(self.msg_id)} "
+        f"from {H.user(self.user)} "
+        f"deleted"
     )
 
 
 @patcher
 def patch_public_message_created_event(self: PublicMessageCreatedEvent) -> str:
-    nick = (self.member.nick if self.member else None) or (
-        self.user.name or self.user.nick or ""
-    )
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{self.msg_id}</c> from "
-        f"<y>{escape_tag(nick)}</y>(<c>{self.user.id}</c>)"
-        f"@[Group:<y>{self.channel.name or ''}</y>(<c>{self.channel.id}</c>)]: "
-        f"{Highlight.apply(self.get_message())}"
+        f"Message {H.id(self.msg_id)} "
+        f"from {H.user(self.user, self.member)}"
+        f"@[Group:{H.scene(self.channel)}]: "
+        f"{H.apply(self.get_message())}"
     )
 
 
 @patcher
 def patch_public_message_deleted_event(self: PublicMessageDeletedEvent) -> str:
-    nick = (self.member.nick if self.member else None) or (
-        self.user.name or self.user.nick or ""
-    )
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{self.msg_id}</c> from "
-        f"<y>{escape_tag(nick)}</y>(<c>{self.user.id}</c>)"
-        f"@[Group:<y>{self.channel.name or ''}</y>(<c>{self.channel.id}</c>)] "
+        f"Message {H.id(self.msg_id)} "
+        f"from {H.user(self.user, self.member)}"
+        f"@[Group:{H.scene(self.channel)}] "
         "deleted"
     )
 
@@ -86,8 +88,9 @@ def patch_public_message_deleted_event(self: PublicMessageDeletedEvent) -> str:
 def patch_reaction_added_event(self: ReactionAddedEvent) -> str:
     return (
         f"[{self.get_event_name()}] "
-        f"Reaction added to <c>{escape_tag(self.msg_id)}</c> "
-        f"by <c>{self.user.id}</c>@[Group:<c>{self.guild.id}</c>]"
+        f"Reaction added to {H.id(self.msg_id)} "
+        f"by {H.user(self.user)}"
+        f"@[Group:{H.scene(self.guild)}]"
     )
 
 
@@ -95,6 +98,7 @@ def patch_reaction_added_event(self: ReactionAddedEvent) -> str:
 def patch_reaction_removed_event(self: ReactionRemovedEvent) -> str:
     return (
         f"[{self.get_event_name()}] "
-        f"Reaction removed from <c>{escape_tag(self.msg_id)}</c> "
-        f"by <c>{self.user.id}</c>@[Group:<c>{self.guild.id}</c>]"
+        f"Reaction removed from {H.id(self.msg_id)} "
+        f"by {H.user(self.user)}"
+        f"@[Group:{H.scene(self.guild)}]"
     )

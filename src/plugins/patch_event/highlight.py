@@ -1,5 +1,6 @@
 import datetime
 import functools
+from collections.abc import Iterable
 from enum import Enum
 from typing import Any, ClassVar
 
@@ -71,6 +72,11 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
         text = escape_tag(repr(data))
         return f"{text[0]}<c>{text[1:-1]}</c>{text[-1]}"
 
+    @staticmethod
+    def _seq(seq: Iterable[str], bracket: str, /) -> str:
+        st, ed = bracket
+        return f"{st}{', '.join(seq)}{ed}"
+
     @register(dict)
     @classmethod
     def _(cls, data: dict[str, object]) -> str:
@@ -79,22 +85,22 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
             for key, value in data.items()
             if value not in cls.exclude_value
         )
-        return f"{{{', '.join(kv)}}}"
+        return cls._seq(kv, "{}")
 
     @register(list)
     @classmethod
     def _(cls, data: list[object]) -> str:
-        return f"[{', '.join(cls.apply(item) for item in data)}]"
+        return cls._seq(map(cls.apply, data), "[]")
 
     @register(set)
     @classmethod
     def _(cls, data: set[object]) -> str:
-        return f"{{{', '.join(cls.apply(item) for item in data)}}}"
+        return cls._seq(map(cls.apply, data), "{}")
 
     @register(tuple)
     @classmethod
     def _(cls, data: tuple[object]) -> str:
-        return f"({', '.join(cls.apply(item) for item in data)})"
+        return cls._seq(map(cls.apply, data), "()")
 
     @register(datetime.datetime)
     @classmethod
@@ -115,6 +121,18 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
         )
         return f"<lm>{model.__name__}</lm>({', '.join(kv)})"
 
+    @register(MessageSegment)
+    @classmethod
+    def _(cls, data: TMS) -> str:
+        return cls.segment(data)
+
+    @register(Message)
+    @classmethod
+    def _(cls, data: TM) -> str:
+        return cls.message(data)
+
+    del _
+
     @classmethod
     def segment(cls, segment: TMS) -> str:
         return (
@@ -127,14 +145,20 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     def message(cls, message: TM) -> str:
         return f"[{', '.join(map(cls.segment, message))}]"
 
-    @register(MessageSegment)
     @classmethod
-    def _(cls, data: TMS) -> str:
-        return cls.segment(data)
+    def id(cls, id: str | int) -> str:
+        if isinstance(id, str):
+            id = escape_tag(id)
+        return f"<c>{id}</c>"
 
-    @register(Message)
     @classmethod
-    def _(cls, data: TM) -> str:
-        return cls.message(data)
+    def time(cls, datetime: datetime.datetime) -> str:
+        return f"<y>{datetime:%Y-%m-%d %H:%M:%S}</y>"
 
-    del _
+    @classmethod
+    def _name(cls, id: str | int, name: str | None = None) -> str:
+        return (
+            f"<y>{escape_tag(name)}</y>({cls.id(id)})"
+            if name is not None
+            else cls.id(id)
+        )

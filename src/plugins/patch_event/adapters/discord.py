@@ -1,19 +1,20 @@
-from typing import ClassVar
+from typing import ClassVar, Protocol
 
 from nonebot.adapters.discord import Event, Message
-from nonebot.adapters.discord.api import UNSET, Channel, SnowflakeType
+from nonebot.adapters.discord.api import UNSET, Channel, SnowflakeType, User
 from nonebot.adapters.discord.event import (
     DirectMessageCreateEvent,
+    DirectMessageDeleteEvent,
     DirectMessageUpdateEvent,
     GuildCreateEvent,
     GuildMessageCreateEvent,
+    GuildMessageDeleteEvent,
     GuildMessageUpdateEvent,
 )
 from nonebot.compat import model_dump
 from nonebot.message import event_preprocessor
-from nonebot.utils import escape_tag
 
-from ..highlight import Highlight as BaseHighlight
+from ..highlight import Highlight
 from ..patcher import patcher
 
 guild_name_cache: dict[SnowflakeType, str] = {}
@@ -31,23 +32,50 @@ def find_channel_name(guild: SnowflakeType, channel: SnowflakeType) -> str | Non
     return None
 
 
-class Highlight(BaseHighlight):
+@event_preprocessor
+async def _(event: GuildCreateEvent) -> None:
+    if event.name is not UNSET:
+        guild_name_cache[event.id] = event.name
+    if event.channels is not UNSET:
+        guild_channel_cache[event.id] = event.channels
+
+
+class EventWithChannel(Protocol):
+    @property
+    def channel_id(self) -> SnowflakeType: ...
+    @property
+    def guild_id(self) -> SnowflakeType: ...
+
+
+class H(Highlight):
     exclude_value: ClassVar[tuple[object, ...]] = (UNSET, None)
+
+    @classmethod
+    def user(cls, user: User) -> str:
+        return cls._name(user.id, user.global_name or user.username)
+
+    @classmethod
+    def channel(cls, event: EventWithChannel) -> str:
+        guild = cls._name(event.guild_id, find_guild_name(event.guild_id))
+        channel = cls._name(
+            event.channel_id,
+            find_channel_name(event.guild_id, event.channel_id),
+        )
+        return f"[Guild:{guild} Channel:{channel}]"
 
 
 @patcher
 def patch_event(self: Event) -> str:
-    return f"[{self.get_event_name()}] {Highlight.apply(model_dump(self))}"
+    return f"[{self.get_event_name()}] {H.apply(model_dump(self))}"
 
 
 @patcher
 def patch_direct_message_create_event(self: DirectMessageCreateEvent) -> str:
     return (
         f"[{self.get_event_name()}] "
-        f"Message <c>{self.id}</c> from "
-        f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
-        f"(<c>{self.author.id}</c>) "
-        f"{Highlight.apply(self.get_message())}"
+        f"Message {H.id(self.id)} "
+        f"from {H.user(self.author)}: "
+        f"{H.apply(self.get_message())}"
     )
 
 
@@ -55,54 +83,47 @@ def patch_direct_message_create_event(self: DirectMessageCreateEvent) -> str:
 def patch_direct_message_update_event(self: DirectMessageUpdateEvent) -> str:
     return (
         f"[{self.get_event_name()}] "
-        f"Message <c>{self.id}</c> from "
-        f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
-        f"(<c>{self.author.id}</c>) updated to "
-        f"{Highlight.apply(Message.from_guild_message(self))}"
+        f"Message {H.id(self.id)} "
+        f"from {H.user(self.author)} "
+        f"updated to {H.apply(Message.from_guild_message(self))}"
+    )
+
+
+@patcher
+def patch_direct_message_delete_event(self: DirectMessageDeleteEvent) -> str:
+    return (
+        f"[{self.get_event_name()}] "
+        f"Message {H.id(self.id)} "
+        f"from {H.id(self.channel_id)} "
+        f"deleted at {H.time(self.time)}"
     )
 
 
 @patcher
 def patch_guild_message_create_event(self: GuildMessageCreateEvent) -> str:
-    guild = f"<c>{self.guild_id}</c>"
-    if name := find_guild_name(self.guild_id):
-        guild = f"<y>{escape_tag(name)}</y>({guild})"
-    channel = f"<c>{self.channel_id}</c>"
-    if name := find_channel_name(self.guild_id, self.channel_id):
-        channel = f"<y>{escape_tag(name)}</y>({channel})"
-
     return (
         f"[{self.get_event_name()}] "
-        f"Message <c>{self.id}</c> from "
-        f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
-        f"(<c>{self.author.id}</c>)"
-        f"@[Guild:{guild} Channel:{channel}] "
-        f"{Highlight.apply(self.get_message())}"
+        f"Message {H.id(self.id)} "
+        f"from {H.user(self.author)}@{H.channel(self)}: "
+        f"{H.apply(self.get_message())}"
     )
 
 
 @patcher
 def patch_guild_message_update_event(self: GuildMessageUpdateEvent) -> str:
-    guild = f"<c>{self.guild_id}</c>"
-    if name := find_guild_name(self.guild_id):
-        guild = f"<y>{escape_tag(name)}</y>({guild})"
-    channel = f"<c>{self.channel_id}</c>"
-    if name := find_channel_name(self.guild_id, self.channel_id):
-        channel = f"<y>{escape_tag(name)}</y>({channel})"
-
     return (
         f"[{self.get_event_name()}] "
-        f"Message <c>{self.id}</c> from "
-        f"<y>{escape_tag(self.author.global_name or self.author.username)}</y>"
-        f"(<c>{self.author.id}</c>)"
-        f"@[Guild:{guild} Channel:{channel}] updated to "
-        f"{Highlight.apply(Message.from_guild_message(self))}"
+        f"Message {H.id(self.id)} "
+        f"from {H.user(self.author)}@{H.channel(self)} "
+        f"updated to {H.apply(Message.from_guild_message(self))}"
     )
 
 
-@event_preprocessor
-async def _(event: GuildCreateEvent) -> None:
-    if event.name is not UNSET:
-        guild_name_cache[event.id] = event.name
-    if event.channels is not UNSET:
-        guild_channel_cache[event.id] = event.channels
+@patcher
+def patch_guild_message_delete_event(self: GuildMessageDeleteEvent) -> str:
+    return (
+        f"[{self.get_event_name()}] "
+        f"Message {H.id(self.id)} "
+        f"from {H.channel(self)} "
+        f"deleted at {H.time(self.time)}"
+    )

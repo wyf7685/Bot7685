@@ -33,7 +33,7 @@ from nonebot_plugin_apscheduler import scheduler
 require("src.plugins.gtg")
 from src.plugins.gtg import call_later, call_soon
 
-from ..highlight import Highlight as BaseHighlight
+from ..highlight import Highlight
 from ..patcher import patcher
 
 
@@ -109,7 +109,7 @@ async def update_user_card_cache(bot: Bot) -> None:
         call_later(5 * 60, reset, user_id, group_id)
 
 
-class Highlight(BaseHighlight[MessageSegment, Message]):
+class H(Highlight[MessageSegment, Message]):
     @classmethod
     @override
     def segment(cls, segment: MessageSegment) -> str:
@@ -142,13 +142,13 @@ class Highlight(BaseHighlight[MessageSegment, Message]):
             return "<c>None</c>"
 
         if (name := sender.card or sender.nickname) is None:
-            return f"<c>{sender.user_id}</c>"
+            return cls.id(sender.user_id)
 
         user_card_cache[(sender.user_id, None)] = name
         if group is not None:
             user_card_cache[(sender.user_id, group)] = name
 
-        return f"<y>{escape_tag(name)}</y>(<c>{sender.user_id}</c>)"
+        return cls._name(sender.user_id, name)
 
     @classmethod
     def user(cls, user: int | Sender, group: int | None = None) -> str:
@@ -159,33 +159,26 @@ class Highlight(BaseHighlight[MessageSegment, Message]):
         if name is None and (user, None) in user_card_cache:
             name = user_card_cache[(user, None)]
 
-        return (
-            f"<y>{escape_tag(name)}</y>(<c>{user}</c>)"
-            if name is not None
-            else f"<c>{user}</c>"
-        )
+        return cls._name(user, name)
 
     @classmethod
     def group(cls, group: int) -> str:
-        return (
-            f"[Group:<y>{escape_tag(info.group_name)}</y>(<c>{group}</c>)]"
-            if (info := group_info_cache.get(group))
-            else f"[Group:<c>{group}</c>]"
-        )
+        name = (info := group_info_cache.get(group)) and info.group_name
+        return f"[Group:{cls._name(group, name)}]"
 
 
 @patcher
 def patch_event(self: Event) -> str:
-    return f"[{self.get_event_name()}]: {Highlight.apply(model_dump(self))}"
+    return f"[{self.get_event_name()}]: {H.apply(model_dump(self))}"
 
 
 @patcher
 def patch_private_message_event(self: PrivateMessageEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{self.message_id}</c> from "
-        f"{Highlight.user(self.sender)} "
-        f"{Highlight.apply(self.original_message)}"
+        f"Message {H.id(self.message_id)} "
+        f"from {H.user(self.sender)} "
+        f"{H.apply(self.original_message)}"
     )
 
 
@@ -193,10 +186,10 @@ def patch_private_message_event(self: PrivateMessageEvent) -> str:
 def patch_group_message_event(self: GroupMessageEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{self.message_id}</c> from "
-        f"{Highlight.user(self.sender, self.group_id)}"
-        f"@{Highlight.group(self.group_id)} "
-        f"{Highlight.apply(self.original_message)}"
+        f"Message {H.id(self.message_id)} "
+        f"from {H.user(self.sender, self.group_id)}"
+        f"@{H.group(self.group_id)} "
+        f"{H.apply(self.original_message)}"
     )
 
 
@@ -204,8 +197,9 @@ def patch_group_message_event(self: GroupMessageEvent) -> str:
 def patch_friend_recall_notice_event(self: FriendRecallNoticeEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{self.message_id}</c> from "
-        f"{Highlight.user(self.user_id)} deleted"
+        f"Message {H.id(self.message_id)} "
+        f"from {H.user(self.user_id)} "
+        f"deleted"
     )
 
 
@@ -213,10 +207,10 @@ def patch_friend_recall_notice_event(self: FriendRecallNoticeEvent) -> str:
 def patch_group_recall_notice_event(self: GroupRecallNoticeEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{self.message_id}</c> from "
-        f"{Highlight.user(self.user_id, self.group_id)}"
-        f"@{Highlight.group(self.group_id)} "
-        f"deleted by {Highlight.user(self.operator_id, self.group_id)}"
+        f"Message {H.id(self.message_id)} "
+        f"from {H.user(self.user_id, self.group_id)}"
+        f"@{H.group(self.group_id)} "
+        f"deleted by {H.user(self.operator_id, self.group_id)}"
     )
 
 
@@ -232,14 +226,14 @@ def poke_napcat(self: PokeNotifyEvent, raw_info: list[dict[str, str]]) -> str:
     user = [self.user_id, self.target_id]
 
     if self.group_id is not None:
-        text += f"{Highlight.group(self.group_id)} "
+        text += f"{H.group(self.group_id)} "
     else:
         gen = (idx for idx, item in enumerate(raw_info) if item["type"] == "qq")
         raw_info.insert(next(gen, 0) + 1, {"type": "nor", "txt": "戳了戳"})
 
     for item in raw_info:
         if item["type"] == "qq":
-            text += f"{Highlight.user(user.pop(0), self.group_id)} "
+            text += f"{H.user(user.pop(0), self.group_id)} "
         elif item["type"] == "nor":
             text += f"{item['txt']} "
 
@@ -249,9 +243,9 @@ def poke_napcat(self: PokeNotifyEvent, raw_info: list[dict[str, str]]) -> str:
 def poke_lagrange(self: PokeNotifyEvent, action: str, suffix: str) -> str:
     return (
         f"[{self.get_event_name()}]: "
-        f"{f'{Highlight.group(self.group_id)} ' if self.group_id else ''}"
-        f"{Highlight.user(self.user_id, self.group_id)} {action} "
-        f"{Highlight.user(self.target_id, self.group_id)} {suffix}"
+        f"{f'{H.group(self.group_id)} ' if self.group_id else ''}"
+        f"{H.user(self.user_id, self.group_id)} {action} "
+        f"{H.user(self.target_id, self.group_id)} {suffix}"
     )
 
 
@@ -272,9 +266,9 @@ def patch_group_decrease_notice_event(self: GroupDecreaseNoticeEvent) -> str:
     result = (
         f"[{self.get_event_name()}]: "
         f"GroupDecrease[{self.sub_type}] "
-        f"{Highlight.user(self.user_id, self.group_id)}"
-        f"@{Highlight.group(self.group_id)} "
-        f"by {Highlight.user(self.operator_id, self.group_id)}"
+        f"{H.user(self.user_id, self.group_id)}"
+        f"@{H.group(self.group_id)} "
+        f"by {H.user(self.operator_id, self.group_id)}"
     )
     if (key := (self.user_id, self.group_id)) in user_card_cache:
         del user_card_cache[key]
@@ -286,9 +280,9 @@ def patch_group_increase_notice_event(self: GroupIncreaseNoticeEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
         f"GroupIncrease[{self.sub_type}] "
-        f"{Highlight.user(self.user_id, self.group_id)}"
-        f"@{Highlight.group(self.group_id)} "
-        f"by {Highlight.user(self.operator_id, self.group_id)}"
+        f"{H.user(self.user_id, self.group_id)}"
+        f"@{H.group(self.group_id)} "
+        f"by {H.user(self.operator_id, self.group_id)}"
     )
 
 
@@ -296,8 +290,8 @@ def patch_group_increase_notice_event(self: GroupIncreaseNoticeEvent) -> str:
 def patch_friend_request_event(self: FriendRequestEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
-        f"FriendRequest {Highlight.user(self.user_id)} "
-        f"with flag=<c>{escape_tag(self.flag)}</c>"
+        f"FriendRequest {H.user(self.user_id)} "
+        f"with flag={H.id(self.flag)}"
     )
 
 
@@ -306,9 +300,9 @@ def patch_group_request_event(self: GroupRequestEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
         f"GroupRequest[{self.sub_type}] "
-        f"{Highlight.user(self.user_id, self.group_id)}"
-        f"@{Highlight.group(self.group_id)} "
-        f"with flag=<c>{escape_tag(self.flag)}</c>"
+        f"{H.user(self.user_id, self.group_id)}"
+        f"@{H.group(self.group_id)} "
+        f"with flag={H.id(self.flag)}"
     )
 
 
@@ -362,9 +356,9 @@ class PrivateMessageSentEvent(MessageSentEvent):  # NapCat
     def get_log_string(self) -> str:
         return (
             f"[{self.get_event_name()}]: "
-            f"Message <c>{self.message_id}</c> to "
-            f"{Highlight.user(self.target_id)} "
-            f"{Highlight.apply(self.message)}"
+            f"Message {H.id(self.message_id)} to "
+            f"{H.user(self.target_id)} "
+            f"{H.apply(self.message)}"
         )
 
 
@@ -377,8 +371,9 @@ class GroupMessageSentEvent(MessageSentEvent):  # NapCat
     def get_log_string(self) -> str:
         return (
             f"[{self.get_event_name()}]: "
-            f"Message <c>{self.message_id}</c> to {Highlight.group(self.group_id)} "
-            f"{Highlight.apply(self.message)}"
+            f"Message {H.id(self.message_id)} "
+            f"to {H.group(self.group_id)} "
+            f"{H.apply(self.message)}"
         )
 
     @override
@@ -413,10 +408,10 @@ class ReactionAddNoticeEvent(ReactionNoticeEvent):  # Lagrange
     def get_log_string(self) -> str:
         return (
             f"[{self.get_event_name()}]: "
-            f"Reaction <y>{self.code}</y> added to <c>{self.message_id}</c> "
+            f"Reaction <y>{self.code}</y> added to {H.id(self.message_id)} "
             f"(current <y>{self.count}</y>) "
-            f"by {Highlight.user(self.operator_id, self.group_id)}"
-            f"@{Highlight.group(self.group_id)}"
+            f"by {H.user(self.operator_id, self.group_id)}"
+            f"@{H.group(self.group_id)}"
         )
 
 
@@ -428,10 +423,10 @@ class ReactionRemoveNoticeEvent(ReactionNoticeEvent):  # Lagrange
     def get_log_string(self) -> str:
         return (
             f"[{self.get_event_name()}]: "
-            f"Reaction <y>{self.code}</y> removed from <c>{self.message_id}</c> "
+            f"Reaction <y>{self.code}</y> removed from {H.id(self.message_id)} "
             f"(current <y>{self.count}</y>) "
-            f"by {Highlight.user(self.operator_id, self.group_id)}"
-            f"@{Highlight.group(self.group_id)}"
+            f"by {H.user(self.operator_id, self.group_id)}"
+            f"@{H.group(self.group_id)}"
         )
 
 

@@ -6,27 +6,29 @@ import nonebot
 from nonebot.adapters.feishu import Adapter, NoticeEvent
 from nonebot.adapters.feishu.event import Event, GroupMessageEvent, PrivateMessageEvent
 from nonebot.adapters.feishu.models import UserId
-from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
 from ..highlight import Highlight
 from ..patcher import patcher
 
 
+class H(Highlight): ...
+
+
 @patcher
 def patch_event(self: Event) -> str:
-    return f"[{self.get_event_name()}]: {Highlight.apply(self)}"
+    return f"[{self.get_event_name()}]: {H.apply(self)}"
 
 
 @patcher
 def patch_private_message_event(self: PrivateMessageEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{escape_tag(self.message_id)}</c> from "
-        f"<c>{self.get_user_id()}</c>"
+        f"Message {H.id(self.message_id)} from "
+        f"{H.id(self.get_user_id())}"
         f"@[<y>{self.event.message.chat_type}</y>:"
-        f"<c>{self.event.message.chat_id}</c>]: "
-        f"{Highlight.apply(self.get_message())}"
+        f"{H.id(self.event.message.chat_id)}]: "
+        f"{H.apply(self.get_message())}"
     )
 
 
@@ -34,11 +36,11 @@ def patch_private_message_event(self: PrivateMessageEvent) -> str:
 def patch_group_message_event(self: GroupMessageEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{escape_tag(self.message_id)}</c> from "
-        f"<c>{self.get_user_id()}</c>"
+        f"Message {H.id(self.message_id)} "
+        f"from {H.id(self.get_user_id())}"
         f"@[<y>{self.event.message.chat_type}</y>:"
-        f"<c>{self.event.message.chat_id}</c>]: "
-        f"{Highlight.apply(self.get_message())}"
+        f"{H.id(self.event.message.chat_id)}]: "
+        f"{H.apply(self.get_message())}"
     )
 
 
@@ -76,10 +78,10 @@ class P2PChatEnteredEvent(NoticeEvent):
     def get_log_string(self) -> str:
         return (
             f"[{self.get_event_name()}]: "
-            f"<c>{self.get_user_id()}</c>"
-            f"@[<y>p2p</y>:<c>{self.event.chat_id}</c>] entered chat, "
-            f"last message: <c>{self.event.last_message_id}</c> "
-            f"at <c>{self.last_message_create_time:%Y-%m-%d %H:%M:%S}</c>"
+            f"{H.id(self.get_user_id())}"
+            f"@[<y>p2p</y>:{H.id(self.event.chat_id)}] entered chat, "
+            f"last message: {H.id(self.event.last_message_id)} "
+            f"at {H.time(self.last_message_create_time)}"
         )
 
 

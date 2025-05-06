@@ -6,99 +6,84 @@ from nonebot.adapters.telegram.event import (
     PrivateEditedMessageEvent,
     PrivateMessageEvent,
 )
-from nonebot.utils import escape_tag
+from nonebot.adapters.telegram.model import Chat, User
 
 from ..highlight import Highlight
 from ..patcher import patcher
 
 
+class H(Highlight):
+    @classmethod
+    def chat(cls, chat: Chat) -> str:
+        return cls._name(chat.id, chat.title)
+
+    @classmethod
+    def user(cls, user: User) -> str:
+        name = user.first_name + (f" {user.last_name}" if user.last_name else "")
+        return cls._name(user.id, name)
+
+
 @patcher
 def patch_group_message_event(self: GroupMessageEvent) -> str:
-    nick = self.from_.first_name + (
-        f" {self.from_.last_name}" if self.from_.last_name else ""
-    )
-    chat = f"<c>{self.chat.id}</c>"
-    if self.chat.title:
-        chat = f"<y>{escape_tag(self.chat.title)}</y>({chat})"
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{self.message_id}</c> from "
-        f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>)@[Chat {chat}]: "
-        f"{Highlight.apply(self.original_message)}"
+        f"Message {H.id(self.message_id)} "
+        f"from {H.user(self.from_)}"
+        f"@[Chat {H.chat(self.chat)}]: "
+        f"{H.apply(self.original_message)}"
     )
 
 
 @patcher
 def patch_forum_topic_message_event(self: ForumTopicMessageEvent) -> str:
-    nick = self.from_.first_name + (
-        f" {self.from_.last_name}" if self.from_.last_name else ""
-    )
-    chat = f"<c>{self.chat.id}</c>"
-    if self.chat.title:
-        chat = f"<y>{escape_tag(self.chat.title)}</y>({chat})"
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{self.message_id}</c> from "
-        f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>)@[Chat {chat} "
-        f"Thread <c>{self.message_thread_id}</c>]: "
-        f"{Highlight.apply(self.original_message)}"
+        f"Message {H.id(self.message_id)} "
+        f"from {H.user(self.from_)}"
+        f"@[Chat {H.chat(self.chat)}]: "
+        f"Thread {H.id(self.message_thread_id)}]: "
+        f"{H.apply(self.original_message)}"
     )
 
 
 @patcher
 def patch_private_message_event(self: PrivateMessageEvent) -> str:
-    nick = self.from_.first_name + (
-        f" {self.from_.last_name}" if self.from_.last_name else ""
-    )
     return (
         f"[{self.get_event_name()}]: "
-        f"Message <c>{self.message_id}</c> from "
-        f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>): "
-        f"{Highlight.apply(self.original_message)}"
+        f"Message {H.id(self.message_id)} "
+        f"from {H.user(self.from_)}: "
+        f"{H.apply(self.original_message)}"
     )
 
 
 @patcher
 def patch_group_edited_message_event(self: GroupEditedMessageEvent) -> str:
-    nick = self.from_.first_name + (
-        f" {self.from_.last_name}" if self.from_.last_name else ""
-    )
-    chat = f"<c>{self.chat.id}</c>"
-    if self.chat.title:
-        chat = f"<y>{escape_tag(self.chat.title)}</y>({chat})"
     return (
         f"[{self.get_event_name()}]: "
-        f"EditedMessage <c>{self.message_id}</c> from "
-        f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>)@[Chat {chat}]: "
-        f"{Highlight.apply(self.get_message())}"
+        f"EditedMessage {H.id(self.message_id)} "
+        f"from {H.user(self.from_)}"
+        f"@[Chat {H.chat(self.chat)}]: "
+        f"{H.apply(self.get_message())}"
     )
 
 
 @patcher
 def patch_forum_topic_edited_message_event(self: ForumTopicEditedMessageEvent) -> str:
-    nick = self.from_.first_name + (
-        f" {self.from_.last_name}" if self.from_.last_name else ""
-    )
-    chat = f"<c>{self.chat.id}</c>"
-    if self.chat.title:
-        chat = f"<y>{escape_tag(self.chat.title)}</y>({chat})"
     return (
         f"[{self.get_event_name()}]: "
-        f"EditedMessage <c>{self.message_id}</c> from "
-        f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>)@[Chat {chat} "
-        f"Thread <c>{self.message_thread_id}</c>]: "
-        f"{Highlight.apply(self.get_message())}"
+        f"EditedMessage {H.id(self.message_id)} "
+        f"from {H.user(self.from_)}"
+        f"@[Chat {H.chat(self.chat)} "
+        f"Thread {H.id(self.message_thread_id)}]: "
+        f"{H.apply(self.get_message())}"
     )
 
 
 @patcher
 def patch_private_edited_message_event(self: PrivateEditedMessageEvent) -> str:
-    nick = self.from_.first_name + (
-        f" {self.from_.last_name}" if self.from_.last_name else ""
-    )
     return (
         f"[{self.get_event_name()}]: "
-        f"EditedMessage <c>{self.message_id}</c> from "
-        f"<y>{escape_tag(nick)}</y>(<c>{self.from_.id}</c>): "
-        f"{Highlight.apply(self.get_message())}"
+        f"EditedMessage {H.id(self.message_id)} "
+        f"from {H.user(self.from_)}: "
+        f"{H.apply(self.get_message())}"
     )
