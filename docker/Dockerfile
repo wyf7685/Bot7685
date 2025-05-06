@@ -1,4 +1,4 @@
-FROM debian:bookworm-slim AS silk
+FROM debian:bookworm AS silk
 
 ADD https://github.com/kn007/silk-v3-decoder.git /data
 
@@ -10,9 +10,7 @@ RUN apt-get update && \
     mv /data/converter.sh /out && \
     mv /data/silk/decoder /out/silk
 
-FROM python:3.13-slim-bookworm AS venv
-
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS venv
 
 RUN uv venv /opt/venv
 ENV UV_LINK_MODE=copy
@@ -30,7 +28,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --locked --active --no-dev
 
-FROM python:3.13-slim-bookworm AS app
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS app
 
 WORKDIR /app
 
@@ -39,7 +37,6 @@ ENV TZ=Asia/Shanghai \
     LANGUAGE=zh_CN.UTF-8 \
     LC_ALL=zh_CN.UTF-8
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 ADD docker/fonts/*.ttf /usr/share/fonts/
 ADD docker/assets/* /
 
