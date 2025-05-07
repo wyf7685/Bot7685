@@ -1,10 +1,8 @@
-FROM debian:bookworm AS silk
+FROM buildpack-deps:bookworm AS silk
 
 ADD https://github.com/kn007/silk-v3-decoder.git /data
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc g++ build-essential ffmpeg && \
-    chmod +x /data/converter.sh && \
+RUN chmod +x /data/converter.sh && \
     /data/converter.sh && \
     mkdir -p /out/silk && \
     mv /data/converter.sh /out && \
