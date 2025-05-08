@@ -50,9 +50,18 @@ dependencies = [
     "tarina>=0.6.8",
     "tencentcloud-sdk-python-dnspod>=3.0.1354",
     # plugins
-    "nonebot-plugin-exe-code>=1.1.5",
-    "nonebot-plugin-werewolf>=1.1.11",
-    "nonebot-plugin-zssm>=0.3.1",
+    "nonebot-plugin-exe-code @ git+https://github.com/wyf7685/nonebot-plugin-exe-code.git",
+    "nonebot-plugin-werewolf @ git+https://github.com/wyf7685/nonebot-plugin-werewolf.git",
+    "nonebot-plugin-zssm @ git+https://github.com/wyf7685/nonebot-plugin-zssm.git",
+]
+
+[dependency-groups]
+dev = [
+    "basedpyright>=1.24.0",
+    "ipykernel>=6.29.5",
+    "nonebot-plugin-orm[aiosqlite]>=0.7.7",
+    "nonebot-session-to-uninfo>=0.0.2",
+    "ruff>=0.9.3",
 ]
 
 [tool.ruff]
@@ -163,20 +172,3 @@ reportMissingTypeArgument = false         # UniMessage
 reportUnknownParameterType = false        # Message
 reportAny = false                         # Alconna Args, ...
 reportExplicitAny = false
-
-[tool.uv]
-dev-dependencies = [
-    "basedpyright>=1.24.0",
-    "ipykernel>=6.29.5",
-    "nonebot-plugin-orm[aiosqlite]>=0.7.7",
-    "nonebot-session-to-uninfo>=0.0.2",
-    "ruff>=0.9.3",
-]
-
-[tool.uv.sources]
-nonebot-plugin-exe-code = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" }
-nonebot-plugin-werewolf = { git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" }
-# Forked from https://github.com/GuGuMur/nonebot-plugin-skland-arksign
-# nonebot-plugin-skland-arksign = { git = "https://github.com/wyf7685/nonebot-plugin-skland-arksign.git" }
-# Forked from https://github.com/djkcyl/nonebot-plugin-zssm
-nonebot-plugin-zssm = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git" }
