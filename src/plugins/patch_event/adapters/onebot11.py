@@ -134,7 +134,7 @@ class H(Highlight[MessageSegment, Message]):
     @classmethod
     @override
     def message(cls, message: Message) -> str:
-        return repr("".join(map(cls.segment, message)))
+        return "".join(map(cls.segment, message))
 
     @classmethod
     def _user_card_sender(cls, sender: Sender, group: int | None) -> str:
