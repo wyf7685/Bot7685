@@ -177,7 +177,7 @@ def patch_private_message_event(self: PrivateMessageEvent) -> str:
     return (
         f"[{self.get_event_name()}]: "
         f"Message {H.id(self.message_id)} "
-        f"from {H.user(self.sender)} "
+        f"from {H.user(self.sender)}: "
         f"{H.apply(self.original_message)}"
     )
 
@@ -188,7 +188,7 @@ def patch_group_message_event(self: GroupMessageEvent) -> str:
         f"[{self.get_event_name()}]: "
         f"Message {H.id(self.message_id)} "
         f"from {H.user(self.sender, self.group_id)}"
-        f"@{H.group(self.group_id)} "
+        f"@{H.group(self.group_id)}: "
         f"{H.apply(self.original_message)}"
     )
 
