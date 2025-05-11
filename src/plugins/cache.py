@@ -102,32 +102,109 @@ class get_cache[KT, VT]:  # noqa: N801
         return CacheWrapper(namespace, pickle=pickle)  # pyright:ignore[reportReturnType]
 
 
-class cache_with[*Ts]:  # noqa: N801
-    def __new__[R](
-        cls,
-        namespace: str,
-        key: Callable[[*Ts], object],
-        *,
-        pickle: bool = False,
-        ttl: int = 10 * 60,
-    ) -> Callable[[Callable[[*Ts], Awaitable[R]]], Callable[[*Ts], Awaitable[R]]]:
-        cache = get_cache[str, R](namespace, pickle=pickle)
+@overload
+def cache_with[R](
+    *,
+    namespace: str,
+    key: Callable[[], object],
+    pickle: bool = False,
+    ttl: int = 10 * 60,
+) -> Callable[[Callable[[], Awaitable[R]]], Callable[[], Awaitable[R]]]: ...
+@overload
+def cache_with[R, T1](
+    arg1: type[T1],
+    /,
+    *,
+    namespace: str,
+    key: Callable[[T1], object],
+    pickle: bool = False,
+    ttl: int = 10 * 60,
+) -> Callable[[Callable[[T1], Awaitable[R]]], Callable[[T1], Awaitable[R]]]: ...
+@overload
+def cache_with[R, T1, T2](
+    arg1: type[T1],
+    arg2: type[T2],
+    /,
+    *,
+    namespace: str,
+    key: Callable[[T1, T2], object],
+    pickle: bool = False,
+    ttl: int = 10 * 60,
+) -> Callable[[Callable[[T1, T2], Awaitable[R]]], Callable[[T1, T2], Awaitable[R]]]: ...
+@overload
+def cache_with[R, T1, T2, T3](
+    arg1: type[T1],
+    arg2: type[T2],
+    arg3: type[T3],
+    /,
+    *,
+    namespace: str,
+    key: Callable[[T1, T2, T3], object],
+    pickle: bool = False,
+    ttl: int = 10 * 60,
+) -> Callable[
+    [Callable[[T1, T2, T3], Awaitable[R]]],
+    Callable[[T1, T2, T3], Awaitable[R]],
+]: ...
+@overload
+def cache_with[R, T1, T2, T3, T4](
+    arg1: type[T1],
+    arg2: type[T2],
+    arg3: type[T3],
+    arg4: type[T4],
+    /,
+    *,
+    namespace: str,
+    key: Callable[[T1, T2, T3, T4], object],
+    pickle: bool = False,
+    ttl: int = 10 * 60,
+) -> Callable[
+    [Callable[[T1, T2, T3, T4], Awaitable[R]]],
+    Callable[[T1, T2, T3, T4], Awaitable[R]],
+]: ...
+@overload
+def cache_with[R, T1, T2, T3, T4, T5](
+    arg1: type[T1],
+    arg2: type[T2],
+    arg3: type[T3],
+    arg4: type[T4],
+    arg5: type[T5],
+    /,
+    *,
+    namespace: str,
+    key: Callable[[T1, T2, T3, T4, T5], object],
+    pickle: bool = False,
+    ttl: int = 10 * 60,
+) -> Callable[
+    [Callable[[T1, T2, T3, T4, T5], Awaitable[R]]],
+    Callable[[T1, T2, T3, T4, T5], Awaitable[R]],
+]: ...
 
-        def decorator(
-            call: Callable[[*Ts], Awaitable[R]],
-        ) -> Callable[[*Ts], Awaitable[R]]:
-            @functools.wraps(call)
-            async def wrapper(*args: *Ts) -> R:
-                cache_key = str(key(*args))
-                if cached := await cache.get(cache_key):
-                    return cached
-                result = await call(*args)
-                await cache.set(cache_key, result, ttl=ttl)
-                return result
 
-            return wrapper
+def cache_with[R, *Ts](  # pyright: ignore[reportInconsistentOverload]
+    *_: type,
+    namespace: str,
+    key: Callable[[*Ts], object],
+    pickle: bool = False,
+    ttl: int = 10 * 60,
+) -> Callable[[Callable[[*Ts], Awaitable[R]]], Callable[[*Ts], Awaitable[R]]]:
+    cache = get_cache[str, R](namespace, pickle=pickle)
 
-        return decorator
+    def decorator(
+        call: Callable[[*Ts], Awaitable[R]],
+    ) -> Callable[[*Ts], Awaitable[R]]:
+        @functools.wraps(call)
+        async def wrapper(*args: *Ts) -> R:
+            cache_key = str(key(*args))
+            if cached := await cache.get(cache_key):
+                return cached
+            result = await call(*args)
+            await cache.set(cache_key, result, ttl=ttl)
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 @get_driver().on_shutdown

@@ -1,8 +1,5 @@
-import contextlib
 import io
 import math
-import pathlib
-from collections.abc import AsyncGenerator
 
 import anyio
 import httpx
@@ -29,48 +26,26 @@ OPTION = {
     "dir_rule": {"base_dir": str(DOWNLOAD_DIR), "rule": "Bd_Pid"},
     "download": {"threading": {"image": 4, "photo": 4}},
 }
-OPTION_PDF = OPTION | {
-    "plugins": {
-        "after_album": [
-            {
-                "plugin": "img2pdf",
-                "kwargs": {
-                    "pdf_dir": str(PDF_DIR),
-                    "filename_rule": "Aalbum_id",
-                },
-            }
-        ],
-    },
-}
+
 
 jmcomic.JmModuleConfig.EXECUTOR_LOG = jm_log  # pyright: ignore[reportAttributeAccessIssue]
 option = jmcomic.JmOption.construct(OPTION)
-option_pdf = jmcomic.JmOption.construct(OPTION_PDF)
 
 
-@contextlib.asynccontextmanager
-async def download_album_pdf(album_id: int) -> AsyncGenerator[pathlib.Path]:
-    downloader = jmcomic.new_downloader(option_pdf)
-    detail = await run_sync(downloader.download_album)(album_id)
-    pdf_file = PDF_DIR / f"{detail.album_id}.pdf"
-    try:
-        yield pdf_file
-    finally:
-        await anyio.Path(pdf_file).unlink()
-
-
-@cache_with[int](
-    "jmcomic_option:album",
-    lambda album_id: f"album_{album_id}",
+@cache_with(
+    int,
+    namespace="jmcomic_option:album",
+    key=lambda album_id: f"album_{album_id}",
     pickle=True,
 )
 async def get_album_detail(album_id: int) -> jmcomic.JmAlbumDetail:
     return await run_sync(option.new_jm_client().get_album_detail)(album_id)
 
 
-@cache_with[jmcomic.JmPhotoDetail](
-    "jmcomic_option:photo",
-    lambda photo: f"photo_{photo.photo_id}",
+@cache_with(
+    jmcomic.JmPhotoDetail,
+    namespace="jmcomic_option:photo",
+    key=lambda photo: f"photo_{photo.photo_id}",
     pickle=True,
 )
 async def check_photo(photo: jmcomic.JmPhotoDetail) -> jmcomic.JmPhotoDetail:

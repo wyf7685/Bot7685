@@ -16,7 +16,7 @@ dependencies = [
     "nonebot-adapter-telegram>=0.1.0b20",
     # plugins
     "nonebot-plugin-akinator>=1.0.1.post2",
-    "nonebot-plugin-alconna>=0.57.4",
+    "nonebot-plugin-alconna>=0.57.6",
     "nonebot-plugin-apscheduler>=0.5.0",
     "nonebot-plugin-chatrecorder>=0.7.0",
     "nonebot-plugin-emojimix>=0.4.0",
@@ -41,8 +41,7 @@ dependencies = [
     "cos-python-sdk-v5>=1.9.36",
     "gunicorn>=23.0.0",
     "httpx>=0.28.1",
-    "img2pdf>=0.6.0",
-    "jmcomic>=2.5.33",
+    "jmcomic>=2.5.38",
     "msgspec[toml,yaml]>=0.19.0",
     "paramiko>=3.5.0",
     "playwright==1.52.0",  # pinned in docker/Dockerfile
@@ -60,7 +59,6 @@ dev = [
     "basedpyright>=1.24.0",
     "ipykernel>=6.29.5",
     "nonebot-plugin-orm[aiosqlite]>=0.7.7",
-    "nonebot-session-to-uninfo>=0.0.2",
     "ruff>=0.9.3",
 ]
 

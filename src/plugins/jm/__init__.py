@@ -24,7 +24,7 @@ from nonebot_plugin_waiter import waiter
 require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 
-from .option import check_photo, download_album_pdf, download_image, get_album_detail
+from .option import check_photo, download_image, get_album_detail
 from .utils import abatched, flatten_exception_group, queued
 
 __plugin_meta__ = PluginMetadata(
@@ -235,9 +235,3 @@ async def _(
         await handle_exc(exc_group, "下载失败")
     else:
         await UniMessage(f"完成 {album_id} 的下载任务").finish(reply_to=True)
-
-
-@matcher.assign("album_id")
-async def _(album_id: int) -> None:
-    async with download_album_pdf(album_id) as pdf_file:
-        await UniMessage.file(path=pdf_file).finish()
