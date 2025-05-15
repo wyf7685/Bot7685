@@ -1,16 +1,14 @@
 import contextlib
 
 from nonebot import require
-from nonebot.adapters import Bot
-from nonebot.log import logger
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
 require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
-from nonebot_plugin_alconna.uniseg import At
+from nonebot_plugin_alconna.uniseg import At, message_reaction
 
-from .depends import LotsTarget, MsgId
+from .depends import LotsTarget
 from .lots_data import get_lots_msg
 
 __plugin_meta__ = PluginMetadata(
@@ -28,15 +26,9 @@ lots = on_alconna(
 
 
 @lots.handle()
-async def _(bot: Bot, target: LotsTarget, msgid: MsgId) -> None:
+async def _(target: LotsTarget) -> None:
     msg, emoji = get_lots_msg(target)
     await msg.send(reply_to=True)
 
-    if msgid is not None:
-        with contextlib.suppress(Exception):
-            await bot.call_api(
-                "set_msg_emoji_like",
-                message_id=msgid,
-                emoji_id=emoji,
-            )
-            logger.debug(f"{bot=}, {msgid=}, {emoji=}")
+    with contextlib.suppress(Exception):
+        await message_reaction(emoji)
