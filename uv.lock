@@ -479,7 +479,7 @@ requires-dist = [
     { name = "nonebot-plugin-skland", specifier = ">=0.2.1" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.7.2" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.1" },
-    { name = "nonebot-plugin-wakatime", git = "https://github.com/wyf7685/nonebot-plugin-wakatime.git" },
+    { name = "nonebot-plugin-wakatime", git = "https://github.com/wyf7685/nonebot-plugin-wakatime.git?rev=fix%2Fargot" },
     { name = "nonebot-plugin-werewolf", git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" },
     { name = "nonebot-plugin-wordcloud", specifier = ">=0.9.0" },
     { name = "nonebot-plugin-zssm", git = "https://github.com/wyf7685/nonebot-plugin-zssm.git" },
@@ -1970,7 +1970,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-wakatime"
 version = "0.2.6"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-wakatime.git#fda3b300c7f2e5580417e379160a06867826bf2e" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-wakatime.git?rev=fix%2Fargot#8fd08fd45695e84a7d9a85650ecf482bca5e33e1" }
 dependencies = [
     { name = "expiringdictx" },
     { name = "httpx" },
