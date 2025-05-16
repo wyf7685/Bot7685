@@ -419,7 +419,6 @@ dependencies = [
     { name = "nonebot-plugin-ghtiles" },
     { name = "nonebot-plugin-htmlrender" },
     { name = "nonebot-plugin-localstore" },
-    { name = "nonebot-plugin-memes-api" },
     { name = "nonebot-plugin-orm", extra = ["asyncpg", "postgresql"] },
     { name = "nonebot-plugin-picstatus" },
     { name = "nonebot-plugin-session" },
@@ -472,7 +471,6 @@ requires-dist = [
     { name = "nonebot-plugin-ghtiles", specifier = ">=0.1.4" },
     { name = "nonebot-plugin-htmlrender", specifier = ">=0.6.5" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
-    { name = "nonebot-plugin-memes-api", specifier = ">=0.5.1" },
     { name = "nonebot-plugin-orm", extras = ["asyncpg", "postgresql"], specifier = ">=0.7.7" },
     { name = "nonebot-plugin-picstatus", specifier = ">=2.1.2" },
     { name = "nonebot-plugin-session", specifier = ">=0.3.2" },
@@ -1788,26 +1786,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/63/22/67ec1e604c0385729bf2d71db406c032de9015363588785617113dfb76ac/nonebot_plugin_localstore-0.7.4.tar.gz", hash = "sha256:85ddc13814bfcd484ab311306823651390020bf44f4fb4733b343a58e72723ce", size = 5535, upload-time = "2025-03-01T12:54:04.077Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7b/c8/0fcb2c6d994579e53342cbf11bf9326ddfab010d1a8063e1fc0cc19c13bf/nonebot_plugin_localstore-0.7.4-py3-none-any.whl", hash = "sha256:3b08030878eadcdd8b9ce3d079da0dc2d0e41dc91f0b2d8cf7fa862a27de9090", size = 6963, upload-time = "2025-03-01T12:54:02.137Z" },
-]
-
-[[package]]
-name = "nonebot-plugin-memes-api"
-version = "0.5.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "filetype" },
-    { name = "httpx" },
-    { name = "nonebot-plugin-alconna" },
-    { name = "nonebot-plugin-localstore" },
-    { name = "nonebot-plugin-orm" },
-    { name = "nonebot-plugin-uninfo" },
-    { name = "nonebot2" },
-    { name = "python-dateutil" },
-    { name = "pyyaml" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/1f/81037b8d5c76e420b0d7b2e6f364963878544d3972ad6ae8700a5ad3a36f/nonebot_plugin_memes_api-0.5.1.tar.gz", hash = "sha256:c8385cf5cb8d47e6e185c93c62f09f2dddeaf18fe9a0c9f3a5e0761a0788db8b", size = 26400, upload-time = "2025-04-15T11:02:38.869Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1b/d7/2504527105bb066993da39a31ed25f3e3aad3bb225ccb7d9e075023016b8/nonebot_plugin_memes_api-0.5.1-py3-none-any.whl", hash = "sha256:c8de1122bbedd150f261ac9a6d5204231d7ca5c9cdca6469733c3159cbca0338", size = 34040, upload-time = "2025-04-15T11:02:37.583Z" },
 ]
 
 [[package]]
