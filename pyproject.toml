@@ -52,6 +52,7 @@ dependencies = [
     "nonebot-plugin-exe-code @ git+https://github.com/wyf7685/nonebot-plugin-exe-code.git",
     "nonebot-plugin-werewolf @ git+https://github.com/wyf7685/nonebot-plugin-werewolf.git",
     "nonebot-plugin-zssm @ git+https://github.com/wyf7685/nonebot-plugin-zssm.git",
+    "nonebot-plugin-filehost>=1.1.1",
 ]
 
 [dependency-groups]
