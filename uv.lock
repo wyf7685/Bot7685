@@ -479,7 +479,7 @@ requires-dist = [
     { name = "nonebot-plugin-skland", specifier = ">=0.2.1" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.7.2" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.1" },
-    { name = "nonebot-plugin-wakatime", git = "https://github.com/wyf7685/nonebot-plugin-wakatime.git?rev=fix%2Fargot" },
+    { name = "nonebot-plugin-wakatime", specifier = ">=0.2.7" },
     { name = "nonebot-plugin-werewolf", git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" },
     { name = "nonebot-plugin-wordcloud", specifier = ">=0.9.0" },
     { name = "nonebot-plugin-zssm", git = "https://github.com/wyf7685/nonebot-plugin-zssm.git" },
@@ -1962,8 +1962,8 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-wakatime"
-version = "0.2.6"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-wakatime.git?rev=fix%2Fargot#8fd08fd45695e84a7d9a85650ecf482bca5e33e1" }
+version = "0.2.7"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "expiringdictx" },
     { name = "httpx" },
@@ -1975,6 +1975,10 @@ dependencies = [
     { name = "nonebot-plugin-session" },
     { name = "nonebot-plugin-user" },
     { name = "nonebot2" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b1/1a/0b8621d4428c93b4ad366c73a07a701be66896bbade9630098e411b42a08/nonebot_plugin_wakatime-0.2.7.tar.gz", hash = "sha256:b8828f217de7d05f5acb72d8e2e2f409b9827d618ffd2fc7f2bfee813bfc8427", size = 9765810, upload-time = "2025-05-17T04:02:00.18Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/d5/b83bd43ade545a59fb0e813362c485ccf75b771f8787124760f3793bac98/nonebot_plugin_wakatime-0.2.7-py3-none-any.whl", hash = "sha256:e2343cd27cbca3a9d524b321218fcbcbc5b488721782ddb2151ae593b8f6673a", size = 8988362, upload-time = "2025-05-17T04:01:58.059Z" },
 ]
 
 [[package]]
