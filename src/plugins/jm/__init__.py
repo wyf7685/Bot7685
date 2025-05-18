@@ -1,5 +1,5 @@
 import functools
-from collections.abc import AsyncGenerator, Awaitable, Callable, Iterable
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Iterable
 from types import EllipsisType
 from typing import Annotated, NoReturn
 
@@ -116,57 +116,60 @@ async def check_album(
     return sorted(checked.items(), key=lambda x: x[0])
 
 
+async def download_task(task: Task[bytes | None], image: jmcomic.JmImageDetail) -> None:
+    try:
+        task.set_result(await download_image(image))
+    except Exception as err:
+        logger.opt(exception=err).warning(f"下载失败: {err}")
+        task.set_result(None)
+
+
+async def send_segs(
+    data: AsyncIterable[tuple[tuple[int, int], bytes | None]],
+    send: Callable[[list[V11Seg]], object],
+) -> None:
+    async for batch in abatched(data, 20):
+        segs = [
+            V11Seg.node_custom(
+                user_id=10086,
+                nickname=f"P_{p}_{i}",
+                content=V11Msg(V11Seg.image(raw))
+                if raw is not None
+                else "[图片下载失败]",
+            )
+            for (p, i), raw in batch
+        ]
+        st, ed = batch[0][0], batch[-1][0]
+        logger.opt(colors=True).info(f"开始发送合并转发: <c>{st}</c> - <c>{ed}</c>")
+        send(segs)
+
+
 async def send_album_forward(
     album: jmcomic.JmAlbumDetail,
     send: SendFunc,
-    batch_size: int,
+    batch_size: int = 8,
 ) -> None:
     pending = [
         ((p, i), image)
         for p, photo in await check_album(album)
         for i, image in enumerate(photo, 1)
     ]
+    running: list[tuple[tuple[int, int], Task[bytes | None]]] = []
 
-    async def download(task: Task[bytes | None], image: jmcomic.JmImageDetail) -> None:
-        try:
-            task.set_result(await download_image(image))
-        except Exception as err:
-            logger.opt(exception=err).warning(f"下载失败: {err}")
-            task.set_result(None)
+    def put() -> None:
+        key, image = pending.pop(0)
+        tg.start_soon(download_task, task := Task[bytes | None](), image)
+        running.append((key, task))
 
     async def iter_images() -> AsyncGenerator[tuple[tuple[int, int], bytes | None]]:
-        running: list[tuple[tuple[int, int], Task[bytes | None]]] = []
-
-        def put_one() -> None:
-            key, image = pending.pop(0)
-            tg.start_soon(download, task := Task[bytes | None](), image)
-            running.append((key, task))
-
         for _ in range(min(batch_size, len(pending))):
-            put_one()
+            put()
 
         while running:
             key, task = running.pop(0)
             yield (key, await task.wait())
             if pending:
-                put_one()
-
-    async def send_segs() -> None:
-        async for batch in abatched(iter_images(), 20):
-            segs = [
-                V11Seg.node_custom(
-                    user_id=10086,
-                    nickname=f"P_{p}_{i}",
-                    content=V11Msg(V11Seg.image(raw))
-                    if raw is not None
-                    else "图片下载失败",
-                )
-                for (p, i), raw in batch
-            ]
-            logger.opt(colors=True).info(
-                f"开始发送合并转发: <c>{batch[0][0]}</c> - <c>{batch[-1][0]}</c>"
-            )
-            tg.start_soon(send, segs)
+                put()
 
     msg = UniMessage.text(
         f"ID: {album.id}\n"
@@ -177,7 +180,7 @@ async def send_album_forward(
     )
     async with anyio.create_task_group() as tg:
         tg.start_soon(functools.partial(msg.send, reply_to=True))
-        tg.start_soon(send_segs)
+        tg.start_soon(send_segs, iter_images(), functools.partial(tg.start_soon, send))
 
 
 @matcher.assign("album_id", parameterless=[Depends(check_lagrange)])
@@ -209,7 +212,7 @@ async def _(
 
     async def send_forward() -> None:
         try:
-            await send_album_forward(album, send, 8)
+            await send_album_forward(album, send)
         finally:
             tg.cancel_scope.cancel()
 
