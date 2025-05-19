@@ -17,13 +17,13 @@ class H(Highlight): ...
 
 @patcher
 def patch_event(self: Event) -> str:
-    return f"[{self.get_event_name()}]: {H.apply(self)}"
+    return f"[{H.event_type(self.get_event_name())}]: {H.apply(self)}"
 
 
 @patcher
 def patch_private_message_event(self: PrivateMessageEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"Message {H.id(self.message_id)} from "
         f"{H.id(self.get_user_id())}"
         f"@[<y>{self.event.message.chat_type}</y>:"
@@ -35,7 +35,7 @@ def patch_private_message_event(self: PrivateMessageEvent) -> str:
 @patcher
 def patch_group_message_event(self: GroupMessageEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"Message {H.id(self.message_id)} "
         f"from {H.id(self.get_user_id())}"
         f"@[<y>{self.event.message.chat_type}</y>:"
@@ -72,12 +72,13 @@ class P2PChatEnteredEvent(NoticeEvent):
 
     @functools.cached_property
     def last_message_create_time(self) -> dt.datetime:
-        return dt.datetime.fromtimestamp(int(self.event.last_message_create_time))  # noqa: DTZ006
+        timestamp = float(self.event.last_message_create_time) / 1000
+        return dt.datetime.fromtimestamp(timestamp)  # noqa: DTZ006
 
     @override
     def get_log_string(self) -> str:
         return (
-            f"[{self.get_event_name()}]: "
+            f"[{H.event_type(self.get_event_name())}]: "
             f"{H.id(self.get_user_id())}"
             f"@[<y>p2p</y>:{H.id(self.event.chat_id)}] entered chat, "
             f"last message: {H.id(self.event.last_message_id)} "

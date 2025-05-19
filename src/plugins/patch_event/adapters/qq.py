@@ -20,13 +20,13 @@ class H(Highlight):
 
 @patcher
 def patch_event(self: Event) -> str:
-    return f"[{H.apply(self.__type__)}] {H.apply(self)}"
+    return f"[{H.apply(self.__type__)}]: {H.apply(self)}"
 
 
 @patcher
 def patch_c2c_message_create_event(self: C2CMessageCreateEvent) -> str:
     return (
-        f"[{H.apply(self.__type__)}] "
+        f"[{H.apply(self.__type__)}]: "
         f"Message {H.id(escape_tag(self.id))} "
         f"from {H.id(self.author.id)}: "
         f"{H.apply(self.get_message())}"
@@ -36,7 +36,7 @@ def patch_c2c_message_create_event(self: C2CMessageCreateEvent) -> str:
 @patcher
 def patch_group_at_message_create_event(self: GroupAtMessageCreateEvent) -> str:
     return (
-        f"[{H.apply(self.__type__)}] "
+        f"[{H.apply(self.__type__)}]: "
         f"Message {H.id(escape_tag(self.id))} "
         f"from {H.id(self.author.member_openid)}"
         f"@[Group:{H.id(self.group_openid)}]: "
@@ -52,7 +52,7 @@ def patch_ready_event(self: ReadyEvent) -> str:
         else H.id(self.user.id)
     )
     return (
-        f"[{H.apply(self.__type__)}] "
+        f"[{H.apply(self.__type__)}]: "
         f"Bot {name} ready: "
         f"session={H.repr(self.session_id, 'b', 'e')}, "
         f"shard={H.repr(self.shard, 'b', 'e')}"

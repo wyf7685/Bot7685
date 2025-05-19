@@ -39,13 +39,13 @@ class H(Highlight[MessageSegment]):
 
 @patcher
 def patch_event(self: Event) -> str:
-    return f"[{self.get_event_name()}]: {H.apply(self)}"
+    return f"[{H.event_type(self.get_event_name())}]: {H.apply(self)}"
 
 
 @patcher
 def patch_private_message_created_event(self: PrivateMessageCreatedEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"Message {H.id(self.msg_id)} "
         f"from {H.user(self.user)}: "
         f"{H.apply(self.get_message())}"
@@ -55,7 +55,7 @@ def patch_private_message_created_event(self: PrivateMessageCreatedEvent) -> str
 @patcher
 def patch_private_message_deleted_event(self: PrivateMessageDeletedEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"Message {H.id(self.msg_id)} "
         f"from {H.user(self.user)} "
         f"deleted"
@@ -65,7 +65,7 @@ def patch_private_message_deleted_event(self: PrivateMessageDeletedEvent) -> str
 @patcher
 def patch_public_message_created_event(self: PublicMessageCreatedEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"Message {H.id(self.msg_id)} "
         f"from {H.user(self.user, self.member)}"
         f"@[Group:{H.scene(self.channel)}]: "
@@ -76,7 +76,7 @@ def patch_public_message_created_event(self: PublicMessageCreatedEvent) -> str:
 @patcher
 def patch_public_message_deleted_event(self: PublicMessageDeletedEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"Message {H.id(self.msg_id)} "
         f"from {H.user(self.user, self.member)}"
         f"@[Group:{H.scene(self.channel)}] "

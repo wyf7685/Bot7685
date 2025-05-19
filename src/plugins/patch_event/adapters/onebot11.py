@@ -169,13 +169,13 @@ class H(Highlight[MessageSegment, Message]):
 
 @patcher
 def patch_event(self: Event) -> str:
-    return f"[{self.get_event_name()}]: {H.apply(model_dump(self))}"
+    return f"[{H.event_type(self.get_event_name())}]: {H.apply(self)}"
 
 
 @patcher
 def patch_private_message_event(self: PrivateMessageEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"Message {H.id(self.message_id)} "
         f"from {H.user(self.sender)}: "
         f"{H.apply(self.original_message)}"
@@ -185,7 +185,7 @@ def patch_private_message_event(self: PrivateMessageEvent) -> str:
 @patcher
 def patch_group_message_event(self: GroupMessageEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"Message {H.id(self.message_id)} "
         f"from {H.user(self.sender, self.group_id)}"
         f"@{H.group(self.group_id)}: "
@@ -196,7 +196,7 @@ def patch_group_message_event(self: GroupMessageEvent) -> str:
 @patcher
 def patch_friend_recall_notice_event(self: FriendRecallNoticeEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"Message {H.id(self.message_id)} "
         f"from {H.user(self.user_id)} "
         f"deleted"
@@ -206,7 +206,7 @@ def patch_friend_recall_notice_event(self: FriendRecallNoticeEvent) -> str:
 @patcher
 def patch_group_recall_notice_event(self: GroupRecallNoticeEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"Message {H.id(self.message_id)} "
         f"from {H.user(self.user_id, self.group_id)}"
         f"@{H.group(self.group_id)} "
@@ -222,7 +222,7 @@ def patch_notify_event(self: NotifyEvent) -> str:
 
 
 def poke_napcat(self: PokeNotifyEvent, raw_info: list[dict[str, str]]) -> str:
-    text = f"[{self.get_event_name()}]: "
+    text = f"[{H.event_type(self.get_event_name())}]: "
     user = [self.user_id, self.target_id]
 
     if self.group_id is not None:
@@ -242,7 +242,7 @@ def poke_napcat(self: PokeNotifyEvent, raw_info: list[dict[str, str]]) -> str:
 
 def poke_lagrange(self: PokeNotifyEvent, action: str, suffix: str) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"{f'{H.group(self.group_id)} ' if self.group_id else ''}"
         f"{H.user(self.user_id, self.group_id)} {action} "
         f"{H.user(self.target_id, self.group_id)} {suffix}"
@@ -264,7 +264,7 @@ def patch_poke_notify_event(self: PokeNotifyEvent) -> str:
 @patcher
 def patch_group_decrease_notice_event(self: GroupDecreaseNoticeEvent) -> str:
     result = (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"GroupDecrease[{self.sub_type}] "
         f"{H.user(self.user_id, self.group_id)}"
         f"@{H.group(self.group_id)} "
@@ -278,7 +278,7 @@ def patch_group_decrease_notice_event(self: GroupDecreaseNoticeEvent) -> str:
 @patcher
 def patch_group_increase_notice_event(self: GroupIncreaseNoticeEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"GroupIncrease[{self.sub_type}] "
         f"{H.user(self.user_id, self.group_id)}"
         f"@{H.group(self.group_id)} "
@@ -289,7 +289,7 @@ def patch_group_increase_notice_event(self: GroupIncreaseNoticeEvent) -> str:
 @patcher
 def patch_friend_request_event(self: FriendRequestEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"FriendRequest {H.user(self.user_id)} "
         f"with flag={H.id(self.flag)}"
     )
@@ -298,7 +298,7 @@ def patch_friend_request_event(self: FriendRequestEvent) -> str:
 @patcher
 def patch_group_request_event(self: GroupRequestEvent) -> str:
     return (
-        f"[{self.get_event_name()}]: "
+        f"[{H.event_type(self.get_event_name())}]: "
         f"GroupRequest[{self.sub_type}] "
         f"{H.user(self.user_id, self.group_id)}"
         f"@{H.group(self.group_id)} "
@@ -355,7 +355,7 @@ class PrivateMessageSentEvent(MessageSentEvent):  # NapCat
     @override
     def get_log_string(self) -> str:
         return (
-            f"[{self.get_event_name()}]: "
+            f"[{H.event_type(self.get_event_name())}]: "
             f"Message {H.id(self.message_id)} to "
             f"{H.user(self.target_id)} "
             f"{H.apply(self.message)}"
@@ -370,7 +370,7 @@ class GroupMessageSentEvent(MessageSentEvent):  # NapCat
     @override
     def get_log_string(self) -> str:
         return (
-            f"[{self.get_event_name()}]: "
+            f"[{H.event_type(self.get_event_name())}]: "
             f"Message {H.id(self.message_id)} "
             f"to {H.group(self.group_id)} "
             f"{H.apply(self.message)}"
@@ -407,7 +407,7 @@ class ReactionAddNoticeEvent(ReactionNoticeEvent):  # Lagrange
     @override
     def get_log_string(self) -> str:
         return (
-            f"[{self.get_event_name()}]: "
+            f"[{H.event_type(self.get_event_name())}]: "
             f"Reaction <y>{self.code}</y> added to {H.id(self.message_id)} "
             f"(current <y>{self.count}</y>) "
             f"by {H.user(self.operator_id, self.group_id)}"
@@ -422,7 +422,7 @@ class ReactionRemoveNoticeEvent(ReactionNoticeEvent):  # Lagrange
     @override
     def get_log_string(self) -> str:
         return (
-            f"[{self.get_event_name()}]: "
+            f"[{H.event_type(self.get_event_name())}]: "
             f"Reaction <y>{self.code}</y> removed from {H.id(self.message_id)} "
             f"(current <y>{self.count}</y>) "
             f"by {H.user(self.operator_id, self.group_id)}"

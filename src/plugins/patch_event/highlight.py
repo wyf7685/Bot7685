@@ -162,3 +162,8 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
             if name is not None
             else cls.id(id)
         )
+
+    @classmethod
+    def event_type(cls, event_type: str) -> str:
+        parts = event_type.split(".")
+        return ".".join(f"<lg>{part}</lg>" for part in parts)
