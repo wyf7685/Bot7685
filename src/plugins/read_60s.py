@@ -7,7 +7,7 @@ from msgspec import json as msgjson
 from nonebot import require
 from nonebot.compat import type_validate_python
 from nonebot.log import logger
-from nonebot.plugin import PluginMetadata
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from pydantic import BaseModel, Field
 
 require("nonebot_plugin_alconna")
@@ -34,7 +34,7 @@ __plugin_meta__ = PluginMetadata(
     description="每日60S读世界",
     usage="每日60S读世界",
     type="application",
-    supported_adapters={"~onebot.v11"},
+    supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
 )
 
 config_file = get_plugin_data_file("read_60s.json")
@@ -60,7 +60,7 @@ def read_config() -> list[Read60sConfig]:
     try:
         return type_validate_python(
             list[Read60sConfig],
-            config_file.read_text(encoding="utf-8"),
+            msgjson.decode(config_file.read_bytes()),
         )
     except Exception as e:
         logger.opt(colors=True).warning(f"读取配置失败: {e}")
