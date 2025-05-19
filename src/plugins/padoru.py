@@ -1,13 +1,13 @@
-from anyio import Path
-from nonebot import on_fullmatch
-from nonebot.adapters.onebot.v11 import Bot, MessageSegment
+from pathlib import Path
 
-PADORU_MP3 = Path("data/padoru.mp3")
+from nonebot import require
 
-padoru = on_fullmatch("padoru")
+require("nonebot_plugin_alconna")
+from nonebot_plugin_alconna import Command, Voice
 
-
-@padoru.handle()
-async def _(_: Bot) -> None:
-    data = await PADORU_MP3.read_bytes()
-    await padoru.send(MessageSegment.record(data))
+if (PADORU_MP3 := Path("data/padoru.mp3")).exists():
+    matcher = (
+        Command("padoru", help_text="padoru")
+        .action(lambda: Voice(raw=PADORU_MP3.read_bytes()))
+        .build()
+    )
