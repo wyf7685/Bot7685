@@ -15,7 +15,12 @@ from pydantic import BaseModel, Field
 
 from src.plugins.cache import cache_with
 
-render_markdown = cache_with(str, namespace="todo_list:md_render", key=hash)(md_to_pic)
+render_markdown = cache_with(
+    str,
+    namespace="todo_list:md_render",
+    key=hash,
+    pickle=True,
+)(md_to_pic)
 
 
 class Todo(BaseModel):
