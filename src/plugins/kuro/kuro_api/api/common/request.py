@@ -2,7 +2,6 @@
 
 import contextlib
 import dataclasses
-import json
 import warnings
 from typing import ClassVar, Literal, cast, dataclass_transform, final, override
 
@@ -32,7 +31,7 @@ class Request[R: ValidResponseData]:
     @override
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-        _ = dataclasses.dataclass(cls)
+        dataclasses.dataclass(cls)
 
     def dump(self) -> dict[str, object]:
         return msgjson.decode(msgjson.encode(dataclasses.asdict(self)))  # wtf
@@ -60,17 +59,19 @@ class Request[R: ValidResponseData]:
             except httpx.HTTPError as err:
                 raise ApiRequestFailed(str(err)) from err
 
+            data: dict[str, object]
             try:
-                data: dict[str, object] = response.raise_for_status().json()
-            except (httpx.HTTPStatusError, json.JSONDecodeError) as err:
+                data = msgjson.decode(response.raise_for_status().content)
+            except (httpx.HTTPStatusError, ValueError) as err:
                 raise ApiRequestFailed(str(response.status_code)) from err
 
+        # some fking api return json string in data field
         if isinstance(obj := data.get("data"), str):
             with contextlib.suppress(Exception):
                 data["data"] = msgjson.decode(obj)
 
         try:
-            return self._get_type_adapter().validate_python(data, strict=False)
+            return self._get_type_adapter().validate_python(data)
         except ValueError as err:
             raise ApiResponseValidationFailed(
                 f"接口返回值校验失败:\n{err}", data

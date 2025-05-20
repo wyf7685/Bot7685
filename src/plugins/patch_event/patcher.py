@@ -1,15 +1,11 @@
 import inspect
-from typing import Protocol, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Protocol, cast
 
 import nonebot
 from nonebot.adapters import Event
 
-
-class PatcherCall[T: Event](Protocol):
-    def __call__(  # sourcery skip: instance-method-first-arg-name
-        _,  # noqa: N805  # pyright: ignore[reportSelfClsParameterName]
-        self: T,
-    ) -> str: ...
+type PatcherCall[T: Event] = Callable[[T], str]
 
 
 class PatcherHandle[T: Event](Protocol):
@@ -34,6 +30,9 @@ def patcher[T: Event](call: PatcherCall[T]) -> PatcherHandle[T]:
     cls: type[T] = inspect.get_annotations(call)["self"]
     assert issubclass(cls, Event)
     original = cls.get_log_string
+    if TYPE_CHECKING:
+        call = original  # copy signature(?)
+
     module_name = cls.__module__.replace("nonebot.adapters.", "~")
     colored = f"<m>{module_name}</m>.<g>{cls.__name__}</g>.<y>get_log_string</y>"
 

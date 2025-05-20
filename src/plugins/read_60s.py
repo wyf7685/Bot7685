@@ -1,4 +1,5 @@
 import contextlib
+import functools
 from collections.abc import Iterable
 from typing import Any
 
@@ -48,7 +49,7 @@ class Read60sConfig(BaseModel):
     time: Time
     target_data: dict[str, Any]
 
-    @property
+    @functools.cached_property
     def target(self) -> Target:
         return Target.load(self.target_data)
 
