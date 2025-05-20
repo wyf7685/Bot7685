@@ -10,6 +10,6 @@ _✨ Bot7685 by wyf7685 ✨_
 [![basedpyright - checked](https://img.shields.io/badge/basedpyright-checked-42b983)](https://docs.basedpyright.com)
 
 [![wakatime](https://wakatime.com/badge/user/b097681b-c224-44ec-8e04-e1cf71744655/project/673e4e12-44ca-45d5-9a9f-8eba554c9ecc.svg)](https://wakatime.com/badge/user/b097681b-c224-44ec-8e04-e1cf71744655/project/673e4e12-44ca-45d5-9a9f-8eba554c9ecc)
-![badge](https://img.shields.io/badge/works%20on-my%20machine-green)
+![works on my machine](https://img.shields.io/badge/works%20on-my%20machine-green)
 
 </div>
