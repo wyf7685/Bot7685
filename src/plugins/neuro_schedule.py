@@ -36,7 +36,11 @@ class Config(BaseModel):
     @classmethod
     def load(cls, *, use_cache: bool = True) -> Self:
         if cls._cache_ is None or not use_cache:
-            raw = cls._file_.read_bytes()
+            if cls._file_.exists():
+                raw = cls._file_.read_bytes()
+            else:
+                cls._file_.write_text("{}", encoding="utf-8")
+                raw = "{}"
             cls._cache_ = cls.model_validate(msgjson.decode(raw))
         return cls._cache_
 
