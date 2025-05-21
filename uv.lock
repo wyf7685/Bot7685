@@ -416,15 +416,14 @@ dependencies = [
     { name = "nonebot-plugin-chatrecorder" },
     { name = "nonebot-plugin-emojimix" },
     { name = "nonebot-plugin-exe-code" },
-    { name = "nonebot-plugin-filehost" },
     { name = "nonebot-plugin-ghtiles" },
     { name = "nonebot-plugin-htmlrender" },
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm", extra = ["asyncpg", "postgresql"] },
     { name = "nonebot-plugin-picstatus" },
-    { name = "nonebot-plugin-session" },
     { name = "nonebot-plugin-skland" },
     { name = "nonebot-plugin-uninfo" },
+    { name = "nonebot-plugin-user" },
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot-plugin-wakatime" },
     { name = "nonebot-plugin-werewolf" },
@@ -469,15 +468,14 @@ requires-dist = [
     { name = "nonebot-plugin-chatrecorder", specifier = ">=0.7.0" },
     { name = "nonebot-plugin-emojimix", specifier = ">=0.4.0" },
     { name = "nonebot-plugin-exe-code", git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" },
-    { name = "nonebot-plugin-filehost", specifier = ">=1.1.1" },
     { name = "nonebot-plugin-ghtiles", specifier = ">=0.1.4" },
     { name = "nonebot-plugin-htmlrender", specifier = ">=0.6.5" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
     { name = "nonebot-plugin-orm", extras = ["asyncpg", "postgresql"], specifier = ">=0.7.7" },
     { name = "nonebot-plugin-picstatus", specifier = ">=2.1.2" },
-    { name = "nonebot-plugin-session", specifier = ">=0.3.2" },
     { name = "nonebot-plugin-skland", specifier = ">=0.2.1" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.7.2" },
+    { name = "nonebot-plugin-user", specifier = "==0.4.4" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.1" },
     { name = "nonebot-plugin-wakatime", specifier = ">=0.2.7" },
     { name = "nonebot-plugin-werewolf", git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" },
@@ -1736,19 +1734,6 @@ dependencies = [
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot2" },
     { name = "tarina" },
-]
-
-[[package]]
-name = "nonebot-plugin-filehost"
-version = "1.1.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "nonebot2", extra = ["fastapi"] },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/92/9eec2789ca2b5fb4519acb476d056bd778a1bc4a3d7fc028ab719dc5d11e/nonebot_plugin_filehost-1.1.1.tar.gz", hash = "sha256:47d677a04321ccc57d4368cb447cc857b964d40b5e09fcdf4ec6a0ac7110b7c4", size = 6089, upload-time = "2024-03-01T02:58:03.619Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/d0/ebdf825493bfcf2ca3cc79521e536034424503684a33d98e6cbf84dd9e5c/nonebot_plugin_filehost-1.1.1-py3-none-any.whl", hash = "sha256:e77a1eb6de1b15aad1f4fa05566fbf05e07822ffcfe3def11a48a84cbb17e022", size = 7386, upload-time = "2024-03-01T02:58:01.74Z" },
 ]
 
 [[package]]

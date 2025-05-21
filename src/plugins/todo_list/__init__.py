@@ -6,7 +6,7 @@ from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_localstore")
-require("nonebot_plugin_session")
+require("nonebot_plugin_user")
 require("nonebot_plugin_waiter")
 from nonebot_plugin_alconna import (
     Alconna,
@@ -32,7 +32,7 @@ __plugin_meta__ = PluginMetadata(
     type="application",
     supported_adapters=inherit_supported_adapters(
         "nonebot_plugin_alconna",
-        "nonebot_plugin_session",
+        "nonebot_plugin_user",
         "nonebot_plugin_waiter",
     ),
 )

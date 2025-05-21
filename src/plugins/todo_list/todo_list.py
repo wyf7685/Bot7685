@@ -4,13 +4,12 @@ from datetime import datetime
 from typing import Annotated
 
 import anyio
-from nonebot.adapters import Bot, Event
 from nonebot.compat import type_validate_json
 from nonebot.params import Depends
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_localstore import get_plugin_data_dir
-from nonebot_plugin_session import SessionIdType, extract_session
+from nonebot_plugin_user import User
 from pydantic import BaseModel, Field
 
 from src.plugins.cache import cache_with
@@ -36,18 +35,18 @@ class Todo(BaseModel):
 
 
 class TodoList:
-    session_id: str
+    user_id: int
     todo: list[Todo]
     current: Todo | None
 
-    def __init__(self, session_id: str, todo: list[Todo]) -> None:
-        self.session_id = session_id
+    def __init__(self, user_id: int, todo: list[Todo]) -> None:
+        self.user_id = user_id
         self.todo = todo
         self.current = None
 
     async def save(self) -> None:
         self.sort()
-        fp = anyio.Path(get_plugin_data_dir()) / f"{self.session_id}.json"
+        fp = anyio.Path(get_plugin_data_dir()) / f"{self.user_id}.json"
         data = json.dumps(
             [i.model_dump(mode="json") for i in self.todo],
             ensure_ascii=False,
@@ -102,15 +101,15 @@ class TodoList:
         self.current = None
 
 
-async def _user_todo(bot: Bot, event: Event) -> TodoList:
-    session_id = extract_session(bot, event).get_id(SessionIdType.USER)
-    fp = anyio.Path(get_plugin_data_dir()) / f"{session_id}.json"
+async def _user_todo(user: User) -> TodoList:
+    user_id = user.id
+    fp = anyio.Path(get_plugin_data_dir()) / f"{user_id}.json"
     if not await fp.exists():
         await fp.write_text("[]")
-        return TodoList(session_id, [])
+        return TodoList(user_id, [])
 
     data = type_validate_json(list[Todo], await fp.read_text(encoding="utf-8"))
-    return TodoList(session_id, data)
+    return TodoList(user_id, data)
 
 
 UserTodo = Annotated[TodoList, Depends(_user_todo)]

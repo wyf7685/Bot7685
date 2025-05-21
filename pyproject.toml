@@ -25,10 +25,10 @@ dependencies = [
     "nonebot-plugin-localstore>=0.7.4",
     "nonebot-plugin-orm[asyncpg,postgresql]>=0.7.7",
     "nonebot-plugin-picstatus>=2.1.2",
-    "nonebot-plugin-session>=0.3.2",
     "nonebot-plugin-skland>=0.2.1",
     # "nonebot-plugin-skland-arksign[sm-local]>=0.8.0",
     "nonebot-plugin-uninfo>=0.7.2",
+    "nonebot-plugin-user==0.4.4",
     "nonebot-plugin-waiter>=0.8.1",
     "nonebot-plugin-wakatime>=0.2.7",
     "nonebot-plugin-wordcloud>=0.9.0",
@@ -43,7 +43,7 @@ dependencies = [
     "jmcomic>=2.5.38",
     "msgspec[toml,yaml]>=0.19.0",
     "paramiko>=3.5.0",
-    "playwright==1.52.0",                       # pinned in docker/Dockerfile
+    "playwright==1.52.0", # pinned in docker/Dockerfile
     "pydantic>=2.11.4,<2.12",
     "tarina>=0.6.8",
     "tencentcloud-sdk-python-dnspod>=3.0.1354",
@@ -51,7 +51,6 @@ dependencies = [
     "nonebot-plugin-exe-code @ git+https://github.com/wyf7685/nonebot-plugin-exe-code.git",
     "nonebot-plugin-werewolf @ git+https://github.com/wyf7685/nonebot-plugin-werewolf.git",
     "nonebot-plugin-zssm @ git+https://github.com/wyf7685/nonebot-plugin-zssm.git",
-    "nonebot-plugin-filehost>=1.1.1",
 ]
 
 [dependency-groups]

@@ -9,7 +9,6 @@ from nonebot.typing import T_State
 from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
-require("nonebot_plugin_session")
 from nonebot_plugin_alconna import MsgTarget, message_reaction
 
 from .bubble_check import check_bubble_word
@@ -19,10 +18,7 @@ __plugin_meta__ = PluginMetadata(
     description="自动回应",
     usage="自动回应",
     type="application",
-    supported_adapters=inherit_supported_adapters(
-        "nonebot_plugin_alconna",
-        "nonebot_plugin_session",
-    ),
+    supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
 )
 
 
