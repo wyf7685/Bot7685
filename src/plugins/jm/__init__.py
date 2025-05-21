@@ -1,3 +1,4 @@
+import contextlib
 import functools
 from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Iterable
 from types import EllipsisType
@@ -147,6 +148,7 @@ async def send_segs(
 async def send_album_forward(
     album: jmcomic.JmAlbumDetail,
     send: SendFunc,
+    recall: Callable[[], Awaitable[object]],
     batch_size: int = 8,
 ) -> None:
     pending = [
@@ -179,6 +181,7 @@ async def send_album_forward(
         f"页数: {len(pending)}"
     )
     async with anyio.create_task_group() as tg:
+        tg.start_soon(recall)
         tg.start_soon(functools.partial(msg.send, reply_to=True))
         tg.start_soon(send_segs, iter_images(), functools.partial(tg.start_soon, send))
 
@@ -189,7 +192,7 @@ async def _(
     album_id: int,
     send: Annotated[SendFunc, Depends(send_func)],
 ) -> None:
-    await UniMessage(f"开始 {album_id} 的下载任务...").send(reply_to=True)
+    receipt = await UniMessage(f"开始 {album_id} 的下载任务...").send(reply_to=True)
 
     try:
         album = await get_album_detail(album_id)
@@ -210,9 +213,14 @@ async def _(
             if msg is not None and msg.strip() in words:
                 await UniMessage(f"中止 {album_id} 的下载任务").finish(reply_to=True)
 
+    async def recall() -> None:
+        if receipt.recallable:
+            with contextlib.suppress(ActionFailed):
+                await receipt.recall()
+
     async def send_forward() -> None:
         try:
-            await send_album_forward(album, send)
+            await send_album_forward(album, send, recall)
         finally:
             tg.cancel_scope.cancel()
 
