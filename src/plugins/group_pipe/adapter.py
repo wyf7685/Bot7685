@@ -1,5 +1,6 @@
 import abc
-from collections.abc import AsyncGenerator, Callable
+import functools
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from typing import ClassVar, Self, cast, overload
 
 from nonebot.adapters import Bot, Event, Message, MessageSegment
@@ -7,9 +8,14 @@ from nonebot_plugin_alconna.uniseg import Segment, Target, UniMessage
 
 type _M = Message[MessageSegment[_M]]
 type ConverterPred = Callable[[MessageSegment[_M]], bool]
-type ConverterCall[TC: MessageConverter, TMS: MessageSegment] = Callable[
-    [TC, TMS], AsyncGenerator[Segment]
-]
+type ConverterCall[TC: MessageConverter, TMS: MessageSegment] = (
+    Callable[[TC, TMS], AsyncGenerator[Segment]]
+    | Callable[[TC, TMS], Awaitable[Segment | None]]
+)
+type BoundConverterCall[TMS: MessageSegment] = (
+    Callable[[TMS], AsyncGenerator[Segment]]
+    | Callable[[TMS], Awaitable[Segment | None]]
+)
 
 CONVERTERS: dict[str | None, type["MessageConverter[Bot, _M]"]] = {}
 SENDERS: dict[str | None, type["MessageSender[Bot]"]] = {}
@@ -54,11 +60,11 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
 
     def _find_fn(
         self, seg: MessageSegment
-    ) -> Callable[[MessageSegment], AsyncGenerator[Segment]] | None:
+    ) -> BoundConverterCall[MessageSegment] | None:
         for call in self._converter_:
             preds: tuple[ConverterPred, ...] = getattr(call, "__predicates__", ())
             if any(pred(seg) for pred in preds):
-                return lambda seg: call(self, seg)  # pyright:ignore[reportUnknownLambdaType]
+                return functools.partial(call, self)  # pyright:ignore[reportReturnType]
         return None
 
 

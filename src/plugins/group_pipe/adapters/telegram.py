@@ -13,7 +13,7 @@ from nonebot_plugin_alconna import uniseg as u
 from src.plugins.upload_cos import upload_cos
 
 from ..adapter import mark
-from ..utils import download_url, guess_url_type, make_generator, webm_to_gif
+from ..utils import download_url, guess_url_type, webm_to_gif
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
@@ -81,12 +81,10 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         return u.Text(f"[reply:{src_msg_id}]")
 
     @mark("mention")
-    @make_generator
     async def mention(self, segment: MessageSegment) -> u.Segment:
         return u.Text(segment.data["text"])
 
     @mark("sticker", "photo")
-    @make_generator
     async def sticker(self, segment: MessageSegment) -> u.Segment:
         file_id = segment.data["file"]
         file_path, url = await self.get_file_info(file_id)
@@ -111,7 +109,6 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         return u.Image(url=url, mimetype=info.mime)
 
     @mark("document", "video")
-    @make_generator
     async def document(self, segment: MessageSegment) -> u.Segment:
         file_id = segment.data["file"]
         file_path, url = await self.get_file_info(file_id)
@@ -136,7 +133,6 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         )
 
     @mark("reply")
-    @make_generator
     async def reply(self, segment: MessageSegment) -> u.Segment:
         return await self.convert_reply(segment.data["message_id"])
 
