@@ -1,6 +1,6 @@
 import datetime as dt
-from pathlib import Path
 import math
+from pathlib import Path
 
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
 
@@ -8,32 +8,33 @@ template_dir = Path(__file__).parent / "templates"
 
 
 def _get_count_color(count: int, total: int) -> str:
+    # sourcery skip: assign-if-exp, reintroduce-else
+
     if count == 0:
         return "#ebedf0"
-    
+
     # Normalize the count to a value between 0 and 1
-    normalized = count / total
-    
     # Apply an exponential function to the normalized value
     # We use e^(k * normalized - k), where k controls the steepness
-    # Here, k=3 is chosen to create a noticeable nonlinear effect
-    exp_value = math.exp(3 * normalized - 3)
-    
+    exp_value = math.exp(count / total * 3 - 3)
+
     # Map the exponential value to color buckets
-    if exp_value < 0.2:
+    if exp_value < 0.1:
         return "#9be9a8"
-    elif exp_value < 0.4:
+    if exp_value < 0.3:
         return "#40c463"
-    elif exp_value < 0.6:
+    if exp_value < 0.5:
         return "#30a14e"
-    else:
-        return "#216e39"
+    return "#216e39"
 
 
 def construct_cell(
     data: dict[dt.date, int], days: int = 30
-) -> tuple[dict[tuple[int, int], str], int]:
-    last_date = max(data.keys()) if data else dt.datetime.now().date()
+) -> tuple[dict[tuple[int, int], str], int, int]:
+    if not data:  # 一般来说不会...吧?
+        return {}, 0, 0
+
+    last_date = max(data.keys())
     cells = [(x := 0, last_date.weekday(), data[last_date])]
     for day in range(1, days):
         date = last_date - dt.timedelta(days=day)
@@ -43,16 +44,17 @@ def construct_cell(
     max_cnt = max(c for _, _, c in cells)
     max_x = max(x for x, _, _ in cells)
     result = {(x, y): _get_count_color(c, max_cnt) for x, y, c in cells}
-    return result, max_x
+    return result, max_x, max_cnt
 
 
 async def render_my(data: dict[dt.date, int], days: int = 30) -> bytes:
-    cells, max_x = construct_cell(data, days)
+    cells, max_x, max_cnt = construct_cell(data, days)
     container_width = (max(max_x, 5) + 1) * 16
     templates_data = {
         "min": min,
         "cells": cells,
         "max_x": max_x,
+        "max_cnt": max_cnt,
         "container_width": container_width,
     }
 

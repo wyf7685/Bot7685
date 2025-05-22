@@ -56,6 +56,21 @@
       height: 12px;
       border-radius: 2px;
     }
+
+    .color-scale-text {
+      display: flex;
+      justify-content: space-between;
+      /* 颜色标尺项的总宽度为 5 * 12px (项目) + 4 * 4px (间隙) = 60 + 16 = 76px */
+      /* 我们希望文本跨越此宽度并像颜色标尺项一样居中 */
+      width: 76px;
+      /* 这应与颜色项的视觉宽度相匹配 */
+      margin: 4px auto 0;
+      /* 顶部小边距，auto 用于水平居中 */
+      font-size: 12px;
+      /* 使文本更小 */
+      color: #586069;
+      /* 辅助信息的常用文本颜色 */
+    }
   </style>
 </head>
 
@@ -83,6 +98,12 @@
       <div class="color-item" style="background-color: #40c463;"></div>
       <div class="color-item" style="background-color: #30a14e;"></div>
       <div class="color-item" style="background-color: #216e39;"></div>
+    </div>
+
+    <div class="color-scale-text">
+      <span>0</span>
+      <span>&rarr;</span>
+      <span>{{ max_cnt }}</span>
     </div>
   </div>
 </body>
