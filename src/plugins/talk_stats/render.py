@@ -1,5 +1,6 @@
 import datetime as dt
 from pathlib import Path
+import math
 
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
 
@@ -9,16 +10,24 @@ template_dir = Path(__file__).parent / "templates"
 def _get_count_color(count: int, total: int) -> str:
     if count == 0:
         return "#ebedf0"
-
-    match count * 4 // total:
-        case 0:  # (0, 0.25)
-            return "#9be9a8"
-        case 1:  # [0.25, 0.5)
-            return "#40c463"
-        case 2:  # [0.5, 0.75)
-            return "#30a14e"
-        case _:  # [0.75, 1]
-            return "#216e39"
+    
+    # Normalize the count to a value between 0 and 1
+    normalized = count / total
+    
+    # Apply an exponential function to the normalized value
+    # We use e^(k * normalized - k), where k controls the steepness
+    # Here, k=3 is chosen to create a noticeable nonlinear effect
+    exp_value = math.exp(3 * normalized - 3)
+    
+    # Map the exponential value to color buckets
+    if exp_value < 0.2:
+        return "#9be9a8"
+    elif exp_value < 0.4:
+        return "#40c463"
+    elif exp_value < 0.6:
+        return "#30a14e"
+    else:
+        return "#216e39"
 
 
 def construct_cell(
