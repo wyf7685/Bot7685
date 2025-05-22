@@ -8,6 +8,7 @@ on:
       - ".github/workflows/lint.yml"
       - "pyproject.toml"
       - "uv.lock"
+  pull_request:
 
 jobs:
   ruff:
