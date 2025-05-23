@@ -23,36 +23,22 @@ class Config(BaseModel):
     redis: RedisConfig | None = None
 
 
-_cache: BaseCache | None = None
-_cache_pickle: BaseCache | None = None
+_redis_config = get_plugin_config(Config).redis
 
 
 def _get_cache(*, pickle: bool) -> BaseCache:
-    global _cache_pickle, _cache
-
-    if pickle and _cache_pickle:
-        return _cache_pickle
-    if not pickle and _cache:
-        return _cache
-
     serializer = PickleSerializer() if pickle else None
-    if redis_config := get_plugin_config(Config).redis:
-        cache = RedisCache(
+    return (
+        RedisCache(
             serializer,
-            endpoint=redis_config.host,
-            port=redis_config.port,
-            db=redis_config.db,
-            password=redis_config.password,
+            endpoint=_redis_config.host,
+            port=_redis_config.port,
+            db=_redis_config.db,
+            password=_redis_config.password,
         )
-    else:
-        cache = SimpleMemoryCache(serializer)
-
-    if pickle:
-        _cache_pickle = cache
-    else:
-        _cache = cache
-
-    return cache
+        if _redis_config is not None
+        else SimpleMemoryCache(serializer)
+    )
 
 
 _METHOD_WITH_NS = {
@@ -71,15 +57,15 @@ _METHOD_WITH_NS = {
 class CacheWrapper[KT, VT]:
     def __init__(self, namespace: str, *, pickle: bool) -> None:
         self.__namespace = f"bot7685:{namespace}:"
-        self.__pickle = pickle
+        self.__cache = _get_cache(pickle=pickle)
+        get_driver().on_shutdown(self.__cache.close)
 
     def __getattr__(self, name: str, /) -> object:
-        func = getattr(_get_cache(pickle=self.__pickle), name)
-        return (
-            functools.partial(func, namespace=self.__namespace)
-            if name in _METHOD_WITH_NS
-            else func
-        )
+        func = getattr(self.__cache, name)
+        if name in _METHOD_WITH_NS:
+            func = functools.partial(func, namespace=self.__namespace)
+        setattr(self, name, func)
+        return func
 
 
 class get_cache[KT, VT]:  # noqa: N801
@@ -111,11 +97,3 @@ def cache_with[R, *Ts](
         return wrapper
 
     return decorator
-
-
-@get_driver().on_shutdown
-async def dispose() -> None:
-    if _cache:
-        await _cache.close()
-    if _cache_pickle:
-        await _cache_pickle.close()

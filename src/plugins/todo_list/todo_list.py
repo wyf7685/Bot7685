@@ -1,5 +1,4 @@
 import json
-from collections.abc import Generator, Iterable
 from datetime import datetime
 from typing import Annotated
 
@@ -74,29 +73,17 @@ class TodoList:
         self.todo.remove(self.get(index))
         self.current = None
 
-    def check(self, index: int) -> None:
-        self.get(index).checked = True
-
-    def uncheck(self, index: int) -> None:
-        self.get(index).checked = False
-
-    def pin(self, index: int) -> None:
-        self.get(index).pinned = True
-
-    def unpin(self, index: int) -> None:
-        self.get(index).pinned = False
-
-    async def render(self, todo: Iterable[Todo] | None = None) -> bytes:
+    async def render(self, todo: list[Todo] | None = None) -> bytes:
         md = "### 📝 Todo List\n"
         for i, t in enumerate(todo or self.todo, 1):
             md += f"{t.show(i)}\n"
         return await render_markdown(md)
 
-    def checked(self) -> Generator[Todo]:
-        yield from (todo for todo in self.todo if todo.checked)
+    def checked(self) -> list[Todo]:
+        return [todo for todo in self.todo if todo.checked]
 
-    def clear(self) -> None:
-        for todo in [*self.checked()]:
+    def clear_checked(self) -> None:
+        for todo in self.checked():
             self.todo.remove(todo)
         self.current = None
 
@@ -113,3 +100,11 @@ async def _user_todo(user: User) -> TodoList:
 
 
 UserTodo = Annotated[TodoList, Depends(_user_todo)]
+
+
+async def _selected_todo(user_todo: UserTodo, index: int) -> Todo:
+    await user_todo.check_index(index)
+    return user_todo.get(index)
+
+
+SelectedTodo = Annotated[Todo, Depends(_selected_todo)]

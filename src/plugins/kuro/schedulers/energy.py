@@ -28,9 +28,10 @@ async def auto_energy() -> None:
         if need_push and await push_cache.get(kuro_token.user_id, True):
             try:
                 await handler.push_msg(await get_target(kuro_token))
-                await push_cache.set(kuro_token.user_id, False)
             except Exception as err:
                 logger.warning(f"鸣潮结波晶片推送出错: {err}")
+            else:
+                await push_cache.set(kuro_token.user_id, False)
         elif not need_push:
             await push_cache.set(kuro_token.user_id, True)
 
