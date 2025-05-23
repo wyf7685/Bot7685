@@ -3,6 +3,7 @@ import math
 from pathlib import Path
 
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
+from nonebot_plugin_uninfo.model import User
 
 template_dir = Path(__file__).parent / "templates"
 
@@ -70,4 +71,46 @@ async def render_my(data: dict[dt.date, int], days: int = 30) -> bytes:
         await page.set_content(html, wait_until="networkidle")
         if calendar_element := await page.query_selector("#calendar-container"):
             return await calendar_element.screenshot(type="png")
+        return await page.screenshot(full_page=True, type="png")
+
+
+async def render_scene(data: dict[str, tuple[User, int]], days: int = 7) -> bytes:
+    sorted_data = sorted(data.items(), key=lambda x: x[1][1], reverse=True)
+    total_messages = sum(count for _, (_, count) in sorted_data)
+    chart_data: list[dict[str, str | int | None]] = []
+    colors = ["#34d058", "#28a745", "#22863a", "#176f2c", "#165c26"]
+
+    for idx, (user_id, (user, count)) in enumerate(sorted_data):
+        percentage = (count / total_messages * 100) if total_messages > 0 else 0
+        item = {
+            "name": user.name,
+            "id": user_id,
+            "avatar": user.avatar,
+            "count": count,
+            "width": f"{percentage:.1f}%",
+            "color": colors[idx % len(colors)],
+        }
+        chart_data.append(item)
+
+    view_height = 150 + len(chart_data) * 55  # 基础高度 + 每行高度
+    viewport = {"width": 600, "height": view_height}
+
+    templates_data = {
+        "chart_data": chart_data,
+        "total_messages": total_messages,
+        "days": days,
+        "container_height": view_height - 50,  # 容器高度略小于视图
+    }
+
+    html = await template_to_html(
+        template_path=str(template_dir),
+        template_name="scene.html.jinja2",
+        filters=None,
+        **templates_data,
+    )
+
+    async with get_new_page(viewport=viewport) as page:
+        await page.set_content(html, wait_until="networkidle")
+        if chart_element := await page.query_selector("#chart-container"):
+            return await chart_element.screenshot(type="png")
         return await page.screenshot(full_page=True, type="png")
