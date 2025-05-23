@@ -78,10 +78,11 @@ async def render_scene(data: dict[str, tuple[User, int]], days: int = 7) -> byte
     sorted_data = sorted(data.items(), key=lambda x: x[1][1], reverse=True)
     total_messages = sum(count for _, (_, count) in sorted_data)
     chart_data: list[dict[str, str | int | None]] = []
-    colors = ["#34d058", "#28a745", "#22863a", "#176f2c", "#165c26"]
+    colors = ["#34d058", "#28a745", "#248e3d", "#197d31", "#1d7130"]
 
+    percentage_max = max(count for _, (_, count) in sorted_data) * 1.2
     for idx, (user_id, (user, count)) in enumerate(sorted_data):
-        percentage = (count / total_messages * 100) if total_messages > 0 else 0
+        percentage = (count / percentage_max * 100) if percentage_max > 0 else 0
         item = {
             "name": user.name,
             "id": user_id,
