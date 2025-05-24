@@ -28,21 +28,21 @@ alc = Alconna(
     "talk_stats",
     Subcommand(
         "my",
-        Option("days|--days|-d", Args["days?#天数", int]),
+        Option("--days|-d", Args["days?#天数", int]),
         help_text="查询我的水群瓷砖",
     ),
     Subcommand(
         "scene",
         Option("days|--days|-d", Args["days?#天数", int]),
-        Option("num|--num|-n", Args["num?#人数", int]),
+        Option("--num|-n", Args["num?#人数", int]),
         help_text="查询群聊活跃度排行",
     ),
     Subcommand(
         "schedule",
         Subcommand(
             "add",
-            Option("num|--num|-n", Args["num?#人数", int]),
-            Args["hour#小时", int]["minute#分钟", int],
+            Args["hour?#小时", int]["minute?#分钟", int],
+            Option("--num|-n", Args["num?#人数", int]),
             help_text="添加定时任务",
         ),
         Subcommand("clear", help_text="清空定时任务"),
@@ -92,7 +92,7 @@ async def assign_schedule_add(
 
     add_job(session, target, num, hour, minute)
     await UniMessage.text(
-        f"已添加定时任务，每日{hour}点{minute}分发送群聊活跃度排行"
+        f"已添加定时任务，每日{hour}点{minute}分发送群聊活跃度排行前{num}名"
     ).finish()
 
 

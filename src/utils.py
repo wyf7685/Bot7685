@@ -1,29 +1,29 @@
+from collections.abc import Sequence
 from pathlib import Path
 
 from msgspec import json as msgjson
-from nonebot.compat import TypeAdapter
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
 
-class ConfigFile[T]:
+class ConfigFile[T: BaseModel | Sequence[BaseModel]]:
     _file: Path
     _ta: TypeAdapter[T]
-    _default: object
+    _default: T
 
-    def __init__(self, file: Path, type_: type[T], default: object) -> None:
+    def __init__(self, file: Path, type_: type[T], default: T) -> None:
         self._file = file
         self._ta = TypeAdapter(type_)
         self._default = default
 
     def load(self) -> T:
         if not self._file.exists():
-            self._file.write_bytes(msgjson.encode(self._default))
+            self._file.write_bytes(msgjson.encode(self._ta.dump_python(self._default)))
             return self._ta.validate_python(self._default)
 
         return self._ta.validate_python(msgjson.decode(self._file.read_bytes()))
 
     def save(self, data: T) -> None:
-        encoded = msgjson.encode(self._ta.validate_python(data))
+        encoded = msgjson.encode(self._ta.dump_python(data))
         self._file.write_bytes(encoded)
 
 
