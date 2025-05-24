@@ -1725,12 +1725,13 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-exe-code"
 version = "1.1.5"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git#846b0b159738c0637c8864420b04ea611590b69d" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git#1b8c944a39ae84047d732efefa89e64b46805ae4" }
 dependencies = [
     { name = "anyio" },
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-localstore" },
-    { name = "nonebot-plugin-session" },
+    { name = "nonebot-plugin-uninfo" },
+    { name = "nonebot-plugin-user" },
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot2" },
     { name = "tarina" },
