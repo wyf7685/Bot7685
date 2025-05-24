@@ -19,11 +19,11 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import UniMessage
-from nonebot_plugin_waiter import prompt, suggest
+from nonebot_plugin_waiter.unimsg import prompt, suggest
 
 require("src.plugins.cache")
 
-from .todo_list import UserTodo
+from .todo_list import SelectedTodo, UserTodo
 
 __plugin_meta__ = PluginMetadata(
     name="todo_list",
@@ -99,16 +99,12 @@ async def handle_todo_remove(user_todo: UserTodo, index: int) -> None:
 
 
 @todo.assign("get")
-async def handle_todo_get(user_todo: UserTodo, index: int) -> None:
-    await user_todo.check_index(index)
-    todo = user_todo.get(index)
+async def handle_todo_get(todo: SelectedTodo) -> None:
     await UniMessage.text(todo.content).finish()
 
 
 @todo.assign("set")
-async def handle_todo_set(user_todo: UserTodo, index: int) -> None:
-    await user_todo.check_index(index)
-    todo = user_todo.get(index)
+async def handle_todo_set(user_todo: UserTodo, todo: SelectedTodo) -> None:
     await UniMessage.text(f"当前选中的 todo:\n{todo.content}").send()
 
     text = await prompt("请输入新的 todo 内容")
@@ -121,43 +117,42 @@ async def handle_todo_set(user_todo: UserTodo, index: int) -> None:
 
 
 @todo.assign("check")
-async def handle_todo_check(user_todo: UserTodo, index: int) -> None:
-    await user_todo.check_index(index)
-    user_todo.check(index)
+async def handle_todo_check(todo: SelectedTodo) -> None:
+    todo.checked = True
 
 
 @todo.assign("uncheck")
-async def handle_todo_uncheck(user_todo: UserTodo, index: int) -> None:
-    await user_todo.check_index(index)
-    user_todo.uncheck(index)
+async def handle_todo_uncheck(todo: SelectedTodo) -> None:
+    todo.checked = False
 
 
 @todo.assign("pin")
-async def handle_todo_pin(user_todo: UserTodo, index: int) -> None:
-    await user_todo.check_index(index)
-    user_todo.pin(index)
+async def handle_todo_pin(todo: SelectedTodo) -> None:
+    todo.pinned = True
 
 
 @todo.assign("unpin")
-async def handle_todo_unpin(user_todo: UserTodo, index: int) -> None:
-    await user_todo.check_index(index)
-    user_todo.unpin(index)
+async def handle_todo_unpin(todo: SelectedTodo) -> None:
+    todo.pinned = False
 
 
 @todo.assign("clear")
 async def handle_todo_clear(user_todo: UserTodo) -> None:
-    prompt = await (
+    if not (checked := user_todo.checked()):
+        await UniMessage("当前没有已完成的待办事项").finish()
+
+    prompt = (
         UniMessage.text("将要删除的待办事项:\n")
-        .image(raw=await user_todo.render(user_todo.checked()))
+        .image(raw=await user_todo.render(checked))
         .text("\n确认删除? [y|N]")
-    ).export()
+    )
     resp = await suggest(prompt, ["y", "n"], timeout=30, retry=3)
 
     if resp is None:
         await UniMessage("删除确认超时，已取消").finish()
 
     if resp.extract_plain_text().strip().lower() == "y":
-        user_todo.clear()
+        user_todo.clear_checked()
 
 
 @todo.handle()

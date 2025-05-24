@@ -25,13 +25,7 @@ from src.plugins.upload_cos import upload_cos
 
 from ..adapter import mark
 from ..database import KVCacheDAO
-from ..utils import (
-    async_client,
-    check_url_ok,
-    guess_url_type,
-    make_generator,
-    solve_url_302,
-)
+from ..utils import async_client, check_url_ok, guess_url_type, solve_url_302
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
@@ -189,7 +183,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                 u.Image(url=detail["preview"]),
             ]
 
-        return [u.Text(f"[json消息:{data}]")]
+        return [u.Text(f"[json消息:{json.dumps(data)}]")]
 
     async def url_to_video(self, url: str) -> u.Video | None:
         key = self.get_cos_key(f"{hash(url)}.mp4")
@@ -203,12 +197,10 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         return u.Video(url=url)
 
     @mark("at")
-    @make_generator
     async def at(self, segment: MessageSegment) -> u.Segment:
         return u.Text(f"[at:{segment.data['qq']}]")
 
     @mark("image")
-    @make_generator
     async def image(self, segment: MessageSegment) -> u.Segment | None:
         if not (url := segment.data.get("url")):
             return None
@@ -223,12 +215,10 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         return u.Image(url=url)
 
     @mark("reply")
-    @make_generator
     async def reply(self, segment: MessageSegment) -> u.Segment:
         return await self.convert_reply(segment.data["id"])
 
     @mark("face")
-    @make_generator
     async def face(self, segment: MessageSegment) -> u.Segment:
         if isinstance((raw := segment.data.get("raw")), dict) and (
             text := raw.get("faceText")
@@ -260,7 +250,6 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
                 yield seg
 
     @mark("video")
-    @make_generator
     async def video(self, segment: MessageSegment) -> u.Segment | None:
         if not (url := segment.data.get("url")):
             return None

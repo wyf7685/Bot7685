@@ -1,7 +1,7 @@
 from collections.abc import Awaitable, Callable, Iterable
-from typing import Literal, Protocol, overload
+from typing import Literal, overload
 
-class Cache[KT, VT](Protocol):
+class Cache[KT, VT]:
     async def add(self, key: KT, value: VT, ttl: int = ...) -> None: ...
     @overload
     async def get(self, key: KT) -> VT | None: ...

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>群聊活跃度</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f6f8fa;
+      color: #24292e;
+    }
+
+    .container {
+      margin: 20px auto;
+      background-color: #ffffff;
+      padding: 24px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      width: 550px;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #24292e;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #586069;
+      margin-bottom: 20px;
+    }
+
+    .chart {
+      margin-top: 24px;
+    }
+
+    .chart-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+      height: 40px;
+      /* 增加高度以适应用户ID显示 */
+    }
+
+    .user-info {
+      width: 120px;
+      /* 增加宽度以适应更长的用户名和ID */
+      display: flex;
+      padding-right: 15px;
+    }
+
+    .user-avatar-container {
+      margin-right: 8px;
+    }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      background-color: #e1e4e8;
+    }
+
+    .user-text {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .user-name {
+      font-size: 14px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.4;
+    }
+
+    .user-id {
+      font-size: 10px;
+      color: #8b949e;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      line-height: 1.2;
+    }
+
+    .bar-container {
+      flex-grow: 1;
+      height: 24px;
+      background-color: #f6f8fa;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .bar {
+      height: 100%;
+      border-radius: 3px;
+      min-width: 4px;
+      /* 确保即使是很小的值也能看到一点柱子 */
+      transition: width 0.5s ease;
+    }
+
+    .count {
+      margin-left: 10px;
+      min-width: 80px;
+      font-size: 14px;
+      color: #586069;
+    }
+
+    .footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #586069;
+      text-align: right;
+    }
+
+    /* 确保图片加载失败时不会影响布局 */
+    .user-avatar-fallback {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background-color: #e1e4e8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #586069;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container" id="chart-container" style="height: {{ container_height }}px;">
+    <div class="title">群聊活跃度排行</div>
+    <div class="subtitle">过去 {{ days }} 天内共 {{ total_messages }} 条消息</div>
+
+    <div class="chart">
+      {% for item in chart_data %}
+      <div class="chart-row">
+        <div class="user-info">
+          <div class="user-avatar-container">
+            {% if item.avatar %}
+            <img class="user-avatar" src="{{ item.avatar }}" alt="{{ item.name }}"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="user-avatar-fallback" style="display:none;">{{ item.name[0] }}</div>
+            {% else %}
+            <div class="user-avatar-fallback">{{ item.name[0] }}</div>
+            {% endif %}
+          </div>
+          <div class="user-text">
+            <span class="user-name" title="{{ item.name }}">{{ item.name }}</span>
+            <span class="user-id" title="{{ item.id }}">{{ item.id }}</span>
+          </div>
+        </div>
+        <div class="bar-container">
+          <div class="bar" style="width: {{ item.width }}; background-color: {{ item.color }};"></div>
+        </div>
+        <div class="count">{{ item.count }} 条</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="footer">
+      统计周期: {{ days }} 天
+    </div>
+  </div>
+
+  <script>
+    // 确保头像加载失败时能够显示用户名首字母的备用显示
+    document.addEventListener('DOMContentLoaded', () => {
+      const avatars = document.querySelectorAll('.user-avatar');
+      avatars.forEach(avatar => {
+        avatar.addEventListener('error', () => {
+          avatar.style.display = 'none';
+          avatar.nextElementSibling.style.display = 'flex';
+        });
+      });
+    });
+  </script>
+</body>
+
+</html>

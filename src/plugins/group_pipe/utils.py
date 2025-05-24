@@ -2,7 +2,7 @@ import contextlib
 import copy
 import pathlib
 import shutil
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable
+from collections.abc import AsyncGenerator, AsyncIterable
 from typing import NamedTuple
 
 import anyio
@@ -166,13 +166,3 @@ def _repr_uniseg(seg: Segment) -> str:
 
 def repr_unimsg[TS: Segment](msg: UniMessage[TS]) -> str:
     return "[" + ", ".join(_repr_uniseg(seg) for seg in msg) + "]"
-
-
-def make_generator[**P, R](
-    call: Callable[P, Awaitable[R | None]],
-) -> Callable[P, AsyncGenerator[R]]:
-    async def _gen(*args: P.args, **kwargs: P.kwargs) -> AsyncGenerator[R]:
-        if (result := await call(*args, **kwargs)) is not None:
-            yield result
-
-    return _gen

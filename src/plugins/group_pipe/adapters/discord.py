@@ -23,7 +23,7 @@ from nonebot_plugin_alconna import uniseg as u
 from src.plugins.upload_cos import upload_cos
 
 from ..adapter import mark
-from ..utils import guess_url_type, make_generator
+from ..utils import guess_url_type
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
@@ -62,7 +62,6 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         yield u.Text(str(segment))
 
     @mark(AttachmentSegment)
-    @make_generator
     async def attachment(self, segment: AttachmentSegment) -> u.Segment:
         attachment = segment.data["attachment"]
         if url := self.attachment_url.get(attachment):
@@ -78,13 +77,11 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         return u.Text(f"[image:{attachment.filename}]")
 
     @mark(ReferenceSegment)
-    @make_generator
     async def reference(self, segment: ReferenceSegment) -> u.Segment | None:
         msg_id = segment.data["reference"].message_id
         return await self.convert_reply(msg_id) if msg_id is not UNSET else None
 
     @mark(TimestampSegment)
-    @make_generator
     async def timestamp(self, segment: TimestampSegment) -> u.Segment:
         t = dt.datetime.fromtimestamp(segment.data["timestamp"], dt.UTC)
         return u.Text(f"[time:{t.astimezone(UTC8):%Y-%m-%d %H:%M:%S}]")

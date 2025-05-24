@@ -1,4 +1,5 @@
-from collections.abc import AsyncIterable
+import inspect
+from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Any, ClassVar, cast, override
 
 import nonebot
@@ -60,7 +61,7 @@ class MessageConverter[
             return u.Reply(reply_id)
         return u.Text(f"[reply:{src_msg_id}]")
 
-    async def _convert_default(self, segment: TMS) -> AsyncIterable[u.Segment]:
+    async def _convert_default(self, segment: TMS) -> AsyncGenerator[u.Segment]:
         if fn := u.get_builder(self.src_bot):
             result = fn.convert(segment)
             if isinstance(result, list):
@@ -80,8 +81,12 @@ class MessageConverter[
             fn = self._find_fn(segment) or self._convert_default
 
             try:
-                async for seg in fn(segment):
-                    result.append(seg)
+                if inspect.isasyncgenfunction(fn):
+                    async for seg in fn(segment):
+                        result.append(seg)
+                elif inspect.iscoroutinefunction(fn):  # noqa: SIM102
+                    if seg := await fn(segment):
+                        result.append(seg)
             except Exception as err:
                 self.logger.opt(exception=err).warning("处理消息段失败")
                 result.append(u.Text(f"[error:{segment.type}]"))

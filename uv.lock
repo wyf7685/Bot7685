@@ -475,7 +475,7 @@ requires-dist = [
     { name = "nonebot-plugin-picstatus", specifier = ">=2.1.2" },
     { name = "nonebot-plugin-skland", specifier = ">=0.2.1" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.7.2" },
-    { name = "nonebot-plugin-user", specifier = "==0.4.4" },
+    { name = "nonebot-plugin-user", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.1" },
     { name = "nonebot-plugin-wakatime", specifier = ">=0.2.7" },
     { name = "nonebot-plugin-werewolf", git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" },
@@ -1903,18 +1903,18 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-user"
-version = "0.4.4"
+version = "0.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "expiringdictx" },
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-orm" },
-    { name = "nonebot-plugin-session" },
+    { name = "nonebot-plugin-uninfo" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/87/50/c3959b3b84685f6421571e89236392ac192f586ee331ee8622dcefa37db9/nonebot_plugin_user-0.4.4.tar.gz", hash = "sha256:9066ac63aa3ef9b1c895bdc08aa313b355f942b4d2f214e3d1d4d87e9261d626", size = 9829, upload-time = "2024-10-19T11:57:28.003Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/97/8f/fab3cc5144287ca225cadf2dad797fe0bfaa959e68ee3aebd3df581ef6f6/nonebot_plugin_user-0.5.0.tar.gz", hash = "sha256:fba83360886285cfece97c404ec14db7957d3ea0c78fdfda8bc9dc9e5131ccd2", size = 10562, upload-time = "2025-05-21T08:18:13.299Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/95/7f8369d71d02033c4b9e8a205c063e488728b8e3f95c7c56806a99bf0349/nonebot_plugin_user-0.4.4-py3-none-any.whl", hash = "sha256:cab16b9cf581f80ddb29d6339cb782945a8d12de2f3189ed0d3726415c778062", size = 12589, upload-time = "2024-10-19T11:57:26.452Z" },
+    { url = "https://files.pythonhosted.org/packages/71/b5/0ac913f83c31f643e1f55c937c6ebc80a84a7d09c31c54f79ffd465d4901/nonebot_plugin_user-0.5.0-py3-none-any.whl", hash = "sha256:2f6641893dc2d6365d85a905bc2776330c2d58dc5f58204752a74bdd34ec401a", size = 13895, upload-time = "2025-05-21T08:18:11.758Z" },
 ]
 
 [[package]]

@@ -28,7 +28,7 @@ dependencies = [
     "nonebot-plugin-skland>=0.2.1",
     # "nonebot-plugin-skland-arksign[sm-local]>=0.8.0",
     "nonebot-plugin-uninfo>=0.7.2",
-    "nonebot-plugin-user==0.4.4",
+    "nonebot-plugin-user>=0.5.0",
     "nonebot-plugin-waiter>=0.8.1",
     "nonebot-plugin-wakatime>=0.2.7",
     "nonebot-plugin-wordcloud>=0.9.0",
