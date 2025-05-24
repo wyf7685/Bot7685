@@ -1,13 +1,9 @@
 import contextlib
 import functools
-from collections.abc import Iterable
 from typing import Any
 
 import httpx
-from msgspec import json as msgjson
 from nonebot import require
-from nonebot.compat import type_validate_python
-from nonebot.log import logger
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from pydantic import BaseModel, Field
 
@@ -30,6 +26,7 @@ from nonebot_plugin_localstore import get_plugin_data_file
 
 require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
+from src.utils import ConfigListFile
 
 __plugin_meta__ = PluginMetadata(
     name="read_60s",
@@ -38,8 +35,6 @@ __plugin_meta__ = PluginMetadata(
     type="application",
     supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
 )
-
-config_file = get_plugin_data_file("read_60s.json")
 
 
 class Read60sConfig(BaseModel):
@@ -55,36 +50,7 @@ class Read60sConfig(BaseModel):
         return Target.load(self.target_data)
 
 
-def read_config() -> list[Read60sConfig]:
-    if not config_file.exists():
-        return []
-
-    try:
-        return type_validate_python(
-            list[Read60sConfig],
-            msgjson.decode(config_file.read_bytes()),
-        )
-    except Exception as e:
-        logger.opt(colors=True).warning(f"读取配置失败: {e}")
-        return []
-
-
-def save_config(configs: Iterable[Read60sConfig]) -> None:
-    encoded = msgjson.encode([config.model_dump(mode="json") for config in configs])
-    config_file.write_bytes(encoded)
-
-
-def add_config(target: Target, hour: int, minute: int) -> Read60sConfig:
-    config = Read60sConfig(
-        time=Read60sConfig.Time(hour=hour, minute=minute),
-        target_data=target.dump(),
-    )
-    save_config([*read_config(), config])
-    return config
-
-
-def clear_config_for(target: Target) -> None:
-    save_config(config for config in read_config() if not target.verify(config.target))
+config_file = ConfigListFile(get_plugin_data_file("read_60s.json"), Read60sConfig)
 
 
 async def get_url(api: str) -> str:
@@ -115,7 +81,7 @@ def add_job(config: Read60sConfig) -> None:
         await target.send(message)
 
 
-for config in read_config():
+for config in config_file.load():
     add_job(config)
 
 alc = Alconna(
@@ -143,7 +109,12 @@ async def assign_add(target: MsgTarget, hour: int, minute: int) -> None:
     if not (0 <= hour < 24 and 0 <= minute < 60):
         await UniMessage.text("时间格式错误，请输入正确的时间").finish()
 
-    add_job(add_config(target, hour, minute))
+    config = Read60sConfig(
+        time=Read60sConfig.Time(hour=hour, minute=minute),
+        target_data=target.dump(),
+    )
+    config_file.add(config)
+    add_job(config)
     await UniMessage.text(
         f"已添加定时任务，每日{hour}点{minute}分发送60S读世界"
     ).finish()
@@ -151,13 +122,15 @@ async def assign_add(target: MsgTarget, hour: int, minute: int) -> None:
 
 @matcher.assign("~clear")
 async def assign_clear(target: MsgTarget) -> None:
-    clear_config_for(target)
+    config_file.save(
+        [config for config in config_file.load() if not target.verify(config.target)]
+    )
     await UniMessage.text("已清空当前会话的定时任务").finish()
 
 
 @matcher.assign("~list")
 async def assign_list(target: MsgTarget) -> None:
-    configs = [config for config in read_config() if target.verify(config.target)]
+    configs = [c for c in config_file.load() if target.verify(c.target)]
     if not configs:
         await UniMessage.text("当前会话没有定时任务").finish()
 
