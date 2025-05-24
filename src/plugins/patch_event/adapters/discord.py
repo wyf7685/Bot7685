@@ -52,12 +52,12 @@ class H(Highlight):
 
     @classmethod
     def user(cls, user: User) -> str:
-        return cls._name(user.id, user.global_name or user.username)
+        return cls.name(user.id, user.global_name or user.username)
 
     @classmethod
     def channel(cls, event: EventWithChannel) -> str:
-        guild = cls._name(event.guild_id, find_guild_name(event.guild_id))
-        channel = cls._name(
+        guild = cls.name(event.guild_id, find_guild_name(event.guild_id))
+        channel = cls.name(
             event.channel_id,
             find_channel_name(event.guild_id, event.channel_id),
         )

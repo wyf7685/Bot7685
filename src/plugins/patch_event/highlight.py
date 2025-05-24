@@ -1,12 +1,13 @@
 import datetime
 import functools
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from enum import Enum
 from typing import Any, ClassVar
 
 from nonebot.adapters import Message, MessageSegment
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
+from tarina import LRU
 
 DATETIME_FIELDS = [
     "year",
@@ -19,14 +20,36 @@ DATETIME_FIELDS = [
 ]
 
 
+class _Style:
+    def __getattr__(self, tag: str) -> Callable[[object], str]:
+        tags = tag.split("_")
+        prefix = "".join(f"<{tag}>" for tag in reversed(tags))
+        suffix = "</>" * len(tags)
+        lru = LRU[str, str](16)
+
+        def fn(obj: object) -> str:
+            if (text := str(obj)) not in lru:
+                lru[text] = f"{prefix}{text}{suffix}"
+            return lru[text]
+
+        setattr(self, tag, fn)
+        return fn
+
+
+style = _Style()
+
+
 class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
+    style: ClassVar[_Style] = style
     exclude_value: ClassVar[tuple[object, ...]] = ()
 
     @classmethod
     def repr(cls, data: object, /, *color: str) -> str:
         text = escape_tag(repr(data))
-        for c in reversed(color):
-            text = f"<{c}>{text}</{c}>"
+        if color:
+            prefix = "".join(f"<{tag}>" for tag in reversed(color))
+            suffix = "</>" * len(color)
+            text = f"{prefix}{text}{suffix}"
         return text
 
     @functools.singledispatchmethod
@@ -44,7 +67,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     @functools.cache
     def enum(cls, data: Enum) -> str:
         return (
-            f"<<g>{type(data).__name__}</g>.<le>{data.name}</le>: "
+            f"<{style.g(type(data).__name__)}.{style.le(data.name)}: "
             f"{cls.apply(data.value)}>"
         )
 
@@ -70,7 +93,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
         if isinstance(data, Enum):
             return cls.enum(data)
         text = escape_tag(repr(data))
-        return f"{text[0]}<c>{text[1:-1]}</c>{text[-1]}"
+        return text[0] + style.c(text[1:-1]) + text[-1]
 
     @staticmethod
     def _seq(seq: Iterable[str], bracket: str, /) -> str:
@@ -107,8 +130,8 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     def _(cls, data: datetime.datetime) -> str:
         attrs = [cls.apply(getattr(data, name)) for name in DATETIME_FIELDS]
         if data.tzinfo is not None:
-            attrs.append(f"<lm>{data.tzinfo}</lm>")
-        return f"<g>datetime</g>({', '.join(attrs)})"
+            attrs.append(style.lm(data.tzinfo))
+        return f"{style.g('datetime')}({', '.join(attrs)})"
 
     @register(BaseModel)
     @classmethod
@@ -119,7 +142,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
             for name in model.model_fields
             if (value := getattr(data, name)) not in cls.exclude_value
         )
-        return f"<lm>{model.__name__}</lm>({', '.join(kv)})"
+        return f"{style.lm(model.__name__)}({', '.join(kv)})"
 
     @register(MessageSegment)
     @classmethod
@@ -137,8 +160,8 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     def segment(cls, segment: TMS) -> str:
         return (
             f"<g>{escape_tag(segment.__class__.__name__)}</g>"
-            f"(<i><y>type</y></i>={cls.apply(segment.type)},"
-            f" <i><y>data</y></i>={cls.apply(segment.data)})"
+            f"({style.i_y('type')}={cls.apply(segment.type)},"
+            f" {style.i_y('data')}={cls.apply(segment.data)})"
         )
 
     @classmethod
@@ -149,16 +172,16 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     def id(cls, id: str | int) -> str:
         if isinstance(id, str):
             id = escape_tag(id)
-        return f"<c>{id}</c>"
+        return style.c(id)
 
     @classmethod
     def time(cls, datetime: datetime.datetime) -> str:
-        return f"<y>{datetime:%Y-%m-%d %H:%M:%S}</y>"
+        return style.y(datetime.strftime("%Y-%m-%d %H:%M:%S"))
 
     @classmethod
-    def _name(cls, id: str | int, name: str | None = None) -> str:
+    def name(cls, id: str | int, name: str | None = None) -> str:
         return (
-            f"<y>{escape_tag(name)}</y>({cls.id(id)})"
+            f"{style.y(escape_tag(name))}({cls.id(id)})"
             if name is not None
             else cls.id(id)
         )
@@ -166,4 +189,4 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     @classmethod
     def event_type(cls, event_type: str) -> str:
         parts = event_type.split(".")
-        return ".".join(f"<lg>{part}</lg>" for part in parts)
+        return ".".join(style.lg(part) for part in parts)

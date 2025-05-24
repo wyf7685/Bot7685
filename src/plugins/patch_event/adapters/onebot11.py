@@ -148,7 +148,7 @@ class H(Highlight[MessageSegment, Message]):
         if group is not None:
             user_card_cache[(sender.user_id, group)] = name
 
-        return cls._name(sender.user_id, name)
+        return cls.name(sender.user_id, name)
 
     @classmethod
     def user(cls, user: int | Sender, group: int | None = None) -> str:
@@ -159,12 +159,12 @@ class H(Highlight[MessageSegment, Message]):
         if name is None and (user, None) in user_card_cache:
             name = user_card_cache[(user, None)]
 
-        return cls._name(user, name)
+        return cls.name(user, name)
 
     @classmethod
     def group(cls, group: int) -> str:
         name = (info := group_info_cache.get(group)) and info.group_name
-        return f"[Group:{cls._name(group, name)}]"
+        return f"[Group:{cls.name(group, name)}]"
 
 
 @patcher
@@ -408,7 +408,8 @@ class ReactionAddNoticeEvent(ReactionNoticeEvent):  # Lagrange
     def get_log_string(self) -> str:
         return (
             f"[{H.event_type(self.get_event_name())}]: "
-            f"Reaction <y>{self.code}</y> added to {H.id(self.message_id)} "
+            f"Reaction <y>{self.code}</y> "
+            f"added to {H.id(self.message_id)} "
             f"(current <y>{self.count}</y>) "
             f"by {H.user(self.operator_id, self.group_id)}"
             f"@{H.group(self.group_id)}"
@@ -423,7 +424,8 @@ class ReactionRemoveNoticeEvent(ReactionNoticeEvent):  # Lagrange
     def get_log_string(self) -> str:
         return (
             f"[{H.event_type(self.get_event_name())}]: "
-            f"Reaction <y>{self.code}</y> removed from {H.id(self.message_id)} "
+            f"Reaction <y>{self.code}</y> "
+            f"removed from {H.id(self.message_id)} "
             f"(current <y>{self.count}</y>) "
             f"by {H.user(self.operator_id, self.group_id)}"
             f"@{H.group(self.group_id)}"

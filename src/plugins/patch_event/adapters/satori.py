@@ -22,19 +22,19 @@ class H(Highlight[MessageSegment]):
     @override
     def segment(cls, segment: MessageSegment) -> str:
         return (
-            f"<m>{escape_tag(segment.__class__.__name__)}</m>"
-            f"(<i><y>type</y></i>={cls.apply(segment.type)},"
-            f" <i><y>data</y></i>={cls.apply(segment.data)},"
-            f" <i><y>children</y></i>={cls.apply(segment.children)})"
+            f"{cls.style.m(escape_tag(segment.__class__.__name__))}"
+            f"({cls.style.i_y('type')}={cls.apply(segment.type)},"
+            f" {cls.style.i_y('data')}={cls.apply(segment.data)},"
+            f" {cls.style.i_y('children')}={cls.apply(segment.children)})"
         )
 
     @classmethod
     def user(cls, user: User, member: Member | None = None) -> str:
-        return cls._name(user.id, (member and member.nick) or user.name or user.nick)
+        return cls.name(user.id, (member and member.nick) or user.name or user.nick)
 
     @classmethod
     def scene(cls, scene: Channel | Guild) -> str:
-        return cls._name(scene.id, scene.name)
+        return cls.name(scene.id, scene.name)
 
 
 @patcher

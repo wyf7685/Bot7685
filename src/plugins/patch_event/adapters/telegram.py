@@ -16,12 +16,12 @@ from ..patcher import patcher
 class H(Highlight):
     @classmethod
     def chat(cls, chat: Chat) -> str:
-        return cls._name(chat.id, chat.title)
+        return cls.name(chat.id, chat.title)
 
     @classmethod
     def user(cls, user: User) -> str:
         name = user.first_name + (f" {user.last_name}" if user.last_name else "")
-        return cls._name(user.id, name)
+        return cls.name(user.id, name)
 
 
 @patcher
