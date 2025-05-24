@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
+require("nonebot_plugin_localstore")
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_alconna import (
     Alconna,

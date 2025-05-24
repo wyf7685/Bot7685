@@ -25,7 +25,7 @@ class _Style:
         tags = tag.split("_")
         prefix = "".join(f"<{tag}>" for tag in reversed(tags))
         suffix = "</>" * len(tags)
-        lru = LRU[str, str](16)
+        lru: LRU[str, str] = LRU(16)
 
         def fn(obj: object) -> str:
             if (text := str(obj)) not in lru:
