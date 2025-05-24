@@ -2,11 +2,10 @@ from collections.abc import Callable
 
 
 def apply_gradient_2d(
-    text: str,
+    lines: list[str],
     start: tuple[int, int, int],
     end: tuple[int, int, int],
 ) -> list[str]:
-    lines = text.splitlines()
     h = len(lines)
     w = max(map(len, lines)) if lines else 0
     r1, g1, b1 = start
@@ -60,8 +59,8 @@ ed2 = (71, 203, 209)
 
 def render() -> list[str]:
     split = int(WIDTH * 0.7)
-    part1 = apply_gradient_2d("\n".join(line[:split] for line in LOGO_LINES), st1, ed1)
-    part2 = apply_gradient_2d("\n".join(line[split:] for line in LOGO_LINES), st2, ed2)
+    part1 = apply_gradient_2d([line[:split] for line in LOGO_LINES], st1, ed1)
+    part2 = apply_gradient_2d([line[split:] for line in LOGO_LINES], st2, ed2)
     return [a + b for a, b in zip(part1, part2, strict=True)]
 
 

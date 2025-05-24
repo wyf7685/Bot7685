@@ -47,7 +47,7 @@ async def query_scene(
     session: Session,
     days: int = 7,
     num: int = 5,
-) -> dict[str, tuple[User, int]]:
+) -> list[tuple[User, int]]:
     stop = dt.datetime.now()
     start = stop - dt.timedelta(days=days)
     whereclause = filter_statement(
@@ -72,10 +72,12 @@ async def query_scene(
         .join(UserModel, UserModel.id == SessionModel.user_persist_id)
         .group_by(UserModel.id)
         .order_by(sa.func.count(MessageRecord.id).desc())
-        .limit(num),
+        .limit(num if num > 0 else None),
     )
     data: dict[int, int] = {row[0]: row[1] for row in result}
-    return {
-        m.user_id: (await m.to_user(), data[m.id])
-        for m in await db.scalars(sa.select(UserModel).where(UserModel.id.in_(data)))
-    }
+    return [
+        (await m.to_user(), data[m.id])
+        for m in await db.scalars(
+            sa.select(UserModel).where(UserModel.id.in_(list(data)))
+        )
+    ]
