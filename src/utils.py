@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from msgspec import json as msgjson
@@ -6,30 +6,60 @@ from pydantic import BaseModel, TypeAdapter
 
 
 class ConfigFile[T: BaseModel | Sequence[BaseModel]]:
+    type_: type[T]
     _file: Path
     _ta: TypeAdapter[T]
-    _default: T
+    _default: Callable[[], T]
+    _cache: T | None = None
 
-    def __init__(self, file: Path, type_: type[T], default: T) -> None:
+    def __init__(self, file: Path, type_: type[T], /, default: Callable[[], T]) -> None:
+        self.type_ = type_
         self._file = file
         self._ta = TypeAdapter(type_)
         self._default = default
 
-    def load(self) -> T:
-        if not self._file.exists():
-            self._file.write_bytes(msgjson.encode(self._ta.dump_python(self._default)))
-            return self._ta.validate_python(self._default)
+    def load(self, *, use_cache: bool = True) -> T:
+        if use_cache and self._cache is not None:
+            return self._cache
 
-        return self._ta.validate_python(msgjson.decode(self._file.read_bytes()))
+        if self._file.exists():
+            obj = msgjson.decode(self._file.read_bytes())
+            self._cache = self._ta.validate_python(obj)
+        else:
+            self.save(self._default())
+            assert self._cache is not None
 
-    def save(self, data: T) -> None:
-        encoded = msgjson.encode(self._ta.dump_python(data))
+        return self._cache
+
+    def save(self, data: T | None = None) -> None:
+        self._cache = data or self.load()
+        encoded = msgjson.encode(self._ta.dump_python(self._cache))
         self._file.write_bytes(encoded)
 
 
+class ConfigModelFile[T: BaseModel](ConfigFile[T]):
+    def __init__(
+        self,
+        file: Path,
+        type_: type[T],
+        /,
+        default: Callable[[], T] | None = None,
+    ) -> None:
+        super().__init__(file, type_, default=default or type_)
+
+    @staticmethod
+    def from_model[M: BaseModel](
+        file: Path, /
+    ) -> Callable[[type[M]], "ConfigModelFile[M]"]:
+        def decorator(model: type[M]) -> "ConfigModelFile[M]":
+            return ConfigModelFile[M](file, model)
+
+        return decorator
+
+
 class ConfigListFile[T: BaseModel](ConfigFile[list[T]]):
-    def __init__(self, file: Path, type_: type[T]) -> None:
-        super().__init__(file, list[type_], default=[])
+    def __init__(self, file: Path, type_: type[T],/) -> None:
+        super().__init__(file, list[type_], default=list)
 
     def add(self, item: T) -> None:
         self.save([*self.load(), item])

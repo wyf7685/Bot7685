@@ -5,60 +5,37 @@ from nonebot.internal.matcher import current_bot
 from nonebot.permission import SUPERUSER, Permission
 from nonebot_plugin_localstore import get_plugin_data_file
 from nonebot_plugin_uninfo import Uninfo
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel
 
-DATA_FILE = get_plugin_data_file("trusted.json")
-if not DATA_FILE.exists():
-    DATA_FILE.write_text("{}")
+from src.utils import ConfigModelFile
 
 
+@ConfigModelFile.from_model(get_plugin_data_file("trusted.json"))
 class TrustData(BaseModel):
     user: set[str] = set()
     group: set[str] = set()
 
 
-_ta = TypeAdapter(TrustData)
-_cache: TrustData | None = None
-
-
-def load_trust_data(*, use_cache: bool = True) -> TrustData:
-    global _cache
-    if _cache is None or not use_cache:
-        _cache = _ta.validate_json(DATA_FILE.read_text())
-
-    return _cache
-
-
-def dump_trust_data(data: TrustData) -> None:
-    global _cache
-    _cache = data
-
-    DATA_FILE.write_text(data.model_dump_json(indent=2))
-
-
-type TrustedType = Literal["user", "group"]
-
-
 def set_trusted(
     action: Literal["add", "remove"],
-    type: TrustedType,  # noqa: A002
+    type_: Literal["user", "group"],
     id: str,
 ) -> None:
-    data = load_trust_data(use_cache=False)
-    s = data.user if type == "user" else data.group
+    data = TrustData.load(use_cache=False)
+    s = data.user if type_ == "user" else data.group
     (s.add if action == "add" else s.discard)(f"{current_bot.get().type}:{id}")
-    dump_trust_data(data)
+    TrustData.save(data)
 
 
 def query_trusted(
     adapter: str,
-    type: TrustedType,  # noqa: A002
+    type_: Literal["user", "group"],
     id: str,
     *,
     use_cache: bool = True,
 ) -> bool:
-    data = load_trust_data(use_cache=use_cache)
-    return f"{adapter}:{id}" in (data.user if type == "user" else data.group)
+    data = TrustData.load(use_cache=use_cache)
+    return f"{adapter}:{id}" in (data.user if type_ == "user" else data.group)
 
 
 def TrustedUser(*, use_cache: bool = True) -> Permission:  # noqa: N802

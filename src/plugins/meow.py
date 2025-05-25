@@ -2,11 +2,14 @@ from nonebot import require
 from nonebot.adapters import Bot as BaseBot
 from nonebot.adapters.onebot.v11 import Bot, Message
 from nonebot.plugin import PluginMetadata
+from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, Subcommand, on_alconna
 from nonebot_plugin_localstore import get_plugin_config_file
+
+from src.utils import ConfigModelFile
 
 __plugin_meta__ = PluginMetadata(
     name="meow",
@@ -17,20 +20,17 @@ __plugin_meta__ = PluginMetadata(
 )
 
 
+@ConfigModelFile.from_model(get_plugin_config_file("meow.json"))
+class config(BaseModel):  # noqa: N801
+    word: str = "喵"
+    enabled: bool = False
+
+
 def fix_meow_word(word: str) -> str:
     word = word.rstrip()
     if (ls := word.lstrip()) != word:
         word = f" {ls}"
     return word
-
-
-enabled_flag = get_plugin_config_file("meow.enabled").resolve()
-enabled = enabled_flag.exists()
-word_file = get_plugin_config_file("meow.txt").resolve()
-if not word_file.exists():
-    word_file.write_text(meow_word := "喵")
-else:
-    meow_word = fix_meow_word(word_file.read_text())
 
 
 toggle = on_alconna(
@@ -49,29 +49,22 @@ toggle = on_alconna(
 
 @toggle.assign("enable")
 def handle_meow_enable() -> None:
-    global enabled
-
-    if not enabled:
-        enabled_flag.touch()
-        enabled = True
+    config.load().enabled = True
 
 
 @toggle.assign("disable")
 def handle_meow_disable() -> None:
-    global enabled
-
-    if enabled:
-        enabled_flag.unlink()
-        enabled = False
+    config.load().enabled = False
 
 
 @toggle.assign("set")
 async def handle_meow_set(word: str) -> None:
-    global meow_word
+    config.load().word = fix_meow_word(word)
 
-    word = fix_meow_word(word)
-    word_file.write_text(word)
-    meow_word = word
+
+@toggle.assign("~")
+async def handle_save_config() -> None:
+    config.save()
 
 
 SEND_MSG_API = "send_msg", "send_group_msg", "send_private_msg"
@@ -79,7 +72,7 @@ SEND_MSG_API = "send_msg", "send_group_msg", "send_private_msg"
 
 @BaseBot.on_calling_api
 async def _(bot: BaseBot, api: str, data: dict[str, object]) -> None:
-    if not enabled:
+    if not config.load().enabled:
         return
 
     if not (
@@ -92,6 +85,6 @@ async def _(bot: BaseBot, api: str, data: dict[str, object]) -> None:
 
     if isinstance(message, Message):
         if (seg := message[-1]).type == "text":
-            seg.data["text"] += meow_word
+            seg.data["text"] += config.load().word
     elif isinstance(seg := message[-1], dict) and seg.get("type") == "text":
-        seg["data"]["text"] += meow_word
+        seg["data"]["text"] += config.load().word

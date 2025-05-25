@@ -10,7 +10,7 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 
-from .trust_data import load_trust_data, set_trusted
+from .trust_data import TrustData, set_trusted
 
 alc = Alconna(
     "trust",
@@ -74,7 +74,7 @@ async def remove_group(group: str) -> None:
 async def list_user(bot: Bot) -> None:
     users = [
         user.partition(":")[2]
-        for user in load_trust_data(use_cache=False).user
+        for user in TrustData.load(use_cache=False).user
         if user.startswith(bot.type)
     ]
     await matcher.send(("可信用户\n" + "\n".join(users)) if users else "没有可信用户")
@@ -84,7 +84,7 @@ async def list_user(bot: Bot) -> None:
 async def list_group(bot: Bot) -> None:
     groups = [
         group.partition(":")[2]
-        for group in load_trust_data(use_cache=False).group
+        for group in TrustData.load(use_cache=False).group
         if group.startswith(bot.type)
     ]
     await matcher.send(("可信群组\n" + "\n".join(groups)) if groups else "没有可信群组")
@@ -92,5 +92,5 @@ async def list_group(bot: Bot) -> None:
 
 @matcher.assign("refresh")
 async def refresh() -> None:
-    load_trust_data(use_cache=False)
+    TrustData.load(use_cache=False)
     await matcher.send("已从文件重载数据")
