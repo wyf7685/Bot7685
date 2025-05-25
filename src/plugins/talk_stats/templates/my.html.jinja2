@@ -60,22 +60,81 @@
     .color-scale-text {
       display: flex;
       justify-content: space-between;
-      /* 颜色标尺项的总宽度为 5 * 12px (项目) + 4 * 4px (间隙) = 60 + 16 = 76px */
-      /* 我们希望文本跨越此宽度并像颜色标尺项一样居中 */
       width: 76px;
-      /* 这应与颜色项的视觉宽度相匹配 */
       margin: 4px auto 0;
-      /* 顶部小边距，auto 用于水平居中 */
       font-size: 12px;
-      /* 使文本更小 */
       color: #586069;
-      /* 辅助信息的常用文本颜色 */
+    }
+
+    /* 用户信息样式 */
+    .user-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .user-avatar-container {
+      margin-right: 12px;
+    }
+
+    .user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      background-color: #e1e4e8;
+    }
+
+    .user-avatar-fallback {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #e1e4e8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #586069;
+    }
+
+    .user-text {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .user-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #24292e;
+      margin-bottom: 4px;
+    }
+
+    .user-subtitle {
+      font-size: 14px;
+      color: #586069;
     }
   </style>
 </head>
 
 <body>
   <div class="container" id="calendar-container" style="width: {{ container_width }}px;">
+    <div class="user-info">
+      <div class="user-avatar-container">
+        {% if user.avatar %}
+        <img class="user-avatar" src="{{ user.avatar }}" alt="{{ user.name }}"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="user-avatar-fallback" style="display:none;">{{ user.name[0] if user.name else '?' }}</div>
+        {% else %}
+        <div class="user-avatar-fallback">{{ user.name[0] if user.name else '?' }}</div>
+        {% endif %}
+      </div>
+      <div class="user-text">
+        <div class="user-name">{{ user.name if user.name else user.id }}</div>
+        <div class="user-subtitle">活跃度 · {{ days }}天</div>
+      </div>
+    </div>
+
     <div class="calendar-wrapper">
       <div class="calendar">
         {% for y in range(7) %}
@@ -106,6 +165,19 @@
       <span>{{ max_cnt }}</span>
     </div>
   </div>
+
+  <script>
+    // 确保头像加载失败时能够显示用户名首字母的备用显示
+    document.addEventListener('DOMContentLoaded', () => {
+      const avatars = document.querySelectorAll('.user-avatar');
+      avatars.forEach(avatar => {
+        avatar.addEventListener('error', () => {
+          avatar.style.display = 'none';
+          avatar.nextElementSibling.style.display = 'flex';
+        });
+      });
+    });
+  </script>
 </body>
 
 </html>

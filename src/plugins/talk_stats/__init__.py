@@ -66,9 +66,10 @@ matcher.shortcut(
 
 
 @matcher.assign("my")
-async def assign_my(session: Uninfo, days: int = 60) -> None:
+async def assign_my(session: Uninfo, days: int = 90) -> None:
+    days = max(90, days)
     data = await query_session(session, days)
-    raw = await render_my(data, days)
+    raw = await render_my(data, days, session.user)
     await UniMessage.image(raw=raw).finish(reply_to=True)
 
 

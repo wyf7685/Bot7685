@@ -48,7 +48,7 @@ def construct_cell(
     return result, max_x, max_cnt
 
 
-async def render_my(data: dict[dt.date, int], days: int = 30) -> bytes:
+async def render_my(data: dict[dt.date, int], days: int, user: User) -> bytes:
     cells, max_x, max_cnt = construct_cell(data, days)
     container_width = (max(max_x, 5) + 1) * 16
     templates_data = {
@@ -57,6 +57,8 @@ async def render_my(data: dict[dt.date, int], days: int = 30) -> bytes:
         "max_x": max_x,
         "max_cnt": max_cnt,
         "container_width": container_width,
+        "user": user,
+        "days": days,
     }
 
     html = await template_to_html(

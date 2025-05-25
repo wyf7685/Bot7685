@@ -32,7 +32,7 @@ class ConfigFile[T: BaseModel | Sequence[BaseModel]]:
         return self._cache
 
     def save(self, data: T | None = None) -> None:
-        self._cache = data or self.load()
+        self._cache = data if data is not None else self.load()
         encoded = msgjson.encode(self._ta.dump_python(self._cache))
         self._file.write_bytes(encoded)
 
