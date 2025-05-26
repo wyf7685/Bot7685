@@ -56,7 +56,7 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
         UniMessage.reply(str(reply))
         .at(str(target))
         .text(" 被指控搬史\n")
-        .text("预期禁言 5x(同意人数) 分钟\n\n")
+        .text("预期禁言 (同意人数) 分钟\n\n")
         .text("期限5分钟, 请发表您宝贵的意见")
         .send()
     )
@@ -90,14 +90,14 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
         await UniMessage.text("没有人认为他在搬史, 取消操作").finish(reply_to=True)
 
     await UniMessage.text(
-        f"同意人数: {len(voted)}\n预期禁言{5 * len(voted)} 分钟"
+        f"同意人数: {len(voted)}\n预期禁言{len(voted)} 分钟"
     ).send(reply_to=True)
 
     await bot.delete_msg(message_id=reply)
     await bot.set_group_ban(
         group_id=event.group_id,
         user_id=target,
-        duration=60 * 5 * len(voted),
+        duration=60 * len(voted),
     )
     cnt = add_ban_count(event.group_id, target)
     await (
