@@ -79,10 +79,9 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
     def wait(event: GroupMessageEvent) -> int:
         return event.user_id
 
-    target_vote = False
     with anyio.move_on_after(60 * 5):
         async for user in wait():
-            if target_vote := user == target:
+            if user == target:
                 break
             if user is not None:
                 voted.add(user)
@@ -90,10 +89,9 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
     if not voted:
         await UniMessage.text("没有人认为他在搬史, 取消操作").finish(reply_to=True)
 
-    msg = UniMessage.text(f"同意人数: {len(voted)}\n预期禁言{5 * len(voted)} 分钟")
-    if target_vote:
-        msg = UniMessage.text("被举报者自首, 立即执行\n") + msg
-    await msg.send(reply_to=True)
+    await UniMessage.text(
+        f"同意人数: {len(voted)}\n预期禁言{5 * len(voted)} 分钟"
+    ).send(reply_to=True)
 
     await bot.delete_msg(message_id=reply)
     await bot.set_group_ban(
