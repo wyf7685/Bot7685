@@ -15,7 +15,7 @@ class H(Highlight):
     @Highlight.register(EventType)
     @classmethod
     def _(cls, data: EventType) -> str:
-        return f"<lg>EventType</lg>.<b><e>{data.value}</e></b>"
+        return f"{cls.style.lg('EventType')}.{cls.style.b_e(data.value)}"
 
 
 @patcher
@@ -46,14 +46,9 @@ def patch_group_at_message_create_event(self: GroupAtMessageCreateEvent) -> str:
 
 @patcher
 def patch_ready_event(self: ReadyEvent) -> str:
-    name = (
-        f"<y>{escape_tag(username)}</y>({H.id(self.user.id)})"
-        if (username := self.user.username) is not None
-        else H.id(self.user.id)
-    )
     return (
         f"[{H.apply(self.__type__)}]: "
-        f"Bot {name} ready: "
+        f"Bot {H.name(self.user.id, self.user.username)} ready: "
         f"session={H.repr(self.session_id, 'b', 'e')}, "
         f"shard={H.repr(self.shard, 'b', 'e')}"
     )
