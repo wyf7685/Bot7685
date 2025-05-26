@@ -87,15 +87,14 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
                 voted.add(user)
 
     if not should_ban:
-        await UniMessage.text("没有人认为他在搬史, 被认为清白, 停止操作").finish(reply_to=True)
-        
+        await UniMessage.text("没有人认为他在搬史, 停止操作").finish(reply_to=True)
     await (
         UniMessage.text(f"同意人数: {len(voted)}. 预计禁言{ 5 * len(voted) } 分钟")
         .send()
-    )    
-    
+    )
+    ban_time = 60 * 5 * len(voted)
     await bot.delete_msg(message_id=reply)
-    await bot.set_group_ban(group_id=event.group_id, user_id=target, duration=60 * 5 * len(voted))
+    await bot.set_group_ban(group_id=event.group_id, user_id=target, duration=ban_time)
     cnt = add_ban_count(event.group_id, target)
     await (
         UniMessage.at(str(target))
