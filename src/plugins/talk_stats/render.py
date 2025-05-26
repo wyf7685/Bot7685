@@ -1,9 +1,14 @@
 import datetime as dt
+import functools
 import math
+from collections.abc import Callable
 from pathlib import Path
 
+from nonebot.utils import resolve_dot_notation
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
 from nonebot_plugin_uninfo.model import User
+
+from .config import config
 
 template_dir = Path(__file__).parent / "templates"
 
@@ -29,7 +34,15 @@ def _get_count_color(count: int, total: int) -> str:
     return "#216e39"
 
 
-def construct_cell(
+@functools.cache
+def _get_user_color_fn() -> Callable[[int, int], str]:
+    if config.user_color_fn is None:
+        return _get_count_color
+
+    return resolve_dot_notation(config.user_color_fn, "")
+
+
+def _build_cells(
     data: dict[dt.date, int], days: int = 30
 ) -> tuple[dict[tuple[int, int], str], int, int]:
     if not data:  # 一般来说不会...吧?
@@ -44,12 +57,13 @@ def construct_cell(
         cells.append((x, y, c))
     max_cnt = max(c for _, _, c in cells)
     max_x = max(x for x, _, _ in cells)
-    result = {(x, y): _get_count_color(c, max_cnt) for x, y, c in cells}
+    color_fn = _get_user_color_fn()
+    result = {(x, y): color_fn(c, max_cnt) for x, y, c in cells}
     return result, max_x, max_cnt
 
 
 async def render_my(data: dict[dt.date, int], days: int, user: User) -> bytes:
-    cells, max_x, max_cnt = construct_cell(data, days)
+    cells, max_x, max_cnt = _build_cells(data, days)
     container_width = (max(max_x, 5) + 1) * 16
     templates_data = {
         "min": min,
@@ -75,10 +89,10 @@ async def render_my(data: dict[dt.date, int], days: int, user: User) -> bytes:
         return await page.screenshot(full_page=True, type="png")
 
 
-def construct_chart(data: list[tuple[User, int]]) -> list[dict[str, object]]:
+def _build_chart(data: list[tuple[User, int]]) -> list[dict[str, object]]:
     percentage_max = max(count for _, count in data) * 1.05
-    r1, g1, b1 = 29, 113, 48  # 1d7130
-    r2, g2, b2 = 52, 208, 88  # 34d058
+    r1, g1, b1 = config.scene_color_start
+    r2, g2, b2 = config.scene_color_end
 
     def fn(t: float) -> str:
         r = int(r1 + (r2 - r1) * t)
@@ -102,7 +116,7 @@ def construct_chart(data: list[tuple[User, int]]) -> list[dict[str, object]]:
 
 
 async def render_scene(data: list[tuple[User, int]], days: int = 7) -> bytes:
-    chart_data = construct_chart(data)
+    chart_data = _build_chart(data)
     view_height = 150 + len(chart_data) * 55  # 基础高度 + 每行高度
     templates_data = {
         "chart_data": chart_data,
