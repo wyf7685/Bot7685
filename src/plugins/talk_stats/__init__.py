@@ -6,6 +6,7 @@ require("nonebot_plugin_chatrecorder")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_orm")
 require("nonebot_plugin_uninfo")
+from nonebot.params import Depends
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -51,21 +52,21 @@ alc = Alconna(
 )
 
 
-async def _check_group(target: MsgTarget) -> bool:
+@Depends
+async def _check_group(target: MsgTarget) -> None:
     if target.private:
         await UniMessage.text("该命令只能在群聊中使用").send()
-        return False
-    return True
+        matcher.skip()
 
 
-matcher = on_alconna(alc, rule=_check_group, permission=TrustedUser())
+matcher = on_alconna(alc, permission=TrustedUser())
 matcher.shortcut(
     r"我的水群瓷砖",
     {"command": "talk_stats my {*}"},
 )
 
 
-@matcher.assign("my")
+@matcher.assign("my", parameterless=[_check_group])
 async def assign_my(session: Uninfo, days: int = 90) -> None:
     days = max(90, days)
     data = await query_session(session, days)
@@ -73,14 +74,14 @@ async def assign_my(session: Uninfo, days: int = 90) -> None:
     await UniMessage.image(raw=raw).finish(reply_to=True)
 
 
-@matcher.assign("scene")
+@matcher.assign("scene", parameterless=[_check_group])
 async def assign_scene(session: Uninfo, days: int = 7, num: int = 5) -> None:
     data = await query_scene(session, days, max(3, num))
     raw = await render_scene(data, days)
     await UniMessage.image(raw=raw).finish(reply_to=True)
 
 
-@matcher.assign("schedule.add")
+@matcher.assign("schedule.add", parameterless=[_check_group])
 async def assign_schedule_add(
     session: Uninfo,
     target: MsgTarget,
@@ -97,7 +98,7 @@ async def assign_schedule_add(
     ).finish()
 
 
-@matcher.assign("schedule.clear")
+@matcher.assign("schedule.clear", parameterless=[_check_group])
 async def assign_schedule_clear(target: MsgTarget) -> None:
     clear_job(target)
     await UniMessage.text("已清空定时任务").finish()
