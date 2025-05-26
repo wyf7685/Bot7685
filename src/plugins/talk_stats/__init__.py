@@ -10,6 +10,7 @@ from nonebot.params import Depends
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
+    CommandMeta,
     MsgTarget,
     Option,
     Subcommand,
@@ -34,8 +35,8 @@ alc = Alconna(
     ),
     Subcommand(
         "scene",
-        Option("days|--days|-d", Args["days?#天数", int]),
-        Option("--num|-n", Args["num?#人数", int]),
+        Option("days|--days|-d", Args["days#天数", int]),
+        Option("--num|-n", Args["num#人数", int]),
         help_text="查询群聊活跃度排行",
     ),
     Subcommand(
@@ -43,11 +44,19 @@ alc = Alconna(
         Subcommand(
             "add",
             Args["hour?#小时", int]["minute?#分钟", int],
-            Option("--num|-n", Args["num?#人数", int]),
+            Option("--num|-n", Args["num#人数", int]),
             help_text="添加定时任务",
         ),
         Subcommand("clear", help_text="清空定时任务"),
         help_text="设置群聊活跃度排行定时任务",
+    ),
+    meta=CommandMeta(
+        description="群聊活跃度统计",
+        usage="talk_stats -h",
+        example="talk_stats my -d 30\n"
+        "talk_stats scene -d 7 -n 5\n"
+        "talk_stats schedule add 23 59 -n 5",
+        author="wyf7685",
     ),
 )
 

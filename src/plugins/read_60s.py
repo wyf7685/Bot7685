@@ -38,11 +38,8 @@ __plugin_meta__ = PluginMetadata(
 
 
 class Read60sConfig(BaseModel):
-    class Time(BaseModel):
-        hour: int = Field(default=0)
-        minute: int = Field(default=0)
-
-    time: Time
+    hour: int = Field(default=0)
+    minute: int = Field(default=0)
     target_data: dict[str, Any]
 
     @functools.cached_property
@@ -53,36 +50,29 @@ class Read60sConfig(BaseModel):
 config_file = ConfigListFile(get_plugin_data_file("read_60s.json"), Read60sConfig)
 
 
-async def get_url(api: str) -> str:
-    async with httpx.AsyncClient() as client:
-        resp: dict[str, str] = (await client.get(api)).raise_for_status().json()
-    return resp["imageUrl"]
-
-
 async def get_read60s_msg() -> UniMessage:
-    async with httpx.AsyncClient() as client:
-        for api in "https://api.2xb.cn/zaob", "https://api.iyk0.com/60s":
-            with contextlib.suppress(Exception):
-                resp: dict[str, str] = (await client.get(api)).raise_for_status().json()
-                url = resp["imageUrl"]
-                return UniMessage.text("今日60S读世界已送达\n").image(url=url)
+    with contextlib.suppress(Exception):
+        async with httpx.AsyncClient() as client:
+            resp = (await client.get("https://api.2xb.cn/zaob")).raise_for_status()
+            url = resp.json()["imageUrl"]
+        return UniMessage.text("今日60S读世界已送达\n").image(url=url)
     return UniMessage.text("今日60S读世界获取失败!")
 
 
 def add_job(config: Read60sConfig) -> None:
     @scheduler.scheduled_job(
-        CronTrigger(hour=config.time.hour, minute=config.time.minute),
+        CronTrigger(hour=config.hour, minute=config.minute),
         args=(config.target,),
-        id=f"read_60s_{config.time.hour}_{config.time.minute}_{hash(config.target)}",
+        id=f"read_60s_{config.hour}_{config.minute}_{hash(config.target)}",
         misfire_grace_time=60,
     )
     async def _(target: Target) -> None:
-        message = await get_read60s_msg()
-        await target.send(message)
+        await target.send(await get_read60s_msg())
 
 
 for config in config_file.load():
     add_job(config)
+
 
 alc = Alconna(
     "read60s",
@@ -110,7 +100,8 @@ async def assign_add(target: MsgTarget, hour: int, minute: int) -> None:
         await UniMessage.text("时间格式错误，请输入正确的时间").finish()
 
     config = Read60sConfig(
-        time=Read60sConfig.Time(hour=hour, minute=minute),
+        hour=hour,
+        minute=minute,
         target_data=target.dump(),
     )
     config_file.add(config)
@@ -136,7 +127,7 @@ async def assign_list(target: MsgTarget) -> None:
 
     msg = "当前会话的定时任务:\n\n"
     for idx, config in enumerate(configs, 1):
-        msg += f"{idx}. {config.time.hour}:{config.time.minute}\n"
+        msg += f"{idx}. {config.hour}:{config.minute}\n"
     await UniMessage.text(msg).finish()
 
 
