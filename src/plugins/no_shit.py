@@ -62,7 +62,7 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
     )
 
     voted: set[int] = set()
-    should_ban = False
+
     def _rule(e: GroupMessageEvent) -> bool:
         return (
             e.group_id == event.group_id
@@ -79,22 +79,28 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
     def wait(event: GroupMessageEvent) -> int:
         return event.user_id
 
+    target_vote = False
     with anyio.move_on_after(60 * 5):
         async for user in wait():
-            if should_ban := user == target:
+            if target_vote := user == target:
                 break
             if user is not None:
                 voted.add(user)
 
-    if not should_ban:
-        await UniMessage.text("没有人认为他在搬史, 停止操作").finish(reply_to=True)
-    await (
-        UniMessage.text(f"同意人数: {len(voted)}. 预计禁言{ 5 * len(voted) } 分钟")
-        .send()
-    )
-    ban_time = 60 * 5 * len(voted)
+    if not voted:
+        await UniMessage.text("没有人认为他在搬史, 取消操作").finish(reply_to=True)
+
+    msg = UniMessage.text(f"同意人数: {len(voted)}\n预期禁言{5 * len(voted)} 分钟")
+    if target_vote:
+        msg = UniMessage.text("被举报者自首, 立即执行\n") + msg
+    await msg.send(reply_to=True)
+
     await bot.delete_msg(message_id=reply)
-    await bot.set_group_ban(group_id=event.group_id, user_id=target, duration=ban_time)
+    await bot.set_group_ban(
+        group_id=event.group_id,
+        user_id=target,
+        duration=60 * 5 * len(voted),
+    )
     cnt = add_ban_count(event.group_id, target)
     await (
         UniMessage.at(str(target))
