@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Run Ruff Lint
         uses: astral-sh/ruff-action@v3
@@ -35,17 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup uv
-        uses: astral-sh/setup-uv@v5
+      - run: git submodule update --init --recursive
+
+      - name: Setup Python
+        uses: ./.github/actions/setup-python
         with:
           python-version: "3.13"
-          enable-cache: true
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Configure venv
-        run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
 
       - name: Run BasedPyright
-        run: uv tool run basedpyright src/plugins --pythonpath ./.venv/bin/python
+        run: uvx basedpyright .
