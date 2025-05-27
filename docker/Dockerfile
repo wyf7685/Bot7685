@@ -15,11 +15,15 @@ ENV UV_LINK_MODE=copy
 ENV VIRTUAL_ENV=/opt/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
+WORKDIR /app
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         git ca-certificates python3-dev gcc g++ build-essential \
         libffi-dev libssl-dev zlib1g-dev liblzma-dev libbz2-dev libreadline-dev \
         libfreetype6-dev pkg-config
+
+ADD src/dev src/dev
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
