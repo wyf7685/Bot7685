@@ -18,7 +18,7 @@ runs:
 
     - name: Install dependencies
       shell: bash
-      run: uv sync
+      run: uv sync --all-extras
 
     - name: Configure venv
       shell: bash
