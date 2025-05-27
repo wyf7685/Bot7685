@@ -1,0 +1,9 @@
+[submodule "src/dev/nonebot-plugin-exe-code"]
+	path = src/dev/nonebot-plugin-exe-code
+	url = https://github.com/wyf7685/nonebot-plugin-exe-code.git
+[submodule "src/dev/nonebot-plugin-werewolf"]
+	path = src/dev/nonebot-plugin-werewolf
+	url = https://github.com/wyf7685/nonebot-plugin-werewolf.git
+[submodule "src/dev/nonebot-plugin-zssm"]
+	path = src/dev/nonebot-plugin-zssm
+	url = https://github.com/wyf7685/nonebot-plugin-zssm.git

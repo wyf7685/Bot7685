@@ -31,6 +31,10 @@ class ScheduleConfig(BaseModel):
     def target(self) -> Target:
         return Target.load(self.target_data)
 
+    @property
+    def job_id(self) -> str:
+        return f"talk_stats_{self.target.id}_{self.hour}_{self.minute}"
+
 
 config_file = ConfigListFile(get_plugin_data_file("schedule.json"), ScheduleConfig)
 jobs: dict[str, JobType] = {}
@@ -46,11 +50,11 @@ async def _job(config: ScheduleConfig) -> None:
 
 
 def _create_job(config: ScheduleConfig) -> None:
-    jobs[job_id] = scheduler.add_job(
+    jobs[config.job_id] = scheduler.add_job(
         func=_job,
         args=(config,),
         trigger=CronTrigger(hour=config.hour, minute=config.minute),
-        id=(job_id := f"talk_stats_{config.target.id}_{config.hour}_{config.minute}"),
+        id=config.job_id,
         replace_existing=True,
     )
 

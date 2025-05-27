@@ -467,7 +467,7 @@ requires-dist = [
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", specifier = ">=0.7.0" },
     { name = "nonebot-plugin-emojimix", specifier = ">=0.4.0" },
-    { name = "nonebot-plugin-exe-code", git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" },
+    { name = "nonebot-plugin-exe-code", directory = "src/dev/nonebot-plugin-exe-code" },
     { name = "nonebot-plugin-ghtiles", specifier = ">=0.1.4" },
     { name = "nonebot-plugin-htmlrender", specifier = ">=0.6.5" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
@@ -478,9 +478,9 @@ requires-dist = [
     { name = "nonebot-plugin-user", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.1" },
     { name = "nonebot-plugin-wakatime", specifier = ">=0.2.7" },
-    { name = "nonebot-plugin-werewolf", git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" },
+    { name = "nonebot-plugin-werewolf", directory = "src/dev/nonebot-plugin-werewolf" },
     { name = "nonebot-plugin-wordcloud", specifier = ">=0.9.0" },
-    { name = "nonebot-plugin-zssm", git = "https://github.com/wyf7685/nonebot-plugin-zssm.git" },
+    { name = "nonebot-plugin-zssm", directory = "src/dev/nonebot-plugin-zssm" },
     { name = "nonebot2", extras = ["fastapi", "httpx", "websockets", "aiohttp"], specifier = ">=2.4.2" },
     { name = "paramiko", specifier = ">=3.5.0" },
     { name = "playwright", specifier = "==1.52.0" },
@@ -1725,7 +1725,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-exe-code"
 version = "1.1.5"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git#1b8c944a39ae84047d732efefa89e64b46805ae4" }
+source = { directory = "src/dev/nonebot-plugin-exe-code" }
 dependencies = [
     { name = "anyio" },
     { name = "nonebot-plugin-alconna" },
@@ -1735,6 +1735,39 @@ dependencies = [
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot2" },
     { name = "tarina" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anyio", specifier = ">=4.6.2.post1" },
+    { name = "nonebot-plugin-alconna", specifier = ">=0.54.0" },
+    { name = "nonebot-plugin-localstore", specifier = ">=0.6.0" },
+    { name = "nonebot-plugin-uninfo", specifier = ">=0.7.0" },
+    { name = "nonebot-plugin-user", specifier = ">=0.5.0" },
+    { name = "nonebot-plugin-waiter", specifier = ">=0.8.0" },
+    { name = "nonebot2", specifier = ">=2.3.3" },
+    { name = "pillow", marker = "extra == 'pillow'" },
+    { name = "tarina", specifier = ">=0.6.1" },
+]
+provides-extras = ["pillow"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "ipykernel", specifier = ">=6.29.5" },
+    { name = "nonebot-adapter-console", specifier = ">=0.6.0" },
+    { name = "nonebot-adapter-onebot", specifier = ">=2.4.6" },
+    { name = "nonebot-adapter-qq", specifier = ">=1.6.0" },
+    { name = "nonebot-adapter-satori", specifier = ">=0.13.1" },
+    { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20" },
+    { name = "nonebot-plugin-orm", extras = ["aiosqlite"], specifier = ">=0.7.7" },
+    { name = "nonebot2", extras = ["fastapi", "httpx", "websockets"], specifier = ">=2.4.0" },
+    { name = "nonebug", specifier = ">=0.4.2" },
+    { name = "pre-commit", specifier = ">=4.1.0" },
+    { name = "pytest", specifier = ">=8.3.4" },
+    { name = "pytest-asyncio", specifier = ">=0.25.0" },
+    { name = "pytest-cov", specifier = ">=6.0.0" },
+    { name = "pytest-mock", specifier = ">=3.14.0" },
+    { name = "respx", specifier = ">=0.22.0" },
 ]
 
 [[package]]
@@ -1970,7 +2003,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-werewolf"
 version = "1.1.11"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git#21b70067dfe66204e6e17b0101211a74eec269b9" }
+source = { directory = "src/dev/nonebot-plugin-werewolf" }
 dependencies = [
     { name = "anyio" },
     { name = "nonebot-plugin-alconna" },
@@ -1978,6 +2011,29 @@ dependencies = [
     { name = "nonebot-plugin-uninfo" },
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot2" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anyio", specifier = ">=4.6.0" },
+    { name = "nonebot-plugin-alconna", specifier = ">=0.57.0" },
+    { name = "nonebot-plugin-localstore", specifier = ">=0.7.1" },
+    { name = "nonebot-plugin-uninfo", specifier = ">=0.7.3" },
+    { name = "nonebot-plugin-waiter", specifier = ">=0.8.0" },
+    { name = "nonebot2", specifier = ">=2.4.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "fastapi", specifier = ">=0.115.0" },
+    { name = "httpx", specifier = ">=0.27.2" },
+    { name = "nonebot-adapter-discord", specifier = ">=0.1.8" },
+    { name = "nonebot-adapter-onebot", specifier = ">=2.4.4" },
+    { name = "nonebot-adapter-satori", specifier = ">=0.12.5" },
+    { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b19" },
+    { name = "nonebot2", extras = ["fastapi"], specifier = ">=2.4.0" },
+    { name = "pre-commit", specifier = ">=4.1.0" },
+    { name = "websockets", specifier = ">=14.1" },
 ]
 
 [[package]]
@@ -2004,8 +2060,8 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-zssm"
-version = "0.3.1"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git#459378f1043c4a4f28feaba5ad4af090e7b5f122" }
+version = "0.3.6"
+source = { directory = "src/dev/nonebot-plugin-zssm" }
 dependencies = [
     { name = "httpx" },
     { name = "nonebot-plugin-alconna" },
@@ -2013,6 +2069,22 @@ dependencies = [
     { name = "pillow" },
     { name = "playwright" },
     { name = "pymupdf" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "nonebot-plugin-alconna", specifier = ">=0.57.3" },
+    { name = "nonebot2", specifier = ">=2.4.1" },
+    { name = "pillow", specifier = ">=11.1.0" },
+    { name = "playwright", specifier = ">=1.51.0" },
+    { name = "pymupdf", specifier = ">=1.25.5" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "nonebot-adapter-onebot", specifier = ">=2.4.6" },
+    { name = "nonebot2", extras = ["fastapi"], specifier = ">=2.4.1" },
 ]
 
 [[package]]

@@ -20,7 +20,6 @@ class Config(BaseModel):
     adapters: set[str] = set()
     plugins: set[str] = set()
     plugin_dir: str = "src/plugins"
-    dev_plugin_dir: str = "src/dev"
 
 
 def setup_logger() -> None:
@@ -45,7 +44,7 @@ def setup_logger() -> None:
 
 
 def _load_yaml(file_path: Path) -> dict[str, object]:
-    data = msgyaml.decode(file_path.read_bytes()) or {}
+    data: dict[str, object] = msgyaml.decode(file_path.read_bytes()) or {}
 
     if data.pop("scope_compat", None):
         for key, value in list(data.items()):
@@ -109,26 +108,10 @@ def load_adapters(config: Config) -> None:
 
 
 def load_plugins(config: Config) -> None:
-    plugin_dirs: list[str] = []
-
-    if (plugin_dir := config.plugin_dir) and Path(plugin_dir).is_dir():
-        plugin_dirs.append(plugin_dir)
-
-    if (dev_dir := config.dev_plugin_dir) and (path := Path(dev_dir)).is_dir():
-        plugin_dirs.append(dev_dir)
-        for p in path.iterdir():
-            if (p.is_dir() and (name := p.name) in config.plugins) or (
-                p.is_file() and p.suffix == ".py" and (name := p.stem) in config.plugins
-            ):
-                config.plugins.discard(name)
-                log(
-                    "WARNING",
-                    f'Prefer loading plugin "<y>{name}</y>"'
-                    f' from "<m>{".".join(path.parts)}.{name}</m>"',
-                )
-
     start = time.time()
-    nonebot.load_all_plugins(config.plugins, plugin_dirs)
+    for plugin in config.plugins:
+        nonebot.load_plugin(plugin)
+    nonebot.load_plugins(config.plugin_dir)
     log("SUCCESS", f"Plugins loaded in <y>{time.time() - start:.3f}</y>s")
 
 

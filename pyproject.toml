@@ -48,9 +48,9 @@ dependencies = [
     "tarina>=0.6.8",
     "tencentcloud-sdk-python-dnspod>=3.0.1354",
     # plugins
-    "nonebot-plugin-exe-code @ git+https://github.com/wyf7685/nonebot-plugin-exe-code.git",
-    "nonebot-plugin-werewolf @ git+https://github.com/wyf7685/nonebot-plugin-werewolf.git",
-    "nonebot-plugin-zssm @ git+https://github.com/wyf7685/nonebot-plugin-zssm.git",
+    "nonebot-plugin-exe-code @ file:///${PROJECT_ROOT}/src/dev/nonebot-plugin-exe-code",
+    "nonebot-plugin-werewolf @ file:///${PROJECT_ROOT}/src/dev/nonebot-plugin-werewolf",
+    "nonebot-plugin-zssm @ file:///${PROJECT_ROOT}/src/dev/nonebot-plugin-zssm",
 ]
 
 [dependency-groups]
@@ -156,7 +156,7 @@ keep-runtime-typing = true
 pythonVersion = "3.13"
 pythonPlatform = "All"
 typeCheckingMode = "recommended"
-ignore = [".venv", "data"]                # nbp-orm stuff
+ignore = [".venv", "data", "src/dev"]                # nbp-orm stuff
 reportShadowedImports = false
 disableBytesTypePromotions = true
 reportUnusedCallResult = false            # Receipt
