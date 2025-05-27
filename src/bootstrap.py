@@ -19,7 +19,7 @@ log = logger_wrapper("Bootstrap")
 class Config(BaseModel):
     adapters: set[str] = set()
     plugins: set[str] = set()
-    plugin_dir: str = "src/plugins"
+    plugin_dir: str | None = "src/plugins"
 
 
 def setup_logger() -> None:
@@ -109,7 +109,10 @@ def load_adapters(config: Config) -> None:
 
 def load_plugins(config: Config) -> None:
     start = time.time()
-    nonebot.load_all_plugins(config.plugins, [config.plugin_dir])
+    nonebot.load_all_plugins(
+        module_path=config.plugins,
+        plugin_dir=[config.plugin_dir] if config.plugin_dir else [],
+    )
     log("SUCCESS", f"Plugins loaded in <y>{time.time() - start:.3f}</y>s")
 
 

@@ -9,9 +9,9 @@ app = init_nonebot()
 def run_orm_upgrade() -> NoReturn:
     import asyncio
 
-    from nonebot_plugin_orm import init_orm
+    from src.utils import orm_upgrade
 
-    sys.exit(asyncio.run(init_orm()))  # pyright:ignore[reportArgumentType]
+    sys.exit(asyncio.run(orm_upgrade()))
 
 
 def main() -> None:
