@@ -109,9 +109,7 @@ def load_adapters(config: Config) -> None:
 
 def load_plugins(config: Config) -> None:
     start = time.time()
-    for plugin in config.plugins:
-        nonebot.load_plugin(plugin)
-    nonebot.load_plugins(config.plugin_dir)
+    nonebot.load_all_plugins(config.plugins, [config.plugin_dir])
     log("SUCCESS", f"Plugins loaded in <y>{time.time() - start:.3f}</y>s")
 
 
