@@ -397,19 +397,6 @@ wheels = [
 ]
 
 [[package]]
-name = "beautifulsoup4"
-version = "4.13.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "soupsieve" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/e4/0c4c39e18fd76d6a628d4dd8da40543d136ce2d1752bd6eeeab0791f4d6b/beautifulsoup4-4.13.4.tar.gz", hash = "sha256:dbb3c4e1ceae6aefebdaf2423247260cd062430a410e38c66f2baa50a8437195", size = 621067, upload-time = "2025-04-15T17:05:13.836Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl", hash = "sha256:9bbbb14bfde9d79f38b8cd5f8c7c85f4b8f2523190ebed90e950a8dea4cb1c4b", size = 187285, upload-time = "2025-04-15T17:05:12.221Z" },
-]
-
-[[package]]
 name = "bot7685"
 version = "0.1.0"
 source = { virtual = "." }
@@ -435,7 +422,6 @@ dependencies = [
     { name = "nonebot-plugin-chatrecorder" },
     { name = "nonebot-plugin-emojimix" },
     { name = "nonebot-plugin-exe-code" },
-    { name = "nonebot-plugin-ghtiles" },
     { name = "nonebot-plugin-htmlrender" },
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm", extra = ["asyncpg", "postgresql"] },
@@ -490,12 +476,11 @@ requires-dist = [
     { name = "nonebot-adapter-satori", specifier = ">=0.13.4" },
     { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20" },
     { name = "nonebot-plugin-akinator", specifier = ">=1.0.1.post2" },
-    { name = "nonebot-plugin-alconna", specifier = ">=0.57.6" },
+    { name = "nonebot-plugin-alconna", specifier = ">=0.58.0" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", specifier = ">=0.7.0" },
     { name = "nonebot-plugin-emojimix", specifier = ">=0.4.0" },
     { name = "nonebot-plugin-exe-code", directory = "src/dev/nonebot-plugin-exe-code" },
-    { name = "nonebot-plugin-ghtiles", specifier = ">=0.1.4" },
     { name = "nonebot-plugin-htmlrender", specifier = ">=0.6.5" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
     { name = "nonebot-plugin-orm", extras = ["asyncpg", "postgresql"], specifier = ">=0.7.7" },
@@ -1799,7 +1784,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-alconna"
-version = "0.57.6"
+version = "0.58.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arclet-alconna" },
@@ -1810,9 +1795,9 @@ dependencies = [
     { name = "nonebot2" },
     { name = "tarina" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/85/a8/fe2262eee769e734d1cee4d7327a34cad1f471ed6edb441a8a16200137d8/nonebot_plugin_alconna-0.57.6.tar.gz", hash = "sha256:f22357cf784358205b8ae76707627fd28d1a73b594e38b239619be4eea9fe6ae", size = 148980, upload-time = "2025-05-10T11:01:09.252Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f6/83/40cbca69a4194877c9446de51e721f9c6e6367c356d01e98089414987bf2/nonebot_plugin_alconna-0.58.0.tar.gz", hash = "sha256:e5a8528d6eed01d4dccf96bd1b7c009ac83685bcc206708f8654fe68d21d73e8", size = 152414, upload-time = "2025-05-26T04:49:06.711Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/87/cc/eebe0b289770772964f22f959f743d9e0764560871b179a6b16db99aaa6b/nonebot_plugin_alconna-0.57.6-py3-none-any.whl", hash = "sha256:7690f4f1bfc1be8755080eea3554582cafe9cb44c1a1f270e30922d3d1f8358d", size = 205162, upload-time = "2025-05-10T11:01:07.466Z" },
+    { url = "https://files.pythonhosted.org/packages/90/9d/8b6dfccb352af36e1d8798a6e885fd96cca6a93902f541b24e7275cc7f98/nonebot_plugin_alconna-0.58.0-py3-none-any.whl", hash = "sha256:85762f564bf24779706a2557ea819826edac3746546a8e6782ddbfc2d21148ca", size = 210565, upload-time = "2025-05-26T04:49:04.893Z" },
 ]
 
 [[package]]
@@ -1935,24 +1920,6 @@ dev = [
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-mock", specifier = ">=3.14.0" },
     { name = "respx", specifier = ">=0.22.0" },
-]
-
-[[package]]
-name = "nonebot-plugin-ghtiles"
-version = "0.1.4"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "beautifulsoup4" },
-    { name = "httpx" },
-    { name = "nonebot-plugin-alconna" },
-    { name = "nonebot-plugin-apscheduler" },
-    { name = "nonebot-plugin-localstore" },
-    { name = "nonebot-plugin-session" },
-    { name = "nonebot2" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/bb/2c/1df54a0335ec31ace235ba117b3742d9bf40008252b2821de25b0ba35d5f/nonebot_plugin_ghtiles-0.1.4.tar.gz", hash = "sha256:d59e47988346bc91254ff5d4af0d20d4131310be5d7808f071dfed58c50c5bf7", size = 6214, upload-time = "2024-04-14T14:27:44.143Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/53/e1/e0232763eaed403a409db5804cafa107d0abd4637003fed4e24d03cbf2fa/nonebot_plugin_ghtiles-0.1.4-py3-none-any.whl", hash = "sha256:3f0a5bde7fcf786aec41ba91fc2c10aae04c9a217c5e333081da771285e8dbf8", size = 7249, upload-time = "2024-04-14T14:27:43.095Z" },
 ]
 
 [[package]]
@@ -3039,15 +3006,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/a2/87/a6771e1546d97e7e041b6ae58d80074f81b7d5121207425c964ddf5cfdbd/sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc", size = 20372, upload-time = "2024-02-25T23:20:04.057Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e9/44/75a9c9421471a6c4805dbf2356f7c181a29c1879239abab1ea2cc8f38b40/sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2", size = 10235, upload-time = "2024-02-25T23:20:01.196Z" },
-]
-
-[[package]]
-name = "soupsieve"
-version = "2.7"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/3f/f4/4a80cd6ef364b2e8b65b15816a843c0980f7a5a2b4dc701fc574952aa19f/soupsieve-2.7.tar.gz", hash = "sha256:ad282f9b6926286d2ead4750552c8a6142bc4c783fd66b0293547c8fe6ae126a", size = 103418, upload-time = "2025-04-20T18:50:08.518Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e7/9c/0e6afc12c269578be5c0c1c9f4b49a8d32770a080260c333ac04cc1c832d/soupsieve-2.7-py3-none-any.whl", hash = "sha256:6e60cc5c1ffaf1cebcc12e8188320b72071e922c2e897f737cadce79ad5d30c4", size = 36677, upload-time = "2025-04-20T18:50:07.196Z" },
 ]
 
 [[package]]
