@@ -76,7 +76,7 @@ def clear_job(target: Target) -> None:
     for job_id in list(jobs):
         if job_id.startswith(prefix):
             jobs.pop(job_id).remove()
-    config_file.save([c for c in config_file.load() if c.target.id != target.id])
+    config_file.remove(lambda c: c.target.id == target.id)
 
 
 def _init_jobs() -> None:

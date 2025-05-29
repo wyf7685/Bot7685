@@ -113,9 +113,7 @@ async def assign_add(target: MsgTarget, hour: int, minute: int) -> None:
 
 @matcher.assign("~clear")
 async def assign_clear(target: MsgTarget) -> None:
-    config_file.save(
-        [config for config in config_file.load() if not target.verify(config.target)]
-    )
+    config_file.remove(lambda c: target.verify(c.target))
     await UniMessage.text("已清空当前会话的定时任务").finish()
 
 

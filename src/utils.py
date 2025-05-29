@@ -64,6 +64,9 @@ class ConfigListFile[T: BaseModel](ConfigFile[list[T]]):
     def add(self, item: T) -> None:
         self.save([*self.load(), item])
 
+    def remove(self, pred: Callable[[T], bool]) -> None:
+        self.save([item for item in self.load() if not pred(item)])
+
 
 async def orm_upgrade() -> None:
     from argparse import Namespace
