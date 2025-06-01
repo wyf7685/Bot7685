@@ -4,6 +4,9 @@ on:
   push:
     paths:
       - "uv.lock"
+      - "src/dev/**"
+      - "docker/**"
+      - ".github/workflows/docker-bot7685.yml"
   workflow_dispatch:
 
 jobs:

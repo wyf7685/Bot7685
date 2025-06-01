@@ -486,7 +486,7 @@ requires-dist = [
     { name = "nonebot-plugin-orm", extras = ["asyncpg", "postgresql"], specifier = ">=0.7.7" },
     { name = "nonebot-plugin-picstatus", specifier = ">=2.1.2" },
     { name = "nonebot-plugin-skland", specifier = ">=0.2.1" },
-    { name = "nonebot-plugin-uninfo", specifier = ">=0.7.2" },
+    { name = "nonebot-plugin-uninfo", specifier = ">=0.8.0" },
     { name = "nonebot-plugin-user", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.1" },
     { name = "nonebot-plugin-wakatime", specifier = ">=0.2.7" },
@@ -2058,15 +2058,15 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-uninfo"
-version = "0.7.3"
+version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "importlib-metadata" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/72/c5/4a7fad153d2a4d02f3edf47033a92af0848e4fcd0b115d908382b94bacb9/nonebot_plugin_uninfo-0.7.3.tar.gz", hash = "sha256:254922908d8b8c60ba63c7216d4d8de54ebb7e56ef91b3b360ebd810dcff4d48", size = 38260, upload-time = "2025-04-17T13:56:03.446Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c1/5f/11ac7656d81e54d71b8f7c9f0f83d5232535bac48f1fecfd7f12114546db/nonebot_plugin_uninfo-0.8.0.tar.gz", hash = "sha256:6e596738188905750934e4893208cad533f5dd1eccf44b6ed0206d05777a9a5e", size = 40247, upload-time = "2025-05-28T06:32:50.828Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/43/bd/23bd76556e478de25778a0831a0030a296a0c9e7824ac78343437ec3aff2/nonebot_plugin_uninfo-0.7.3-py3-none-any.whl", hash = "sha256:d45e97aaaebaf6b41ec0c625859216e61700e6a2929cbe0ee659a71b470fdd08", size = 60471, upload-time = "2025-04-17T13:56:01.953Z" },
+    { url = "https://files.pythonhosted.org/packages/be/fa/22835a3713c543e83e29d3a5a237e66f44a79bb3252c037c2f2cf45e23dc/nonebot_plugin_uninfo-0.8.0-py3-none-any.whl", hash = "sha256:911492660749f45e2800b311a413eca5a9988496a2daab56733bf8a299165750", size = 64583, upload-time = "2025-05-28T06:32:49.357Z" },
 ]
 
 [[package]]
@@ -2136,7 +2136,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-werewolf"
-version = "1.1.11"
+version = "1.1.12"
 source = { directory = "src/dev/nonebot-plugin-werewolf" }
 dependencies = [
     { name = "anyio" },
@@ -2150,24 +2150,28 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", specifier = ">=4.6.0" },
-    { name = "nonebot-plugin-alconna", specifier = ">=0.57.0" },
+    { name = "nonebot-plugin-alconna", specifier = ">=0.58.0" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.1" },
-    { name = "nonebot-plugin-uninfo", specifier = ">=0.7.3" },
+    { name = "nonebot-plugin-uninfo", specifier = ">=0.8.0" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.0" },
     { name = "nonebot2", specifier = ">=2.4.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "fastapi", specifier = ">=0.115.0" },
-    { name = "httpx", specifier = ">=0.27.2" },
     { name = "nonebot-adapter-discord", specifier = ">=0.1.8" },
-    { name = "nonebot-adapter-onebot", specifier = ">=2.4.4" },
-    { name = "nonebot-adapter-satori", specifier = ">=0.12.5" },
-    { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b19" },
-    { name = "nonebot2", extras = ["fastapi"], specifier = ">=2.4.0" },
+    { name = "nonebot-adapter-onebot", specifier = ">=2.4.6" },
+    { name = "nonebot-adapter-satori", specifier = ">=0.13.5" },
+    { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20" },
+    { name = "nonebot2", extras = ["fastapi", "httpx", "websockets"], specifier = ">=2.4.0" },
     { name = "pre-commit", specifier = ">=4.1.0" },
-    { name = "websockets", specifier = ">=14.1" },
+]
+test = [
+    { name = "nonebug", specifier = ">=0.4.3" },
+    { name = "pytest", specifier = ">=8.3.5" },
+    { name = "pytest-asyncio", specifier = ">=1.0.0" },
+    { name = "pytest-cov", specifier = ">=6.1.1" },
+    { name = "pytest-mock", specifier = ">=3.14.1" },
 ]
 
 [[package]]
