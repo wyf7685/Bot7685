@@ -41,8 +41,9 @@ check_sub = on_alconna(
     Alconna(
         "sub",
         Subcommand("check", help_text="check status"),
-        Subcommand("create", help_text="[superuser] create instance"),
         Subcommand("get", help_text="get sub"),
+        Subcommand("create", help_text="[superuser] create instance"),
+        Subcommand("setup", help_text="[superuser] setup instance"),
         meta=CommandMeta(
             description="sub helper",
             usage="sub -h",
@@ -63,6 +64,28 @@ async def assign_check() -> None:
     await UniMessage.text(f"Instance {status}").finish()
 
 
+@check_sub.assign("get")
+async def assign_get(target: MsgTarget) -> None:
+    if not target.private:
+        await check_sub.finish()
+
+    await UniMessage.text(generate()).finish()
+
+
+async def do_setup(host: str) -> None:
+    retry = 0
+    while retry < 6:
+        await anyio.sleep(10)
+        try:
+            await SSHClient.setup_server(host)
+            break
+        except paramiko.SSHException as err:
+            retry += 1
+            logger.warning(f"Error setting up server: {err}")
+    else:
+        await UniMessage.text("Error setting up server").finish()
+
+
 async def do_create() -> None:
     ali_client = AliClient()
 
@@ -78,18 +101,7 @@ async def do_create() -> None:
     await TencentClient().update_record(host)
     await UniMessage.text(f"Instance public ip: {host}").send()
 
-    retry = 0
-    while retry < 6:
-        await anyio.sleep(10)
-        try:
-            await SSHClient.setup_server(host)
-            break
-        except paramiko.SSHException as err:
-            retry += 1
-            logger.warning(f"Error setting up server: {err}")
-    else:
-        await UniMessage.text("Error setting up server").finish()
-
+    await do_setup(host)
     await UniMessage.text("Instance setup completed").finish()
 
 
@@ -103,7 +115,10 @@ def queued() -> object:
     return Depends(_)
 
 
-@check_sub.assign("create", parameterless=[queued()])
+queued_parameterless = queued()
+
+
+@check_sub.assign("create", parameterless=[queued_parameterless])
 async def assign_create(bot: Bot, event: Event) -> None:
     if not await SUPERUSER(bot, event):
         await UniMessage.text("Permission denied").finish()
@@ -116,9 +131,16 @@ async def assign_create(bot: Bot, event: Event) -> None:
         await UniMessage.text(f"Error creating instance: {err}").finish()
 
 
-@check_sub.assign("get")
-async def assign_get(target: MsgTarget) -> None:
-    if not target.private:
-        await check_sub.finish()
+@check_sub.assign("setup", parameterless=[queued_parameterless])
+async def assign_setup(bot: Bot, event: Event) -> None:
+    if not await SUPERUSER(bot, event):
+        await UniMessage.text("Permission denied").finish()
 
-    await UniMessage.text(generate()).finish()
+    host = f"{plugin_config.tencent.sub_domain}.{plugin_config.tencent.domain}"
+
+    try:
+        await do_setup(host)
+    except MatcherException:
+        raise
+    except Exception as err:
+        await UniMessage.text(f"Error setting up instance: {err}").finish()

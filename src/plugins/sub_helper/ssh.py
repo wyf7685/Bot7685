@@ -1,6 +1,7 @@
 from typing import final
 
 import paramiko
+from nonebot import logger
 from nonebot.utils import run_sync
 
 from .config import plugin_config
@@ -25,13 +26,12 @@ class SSHClient:
         (config.sub_helper_data / config.update_file).write_text(
             str(eval(config.update_eval))  # noqa: S307
         )
-        sftp = self.ssh.open_sftp()
-        for fp in config.sub_helper_data.iterdir():
-            sftp.put(fp, f"/root/{fp.name}")
-        sftp.close()
+        with self.ssh.open_sftp() as sftp:
+            for fp in config.sub_helper_data.iterdir():
+                sftp.put(fp, f"/root/{fp.name}")
 
-    def execute_cmd(self, cmd: str) -> None:
-        self.ssh.exec_command(cmd)[1].read()
+    def execute_cmd(self, cmd: str) -> str:
+        return self.ssh.exec_command(cmd)[1].read().decode("utf-8")
 
     @classmethod
     @run_sync
@@ -39,5 +39,5 @@ class SSHClient:
         self = cls(host)
         self.put_files()
         self.execute_cmd("chmod +x /root/executable")
-        self.execute_cmd("bash /root/setup.sh")
+        logger.info("\n" + self.execute_cmd("bash /root/setup.sh"))
         self.ssh.close()
