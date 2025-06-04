@@ -28,6 +28,7 @@ class SSHClient:
         )
         with self.ssh.open_sftp() as sftp:
             for fp in config.sub_helper_data.iterdir():
+                logger.info(f"put file: {fp.name}")
                 sftp.put(fp, f"/root/{fp.name}")
 
     def execute_cmd(self, cmd: str) -> str:
@@ -38,6 +39,6 @@ class SSHClient:
     def setup_server(cls, host: str) -> None:
         self = cls(host)
         self.put_files()
-        self.execute_cmd("chmod +x /root/executable")
+        logger.info("put files done")
         logger.info("\n" + self.execute_cmd("bash /root/setup.sh"))
         self.ssh.close()
