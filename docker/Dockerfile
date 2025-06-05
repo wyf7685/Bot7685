@@ -23,7 +23,7 @@ RUN apt-get update && \
         libffi-dev libssl-dev zlib1g-dev liblzma-dev libbz2-dev libreadline-dev \
         libfreetype6-dev pkg-config
 
-ADD src/dev src/dev
+ADD external external
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \

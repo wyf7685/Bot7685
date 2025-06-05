@@ -89,9 +89,8 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
     if not voted:
         await UniMessage.text("没有人认为他在搬史, 取消操作").finish(reply_to=True)
 
-    await UniMessage.text(
-        f"同意人数: {len(voted)}\n预期禁言{len(voted)} 分钟"
-    ).send(reply_to=True)
+    msg = f"同意人数: {len(voted)}\n预期禁言{len(voted)} 分钟"
+    await UniMessage.text(msg).send(reply_to=True)
 
     await bot.delete_msg(message_id=reply)
     await bot.set_group_ban(
