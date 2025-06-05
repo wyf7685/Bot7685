@@ -427,6 +427,7 @@ dependencies = [
     { name = "nonebot-plugin-orm", extra = ["asyncpg", "postgresql"] },
     { name = "nonebot-plugin-picstatus" },
     { name = "nonebot-plugin-skland" },
+    { name = "nonebot-plugin-talk-stats" },
     { name = "nonebot-plugin-uninfo" },
     { name = "nonebot-plugin-user" },
     { name = "nonebot-plugin-waiter" },
@@ -486,6 +487,7 @@ requires-dist = [
     { name = "nonebot-plugin-orm", extras = ["asyncpg", "postgresql"], specifier = ">=0.7.7" },
     { name = "nonebot-plugin-picstatus", specifier = ">=2.1.2" },
     { name = "nonebot-plugin-skland", specifier = ">=0.2.1" },
+    { name = "nonebot-plugin-talk-stats", directory = "src/dev/nonebot-plugin-talk-stats" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.8.0" },
     { name = "nonebot-plugin-user", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.1" },
@@ -2055,6 +2057,37 @@ sdist = { url = "https://files.pythonhosted.org/packages/b9/bb/3790076151128427e
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bb/ac/12d0531f47fedef754a38909ffdeac255437efcafb9deff34a67c69a1a58/nonebot_plugin_skland-0.2.1-py3-none-any.whl", hash = "sha256:770c5fc0d39c7b3e135b550bb54b526c620ff579ec48a569561b31c276a38a8a", size = 4325427, upload-time = "2025-04-14T03:36:54.991Z" },
 ]
+
+[[package]]
+name = "nonebot-plugin-talk-stats"
+version = "0.1.0"
+source = { directory = "src/dev/nonebot-plugin-talk-stats" }
+dependencies = [
+    { name = "nonebot-plugin-alconna" },
+    { name = "nonebot-plugin-chatrecorder" },
+    { name = "nonebot-plugin-htmlrender" },
+    { name = "nonebot-plugin-orm" },
+    { name = "nonebot-plugin-uninfo" },
+    { name = "nonebot2" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nonebot-plugin-alconna", specifier = ">=0.57.6" },
+    { name = "nonebot-plugin-chatrecorder", specifier = ">=0.7.0" },
+    { name = "nonebot-plugin-htmlrender", specifier = ">=0.6.5" },
+    { name = "nonebot-plugin-orm", specifier = ">=0.7.7" },
+    { name = "nonebot-plugin-uninfo", specifier = ">=0.7.0" },
+    { name = "nonebot2", specifier = ">=2.4.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "nonebot-adapter-onebot", specifier = ">=2.4.4" },
+    { name = "nonebot-plugin-orm", extras = ["default"], specifier = ">=0.7.7" },
+    { name = "nonebot2", extras = ["fastapi"], specifier = ">=2.4.0" },
+]
+scheduler = [{ name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" }]
 
 [[package]]
 name = "nonebot-plugin-uninfo"

@@ -47,6 +47,7 @@ dependencies = [
   "tencentcloud-sdk-python-dnspod>=3.0.1354",
   # plugins
   "nonebot-plugin-exe-code @ file:///${PROJECT_ROOT}/src/dev/nonebot-plugin-exe-code",
+  "nonebot-plugin-talk-stats @ file:///${PROJECT_ROOT}/src/dev/nonebot-plugin-talk-stats",
   "nonebot-plugin-werewolf @ file:///${PROJECT_ROOT}/src/dev/nonebot-plugin-werewolf",
   "nonebot-plugin-zssm @ file:///${PROJECT_ROOT}/src/dev/nonebot-plugin-zssm",
 ]
