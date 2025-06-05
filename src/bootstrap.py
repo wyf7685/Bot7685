@@ -9,8 +9,11 @@ from nonebot.utils import deep_update, logger_wrapper, resolve_dot_notation
 from pydantic import BaseModel
 
 from .logo import print_logo
+from .utils import ConcurrentLifespan
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from nonebot.adapters import Adapter
 
 log = logger_wrapper("Bootstrap")
@@ -19,7 +22,7 @@ log = logger_wrapper("Bootstrap")
 class Config(BaseModel):
     adapters: set[str] = set()
     plugins: set[str] = set()
-    plugin_dir: str | None = "src/plugins"
+    plugin_dirs: str | set[str] | None = "src/plugins"
 
 
 def setup_logger() -> None:
@@ -82,51 +85,64 @@ def load_config() -> dict[str, object]:
     return config
 
 
+def _perf[**P, R](info: str) -> "Callable[[Callable[P, R]], Callable[P, R]]":
+    def decorator(func: "Callable[P, R]") -> "Callable[P, R]":
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            start = time.time()
+            result = func(*args, **kwargs)
+            elapsed = time.time() - start
+            log("DEBUG", f"{info} took <y>{elapsed:.3f}</y>s")
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+def load_adapter(module_name: str) -> type["Adapter"] | None:
+    """Load an adapter by its module name."""
+    try:
+        return resolve_dot_notation(
+            obj_str=module_name,
+            default_attr="Adapter",
+            default_prefix="nonebot.adapters.",
+        )
+    except (ImportError, AttributeError):
+        log("WARNING", f"Failed to resolve adapter: <y>{module_name}</y>")
+
+
+@_perf("Loading adapters")
 def load_adapters(config: Config) -> None:
     driver = nonebot.get_driver()
-
     for module_name in config.adapters:
         log("DEBUG", f"Loading adapter: <g>{module_name}</g>")
-        start = time.time()
-
-        try:
-            adapter: type[Adapter] = resolve_dot_notation(
-                obj_str=module_name,
-                default_attr="Adapter",
-                default_prefix="nonebot.adapters.",
-            )
-        except (ImportError, AttributeError):
-            log("WARNING", f"Failed to resolve adapter: <y>{module_name}</y>")
-            continue
-
-        driver.register_adapter(adapter)
-        log(
-            "SUCCESS",
-            f"Adapter <g>{adapter.get_name()}</g> loaded "
-            f"in <y>{time.time() - start:.3f}</y>s",
-        )
+        load = _perf(f"Loading adapter <g>{module_name}</g>")(load_adapter)
+        if adapter := load(module_name):
+            driver.register_adapter(adapter)
+            log("SUCCESS", f"Adapter <g>{adapter.get_name()}</g> loaded successfully")
 
 
+@_perf("Loading plugins")
 def load_plugins(config: Config) -> None:
-    start = time.time()
     nonebot.load_all_plugins(
         module_path=config.plugins,
-        plugin_dir=[config.plugin_dir] if config.plugin_dir else [],
+        plugin_dir={config.plugin_dirs}
+        if isinstance(config.plugin_dirs, str)
+        else (config.plugin_dirs or set()),
     )
-    log("SUCCESS", f"Plugins loaded in <y>{time.time() - start:.3f}</y>s")
 
 
+@_perf("Initializing NoneBot")
 def init_nonebot() -> object:
     config = load_config()
     config.pop("_env_file", None)
     bootstrap_config = Config.model_validate(config.pop("bootstrap", {}))
 
-    start = time.time()
     setup_logger()
     nonebot.init(_env_file=None, **config)
     print_logo(lambda line: log("SUCCESS", line))
+    nonebot.get_driver()._lifespan = ConcurrentLifespan()  # noqa: SLF001
     load_adapters(bootstrap_config)
     load_plugins(bootstrap_config)
-    log("SUCCESS", f"NoneBot initialized in <y>{time.time() - start:.3f}</y>s")
 
     return nonebot.get_app()

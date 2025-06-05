@@ -1,8 +1,19 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
+import anyio
 from msgspec import json as msgjson
+from nonebot.internal.driver._lifespan import Lifespan
+from nonebot.utils import is_coroutine_callable, run_sync
 from pydantic import BaseModel, TypeAdapter
+
+if TYPE_CHECKING:
+    from nonebot.internal.driver._lifespan import (
+        ASYNC_LIFESPAN_FUNC,
+        LIFESPAN_FUNC,
+        SYNC_LIFESPAN_FUNC,
+    )
 
 
 class ConfigFile[T: BaseModel | Sequence[BaseModel]]:
@@ -81,3 +92,15 @@ async def orm_upgrade() -> None:
     with migrate.AlembicConfig(stdout=StreamToLogger(), cmd_opts=cmd_opts) as config:
         cmd_opts.cmd = (migrate.upgrade, [], [])
         await greenlet_spawn(migrate.upgrade, config)
+
+
+class ConcurrentLifespan(Lifespan):
+    async def _run_lifespan_func(  # pyright:ignore[reportIncompatibleMethodOverride]
+        self, funcs: Iterable["LIFESPAN_FUNC"]
+    ) -> None:
+        async with anyio.create_task_group() as tg:
+            for func in funcs:
+                if is_coroutine_callable(func):
+                    tg.start_soon(cast("ASYNC_LIFESPAN_FUNC", func))
+                else:
+                    tg.start_soon(run_sync(cast("SYNC_LIFESPAN_FUNC", func)))
