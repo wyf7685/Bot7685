@@ -1,10 +1,12 @@
 import logging
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import nonebot
+from msgspec import toml as msgtoml
 from msgspec import yaml as msgyaml
+from nonebot.compat import type_validate_python
 from nonebot.utils import deep_update, logger_wrapper, resolve_dot_notation
 from pydantic import BaseModel
 
@@ -17,16 +19,22 @@ if TYPE_CHECKING:
     from nonebot.adapters import Adapter
 
 log = logger_wrapper("Bootstrap")
+type LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+type LogLevelMap = dict[str, LogLevel]
 
 
 class Config(BaseModel):
     adapters: set[str] = set()
     plugins: set[str] = set()
     plugin_dirs: str | set[str] | None = "src/plugins"
+    logging_override: LogLevelMap | None = None
 
 
-def setup_logger() -> None:
-    logging.getLogger("httpx").setLevel(logging.WARNING)
+def setup_logger(logging_override: LogLevelMap | None = None) -> None:
+    if logging_override is not None:
+        for name, level in logging_override.items():
+            logging.getLogger(name).setLevel(level)
+
     log_format = (
         "<g>{time:HH:mm:ss}</g> [<lvl>{level}</lvl>] <c><u>{name}</u></c> | {message}"
     )
@@ -46,8 +54,24 @@ def setup_logger() -> None:
     )
 
 
-def _load_yaml(file_path: Path) -> dict[str, object]:
-    data: dict[str, object] = msgyaml.decode(file_path.read_bytes()) or {}
+def _find_config_file(fp: Path) -> Path | None:
+    for suffix in ".toml", ".yaml", ".yml":
+        if (file := fp.with_suffix(suffix)).exists():
+            return file
+    return None
+
+
+def _load_file(fp: Path) -> dict[str, object]:
+    match fp.suffix:
+        case ".toml":
+            decoder = msgtoml.decode
+        case ".yaml" | ".yml":
+            decoder = msgyaml.decode
+        case x:
+            log("WARNING", f"Unsupported configuration file type: <y>{x}</y>")
+            return {}
+
+    data: dict[str, object] = decoder(fp.read_bytes()) or {}
 
     if data.pop("scope_compat", None):
         for key, value in list(data.items()):
@@ -61,26 +85,24 @@ def _load_yaml(file_path: Path) -> dict[str, object]:
 
 def load_config() -> dict[str, object]:
     config_dir = Path("config")
-    root_config = config_dir / "config.yaml"
-    if not root_config.exists():
+    if (root_config := _find_config_file(config_dir / "config")) is None:
+        log("WARNING", "No configuration file found in <y>config/</y> directory")
         return {}
 
-    config = _load_yaml(root_config)
+    config = _load_file(root_config)
 
     env = str(config.get("environment", "prod"))
-    env_config = config_dir / f"{env}.yaml"
-    if not env_config.exists():
+    if (env_config := _find_config_file(config_dir / env)) is None:
+        log("WARNING", f"No environment configuration file found for <y>{env}</y>")
         return config
 
-    config = deep_update(config, _load_yaml(env_config))
+    config = deep_update(config, _load_file(env_config))
 
-    env_dir = config_dir / env
-    if not env_dir.exists():
-        return config
-
-    for p in env_dir.iterdir():
-        if p.suffix == ".yaml":
-            config = deep_update(config, _load_yaml(p))
+    if (env_dir := config_dir / env).exists():
+        for p in filter(Path.is_file, env_dir.iterdir()):
+            config = deep_update(config, _load_file(p))
+    else:
+        log("WARNING", f"No environment directory found for <y>{env}</y>")
 
     return config
 
@@ -102,11 +124,7 @@ def _perf[**P, R](info: str) -> "Callable[[Callable[P, R]], Callable[P, R]]":
 def load_adapter(module_name: str) -> type["Adapter"] | None:
     """Load an adapter by its module name."""
     try:
-        return resolve_dot_notation(
-            obj_str=module_name,
-            default_attr="Adapter",
-            default_prefix="nonebot.adapters.",
-        )
+        return resolve_dot_notation(module_name, "Adapter", "nonebot.adapters.")
     except (ImportError, AttributeError):
         log("WARNING", f"Failed to resolve adapter: <y>{module_name}</y>")
 
@@ -136,12 +154,12 @@ def load_plugins(config: Config) -> None:
 def init_nonebot() -> object:
     config = load_config()
     config.pop("_env_file", None)
-    bootstrap_config = Config.model_validate(config.pop("bootstrap", {}))
+    bootstrap_config = type_validate_python(Config, config.pop("bootstrap", {}))
 
-    setup_logger()
+    setup_logger(bootstrap_config.logging_override)
     nonebot.init(_env_file=None, **config)
-    print_logo(lambda line: log("SUCCESS", line))
     nonebot.get_driver()._lifespan = ConcurrentLifespan()  # noqa: SLF001
+    print_logo(lambda line: log("SUCCESS", line))
     load_adapters(bootstrap_config)
     load_plugins(bootstrap_config)
 

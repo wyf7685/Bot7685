@@ -1,6 +1,6 @@
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast, override
 
 import anyio
 from msgspec import json as msgjson
@@ -95,9 +95,9 @@ async def orm_upgrade() -> None:
 
 
 class ConcurrentLifespan(Lifespan):
-    async def _run_lifespan_func(  # pyright:ignore[reportIncompatibleMethodOverride]
-        self, funcs: Iterable["LIFESPAN_FUNC"]
-    ) -> None:
+    @staticmethod
+    @override
+    async def _run_lifespan_func(funcs: Iterable["LIFESPAN_FUNC"]) -> None:
         async with anyio.create_task_group() as tg:
             for func in funcs:
                 if is_coroutine_callable(func):
