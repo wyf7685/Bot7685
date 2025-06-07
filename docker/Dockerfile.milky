@@ -1,19 +1,18 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0-bookworm-slim AS build
 
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y clang zlib1g-dev \
+    && apt-get install --no-install-recommends -y git clang zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root/build
 
-ADD https://github.com/LagrangeDev/LagrangeV2 /root/build
-
-RUN dotnet publish Lagrange.Milky -c Release -r linux-x64 -o /root/out
+RUN git clone https://github.com/LagrangeDev/LagrangeV2.git . \
+    && dotnet publish Lagrange.Milky -c Release -r linux-x64 -o /root/out
 
 FROM mcr.microsoft.com/dotnet/runtime:9.0-bookworm-slim
 
 WORKDIR /app/data
 
-COPY --from=build /root/out/Lagrange.Milky /app/bin
+COPY --from=build /root/out /app/bin
 
 ENTRYPOINT [ "/app/bin/Lagrange.Milky" ]
