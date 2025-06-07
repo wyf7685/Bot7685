@@ -1,16 +1,13 @@
-name: Docker Bot7685
+name: Docker Lagrange.Milky
 
 on:
   push:
     paths:
-      - "uv.lock"
-      - "src/dev/**"
-      - "docker/Dockerfile"
-      - "docker/Dockerfile.cli"
-      - "docker/assets/**"
-      - ".github/workflows/docker-bot7685.yml"
-      - "external/**"
+      - "docker/Dockerfile.milky"
+      - ".github/workflows/docker-milky.yml"
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 0"
 
 jobs:
   docker:
@@ -20,9 +17,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Init Submodules
-        run: git submodule update --init --recursive
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -41,30 +35,15 @@ jobs:
         id: metadata
         with:
           images: wyf7685/bot7685
-          tags: type=raw,value=latest
+          tags: type=raw,value=milky
 
       - name: Build and Publish
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./docker/Dockerfile
+          file: ./docker/Dockerfile.milky
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Generate CLI Tags
-        uses: docker/metadata-action@v5
-        id: metadata-cli
-        with:
-          images: wyf7685/bot7685
-          tags: type=raw,value=cli
-
-      - name: Build CLI and Publish
-        uses: docker/build-push-action@v6
-        with:
-          file: ./docker/Dockerfile.cli
-          push: true
-          tags: ${{ steps.metadata-cli.outputs.tags }}
-          labels: ${{ steps.metadata-cli.outputs.labels }}
