@@ -159,7 +159,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     @classmethod
     def segment(cls, segment: TMS) -> str:
         return (
-            f"<g>{escape_tag(segment.__class__.__name__)}</g>"
+            f"<g>{segment.__class__.__name__}</g>"
             f"({style.i_y('type')}={cls.apply(segment.type)},"
             f" {style.i_y('data')}={cls.apply(segment.data)})"
         )
@@ -169,13 +169,13 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
         return f"[{', '.join(map(cls.segment, message))}]"
 
     @classmethod
-    def id(cls, id: str | int) -> str:
+    def id(cls, id: str | int, /) -> str:
         if isinstance(id, str):
             id = escape_tag(id)
         return style.c(id)
 
     @classmethod
-    def time(cls, datetime: datetime.datetime) -> str:
+    def time(cls, datetime: datetime.datetime, /) -> str:
         return style.y(datetime.strftime("%Y-%m-%d %H:%M:%S"))
 
     @classmethod
@@ -187,6 +187,5 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
         )
 
     @classmethod
-    def event_type(cls, event_type: str) -> str:
-        parts = event_type.split(".")
-        return ".".join(style.lg(part) for part in parts)
+    def event_type(cls, event_type: str, /) -> str:
+        return ".".join(style.lg(part) for part in event_type.split("."))
