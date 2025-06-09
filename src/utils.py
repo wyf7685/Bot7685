@@ -1,6 +1,6 @@
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, cast, override
+from typing import TYPE_CHECKING, override
 
 import anyio
 from msgspec import json as msgjson
@@ -9,11 +9,7 @@ from nonebot.utils import is_coroutine_callable, run_sync
 from pydantic import BaseModel, TypeAdapter
 
 if TYPE_CHECKING:
-    from nonebot.internal.driver._lifespan import (
-        ASYNC_LIFESPAN_FUNC,
-        LIFESPAN_FUNC,
-        SYNC_LIFESPAN_FUNC,
-    )
+    from nonebot.internal.driver._lifespan import LIFESPAN_FUNC
 
 
 class ConfigFile[T: BaseModel | Sequence[BaseModel]]:
@@ -100,7 +96,6 @@ class ConcurrentLifespan(Lifespan):
     async def _run_lifespan_func(funcs: Iterable["LIFESPAN_FUNC"]) -> None:
         async with anyio.create_task_group() as tg:
             for func in funcs:
-                if is_coroutine_callable(func):
-                    tg.start_soon(cast("ASYNC_LIFESPAN_FUNC", func))
-                else:
-                    tg.start_soon(run_sync(cast("SYNC_LIFESPAN_FUNC", func)))
+                if not is_coroutine_callable(func):
+                    func = run_sync(func)
+                tg.start_soon(func)

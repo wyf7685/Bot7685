@@ -2089,7 +2089,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-talk-stats"
-version = "0.1.0"
+version = "0.1.1"
 source = { directory = "external/nonebot-plugin-talk-stats" }
 dependencies = [
     { name = "nonebot-plugin-alconna" },
