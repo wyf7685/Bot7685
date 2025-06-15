@@ -11,7 +11,7 @@ from nonebot.utils import deep_update, logger_wrapper, resolve_dot_notation
 from pydantic import BaseModel
 
 from .logo import print_logo
-from .utils import ConcurrentLifespan
+from .utils import ConcurrentLifespan, find_and_link_external
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -160,6 +160,7 @@ def init_nonebot() -> object:
     nonebot.init(_env_file=None, **config)
     nonebot.get_driver()._lifespan = ConcurrentLifespan()  # noqa: SLF001
     print_logo(lambda line: log("SUCCESS", line))
+    find_and_link_external()
     load_adapters(bootstrap_config)
     load_plugins(bootstrap_config)
 

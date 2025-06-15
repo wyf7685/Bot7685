@@ -1,11 +1,16 @@
+import atexit
+import shutil
+import sys
+import tempfile
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 import anyio
 from msgspec import json as msgjson
+from msgspec import toml as msgtoml
 from nonebot.internal.driver._lifespan import Lifespan
-from nonebot.utils import is_coroutine_callable, run_sync
+from nonebot.utils import is_coroutine_callable, logger_wrapper, run_sync
 from pydantic import BaseModel, TypeAdapter
 
 if TYPE_CHECKING:
@@ -99,3 +104,63 @@ class ConcurrentLifespan(Lifespan):
                 if not is_coroutine_callable(func):
                     func = run_sync(func)
                 tg.start_soon(func)
+
+
+def find_and_link_external() -> None:
+    external_dir = Path.cwd() / "external"
+    if not external_dir.exists() or not external_dir.is_dir():
+        return
+
+    log = logger_wrapper("Bootstrap:link")
+
+    def debug(msg: str) -> None:
+        log("DEBUG", msg)
+
+    link_target = Path(tempfile.mkdtemp(prefix="bot7685_external_"))
+    for repo_root in external_dir.iterdir():
+        if (
+            not repo_root.is_dir()
+            or not (toml_file := repo_root / "pyproject.toml").exists()
+        ):
+            continue
+
+        try:
+            project: dict[str, dict[str, str]] = msgtoml.decode(toml_file.read_bytes())
+            if (
+                not (project_name := project.get("project", {}).get("name", ""))
+                or not (package_name := project_name.replace("-", "_"))
+                or not (package_path := repo_root / package_name).exists()
+                or not package_path.is_dir()
+            ):
+                continue
+
+        except Exception as exc:
+            debug(f"Failed to read project metadata from {repo_root}: {exc}")
+            continue
+
+        link_path = link_target / package_name
+
+        try:
+            link_path.symlink_to(package_path.resolve())
+        except OSError as exc:
+            debug(f"Failed to create symlink for {package_name}: {exc}")
+        else:
+            debug(f"Linked external package: {package_name} -> {link_path}")
+            continue
+
+        try:
+            shutil.copytree(package_path, link_path)
+        except Exception as exc:
+            debug(f"Failed to copy external package {package_name}: {exc}")
+            continue
+        else:
+            debug(f"Copied external package: {package_name} -> {link_path}")
+
+    sys.path.insert(1, str(link_target))
+
+    @atexit.register
+    def _() -> None:
+        try:
+            shutil.rmtree(link_target)
+        except Exception as exc:
+            print(f"Failed to remove temporary external link directory: {exc}")  # noqa: T201
