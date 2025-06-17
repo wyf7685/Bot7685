@@ -1,7 +1,7 @@
 import datetime
-from typing import final, overload
+from typing import overload
 
-from nonebot_plugin_orm import Model, get_scoped_session
+from nonebot_plugin_orm import Model, get_session
 from sqlalchemy import Integer, String, select
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -19,60 +19,53 @@ class MsgIdCache(Model):
     """ 创建时间 """
 
 
-@final
-class MsgIdCacheDAO:
-    def __init__(self) -> None:
-        self.session = get_scoped_session()
+async def set_msg_dst_id(
+    src_adapter: str,
+    src_id: str,
+    dst_adapter: str,
+    dst_id: str,
+) -> None:
+    cache = MsgIdCache(
+        src_adapter=src_adapter,
+        src_id=src_id,
+        dst_adapter=dst_adapter,
+        dst_id=dst_id,
+        created_at=int(datetime.datetime.now().timestamp()),
+    )
 
-    async def set_dst_id(
-        self,
-        src_adapter: str,
-        src_id: str,
-        dst_adapter: str,
-        dst_id: str,
-    ) -> None:
-        cache = MsgIdCache(
-            src_adapter=src_adapter,
-            src_id=src_id,
-            dst_adapter=dst_adapter,
-            dst_id=dst_id,
-            created_at=int(datetime.datetime.now().timestamp()),
+    async with get_session() as session:
+        session.add(cache)
+
+
+@overload
+async def get_reply_id(
+    *,
+    src_adapter: str,
+    dst_adapter: str,
+    src_id: str,
+) -> str | None: ...
+@overload
+async def get_reply_id(
+    *,
+    src_adapter: str,
+    dst_adapter: str,
+    dst_id: str,
+) -> str | None: ...
+
+
+async def get_reply_id(
+    src_adapter: str,
+    dst_adapter: str,
+    src_id: str | None = None,
+    dst_id: str | None = None,
+) -> str | None:
+    statement = (
+        select(MsgIdCache.dst_id if src_id else MsgIdCache.src_id)
+        .where(MsgIdCache.src_adapter == src_adapter)
+        .where(MsgIdCache.dst_adapter == dst_adapter)
+        .where(
+            (MsgIdCache.src_id == src_id) if src_id else (MsgIdCache.dst_id == dst_id)
         )
-        self.session.add(cache)
-        await self.session.commit()
-
-    @overload
-    async def get_reply_id(
-        self,
-        *,
-        src_adapter: str,
-        dst_adapter: str,
-        src_id: str,
-    ) -> str | None: ...
-    @overload
-    async def get_reply_id(
-        self,
-        *,
-        src_adapter: str,
-        dst_adapter: str,
-        dst_id: str,
-    ) -> str | None: ...
-
-    async def get_reply_id(
-        self,
-        src_adapter: str,
-        dst_adapter: str,
-        src_id: str | None = None,
-        dst_id: str | None = None,
-    ) -> str | None:
-        statement = (
-            select(MsgIdCache.dst_id if src_id else MsgIdCache.src_id)
-            .where(MsgIdCache.src_adapter == src_adapter)
-            .where(MsgIdCache.dst_adapter == dst_adapter)
-            .where(
-                (MsgIdCache.src_id == src_id)
-                if src_id
-                else (MsgIdCache.dst_id == dst_id)
-            )
-        )
-        return await self.session.scalar(statement)
+    )
+    async with get_session() as session:
+        return await session.scalar(statement)

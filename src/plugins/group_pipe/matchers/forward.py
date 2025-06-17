@@ -12,7 +12,7 @@ from src.plugins.upload_cos import upload_cos
 
 from ..adapter import get_sender
 from ..adapters.onebot11 import MessageConverter
-from ..database import KVCacheDAO
+from ..database import get_cache_value
 from ..utils import guess_url_type
 from .depends import MsgTarget
 
@@ -81,7 +81,7 @@ async def _(bot: v11.Bot, event: v11.Event) -> None:
 
 @matcher.assign("load")
 async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
-    cache = await KVCacheDAO().get_value(v11.Adapter.get_name(), f"forward_{fwd_id}")
+    cache = await get_cache_value(v11.Adapter.get_name(), f"forward_{fwd_id}")
 
     if cache is None:
         await UniMessage.text("未找到合并转发消息").finish(reply_to=True)

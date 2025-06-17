@@ -1,8 +1,8 @@
 import contextlib
 import json
-from collections.abc import AsyncGenerator, Iterable
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, ClassVar, override
+from typing import Any, override
 from weakref import WeakKeyDictionary
 
 import nonebot
@@ -23,8 +23,8 @@ from nonebot_plugin_alconna import uniseg as u
 from src.plugins.gtg import call_soon
 from src.plugins.upload_cos import upload_cos
 
-from ..adapter import mark
-from ..database import KVCacheDAO
+from ..adapter import converts
+from ..database import set_cache_value
 from ..utils import async_client, check_url_ok, guess_url_type, solve_url_302
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
@@ -32,8 +32,10 @@ from .common import MessageSender as BaseMessageSender
 bot_platform_cache: WeakKeyDictionary[Bot, str] = WeakKeyDictionary()
 
 
-class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
-    _adapter_: ClassVar[str | None] = Adapter.get_name()
+class MessageConverter(
+    BaseMessageConverter[MessageSegment, Bot, Message],
+    adapter=Adapter.get_name(),
+):
     do_resolve_url: bool = True
 
     @override
@@ -158,7 +160,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             cache_data.append({"nick": nick, "msg": unimsg.dump(media_save_dir=False)})
 
         if cache_data:
-            await KVCacheDAO().set_value(
+            await set_cache_value(
                 adapter=self.src_bot.type,
                 key=f"forward_{forward_id}",
                 value=json.dumps(cache_data),
@@ -196,11 +198,11 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         self.logger.debug(f"上传视频: {escape_tag(url)}")
         return u.Video(url=url)
 
-    @mark("at")
+    @converts("at")
     async def at(self, segment: MessageSegment) -> u.Segment:
         return u.Text(f"[at:{segment.data['qq']}]")
 
-    @mark("image")
+    @converts("image")
     async def image(self, segment: MessageSegment) -> u.Segment | None:
         if not (url := segment.data.get("url")):
             return None
@@ -214,11 +216,11 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return u.Image(url=url)
 
-    @mark("reply")
+    @converts("reply")
     async def reply(self, segment: MessageSegment) -> u.Segment:
         return await self.convert_reply(segment.data["id"])
 
-    @mark("face")
+    @converts("face")
     async def face(self, segment: MessageSegment) -> u.Segment:
         if isinstance((raw := segment.data.get("raw")), dict) and (
             text := raw.get("faceText")
@@ -226,30 +228,32 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             return u.Text(text)
         return u.Text(f"[face:{segment.data['id']}]")
 
-    @mark("forward")
-    async def forward(self, segment: MessageSegment) -> AsyncGenerator[u.Segment]:
+    @converts("forward")
+    async def forward(self, segment: MessageSegment) -> list[u.Segment]:
         cached = False
         forward_id: str = segment.data["id"]
         if "napcat" in await self.get_platform() and (
             content := segment.data.get("content")
         ):
             cached = await self.cache_forward(forward_id, content)
-        yield u.Text(f"[forward:{forward_id}:cache={cached}]")
+
+        segs: list[u.Segment] = [u.Text(f"[forward:{forward_id}:cache={cached}]")]
         if cached:
             btn = u.Button(
                 "input",
                 label="加载合并转发消息",
                 text=f"/forward load {forward_id}",
             )
-            yield u.Keyboard([btn])
+            segs.append(u.Keyboard([btn]))
 
-    @mark("json")
-    async def json(self, segment: MessageSegment) -> AsyncGenerator[u.Segment]:
+        return segs
+
+    @converts("json")
+    async def json(self, segment: MessageSegment) -> list[u.Segment] | None:
         with contextlib.suppress(Exception):
-            for seg in await self.handle_json_msg(json.loads(segment.data["data"])):
-                yield seg
+            return await self.handle_json_msg(json.loads(segment.data["data"]))
 
-    @mark("video")
+    @converts("video")
     async def video(self, segment: MessageSegment) -> u.Segment | None:
         if not (url := segment.data.get("url")):
             return None
@@ -264,9 +268,10 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
         return u.Video(url=url)
 
 
-class MessageSender(BaseMessageSender[Bot, dict[str, object]]):
-    _adapter_: ClassVar[str | None] = Adapter.get_name()
-
+class MessageSender(
+    BaseMessageSender[Bot, dict[str, object]],
+    adapter=Adapter.get_name(),
+):
     @override
     @staticmethod
     def extract_msg_id(data: dict[str, object]) -> str:

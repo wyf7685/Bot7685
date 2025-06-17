@@ -6,7 +6,7 @@ from nonebot_plugin_alconna import Target, UniMessage, get_target
 from nonebot_plugin_uninfo import get_session
 
 from .adapter import get_converter, get_sender
-from .database import PipeDAO, display_pipe
+from .database import display_pipe, get_pipes
 from .utils import repr_unimsg
 
 
@@ -58,7 +58,7 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         logger.opt(exception=err).debug(f"获取消息信息失败: {err}")
         return
 
-    pipes = await PipeDAO().get_pipes(listen=listen)
+    pipes = await get_pipes(listen=listen)
     if not pipes:
         logger.trace("没有监听当前群组的管道")
         return

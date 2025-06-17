@@ -1,54 +1,57 @@
 import abc
 import functools
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import Awaitable, Callable
 from typing import ClassVar, Self, cast, overload
 
 from nonebot.adapters import Bot, Event, Message, MessageSegment
-from nonebot_plugin_alconna.uniseg import Segment, Target, UniMessage
+from nonebot_plugin_alconna.uniseg import (
+    Segment,
+    Target,
+    UniMessage,
+    get_builder,
+    get_message_id,
+)
 
 type _M = Message[MessageSegment[_M]]
 type ConverterPred = Callable[[MessageSegment[_M]], bool]
-type ConverterCall[TC: MessageConverter, TMS: MessageSegment] = (
-    Callable[[TC, TMS], AsyncGenerator[Segment]]
-    | Callable[[TC, TMS], Awaitable[Segment | None]]
-)
-type BoundConverterCall[TMS: MessageSegment] = (
-    Callable[[TMS], AsyncGenerator[Segment]]
-    | Callable[[TMS], Awaitable[Segment | None]]
-)
+type ConverterCall[TC: MessageConverter, TMS: MessageSegment] = Callable[
+    [TC, TMS], Awaitable[Segment | list[Segment] | None]
+]
+type BoundConverterCall[TMS: MessageSegment] = Callable[
+    [TMS], Awaitable[Segment | list[Segment] | None]
+]
+
 
 CONVERTERS: dict[str | None, type["MessageConverter[Bot, _M]"]] = {}
 SENDERS: dict[str | None, type["MessageSender[Bot]"]] = {}
 
 
 class MessageConverter[TB: Bot, TM: Message](abc.ABC):
-    _adapter_: ClassVar[str | None]
     _converter_: ClassVar[set[ConverterCall[Self, MessageSegment]]] = set()
 
     src_bot: TB
     dst_bot: Bot | None
 
-    @abc.abstractmethod
-    def __init__(self, src_bot: TB, dst_bot: Bot | None = None) -> None: ...
+    def __init__(self, src_bot: TB, dst_bot: Bot | None = None) -> None:
+        self.src_bot = src_bot
+        self.dst_bot = dst_bot
 
     @classmethod
-    @abc.abstractmethod
-    def get_message(cls, event: Event) -> TM | None: ...
+    def get_message(cls, event: Event) -> TM | None:
+        return cast("TM", event.get_message())
 
     @classmethod
-    @abc.abstractmethod
-    def get_message_id(cls, event: Event, bot: TB) -> str: ...
+    def get_message_id(cls, event: Event, bot: TB) -> str:
+        return get_message_id(event, bot)
 
     @abc.abstractmethod
     async def convert(self, msg: TM) -> UniMessage[Segment]: ...
 
-    def __init_subclass__(cls) -> None:
-        super().__init_subclass__()
-        if hasattr(cls, "_adapter_"):
-            CONVERTERS[cls._adapter_] = cls  # pyright:ignore[reportArgumentType]
-            del cls._adapter_
+    def __init_subclass__(cls, adapter: str | None, **kwargs: object) -> None:
+        super().__init_subclass__(**kwargs)
+        CONVERTERS[adapter] = cls  # pyright:ignore[reportArgumentType]
 
-        # DO NOT use `|=` which will update the original set (weird)
+        # DO NOT use `|=` which updates the original set
         # create a new set for subclass using operator `|`
         cls._converter_ = cls._converter_ | {
             cast("ConverterCall[Self, MessageSegment]", call)
@@ -58,19 +61,19 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
             and hasattr(call, "__predicates__")
         }
 
-    def _find_fn(
-        self, seg: MessageSegment
-    ) -> BoundConverterCall[MessageSegment] | None:
+    def _find_fn[TMS: MessageSegment](self, seg: TMS) -> BoundConverterCall[TMS]:
         for call in self._converter_:
             preds: tuple[ConverterPred, ...] = getattr(call, "__predicates__", ())
             if any(pred(seg) for pred in preds):
-                return functools.partial(call, self)  # pyright:ignore[reportReturnType]
-        return None
+                return cast("BoundConverterCall[TMS]", functools.partial(call, self))
+
+        async def default(seg: TMS) -> Segment | list[Segment] | None:
+            return (fn := get_builder(self.src_bot)) and fn.convert(seg)
+
+        return default
 
 
 class MessageSender[TB: Bot](abc.ABC):
-    _adapter_: ClassVar[str | None]
-
     @classmethod
     @abc.abstractmethod
     async def send(
@@ -82,11 +85,9 @@ class MessageSender[TB: Bot](abc.ABC):
         src_id: str | None = None,
     ) -> None: ...
 
-    def __init_subclass__(cls) -> None:
+    def __init_subclass__(cls, adapter: str | None) -> None:
         super().__init_subclass__()
-        if hasattr(cls, "_adapter_"):
-            SENDERS[cls._adapter_] = cls  # pyright:ignore[reportArgumentType]
-            del cls._adapter_
+        SENDERS[adapter] = cls  # pyright:ignore[reportArgumentType]
 
 
 def _make_pred(t: str | type[MessageSegment]) -> ConverterPred:
@@ -97,7 +98,7 @@ def _make_pred(t: str | type[MessageSegment]) -> ConverterPred:
     )
 
 
-def mark[TC: MessageConverter, TMS: MessageSegment](
+def converts[TC: MessageConverter, TMS: MessageSegment](
     *target: str | type[TMS],
 ) -> Callable[[ConverterCall[TC, TMS]], ConverterCall[TC, TMS]]:
     def decorator[T: Callable](call: T) -> T:

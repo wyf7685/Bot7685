@@ -1,6 +1,6 @@
 from copy import deepcopy
 from io import BytesIO
-from typing import ClassVar, override
+from typing import override
 
 import anyio
 from nonebot.adapters import Event as BaseEvent
@@ -12,7 +12,7 @@ from nonebot_plugin_alconna import uniseg as u
 
 from src.plugins.upload_cos import upload_cos
 
-from ..adapter import mark
+from ..adapter import converts
 from ..utils import download_url, guess_url_type, webm_to_gif
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
@@ -20,9 +20,10 @@ from .common import MessageSender as BaseMessageSender
 TG_MSGID_MARK = "$telegram$"
 
 
-class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
-    _adapter_: ClassVar[str | None] = Adapter.get_name()
-
+class MessageConverter(
+    BaseMessageConverter[MessageSegment, Bot, Message],
+    adapter=Adapter.get_name(),
+):
     @override
     @classmethod
     def get_message(cls, event: BaseEvent) -> Message | None:
@@ -80,11 +81,11 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return u.Text(f"[reply:{src_msg_id}]")
 
-    @mark("mention")
+    @converts("mention")
     async def mention(self, segment: MessageSegment) -> u.Segment:
         return u.Text(segment.data["text"])
 
-    @mark("sticker", "photo")
+    @converts("sticker", "photo")
     async def sticker(self, segment: MessageSegment) -> u.Segment:
         file_id = segment.data["file"]
         file_path, url = await self.get_file_info(file_id)
@@ -108,7 +109,7 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
 
         return u.Image(url=url, mimetype=info.mime)
 
-    @mark("document", "video")
+    @converts("document", "video")
     async def document(self, segment: MessageSegment) -> u.Segment:
         file_id = segment.data["file"]
         file_path, url = await self.get_file_info(file_id)
@@ -132,14 +133,15 @@ class MessageConverter(BaseMessageConverter[MessageSegment, Bot, Message]):
             name=file_path.rpartition("/")[-1],
         )
 
-    @mark("reply")
+    @converts("reply")
     async def reply(self, segment: MessageSegment) -> u.Segment:
         return await self.convert_reply(segment.data["message_id"])
 
 
-class MessageSender(BaseMessageSender[Bot, MessageModel]):
-    _adapter_: ClassVar[str | None] = Adapter.get_name()
-
+class MessageSender(
+    BaseMessageSender[Bot, MessageModel],
+    adapter=Adapter.get_name(),
+):
     @override
     @staticmethod
     def extract_msg_id(data: MessageModel) -> str:
@@ -176,11 +178,10 @@ class MessageSender(BaseMessageSender[Bot, MessageModel]):
         await super().send(dst_bot, target, msg, src_type, src_id)
 
         async def _send_gif(file: InputFile | str) -> None:
-            message_thread_id = target.extra.get("message_thread_id", None)
             res = await dst_bot.send_animation(
                 chat_id=target.id,
                 animation=file,
-                message_thread_id=message_thread_id,
+                message_thread_id=target.extra.get("message_thread_id", None),
             )
             await cls.set_dst_id(src_type, src_id, dst_bot, res)
 

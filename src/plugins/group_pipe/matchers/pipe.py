@@ -15,7 +15,14 @@ from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExt
 
 from src.plugins.cache import get_cache
 
-from ..database import PipeDAO, PipeTuple, display_pipe
+from ..database import (
+    PipeTuple,
+    create_pipe,
+    delete_pipe,
+    display_pipe,
+    get_linked_pipes,
+    get_pipes,
+)
 from .depends import MsgTarget
 
 alc = Alconna(
@@ -87,7 +94,7 @@ def show_pipes(
 
 @pipe_cmd.assign("list.listen")
 async def assign_list_listen(target: MsgTarget) -> None:
-    pipes = await PipeDAO().get_pipes(listen=target)
+    pipes = await get_pipes(listen=target)
     if not pipes:
         await UniMessage.text("没有监听当前群组的管道").finish(reply_to=True)
 
@@ -97,7 +104,7 @@ async def assign_list_listen(target: MsgTarget) -> None:
 
 @pipe_cmd.assign("list.target")
 async def assign_list_target(target: MsgTarget) -> None:
-    pipes = await PipeDAO().get_pipes(target=target)
+    pipes = await get_pipes(target=target)
     if not pipes:
         await UniMessage.text("没有目标为当前群组的管道").finish(reply_to=True)
 
@@ -107,7 +114,7 @@ async def assign_list_target(target: MsgTarget) -> None:
 
 @pipe_cmd.assign("list")
 async def assign_list(target: MsgTarget) -> None:
-    listen_pipes, target_pipes = await PipeDAO().get_linked_pipes(target)
+    listen_pipes, target_pipes = await get_linked_pipes(target)
     if not listen_pipes and not target_pipes:
         await UniMessage.text("没有链接到当前群组的管道").finish(reply_to=True)
 
@@ -136,19 +143,19 @@ async def assign_link(target: MsgTarget, code: int) -> None:
         await UniMessage.text("链接码无效或已过期").finish(reply_to=True)
 
     listen = Target.load(data)
-    await PipeDAO().create_pipe(listen, target)
+    await create_pipe(listen, target)
     msg = f"管道创建成功:\n{display_pipe(listen, target)}"
     await UniMessage.text(msg).finish(reply_to=True)
 
 
 @pipe_cmd.assign("remove")
 async def assign_remove(target: MsgTarget, idx: int) -> None:
-    listen_pipes, target_pipes = await PipeDAO().get_linked_pipes(target)
+    listen_pipes, target_pipes = await get_linked_pipes(target)
     if idx < 1 or idx > len(listen_pipes) + len(target_pipes):
         await UniMessage.text("管道序号无效").finish(reply_to=True)
 
     pipe = (listen_pipes + target_pipes)[idx - 1]
-    await PipeDAO().delete_pipe(pipe)
+    await delete_pipe(pipe)
     (listen_pipes if pipe in listen_pipes else target_pipes).remove(pipe)
 
     msg = (
