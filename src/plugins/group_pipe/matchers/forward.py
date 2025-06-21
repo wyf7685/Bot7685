@@ -110,7 +110,7 @@ async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
     for item in cache_data:
         nick = item["nick"]
         msg = await UniMessage.load(item["msg"]).transform_async(_convert_image)
-        msg = Text(f"{nick}\n\n") + msg
+        msg.insert(0, Text(f"{nick}\n\n"))
         try:
             await send(bot, target, msg)
         except Exception as err:

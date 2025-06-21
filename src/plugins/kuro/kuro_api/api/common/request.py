@@ -1,5 +1,3 @@
-# ruff: noqa: N802, N815
-
 import contextlib
 import dataclasses
 import warnings
@@ -31,7 +29,7 @@ class Request[R: ValidResponseData]:
     @override
     def __init_subclass__(cls) -> None:
         super().__init_subclass__()
-        dataclasses.dataclass(cls)
+        dataclasses.dataclass(cls)  # pyright:ignore[reportUnusedCallResult]
 
     def dump(self) -> dict[str, object]:
         return msgjson.decode(msgjson.encode(dataclasses.asdict(self)))  # wtf

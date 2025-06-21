@@ -76,11 +76,11 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
 class MessageSender[TB: Bot](abc.ABC):
     @classmethod
     @abc.abstractmethod
-    async def send[S: Segment](
+    async def send(
         cls,
         dst_bot: TB,
         target: Target,
-        msg: UniMessage[S],
+        msg: UniMessage[Segment],
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None: ...

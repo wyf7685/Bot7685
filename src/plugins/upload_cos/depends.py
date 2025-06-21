@@ -18,7 +18,7 @@ def _event_image() -> Image:
             reply_msg = msg[Reply, 0].msg
             if isinstance(reply_msg, Message):
                 return await event_image(await UniMessage.generate(message=reply_msg))
-        Matcher.skip()  # noqa: RET503
+        return Matcher.skip()
 
     return Depends(event_image)
 
@@ -32,7 +32,7 @@ def _event_image_raw() -> bytes:
     ) -> bytes:
         if isinstance(raw := await image_fetch(event, bot, state, image), bytes):
             return raw
-        Matcher.skip()  # noqa: RET503
+        return Matcher.skip()
 
     return Depends(event_image_raw)
 

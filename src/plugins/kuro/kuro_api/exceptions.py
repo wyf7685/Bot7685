@@ -1,6 +1,3 @@
-# ruff: noqa: N818
-
-
 from typing import ClassVar, override
 
 

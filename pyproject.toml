@@ -10,14 +10,14 @@ dependencies = [
   # adapters
   "nonebot-adapter-discord>=0.1.8",
   "nonebot-adapter-feishu>=2.6.2",
-  "nonebot-adapter-milky>=0.3.0",
+  "nonebot-adapter-milky>=0.4.0",
   "nonebot-adapter-onebot>=2.4.6",
   "nonebot-adapter-qq>=1.6.3",
   "nonebot-adapter-satori>=0.13.4",
   "nonebot-adapter-telegram>=0.1.0b20",
   # plugins
   "nonebot-plugin-akinator>=1.0.3",
-  "nonebot-plugin-alconna>=0.58.4",
+  "nonebot-plugin-alconna>=0.58.5",
   "nonebot-plugin-apscheduler>=0.5.0",
   "nonebot-plugin-chatrecorder>=0.7.0",
   "nonebot-plugin-emojimix>=0.4.0",
@@ -25,8 +25,8 @@ dependencies = [
   "nonebot-plugin-localstore>=0.7.4",
   "nonebot-plugin-orm[asyncpg,postgresql]>=0.7.7",
   "nonebot-plugin-picstatus>=2.1.2",
-  "nonebot-plugin-skland>=0.2.2",
-  "nonebot-plugin-uninfo>=0.8.1",
+  "nonebot-plugin-skland>=0.4.1",
+  "nonebot-plugin-uninfo>=0.8.2",
   "nonebot-plugin-user>=0.5.1",
   "nonebot-plugin-waiter>=0.8.1",
   "nonebot-plugin-wakatime>=0.2.7",
@@ -39,11 +39,11 @@ dependencies = [
   "cos-python-sdk-v5>=1.9.36",
   "gunicorn>=23.0.0",
   "httpx>=0.28.1",
-  "jmcomic>=2.5.39",
+  "jmcomic>=2.6.0",
   "msgspec[toml,yaml]>=0.19.0",
   "paramiko>=3.5.0",
   "playwright==1.52.0",                       # pinned in docker/Dockerfile
-  "pydantic>=2.11.4",
+  "pydantic>=2.11.7",
   "tarina>=0.6.8",
   "tencentcloud-sdk-python-dnspod>=3.0.1394",
   # plugins
@@ -55,7 +55,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "ruff>=0.9.3",
+  "ruff>=0.12.0",
   "basedpyright>=1.24.0",
   "ipykernel>=6.29.5",
   "nonebot-adapter-console>=0.6.0",
@@ -124,27 +124,28 @@ select = [
   "YTT",   # flake8-2020
 ]
 ignore = [
-  "E402",   # module-import-not-at-top-of-file
-  "RUF001", # ambiguous-unicode-character-string
-  "RUF002", # ambiguous-unicode-character-docstring
-  "RUF003", # ambiguous-unicode-character-comment
-  "ANN401", # any-type
-  "TRY003", # raise-vanilla-args
-  "TRY301", # raise-within-try
-  "EM102",  # f-string-in-exception
-  "COM812", # missing-trailing-comma
-  "ERA001", # commented-out-code
-  "EM101",  # raw-string-in-exception
-  "TID252", # relative-imports
-  "ISC001", # single-line-implicit-string-concatenation
-  "DTZ005", # call-datetime-now-without-tzinfo
-  "S311",   # suspicious-non-cryptographic-random-usage
-  "PGH003", # blanket-type-ignore
-  "N818",   # error-suffix-on-exception-name  # stupid
-  "PYI041", # redundant-numeric-union  # int | float
-  "S101",   # assert
-  "B911",   # batched-without-explicit-strict
-  "PGH004", # blanket-noqa
+  "E402",    # module-import-not-at-top-of-file
+  "RUF001",  # ambiguous-unicode-character-string
+  "RUF002",  # ambiguous-unicode-character-docstring
+  "RUF003",  # ambiguous-unicode-character-comment
+  "ANN401",  # any-type
+  "TRY003",  # raise-vanilla-args
+  "TRY301",  # raise-within-try
+  "EM102",   # f-string-in-exception
+  "COM812",  # missing-trailing-comma
+  "ERA001",  # commented-out-code
+  "EM101",   # raw-string-in-exception
+  "TID252",  # relative-imports
+  "ISC001",  # single-line-implicit-string-concatenation
+  "DTZ005",  # call-datetime-now-without-tzinfo
+  "S311",    # suspicious-non-cryptographic-random-usage
+  "PGH003",  # blanket-type-ignore
+  "N818",    # error-suffix-on-exception-name  # stupid
+  "PYI041",  # redundant-numeric-union  # int | float
+  "S101",    # assert
+  "B911",    # batched-without-explicit-strict
+  "PGH004",  # blanket-noqa
+  "PLC",
 ]
 
 [tool.ruff.lint.flake8-builtins]

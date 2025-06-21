@@ -1,4 +1,3 @@
-# ruff: noqa: N815
 import dataclasses
 import datetime
 from collections import Counter

@@ -1,5 +1,3 @@
-# ruff: noqa: N815
-
 from typing import final
 
 from ...common import RequestInfo, RequestWithoutToken, ResponseData
