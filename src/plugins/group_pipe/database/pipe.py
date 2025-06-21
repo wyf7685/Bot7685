@@ -50,12 +50,6 @@ class Pipe(Model):
         return Target.load(self.target_t)
 
 
-# @final
-# class PipeDAO:
-#     def __init__(self) -> None:
-#         self.session = get_scoped_session()
-
-
 async def get_pipes(
     *,
     listen: Target | None = None,

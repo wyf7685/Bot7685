@@ -3,7 +3,14 @@ import json
 from nonebot import logger, require
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot import v11
-from nonebot_plugin_alconna import Alconna, Args, CommandMeta, Subcommand, on_alconna
+from nonebot_plugin_alconna import (
+    Alconna,
+    Args,
+    CommandMeta,
+    Segment,
+    Subcommand,
+    on_alconna,
+)
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 
@@ -79,6 +86,17 @@ async def _(bot: v11.Bot, event: v11.Event) -> None:
     await UniMessage.text(f"缓存合并转发消息成功: {id_}").finish(reply_to=True)
 
 
+async def _convert_image(segment: Segment) -> bool | Segment:
+    if not isinstance(segment, Image):
+        return True
+
+    return (
+        converted
+        if segment.url is not None and (converted := await url_to_image(segment.url))
+        else Text("[图片]")
+    )
+
+
 @matcher.assign("load")
 async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
     cache = await get_cache_value(v11.Adapter.get_name(), f"forward_{fwd_id}")
@@ -87,24 +105,14 @@ async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
         await UniMessage.text("未找到合并转发消息").finish(reply_to=True)
 
     cache_data = json.loads(cache)
-    fn = get_sender(bot)
+    send = get_sender(bot).send
 
     for item in cache_data:
         nick = item["nick"]
-        msg = UniMessage.load(item["msg"])
-
-        for idx in range(len(msg)):
-            seg = msg[idx]
-            if isinstance(seg, Image) and seg.url:
-                msg[idx] = await url_to_image(seg.url) or Text("[图片]")
-
-        msg.insert(0, Text(f"{nick}\n\n"))
+        msg = await UniMessage.load(item["msg"]).transform_async(_convert_image)
+        msg = Text(f"{nick}\n\n") + msg
         try:
-            await fn.send(
-                dst_bot=bot,
-                target=target,
-                msg=msg,
-            )
+            await send(bot, target, msg)
         except Exception as err:
             await UniMessage.text(f"发送消息失败: {err}").finish()
 

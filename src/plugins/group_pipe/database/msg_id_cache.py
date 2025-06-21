@@ -39,16 +39,16 @@ async def set_msg_dst_id(
 
 @overload
 async def get_reply_id(
-    *,
     src_adapter: str,
     dst_adapter: str,
+    *,
     src_id: str,
 ) -> str | None: ...
 @overload
 async def get_reply_id(
-    *,
     src_adapter: str,
     dst_adapter: str,
+    *,
     dst_id: str,
 ) -> str | None: ...
 

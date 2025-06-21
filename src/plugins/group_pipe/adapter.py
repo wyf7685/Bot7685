@@ -52,7 +52,7 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
         CONVERTERS[adapter] = cls  # pyright:ignore[reportArgumentType]
 
         # DO NOT use `|=` which updates the original set
-        # create a new set for subclass using operator `|`
+        # create a new set for subclass with `|`
         cls._converter_ = cls._converter_ | {
             cast("ConverterCall[Self, MessageSegment]", call)
             for name in dir(cls)
@@ -76,11 +76,11 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
 class MessageSender[TB: Bot](abc.ABC):
     @classmethod
     @abc.abstractmethod
-    async def send(
+    async def send[S: Segment](
         cls,
         dst_bot: TB,
         target: Target,
-        msg: UniMessage[Segment],
+        msg: UniMessage[S],
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None: ...
@@ -98,11 +98,10 @@ def _make_pred(t: str | type[MessageSegment]) -> ConverterPred:
     )
 
 
-def converts[TC: MessageConverter, TMS: MessageSegment](
-    *target: str | type[TMS],
-) -> Callable[[ConverterCall[TC, TMS]], ConverterCall[TC, TMS]]:
-    def decorator[T: Callable](call: T) -> T:
-        call.__predicates__ = tuple(_make_pred(t) for t in target)  # pyright:ignore[reportFunctionMemberAccess]
+def converts[C: ConverterCall](*target: str | type[MessageSegment]) -> Callable[[C], C]:
+    def decorator(call: C) -> C:
+        preds = tuple(_make_pred(t) for t in target)
+        call.__predicates__ = preds  # pyright:ignore[reportFunctionMemberAccess]
         return call
 
     return decorator
