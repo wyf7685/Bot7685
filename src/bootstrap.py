@@ -122,11 +122,11 @@ def _perf[**P, R](info: str) -> "Callable[[Callable[P, R]], Callable[P, R]]":
 
 
 def load_adapter(module_name: str) -> type["Adapter"] | None:
-    """Load an adapter by its module name."""
     try:
         return resolve_dot_notation(module_name, "Adapter", "nonebot.adapters.")
     except (ImportError, AttributeError):
         log("WARNING", f"Failed to resolve adapter: <y>{module_name}</y>")
+        return None
 
 
 @_perf("Loading adapters")

@@ -139,6 +139,23 @@ def find_and_link_external() -> None:
         else:
             debug(f"Copied external package: {package_name} -> {link_path}")
 
+        if (egg_info := (repo_root / f"{package_name}.egg-info")).exists():
+            egg_link = link_target / egg_info.name
+            try:
+                egg_link.symlink_to(egg_info.resolve())
+            except OSError as exc:
+                debug(f"Failed to create symlink for egg-info {egg_info}: {exc}")
+            else:
+                debug(f"Linked egg-info: {egg_info} -> {egg_link}")
+                continue
+
+            try:
+                shutil.copytree(egg_info, egg_link)
+            except Exception as exc:
+                debug(f"Failed to copy egg-info {egg_info}: {exc}")
+            else:
+                debug(f"Copied egg-info: {egg_info} -> {egg_link}")
+
     sys.path.insert(1, str(link_target))
 
     @atexit.register
