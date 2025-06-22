@@ -12,19 +12,18 @@ dependencies = [
   "nonebot-adapter-feishu>=2.6.2",
   "nonebot-adapter-milky>=0.4.0",
   "nonebot-adapter-onebot>=2.4.6",
-  "nonebot-adapter-qq>=1.6.3",
-  "nonebot-adapter-satori>=0.13.4",
+  "nonebot-adapter-qq>=1.6.4",
+  "nonebot-adapter-satori>=0.13.6",
   "nonebot-adapter-telegram>=0.1.0b20",
   # plugins
   "nonebot-plugin-akinator>=1.0.3",
   "nonebot-plugin-alconna>=0.58.5",
   "nonebot-plugin-apscheduler>=0.5.0",
   "nonebot-plugin-chatrecorder>=0.7.0",
-  "nonebot-plugin-emojimix>=0.4.0",
   "nonebot-plugin-htmlrender>=0.6.6",
   "nonebot-plugin-localstore>=0.7.4",
-  "nonebot-plugin-orm[asyncpg,postgresql]>=0.7.7",
-  "nonebot-plugin-picstatus>=2.1.2",
+  "nonebot-plugin-orm[asyncpg,postgresql]>=0.8.1",
+  "nonebot-plugin-picstatus>=2.1.3.post1",
   "nonebot-plugin-skland>=0.4.1",
   "nonebot-plugin-uninfo>=0.8.2",
   "nonebot-plugin-user>=0.5.1",
@@ -56,19 +55,22 @@ dependencies = [
 [dependency-groups]
 dev = [
   "ruff>=0.12.0",
-  "basedpyright>=1.24.0",
+  "basedpyright>=1.29.0",
   "ipykernel>=6.29.5",
   "nonebot-adapter-console>=0.6.0",
   "nonebot-plugin-orm[aiosqlite]>=0.7.7",
-  "nonebug>=0.4.2",
-  "pytest>=8.3.4",
-  "pytest-asyncio>=0.25.0",
-  "pytest-cov>=6.0.0",
+  "nonebug>=0.4.3",
+  "pytest>=8.4.0",
+  "pytest-asyncio>=0.25.0,<1.0",
+  "pytest-cov>=6.1.0",
   "pytest-mock>=3.14.0",
   "ipykernel>=6.29.5",
   "pre-commit>=4.1.0",
   "respx>=0.22.0",
 ]
+
+[tool.uv]
+resolution = "lowest-direct"
 
 [tool.ruff]
 line-length = 88
@@ -124,27 +126,27 @@ select = [
   "YTT",   # flake8-2020
 ]
 ignore = [
-  "E402",    # module-import-not-at-top-of-file
-  "RUF001",  # ambiguous-unicode-character-string
-  "RUF002",  # ambiguous-unicode-character-docstring
-  "RUF003",  # ambiguous-unicode-character-comment
-  "ANN401",  # any-type
-  "TRY003",  # raise-vanilla-args
-  "TRY301",  # raise-within-try
-  "EM102",   # f-string-in-exception
-  "COM812",  # missing-trailing-comma
-  "ERA001",  # commented-out-code
-  "EM101",   # raw-string-in-exception
-  "TID252",  # relative-imports
-  "ISC001",  # single-line-implicit-string-concatenation
-  "DTZ005",  # call-datetime-now-without-tzinfo
-  "S311",    # suspicious-non-cryptographic-random-usage
-  "PGH003",  # blanket-type-ignore
-  "N818",    # error-suffix-on-exception-name  # stupid
-  "PYI041",  # redundant-numeric-union  # int | float
-  "S101",    # assert
-  "B911",    # batched-without-explicit-strict
-  "PGH004",  # blanket-noqa
+  "E402",   # module-import-not-at-top-of-file
+  "RUF001", # ambiguous-unicode-character-string
+  "RUF002", # ambiguous-unicode-character-docstring
+  "RUF003", # ambiguous-unicode-character-comment
+  "ANN401", # any-type
+  "TRY003", # raise-vanilla-args
+  "TRY301", # raise-within-try
+  "EM102",  # f-string-in-exception
+  "COM812", # missing-trailing-comma
+  "ERA001", # commented-out-code
+  "EM101",  # raw-string-in-exception
+  "TID252", # relative-imports
+  "ISC001", # single-line-implicit-string-concatenation
+  "DTZ005", # call-datetime-now-without-tzinfo
+  "S311",   # suspicious-non-cryptographic-random-usage
+  "PGH003", # blanket-type-ignore
+  "N818",   # error-suffix-on-exception-name  # stupid
+  "PYI041", # redundant-numeric-union  # int | float
+  "S101",   # assert
+  "B911",   # batched-without-explicit-strict
+  "PGH004", # blanket-noqa
   "PLC",
 ]
 
