@@ -2,19 +2,13 @@ import atexit
 import shutil
 import sys
 import tempfile
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, override
 
-import anyio
 from msgspec import json as msgjson
 from msgspec import toml as msgtoml
-from nonebot.internal.driver._lifespan import Lifespan
-from nonebot.utils import is_coroutine_callable, logger_wrapper, run_sync
+from nonebot.utils import logger_wrapper
 from pydantic import BaseModel, TypeAdapter
-
-if TYPE_CHECKING:
-    from nonebot.internal.driver._lifespan import LIFESPAN_FUNC
 
 
 class ConfigFile[T: BaseModel | Sequence[BaseModel]]:
@@ -93,17 +87,6 @@ async def orm_upgrade() -> None:
     with migrate.AlembicConfig(stdout=StreamToLogger(), cmd_opts=cmd_opts) as config:
         cmd_opts.cmd = (migrate.upgrade, [], [])
         await greenlet_spawn(migrate.upgrade, config)
-
-
-class ConcurrentLifespan(Lifespan):
-    @staticmethod
-    @override
-    async def _run_lifespan_func(funcs: Iterable["LIFESPAN_FUNC"]) -> None:
-        async with anyio.create_task_group() as tg:
-            for func in funcs:
-                if not is_coroutine_callable(func):
-                    func = run_sync(func)
-                tg.start_soon(func)
 
 
 def find_and_link_external() -> None:
