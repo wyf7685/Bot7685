@@ -1,5 +1,6 @@
 import io
 import math
+from collections.abc import Iterable
 
 import anyio
 import httpx
@@ -104,3 +105,34 @@ async def download_image(image: jmcomic.JmImageDetail) -> bytes:
             else:
                 return decode_image(response.content, num)
         raise RuntimeError("下载失败")
+
+
+async def check_album(
+    album: jmcomic.JmAlbumDetail,
+) -> Iterable[tuple[int, jmcomic.JmPhotoDetail]]:
+    async def check(p: int, photo: jmcomic.JmPhotoDetail) -> None:
+        try:
+            async with sem:
+                checked[p] = await check_photo(photo)
+        except Exception as err:
+            logger.opt(colors=True, exception=err).warning(
+                f"检查失败: <y>{p}</y> - <c>{escape_tag(repr(photo))}</c>"
+            )
+
+    checked: dict[int, jmcomic.JmPhotoDetail] = {}
+    sem = anyio.Semaphore(8)
+    async with anyio.create_task_group() as tg:
+        for p, photo in enumerate(album, 1):
+            tg.start_soon(check, p, photo)
+
+    return sorted(checked.items(), key=lambda x: x[0])
+
+
+async def fetch_album_images(
+    album: jmcomic.JmAlbumDetail,
+) -> list[tuple[tuple[int, int], jmcomic.JmImageDetail]]:
+    return [
+        ((p, i), image)
+        for p, photo in await check_album(album)
+        for i, image in enumerate(photo, 1)
+    ]

@@ -1,12 +1,13 @@
 import contextlib
 import functools
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable, Iterable
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable
 from types import EllipsisType
 from typing import Annotated, NoReturn
 
 import anyio
 import jmcomic
 from nonebot import logger, require
+from nonebot.adapters import telegram
 from nonebot.adapters.onebot import v11
 from nonebot.adapters.onebot.v11 import Message as V11Msg
 from nonebot.adapters.onebot.v11 import MessageSegment as V11Seg
@@ -14,7 +15,6 @@ from nonebot.exception import ActionFailed, MatcherException
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER, User
 from nonebot.plugin import PluginMetadata
-from nonebot.utils import escape_tag
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
@@ -25,7 +25,7 @@ from nonebot_plugin_waiter import waiter
 require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 
-from .option import check_photo, download_image, get_album_detail
+from .option import download_image, fetch_album_images, get_album_detail
 from .utils import abatched, flatten_exception_group, queued
 
 __plugin_meta__ = PluginMetadata(
@@ -39,13 +39,6 @@ matcher = on_alconna(
     Alconna("jm", Args["album_id", int]),
     permission=TrustedUser(),
 )
-
-
-async def check_lagrange(bot: v11.Bot) -> None:
-    info = await bot.get_version_info()
-    app_name: str = info.get("app_name", "unknown")
-    if "lagrange" not in app_name.lower():
-        matcher.skip()
 
 
 type SendFunc = Callable[[list[V11Seg]], Awaitable[None]]
@@ -96,27 +89,6 @@ class Task[T]:
         return self.result
 
 
-async def check_album(
-    album: jmcomic.JmAlbumDetail,
-) -> Iterable[tuple[int, jmcomic.JmPhotoDetail]]:
-    async def check(p: int, photo: jmcomic.JmPhotoDetail) -> None:
-        try:
-            async with sem:
-                checked[p] = await check_photo(photo)
-        except Exception as err:
-            logger.opt(colors=True, exception=err).warning(
-                f"检查失败: <y>{p}</y> - <c>{escape_tag(repr(photo))}</c>"
-            )
-
-    checked: dict[int, jmcomic.JmPhotoDetail] = {}
-    sem = anyio.Semaphore(8)
-    async with anyio.create_task_group() as tg:
-        for p, photo in enumerate(album, 1):
-            tg.start_soon(check, p, photo)
-
-    return sorted(checked.items(), key=lambda x: x[0])
-
-
 async def download_task(task: Task[bytes | None], image: jmcomic.JmImageDetail) -> None:
     try:
         task.set_result(await download_image(image))
@@ -151,11 +123,7 @@ async def send_album_forward(
     recall: Callable[[], Awaitable[object]],
     batch_size: int = 8,
 ) -> None:
-    pending = [
-        ((p, i), image)
-        for p, photo in await check_album(album)
-        for i, image in enumerate(photo, 1)
-    ]
+    pending = await fetch_album_images(album)
     running: list[tuple[tuple[int, int], Task[bytes | None]]] = []
 
     def put() -> None:
@@ -186,8 +154,15 @@ async def send_album_forward(
         tg.start_soon(send_segs, iter_images(), functools.partial(tg.start_soon, send))
 
 
+async def check_lagrange(bot: v11.Bot) -> None:
+    info = await bot.get_version_info()
+    app_name: str = info.get("app_name", "unknown")
+    if "lagrange" not in app_name.lower():
+        matcher.skip()
+
+
 @matcher.assign("album_id", parameterless=[Depends(check_lagrange)])
-async def _(
+async def handle_lagrange(
     event: v11.MessageEvent,
     album_id: int,
     send: Annotated[SendFunc, Depends(send_func)],
@@ -246,3 +221,29 @@ async def _(
         await handle_exc(exc_group, "下载失败")
     else:
         await UniMessage(f"完成 {album_id} 的下载任务").finish(reply_to=True)
+
+
+@matcher.assign("album_id")
+async def handle_telegram(_: telegram.Bot, album_id: int) -> None:
+    try:
+        album = await get_album_detail(album_id)
+    except jmcomic.JmcomicException as err:
+        await UniMessage(f"获取信息失败:\n{err}").finish()
+    except Exception as err:
+        await UniMessage(f"获取信息失败: 未知错误\n{err!r}").finish()
+
+    msg = UniMessage.text(
+        f"ID: {album.id}\n"
+        f"标题: {album.title}\n"
+        f"作者: {album.author}\n"
+        f"标签: {', '.join(album.tags)}\n"
+    )
+
+    try:
+        images = await fetch_album_images(album)
+    except jmcomic.JmcomicException as err:
+        await msg.text(f"\n获取图片信息失败:\n{err}").finish()
+    except Exception as err:
+        await msg.text(f"\n获取图片信息失败: 未知错误\n{err!r}").finish()
+    else:
+        await msg.text(f"页数: {len(images)}").finish()
