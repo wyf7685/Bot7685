@@ -1,7 +1,6 @@
 import contextlib
 import functools
 from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable
-from types import EllipsisType
 from typing import Annotated, NoReturn
 
 import anyio
@@ -26,7 +25,7 @@ require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 
 from .option import download_image, fetch_album_images, get_album_detail
-from .utils import abatched, flatten_exception_group, queued
+from .utils import Task, abatched, format_exc, format_exc_msg, queued
 
 __plugin_meta__ = PluginMetadata(
     name="jmcomic",
@@ -70,23 +69,6 @@ def send_func(bot: v11.Bot, event: v11.MessageEvent) -> SendFunc:
                 return
 
     return send
-
-
-class Task[T]:
-    event: anyio.Event
-    result: T | EllipsisType = ...
-
-    def __init__(self) -> None:
-        self.event = anyio.Event()
-
-    def set_result(self, value: T) -> None:
-        self.result = value
-        self.event.set()
-
-    async def wait(self) -> T:
-        await self.event.wait()
-        assert self.result is not ..., "Task result not set"
-        return self.result
 
 
 async def download_task(task: Task[bytes | None], image: jmcomic.JmImageDetail) -> None:
@@ -201,13 +183,7 @@ async def handle_lagrange(
 
     async def handle_exc(exc_group: ExceptionGroup, msg: str) -> NoReturn:
         logger.opt(exception=exc_group).warning(msg)
-        await UniMessage(
-            f"{msg}:\n"
-            + "\n".join(
-                (str if isinstance(exc, jmcomic.JmcomicException) else repr)(exc)
-                for exc in flatten_exception_group(exc_group)
-            )
-        ).finish(reply_to=True)
+        await UniMessage.text(format_exc_msg(msg, exc_group)).finish(reply_to=True)
 
     try:
         async with anyio.create_task_group() as tg:
@@ -227,10 +203,12 @@ async def handle_lagrange(
 async def handle_telegram(_: telegram.Bot, album_id: int) -> None:
     try:
         album = await get_album_detail(album_id)
-    except jmcomic.JmcomicException as err:
-        await UniMessage(f"获取信息失败:\n{err}").finish()
-    except Exception as err:
-        await UniMessage(f"获取信息失败: 未知错误\n{err!r}").finish()
+    except jmcomic.JmcomicException as exc:
+        await UniMessage.text(format_exc_msg("获取信息失败", exc)).finish(reply_to=True)
+    except Exception as exc:
+        await UniMessage.text(
+            format_exc_msg("获取信息失败: 未知错误", exc),
+        ).finish(reply_to=True)
 
     msg = UniMessage.text(
         f"ID: {album.id}\n"
@@ -241,9 +219,11 @@ async def handle_telegram(_: telegram.Bot, album_id: int) -> None:
 
     try:
         images = await fetch_album_images(album)
-    except jmcomic.JmcomicException as err:
-        await msg.text(f"\n获取图片信息失败:\n{err}").finish()
-    except Exception as err:
-        await msg.text(f"\n获取图片信息失败: 未知错误\n{err!r}").finish()
+    except jmcomic.JmcomicException as exc:
+        await msg.text(f"\n获取图片信息失败:\n{format_exc(exc)}").finish(reply_to=True)
+    except Exception as exc:
+        await msg.text(
+            f"\n获取图片信息失败: 未知错误\n{format_exc(exc)}",
+        ).finish(reply_to=True)
     else:
-        await msg.text(f"页数: {len(images)}").finish()
+        await msg.text(f"页数: {len(images)}").finish(reply_to=True)
