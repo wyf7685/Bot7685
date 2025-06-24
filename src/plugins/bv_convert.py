@@ -53,15 +53,13 @@ def _check_bili_card(event: MessageEvent, state: T_State) -> bool:
 
     try:
         detail = data["meta"]["detail_1"]
-        preview = detail["preview"]
         link = detail["qqdocurl"]
     except KeyError:
         return False
 
-    if not preview or not link:
+    if not link:
         return False
 
-    state["preview"] = preview
     state["link"] = link
     return True
 
@@ -71,17 +69,15 @@ bili_card = on_message(rule=_check_bili_card, permission=TrustedUser())
 
 @bili_card.handle()
 async def handle_bili_card(state: T_State) -> None:
-    msg = UniMessage.image(url=state["preview"])
-
     try:
         async with AsyncSession() as session:
             resp = await session.get(state["link"], allow_redirects=False)
             resp.raise_for_status()
             if resp.status_code != 302 or not (url := resp.headers.get("Location")):
-                await msg.text(
+                await UniMessage.text(
                     f"链接获取失败: {resp.status_code}",
                 ).finish(reply_to=True)
     except Exception as exc:
-        await msg.text(f"链接获取失败: {exc!r}").finish(reply_to=True)
-
-    await msg.text(str(url).partition("?")[0]).finish(reply_to=True)
+        await UniMessage.text(f"链接获取失败: {exc!r}").finish(reply_to=True)
+    else:
+        await UniMessage.text(str(url).partition("?")[0]).finish(reply_to=True)
