@@ -1,8 +1,7 @@
 import json
 from typing import Annotated
 
-from curl_cffi import AsyncSession
-from nonebot import on_message, on_startswith, require
+from nonebot import on_startswith, require
 from nonebot.adapters.onebot.v11 import MessageEvent
 from nonebot.params import EventPlainText
 from nonebot.plugin import PluginMetadata
@@ -62,22 +61,3 @@ def _check_bili_card(event: MessageEvent, state: T_State) -> bool:
 
     state["link"] = link
     return True
-
-
-bili_card = on_message(rule=_check_bili_card, permission=TrustedUser())
-
-
-@bili_card.handle()
-async def handle_bili_card(state: T_State) -> None:
-    try:
-        async with AsyncSession() as session:
-            resp = await session.get(state["link"], allow_redirects=False)
-            resp.raise_for_status()
-            if resp.status_code != 302 or not (url := resp.headers.get("Location")):
-                await UniMessage.text(
-                    f"链接获取失败: {resp.status_code}",
-                ).finish(reply_to=True)
-    except Exception as exc:
-        await UniMessage.text(f"链接获取失败: {exc!r}").finish(reply_to=True)
-    else:
-        await UniMessage.text(str(url).partition("?")[0]).finish(reply_to=True)
