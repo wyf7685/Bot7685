@@ -9,7 +9,7 @@ from .depends import ApiFromKey, KuroUserName
 matcher_phantom = root_matcher.dispatch("phantom")
 
 
-async def format_info(result: RolePhantomCalcResult, index: int | None) -> str:
+def format_info(result: RolePhantomCalcResult, index: int | None) -> str:
     if not result.phantoms:
         return "角色声骸数据为空"
 
@@ -55,5 +55,5 @@ async def assign_phantom(
 
     # TODO: rewrite with htmlrender
     info = f"{user_name}: {role_detail.role.roleName}({role_detail.role.roleId})\n\n"
-    info += await format_info(WuwaCalc(role_detail).calc_phantom(), index)
+    info += format_info(WuwaCalc(role_detail).calc_phantom(), index)
     await UniMessage.text(info).finish()

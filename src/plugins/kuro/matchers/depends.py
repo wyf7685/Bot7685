@@ -88,7 +88,7 @@ async def KuroTokenFromKeyRequired(ktd: TokenDAO, key: str) -> KuroToken:
 
 @convert_dependent
 async def ApiFromKey(kuro_token: KuroTokenFromKey) -> KuroApi:
-    api = KuroApi(kuro_token.token)
+    api = KuroApi.from_token(kuro_token.token)
 
     try:
         await api.mine()
