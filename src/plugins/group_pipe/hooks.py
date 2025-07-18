@@ -53,10 +53,15 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
 
     try:
         listen = get_target(event, bot)
+    except Exception as err:
+        logger.opt(exception=err).debug(f"获取监听目标失败: {err}")
+        return
+
+    try:
         info = await get_session(bot, event)
     except Exception as err:
         logger.opt(exception=err).debug(f"获取消息信息失败: {err}")
-        return
+        info = None
 
     pipes = await get_pipes(listen=listen)
     if not pipes:
