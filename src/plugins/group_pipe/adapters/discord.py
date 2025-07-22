@@ -1,11 +1,10 @@
 import datetime as dt
 from copy import deepcopy
 from typing import override
-from weakref import WeakKeyDictionary
 
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.discord import Adapter, Bot, MessageEvent
-from nonebot.adapters.discord.api.model import UNSET, AttachmentSend, MessageGet
+from nonebot.adapters.discord.api.model import UNSET, MessageGet
 from nonebot.adapters.discord.message import (
     AttachmentSegment,
     MentionChannelSegment,
@@ -28,7 +27,7 @@ from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
 UTC8 = dt.timezone(dt.timedelta(hours=8))
-attachment_cache = get_cache[str,str](namespace="group_pipe:discord:attachment")
+attachment_cache = get_cache[str, str](namespace="group_pipe:discord:attachment")
 
 
 class MessageConverter(
