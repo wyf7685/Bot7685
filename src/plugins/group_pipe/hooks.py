@@ -69,7 +69,12 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         return
 
     converter = get_converter(listen.adapter)
-    msg = converter.get_message(event)
+    try:
+        msg = await converter.get_message(event)
+    except Exception as err:
+        logger.opt(exception=err).debug(f"获取消息内容失败: {err}")
+        return
+
     if msg is None:
         logger.trace("无法获取消息内容，跳过管道消息处理")
         return

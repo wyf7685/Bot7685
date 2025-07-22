@@ -19,6 +19,7 @@ from nonebot.adapters.discord.message import (
 )
 from nonebot_plugin_alconna import uniseg as u
 
+from src.plugins.cache import get_cache
 from src.plugins.upload_cos import upload_cos
 
 from ..adapter import converts
@@ -27,7 +28,7 @@ from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
 UTC8 = dt.timezone(dt.timedelta(hours=8))
-attachment_url: WeakKeyDictionary[AttachmentSend, str] = WeakKeyDictionary()
+attachment_cache = get_cache[str,str](namespace="group_pipe:discord:attachment")
 
 
 class MessageConverter(
@@ -36,7 +37,7 @@ class MessageConverter(
 ):
     @override
     @classmethod
-    def get_message(cls, event: BaseEvent) -> Message | None:
+    async def get_message(cls, event: BaseEvent) -> Message | None:
         if not isinstance(event, MessageEvent):
             return None
 
@@ -46,7 +47,7 @@ class MessageConverter(
             if isinstance(seg, AttachmentSegment):
                 attachment = seg.data["attachment"]
                 if url := attachments.get(attachment.filename):
-                    attachment_url[attachment] = url
+                    await attachment_cache.set(attachment.filename, url)
 
         return message
 
@@ -62,7 +63,7 @@ class MessageConverter(
     @converts(AttachmentSegment)
     async def attachment(self, segment: AttachmentSegment) -> u.Segment:
         attachment = segment.data["attachment"]
-        if url := attachment_url.get(attachment):
+        if url := await attachment_cache.get(attachment.filename):
             info = await guess_url_type(url)
             mime = info and info.mime
 
