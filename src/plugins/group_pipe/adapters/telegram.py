@@ -26,7 +26,7 @@ class MessageConverter(
 ):
     @override
     @classmethod
-    def get_message(cls, event: BaseEvent) -> Message | None:
+    async def get_message(cls, event: BaseEvent) -> Message | None:
         if not isinstance(event, MessageEvent):
             return None
 

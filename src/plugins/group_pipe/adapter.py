@@ -37,7 +37,7 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
         self.dst_bot = dst_bot
 
     @classmethod
-    def get_message(cls, event: Event) -> TM | None:
+    async def get_message(cls, event: Event) -> TM | None:
         return cast("TM", event.get_message())
 
     @classmethod
