@@ -54,7 +54,7 @@ _METHOD_WITH_NS = {
 }
 
 
-class CacheWrapper[KT, VT]:
+class CacheWrapper:
     def __init__(self, namespace: str, *, pickle: bool) -> None:
         self.__namespace = f"bot7685:{namespace}:"
         self.__cache = _get_cache(pickle=pickle)
