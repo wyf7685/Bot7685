@@ -1,10 +1,15 @@
 import atexit
+import functools
+import inspect
 import shutil
 import sys
 import tempfile
+import threading
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any, cast
 
+import anyio
 from msgspec import json as msgjson
 from msgspec import toml as msgtoml
 from nonebot.utils import logger_wrapper
@@ -164,3 +169,29 @@ def find_and_link_external() -> None:
             shutil.rmtree(link_target)
         except Exception as exc:
             print(f"Failed to remove temporary external link directory: {exc}")  # noqa: T201
+
+
+def with_semaphore[T: Callable](initial_value: int) -> Callable[[T], T]:
+    def decorator(func: T) -> T:
+        if inspect.iscoroutinefunction(func):
+            sem = anyio.Semaphore(initial_value)
+
+            @functools.wraps(func)
+            async def wrapper_async(*args: Any, **kwargs: Any) -> Any:
+                async with sem:
+                    return await func(*args, **kwargs)
+
+            wrapper = wrapper_async
+        else:
+            sem = threading.Semaphore(initial_value)
+
+            @functools.wraps(func)
+            def wrapper_sync(*args: Any, **kwargs: Any) -> Any:
+                with sem:
+                    return func(*args, **kwargs)
+
+            wrapper = wrapper_sync
+
+        return cast("T", functools.update_wrapper(wrapper, func))
+
+    return decorator
