@@ -525,7 +525,7 @@ requires-dist = [
 dev = [
     { name = "basedpyright", specifier = ">=1.29.0" },
     { name = "ipykernel", specifier = ">=6.29.5" },
-    { name = "nonebot-adapter-console", specifier = ">=0.6.0" },
+    { name = "nonebot-adapter-console", specifier = ">=0.9.0" },
     { name = "nonebot-plugin-orm", extras = ["aiosqlite"], specifier = ">=0.7.7" },
     { name = "nonebug", specifier = ">=0.4.3" },
     { name = "pre-commit", specifier = ">=4.1.0" },
@@ -1740,17 +1740,16 @@ wheels = [
 
 [[package]]
 name = "nonebot-adapter-console"
-version = "0.6.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nonebot2" },
     { name = "nonechat" },
-    { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/25/8d/e7abb677a5bc2c444a8dde1154a69a298f7b290b4b50600a2e568c9ca5ea/nonebot_adapter_console-0.6.0.tar.gz", hash = "sha256:5c708cee111b29579970fe0ad876a711af58d3d8096d7c20e9d0e3a127d1ea07", size = 6298, upload-time = "2024-05-30T07:26:26.861Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/10/38/94ae8349fbed019b4aca74e916df37d5678e04641eb24098f7c5caa50265/nonebot_adapter_console-0.9.0.tar.gz", hash = "sha256:d68ee2d2960575d729c81fd5d94d9a52425758e366ec4fc5b8c675a874caed1a", size = 8953, upload-time = "2025-07-25T14:59:02.368Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/77/fa/64bbe11387abf7885df85cb27544121b96f54e4a1a1126b7a122469f2b1c/nonebot_adapter_console-0.6.0-py3-none-any.whl", hash = "sha256:605ed2635ad593cd6e91228008328b5e7a578ab55e3b3d8fc32ff308ac7711cb", size = 8395, upload-time = "2024-05-30T07:26:25.752Z" },
+    { url = "https://files.pythonhosted.org/packages/64/5d/450172177e95e0082ef02bda6885e2566ebf618a5d3fdc7cdedcfc0f0932/nonebot_adapter_console-0.9.0-py3-none-any.whl", hash = "sha256:1f41b53a6ffdcef8c0cfe69e3675158b36792db4fb04163931d48fc052f1ad04", size = 11268, upload-time = "2025-07-25T14:59:01.609Z" },
 ]
 
 [[package]]
@@ -1975,7 +1974,7 @@ provides-extras = ["pillow"]
 [package.metadata.requires-dev]
 dev = [
     { name = "ipykernel", specifier = ">=6.29.5" },
-    { name = "nonebot-adapter-console", specifier = ">=0.6.0" },
+    { name = "nonebot-adapter-console", specifier = ">=0.9.0" },
     { name = "nonebot-adapter-onebot", specifier = ">=2.4.6" },
     { name = "nonebot-adapter-qq", specifier = ">=1.6.0" },
     { name = "nonebot-adapter-satori", specifier = ">=0.13.1" },
