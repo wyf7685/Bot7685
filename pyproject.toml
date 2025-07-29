@@ -41,7 +41,7 @@ dependencies = [
   "jmcomic>=2.6.0",
   "msgspec[toml,yaml]>=0.19.0",
   "paramiko>=3.5.0",
-  "playwright==1.52.0",                       # pinned in docker/Dockerfile
+  "playwright==1.52.0", # pinned in docker/Dockerfile
   "pydantic>=2.11.7",
   "tarina>=0.6.8",
   "tencentcloud-sdk-python-dnspod>=3.0.1394",
@@ -50,6 +50,7 @@ dependencies = [
   "nonebot-plugin-talk-stats @ file:///${PROJECT_ROOT}/external/nonebot-plugin-talk-stats",
   "nonebot-plugin-werewolf @ file:///${PROJECT_ROOT}/external/nonebot-plugin-werewolf",
   "nonebot-plugin-zssm @ file:///${PROJECT_ROOT}/external/nonebot-plugin-zssm",
+  "humanize>=4.12.3,<5.0",
 ]
 
 [dependency-groups]

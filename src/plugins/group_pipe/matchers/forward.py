@@ -1,6 +1,6 @@
 import json
 
-from nonebot import logger, require
+from nonebot import logger
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot import v11
 from nonebot_plugin_alconna import (
@@ -14,7 +14,6 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 
-require("src.plugins.upload_cos")
 from src.plugins.upload_cos import upload_cos
 
 from ..adapter import get_sender
