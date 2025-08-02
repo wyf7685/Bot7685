@@ -39,11 +39,14 @@ ENV TZ=Asia/Shanghai \
     LANGUAGE=zh_CN.UTF-8 \
     LC_ALL=zh_CN.UTF-8
 
+COPY --from=mwader/static-ffmpeg:7.1.1 /ffmpeg /usr/local/bin/
+COPY --from=mwader/static-ffmpeg:7.1.1 /ffprobe /usr/local/bin/
+
 ADD docker/fonts/*.ttf /usr/share/fonts/
 ADD docker/assets/* /
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends nano ffmpeg fontconfig \
+    apt-get install -y --no-install-recommends nano fontconfig \
     locales locales-all fonts-noto libnss3-dev libxss1 libasound2 libxrandr2 libatk1.0-0 libgtk-3-0 libgbm-dev libxshmfence1 && \
     fc-cache -f -v && \
     uvx --no-cache playwright@1.52.0 install chromium --with-deps && \
