@@ -17,5 +17,5 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Run BasedPyright
+      - name: Run Ty
         run: uvx ty check
