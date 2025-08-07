@@ -1,12 +1,16 @@
 [submodule "external/nonebot-plugin-exe-code"]
 	path = external/nonebot-plugin-exe-code
 	url = https://github.com/wyf7685/nonebot-plugin-exe-code.git
+        branch = master
 [submodule "external/nonebot-plugin-talk-stats"]
 	path = external/nonebot-plugin-talk-stats
 	url = https://github.com/wyf7685/nonebot-plugin-talk-stats.git
+        branch = master
 [submodule "external/nonebot-plugin-werewolf"]
 	path = external/nonebot-plugin-werewolf
 	url = https://github.com/wyf7685/nonebot-plugin-werewolf.git
+        branch = master
 [submodule "external/nonebot-plugin-zssm"]
 	path = external/nonebot-plugin-zssm
 	url = https://github.com/wyf7685/nonebot-plugin-zssm.git
+        branch = master
