@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.13, <4.0"
 
 [options]
@@ -413,7 +413,7 @@ requires-dist = [
     { name = "nonebot-plugin-werewolf", directory = "external/nonebot-plugin-werewolf" },
     { name = "nonebot-plugin-wordcloud", specifier = ">=0.9.0" },
     { name = "nonebot-plugin-zssm", directory = "external/nonebot-plugin-zssm" },
-    { name = "nonebot2", extras = ["fastapi", "httpx", "websockets", "aiohttp"], specifier = ">=2.4.2" },
+    { name = "nonebot2", extras = ["fastapi", "httpx", "websockets", "aiohttp"], specifier = ">=2.4.3" },
     { name = "paramiko", specifier = ">=3.5.0" },
     { name = "playwright", specifier = "==1.52.0" },
     { name = "pydantic", specifier = ">=2.11.7" },
@@ -1698,7 +1698,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", specifier = ">=4.6.2.post1" },
-    { name = "nonebot-plugin-alconna", specifier = ">=0.57.0" },
+    { name = "nonebot-plugin-alconna", specifier = ">=0.54.0" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.6.0" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.7.0" },
     { name = "nonebot-plugin-user", specifier = ">=0.5.0" },
@@ -1712,7 +1712,7 @@ provides-extras = ["pillow"]
 [package.metadata.requires-dev]
 dev = [
     { name = "ipykernel", specifier = ">=6.29.5" },
-    { name = "nonebot-adapter-console", specifier = ">=0.9.0" },
+    { name = "nonebot-adapter-console", specifier = ">=0.6.0" },
     { name = "nonebot-adapter-onebot", specifier = ">=2.4.6" },
     { name = "nonebot-adapter-qq", specifier = ">=1.6.0" },
     { name = "nonebot-adapter-satori", specifier = ">=0.13.1" },
@@ -2067,7 +2067,7 @@ dev = [
 
 [[package]]
 name = "nonebot2"
-version = "2.4.2"
+version = "2.4.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -2079,9 +2079,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/06/754d4aea53d1a6622956c9d9a261760b15df03f95d7540666b85ba48d653/nonebot2-2.4.2.tar.gz", hash = "sha256:cf72d5920503ff373ba1d7963f3ddf573db913eb504e3b68ee347efb937db27d", size = 94868, upload-time = "2025-03-12T03:57:45.705Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b7/d8/12ec3a3c858e4ddb149712d42bca63c4a923eeb2360a59b33310bc58146a/nonebot2-2.4.3.tar.gz", hash = "sha256:39bf0dc4deb92dc2a3211db75224f00462df45ca7e633d3eaf3ad422ff95712f", size = 90080, upload-time = "2025-08-07T10:15:13.07Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/26/a8/18b79572cb6178a18bc2da76a041fc6b9f6308c5d376f5c7cbd84f4acf2d/nonebot2-2.4.2-py3-none-any.whl", hash = "sha256:ed3e970cdb6c885fb23349b65a045c08cf3ac7f43e28564ae0c72d3671ecda74", size = 115183, upload-time = "2025-03-12T03:57:43.988Z" },
+    { url = "https://files.pythonhosted.org/packages/54/7e/e584af8282e5ce4a9127736ff15dd209534ec02e4f4be80097f4fda17e9d/nonebot2-2.4.3-py3-none-any.whl", hash = "sha256:8d9dc2c59ccfbedae53226377bb83854de732e68e00ab30315d57b1969e6a3fd", size = 117519, upload-time = "2025-08-07T10:15:11.806Z" },
 ]
 
 [package.optional-dependencies]

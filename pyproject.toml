@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13,<4.0"
 dependencies = [
   # nonebot2
-  "nonebot2[fastapi,httpx,websockets,aiohttp]>=2.4.2",
+  "nonebot2[fastapi,httpx,websockets,aiohttp]>=2.4.3",
   # adapters
   "nonebot-adapter-discord>=0.1.8",
   "nonebot-adapter-feishu>=2.6.2",
