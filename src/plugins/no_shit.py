@@ -117,7 +117,7 @@ async def _(event: GroupMessageEvent) -> None:
     table = "<table>"
     for user_id, cnt in sorted(data.items(), key=lambda x: x[1], reverse=True):
         avatar_url = f"http://thirdqq.qlogo.cn/headimg_dl?dst_uin={user_id}&spec=640"
-        avatar = f'<td><picture><img src="{avatar_url}" /></picture></td>'
+        avatar = f'<td style="height:64px;width:64px"><picture><img src="{avatar_url}" /></picture></td>'
         text = f"<td>{user_id}<br/>共计 {cnt} 次</td>"
         table += f"<tr>{avatar}{text}</tr>"
     table += "</table>"
