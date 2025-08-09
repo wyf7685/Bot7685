@@ -99,7 +99,7 @@ def find_and_link_external() -> None:
     if not external_dir.exists() or not external_dir.is_dir():
         return
 
-    log = logger_wrapper("Bootstrap:link")
+    log = logger_wrapper("Bootstrap::Link")
 
     def debug(msg: str) -> None:
         log("DEBUG", msg)
