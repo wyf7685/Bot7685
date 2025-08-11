@@ -106,6 +106,14 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
     )
 
 
+RANK_TEMPLATE = """## 搬史榜\n\n<table>{table}</table>"""
+TABLE_ROW_TEMPLATE = """\
+<tr><td style="height:64px;width:64px"><picture>\
+<img src="http://thirdqq.qlogo.cn/headimg_dl?dst_uin={user_id}&spec=640" />\
+</picture></td><td>{user_id}<br/>共计 {count} 次</td></tr>\
+"""
+
+
 @shit_rank.handle()
 async def _(event: GroupMessageEvent) -> None:
     file = get_plugin_data_file(f"{event.group_id}.json")
@@ -113,15 +121,11 @@ async def _(event: GroupMessageEvent) -> None:
         await UniMessage.text("暂无记录").finish()
 
     data: dict[str, int] = json.loads(file.read_text())
-
-    table = "<table>"
-    for user_id, cnt in sorted(data.items(), key=lambda x: x[1], reverse=True):
-        avatar_url = f"http://thirdqq.qlogo.cn/headimg_dl?dst_uin={user_id}&spec=640"
-        avatar = f'<td style="height:64px;width:64px"><picture><img src="{avatar_url}" /></picture></td>'
-        text = f"<td>{user_id}<br/>共计 {cnt} 次</td>"
-        table += f"<tr>{avatar}{text}</tr>"
-    table += "</table>"
-
-    md = "## 搬史榜\n\n" + table
+    md = RANK_TEMPLATE.format(
+        table="".join(
+            TABLE_ROW_TEMPLATE.format(count=count, user_id=user_id)
+            for user_id, count in sorted(data.items(), key=lambda x: x[1], reverse=True)
+        )
+    )
     pic = await md_to_pic(md)
     await UniMessage.image(raw=pic).send()
