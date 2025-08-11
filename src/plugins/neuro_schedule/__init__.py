@@ -7,14 +7,25 @@ from nonebot.permission import SUPERUSER
 from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
+require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_localstore")
-from nonebot_plugin_alconna import Alconna, MsgTarget, Subcommand, Target, on_alconna
+from nonebot_plugin_alconna import (
+    Alconna,
+    Image,
+    MsgTarget,
+    Subcommand,
+    Target,
+    UniMessage,
+    on_alconna,
+)
 from nonebot_plugin_localstore import get_plugin_config_file
 
 require("src.plugins.group_pipe")
 from src.plugins.group_pipe.adapter import get_sender
 from src.plugins.group_pipe.adapters.discord import MessageConverter
 from src.utils import ConfigModelFile
+
+from .render import render_schedule
 
 
 class Config(BaseModel):
@@ -58,15 +69,13 @@ async def assign_send(target: MsgTarget, _: v11.Bot) -> None:
     await setup_cmd.send("设置当前会话为发送端")
 
 
-def check_is_recv(target: MsgTarget) -> bool:
+@on_message
+def forward(target: MsgTarget) -> bool:
     return (
         (config := config_file.load()).send is not None
         and (recv := config.recv) is not None
         and recv.verify(target)
     )
-
-
-forward = on_message(check_is_recv)
 
 
 @forward.handle()
@@ -81,6 +90,9 @@ async def handle_forward(
     target = config_file.load().send
     if TYPE_CHECKING:
         assert target is not None  # checked in rule
-
     dst_bot = await target.select()
-    await get_sender(dst_bot).send(dst_bot, target, msg)
+
+    schedule_img = msg[Image, -1]
+    msg.remove(schedule_img)
+    msg = UniMessage.image(raw=await render_schedule(msg.split("\n"))) + schedule_img
+    await get_sender(dst_bot).send(dst_bot, target, msg)  # pyright: ignore[reportArgumentType]
