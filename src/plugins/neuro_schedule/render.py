@@ -8,12 +8,8 @@ template_dir = Path(__file__).parent / "templates"
 
 
 async def render_schedule(lines: list[UniMessage]) -> bytes:
-    # TODO: do something to process schedule lines ...
     formatted_lines: list[dict[str, Any]] = [
-        {
-            "text": line.extract_plain_text(),
-            "images": [{"src": (img.url)} for img in line[Image] if img.url],
-        }
+        {"text": line.extract_plain_text(), "images": [i for i in line[Image] if i.url]}
         for line in lines
     ]
     templates_data = {"lines": formatted_lines}
@@ -27,6 +23,6 @@ async def render_schedule(lines: list[UniMessage]) -> bytes:
 
     async with get_new_page(viewport={"width": 325, "height": 650}) as page:
         await page.set_content(html, wait_until="networkidle")
-        if calendar_element := await page.query_selector("#calendar-container"):
-            return await calendar_element.screenshot(type="png")
+        if container := await page.query_selector(".container"):
+            return await container.screenshot(type="png")
         return await page.screenshot(full_page=True, type="png")
