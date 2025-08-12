@@ -1,1 +1,61 @@
-{# TODO #}
+<!DOCTYPE html>
+<html>
+
+<head>
+  <style>
+    :root {
+      --text-size: 16px;
+      --spacing: 10px;
+      --image-height: 2em;
+    }
+
+    .container {
+      font-size: var(--text-size);
+      padding: 20px;
+    }
+
+    .line {
+      display: flex;
+      align-items: center;
+      margin-bottom: var(--spacing);
+    }
+
+    .text {
+      text-align: left;
+      min-width: 200px;
+      margin-right: var(--spacing);
+    }
+
+    .images-container {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing);
+    }
+
+    .image {
+      height: var(--image-height);
+      width: auto;
+      vertical-align: middle;
+      object-fit: contain;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    {% for line in lines %}
+    <div class="line">
+      <span class="text">{{ line.text }}</span>
+      <div class="images-container">
+        {% if line.images %}
+        {% for image in line.images %}
+        <img class="image" src="{{ image.url }}" alt="{{ image.name or 'Schedule image' }}">
+        {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</body>
+
+</html>
