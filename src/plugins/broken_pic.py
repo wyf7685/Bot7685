@@ -10,6 +10,8 @@ from nonebot_plugin_alconna import Image, UniMessage
 from nonebot_plugin_alconna.extension import Extension, add_global_extension
 from nonebot_plugin_localstore import get_plugin_data_dir
 
+get_plugin_data_dir().mkdir(exist_ok=True, parents=True)
+
 
 class BrokenPicExtension(Extension):
     probability: ClassVar[float] = 0.001
@@ -34,7 +36,7 @@ class BrokenPicExtension(Extension):
         if isinstance(send, str):
             return send
         if isinstance(send, Message):
-            send = UniMessage.generate_sync(message=send)
+            send = UniMessage.of(send)
 
         send = send.copy()
 
