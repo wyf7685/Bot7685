@@ -9,9 +9,11 @@ require("src.plugins.cache")
 require("src.plugins.gtg")
 require("src.plugins.upload_cos")
 
-from . import adapters as adapters
-from . import hooks as hooks
-from . import matchers as matchers
+from . import (  # pyright: ignore[reportUnusedImport]  # noqa: F401
+    adapters,
+    hooks,
+    matchers,
+)
 
 __plugin_meta__ = PluginMetadata(
     name="group_pipe",
@@ -24,3 +26,8 @@ __plugin_meta__ = PluginMetadata(
         "~discord",
     },
 )
+
+from .adapter import get_converter as get_converter
+from .adapter import get_sender as get_sender
+
+__all__ = ["get_converter", "get_sender"]

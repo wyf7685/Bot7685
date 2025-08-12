@@ -153,7 +153,7 @@ class MessageSender(
         cls,
         dst_bot: Bot,
         target: u.Target,
-        msg: u.UniMessage[u.Segment],
+        msg: u.UniMessage,
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None:

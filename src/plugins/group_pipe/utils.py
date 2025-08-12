@@ -39,7 +39,7 @@ def fix_url(url: str) -> str:
     parsed = yarl.URL(url)
     if parsed.host == "multimedia.nt.qq.com.cn":
         parsed = parsed.with_scheme("http")
-    return parsed.human_repr()
+    return str(parsed)
 
 
 async def download_url(url: str) -> bytes:

@@ -45,7 +45,7 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
         return get_message_id(event, bot)
 
     @abc.abstractmethod
-    async def convert(self, msg: TM) -> UniMessage[Segment]: ...
+    async def convert(self, msg: TM) -> UniMessage: ...
 
     def __init_subclass__(cls, adapter: str | None, **kwargs: object) -> None:
         super().__init_subclass__(**kwargs)
@@ -61,16 +61,16 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
             and hasattr(call, "__predicates__")
         }
 
+    async def __default(self, seg: MessageSegment) -> Segment | list[Segment] | None:
+        return (fn := get_builder(self.src_bot)) and fn.convert(seg)
+
     def _find_fn[TMS: MessageSegment](self, seg: TMS) -> BoundConverterCall[TMS]:
         for call in self._converter_:
             preds: tuple[ConverterPred, ...] = getattr(call, "__predicates__", ())
             if any(pred(seg) for pred in preds):
-                return cast("BoundConverterCall[TMS]", functools.partial(call, self))
+                return functools.partial(call, self)
 
-        async def default(seg: TMS) -> Segment | list[Segment] | None:
-            return (fn := get_builder(self.src_bot)) and fn.convert(seg)
-
-        return default
+        return self.__default
 
 
 class MessageSender[TB: Bot](abc.ABC):
@@ -80,7 +80,7 @@ class MessageSender[TB: Bot](abc.ABC):
         cls,
         dst_bot: TB,
         target: Target,
-        msg: UniMessage[Segment],
+        msg: UniMessage,
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None: ...

@@ -45,7 +45,7 @@ class MessageConverter[
         return u.Text(f"[reply:{src_msg_id}]")
 
     @override
-    async def convert(self, msg: TM) -> u.UniMessage[u.Segment]:
+    async def convert(self, msg: TM) -> u.UniMessage:
         if builder := u.get_builder(self.src_bot):
             msg = cast("TM", builder.preprocess(msg))
 
@@ -92,7 +92,7 @@ class MessageSender[TB: Bot, TR](AbstractMessageSender[TB], adapter=None):
         cls,
         dst_bot: TB,
         target: u.Target,
-        msg: u.UniMessage[u.Segment],
+        msg: u.UniMessage,
         src_type: str | None = None,
         src_id: str | None = None,
     ) -> None:

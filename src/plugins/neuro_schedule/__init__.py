@@ -1,8 +1,9 @@
-from typing import TYPE_CHECKING, Any
+from typing import Annotated, Any
 
-from nonebot import on_message, require
-from nonebot.adapters import discord
+from nonebot import logger, on_message, require
+from nonebot.adapters import Bot, discord
 from nonebot.adapters.onebot import v11
+from nonebot.params import Depends
 from nonebot.permission import SUPERUSER
 from pydantic import BaseModel
 
@@ -21,7 +22,7 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_localstore import get_plugin_config_file
 
 require("src.plugins.group_pipe")
-from src.plugins.group_pipe.adapter import get_sender
+from src.plugins.group_pipe import get_sender
 from src.plugins.group_pipe.adapters.discord import MessageConverter
 from src.utils import ConfigModelFile
 
@@ -78,21 +79,34 @@ def forward(target: MsgTarget) -> bool:
     )
 
 
+async def _dst() -> tuple[Target, Bot]:
+    if (target := config_file.load().send) is None:
+        forward.skip()
+
+    try:
+        bot = await target.select()
+    except Exception:
+        logger.opt(exception=True).warning("无法获取目标 Bot，跳过转发")
+        forward.skip()
+
+    return target, bot
+
+
 @forward.handle()
 async def handle_forward(
     src_bot: discord.Bot,
     event: discord.MessageCreateEvent,
+    dst: Annotated[tuple[Target, Bot], Depends(_dst)],
 ) -> None:
     msg = await MessageConverter(src_bot).convert(event.get_message())
     if not msg:
+        logger.warning("消息转换结果为空，跳过转发")
         return
-
-    target = config_file.load().send
-    if TYPE_CHECKING:
-        assert target is not None  # checked in rule
-    dst_bot = await target.select()
 
     schedule_img = msg[Image, -1]
     msg.remove(schedule_img)
-    msg = UniMessage.image(raw=await render_schedule(msg.split("\n"))) + schedule_img
-    await get_sender(dst_bot).send(dst_bot, target, msg)  # pyright: ignore[reportArgumentType]
+    rendered = await render_schedule(msg.split("\n"))
+    msg = UniMessage.image(raw=rendered) + schedule_img
+
+    target, dst_bot = dst
+    await get_sender(dst_bot).send(dst_bot, target, msg)
