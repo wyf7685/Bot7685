@@ -161,7 +161,11 @@ def find_and_link_external() -> None:
             else:
                 debug(f"Copied egg-info: {egg_info} -> {egg_link}")
 
-    sys.path.insert(1, str(link_target))
+    site_idx = next(
+        (i for i, p in enumerate(sys.path) if p.endswith("site-packages")),
+        len(sys.path),
+    )
+    sys.path.insert(site_idx, str(link_target))
 
     @atexit.register
     def _() -> None:
