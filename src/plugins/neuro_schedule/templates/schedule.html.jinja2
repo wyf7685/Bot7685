@@ -47,9 +47,11 @@
         <div class="line">
             <span class="text">{{ line.text }}</span>
             <div class="images-container">
+                {% if line.images %}
+                {% for image in line.images %}
                 <img class="image" src="{{ image.src }}" alt="{{ image.alt or 'Schedule image' }}">
-                <img class="image" src="{{ image.src }}" alt="{{image.alt or schedule-image}}">
                 {% endfor %}
+                {% endif %}
             </div>
         </div>
         {% endfor %}
