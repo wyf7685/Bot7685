@@ -1,0 +1,21 @@
+name: "[Experimental] Ty Lint"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ty:
+    name: Ty Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: git submodule update --init --recursive
+
+      - name: Setup Python
+        uses: ./.github/actions/setup-python
+        with:
+          python-version: "3.13"
+
+      - name: Run Ty
+        run: uvx ty check

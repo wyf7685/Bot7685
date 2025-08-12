@@ -24,6 +24,15 @@ jobs:
       - name: Init Submodules
         run: git submodule update --init --recursive
 
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      - name: Check Lockfile
+        run: uv lock --check
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 

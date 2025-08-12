@@ -25,7 +25,7 @@ class _Style:
         tags = tag.split("_")
         prefix = "".join(f"<{tag}>" for tag in reversed(tags))
         suffix = "</>" * len(tags)
-        lru: LRU[str, str] = LRU(16)
+        lru: LRU[str, str] = LRU(64)
 
         def fn(obj: object) -> str:
             if (text := str(obj)) not in lru:
@@ -130,7 +130,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     def _(cls, data: datetime.datetime) -> str:
         attrs = [cls.apply(getattr(data, name)) for name in DATETIME_FIELDS]
         if data.tzinfo is not None:
-            attrs.append(style.lm(data.tzinfo))
+            attrs.append(style.ly(data.tzinfo))
         return f"{style.g('datetime')}({', '.join(attrs)})"
 
     @register(BaseModel)
@@ -142,7 +142,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
             for name in model.model_fields
             if (value := getattr(data, name)) not in cls.exclude_value
         )
-        return f"{style.lm(model.__name__)}({', '.join(kv)})"
+        return f"{style.lg(model.__name__)}({', '.join(kv)})"
 
     @register(MessageSegment)
     @classmethod

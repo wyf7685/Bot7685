@@ -31,7 +31,7 @@ bv1 = on_startswith("BV1", rule=_check_bv1, permission=TrustedUser())
 @bv1.handle()
 async def handle_bv1(plain: Annotated[str, EventPlainText()]) -> None:
     await (
-        UniMessage.text("https://www.bilibili.com/video")
+        UniMessage.text("https://www.bilibili.com/video/")
         .text(plain)
         .finish(reply_to=True)
     )
