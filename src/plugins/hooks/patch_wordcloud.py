@@ -11,7 +11,7 @@ def _() -> None:
         return
 
     def _get_wordcloud(messages: list[str], mask_key: str) -> bytes | None:
-        gen = (m for m in messages if "当前版本不支持该消息类型" not in m)
+        gen = (m for m in messages if "不支持该消息类型" not in m)
         return original(iter(gen), mask_key)  # pyright: ignore[reportArgumentType]
 
     original = source._get_wordcloud  # pyright: ignore[reportPrivateUsage]
