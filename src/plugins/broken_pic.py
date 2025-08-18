@@ -10,11 +10,11 @@ from nonebot_plugin_alconna import Image, UniMessage
 from nonebot_plugin_alconna.extension import Extension, add_global_extension
 from nonebot_plugin_localstore import get_plugin_data_dir
 
-get_plugin_data_dir().mkdir(exist_ok=True, parents=True)
+DATA_DIR = get_plugin_data_dir()
 
 
 class BrokenPicExtension(Extension):
-    probability: ClassVar[float] = 0.001
+    probability: ClassVar[float] = 0.01
 
     @property
     @override
@@ -42,10 +42,10 @@ class BrokenPicExtension(Extension):
 
         for idx, segment in enumerate(send[:]):
             if isinstance(segment, Image) and random.random() < self.probability:
-                file = random.choice(list(get_plugin_data_dir().iterdir()))
+                file = random.choice(list(DATA_DIR.iterdir()))
                 send[idx] = Image(raw=file.read_bytes())
 
         return send
 
 
-add_global_extension(BrokenPicExtension)
+add_global_extension(BrokenPicExtension())
