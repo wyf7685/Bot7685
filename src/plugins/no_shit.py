@@ -24,7 +24,7 @@ require("src.plugins.trusted")
 from src.plugins.cache import get_cache
 from src.plugins.trusted import TrustedUser
 
-ban_time_cache = get_cache[str, datetime]("no_shit.ban_time")
+ban_time_cache = get_cache[str, datetime]("no_shit.ban_time", pickle=True)
 
 
 def add_ban_count(group_id: int, user_id: int) -> int:
