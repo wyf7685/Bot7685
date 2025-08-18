@@ -1,10 +1,11 @@
 import json
+from datetime import datetime, timedelta
 from typing import Annotated
 
 import anyio
-from nonebot import require
+from nonebot import on_type, require
 from nonebot.adapters.onebot.v11 import Bot
-from nonebot.adapters.onebot.v11.event import GroupMessageEvent
+from nonebot.adapters.onebot.v11.event import GroupBanNoticeEvent, GroupMessageEvent
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
 
@@ -18,8 +19,12 @@ from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_localstore import get_plugin_data_file
 from nonebot_plugin_waiter import waiter
 
+require("src.plugins.cache")
 require("src.plugins.trusted")
+from src.plugins.cache import get_cache
 from src.plugins.trusted import TrustedUser
+
+ban_time_cache = get_cache[str, datetime]("no_shit.ban_time")
 
 
 def add_ban_count(group_id: int, user_id: int) -> int:
@@ -28,10 +33,6 @@ def add_ban_count(group_id: int, user_id: int) -> int:
     cnt = data[str(user_id)] = data.get(str(user_id), 0) + 1
     file.write_text(json.dumps(data))
     return cnt
-
-
-no_shit = on_alconna("他在搬史", permission=TrustedUser())
-shit_rank = on_alconna("搬史榜", permission=TrustedUser())
 
 
 async def check_reply(event: GroupMessageEvent) -> tuple[int, int]:
@@ -47,13 +48,15 @@ async def check_reply(event: GroupMessageEvent) -> tuple[int, int]:
 
 Reply = Annotated[tuple[int, int], Depends(check_reply)]
 
+no_shit = on_alconna("他在搬史", permission=TrustedUser())
+
 
 @no_shit.handle()
 async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
-    reply, target = r
+    reply_msg_id, target = r
 
     await (
-        UniMessage.reply(str(reply))
+        UniMessage.reply(str(reply_msg_id))
         .at(str(target))
         .text(" 被指控搬史\n")
         .text("预期禁言 (同意人数) 分钟\n\n")
@@ -89,15 +92,30 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
     if not voted:
         await UniMessage.text("没有人认为他在搬史, 取消操作").finish(reply_to=True)
 
-    msg = f"同意人数: {len(voted)}\n预期禁言{len(voted)} 分钟"
+    cache_key = f"{event.group_id}:{target}"
+    last_ban_end = await ban_time_cache.get(cache_key, None)
+    now = datetime.now()
+    current_remaining = (
+        (last_ban_end - now).total_seconds()
+        if last_ban_end and now < last_ban_end
+        else 0
+    )
+    expected_secs = min(len(voted) * 60.0 + current_remaining, 5 * 60.0)
+    msg = f"同意人数: {len(voted)}\n预期禁言 {expected_secs / 60:.2f} 分钟"
     await UniMessage.text(msg).send(reply_to=True)
 
-    await bot.delete_msg(message_id=reply)
+    await bot.delete_msg(message_id=reply_msg_id)
     await bot.set_group_ban(
         group_id=event.group_id,
         user_id=target,
-        duration=60 * len(voted),
+        duration=int(expected_secs),
     )
+    await ban_time_cache.set(
+        cache_key,
+        now + timedelta(seconds=expected_secs),
+        ttl=expected_secs,
+    )
+
     cnt = add_ban_count(event.group_id, target)
     await (
         UniMessage.at(str(target))
@@ -106,12 +124,28 @@ async def _(bot: Bot, event: GroupMessageEvent, r: Reply) -> None:
     )
 
 
+async def _check_liftban(event: GroupBanNoticeEvent) -> bool:
+    return event.sub_type == "lift_ban"
+
+
+on_liftban = on_type(GroupBanNoticeEvent, rule=_check_liftban)
+
+
+@on_liftban.handle()
+async def _(event: GroupBanNoticeEvent) -> None:
+    cache_key = f"{event.group_id}:{event.user_id}"
+    if await ban_time_cache.exists(cache_key):
+        await ban_time_cache.delete(cache_key)
+
+
 RANK_TEMPLATE = """## 搬史榜\n\n<table>{table}</table>"""
 TABLE_ROW_TEMPLATE = """\
 <tr><td style="height:64px;width:64px"><picture>\
 <img src="http://thirdqq.qlogo.cn/headimg_dl?dst_uin={user_id}&spec=640" />\
 </picture></td><td>{user_id}<br/>共计 {count} 次</td></tr>\
 """
+
+shit_rank = on_alconna("搬史榜", permission=TrustedUser())
 
 
 @shit_rank.handle()
