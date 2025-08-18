@@ -1,5 +1,8 @@
 # ruff: noqa: SLF001
+
 import nonebot
+
+filter_words = {"不支持该消息类型", "当前QQ版本不支持此应用"}
 
 
 @nonebot.get_driver().on_startup
@@ -11,7 +14,7 @@ def _() -> None:
         return
 
     def _get_wordcloud(messages: list[str], mask_key: str) -> bytes | None:
-        gen = (m for m in messages if "不支持该消息类型" not in m)
+        gen = (m for m in messages if all(word not in m for word in filter_words))
         return original(iter(gen), mask_key)  # pyright: ignore[reportArgumentType]
 
     original = source._get_wordcloud  # pyright: ignore[reportPrivateUsage]
