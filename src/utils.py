@@ -10,10 +10,23 @@ from pathlib import Path
 from typing import Any, cast
 
 import anyio
+import nonebot
 from msgspec import json as msgjson
 from msgspec import toml as msgtoml
-from nonebot.utils import logger_wrapper
+from nonebot.utils import escape_tag
 from pydantic import BaseModel, TypeAdapter
+
+
+def logger_wrapper(logger_name: str, /):  # noqa: ANN201
+    logger = nonebot.logger.patch(lambda r: r.update(name="Bot7685"))
+    logger_name = escape_tag(logger_name)
+
+    def log(level: str, message: str, exception: Exception | None = None) -> None:
+        logger.opt(colors=True, exception=exception).log(
+            level, f"<m>{logger_name}</m> | {message}"
+        )
+
+    return log
 
 
 class ConfigFile[T: BaseModel | Sequence[BaseModel]]:

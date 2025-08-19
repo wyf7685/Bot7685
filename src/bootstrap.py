@@ -4,11 +4,11 @@ import time
 from typing import TYPE_CHECKING
 
 import nonebot
-from nonebot.utils import logger_wrapper, resolve_dot_notation
+from nonebot.utils import resolve_dot_notation
 
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
-from .utils import find_and_link_external
+from .utils import find_and_link_external, logger_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import Callable
