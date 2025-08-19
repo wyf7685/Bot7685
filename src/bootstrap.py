@@ -69,12 +69,15 @@ def load_adapter(module_name: str) -> type["Adapter"] | None:
 def load_adapters(config: BootstrapConfig) -> None:
     driver = nonebot.get_driver()
     for module_name in config.adapters:
-        message = f"Loading adapter: <g>{module_name}</g>"
+        message = f"Loading adapter: <m>{module_name}</m>"
         log("DEBUG", message)
-        load = _timer(message)(load_adapter)
-        if adapter := load(module_name):
+        if adapter := _timer(message)(load_adapter)(module_name):
             driver.register_adapter(adapter)
-            log("SUCCESS", f"Adapter <g>{adapter.get_name()}</g> loaded successfully")
+            log(
+                "SUCCESS",
+                f"Succeeded to load adapter <g>{adapter.get_name()}</g>"
+                f' from "<m>{module_name}</m>"',
+            )
 
 
 @_timer("Loading plugins")
