@@ -17,18 +17,18 @@ dependencies = [
   "nonebot-adapter-telegram>=0.1.0b20",
   # plugins
   "nonebot-plugin-akinator>=1.0.3",
-  "nonebot-plugin-alconna>=0.59.1",
+  "nonebot-plugin-alconna>=0.59.4",
   "nonebot-plugin-apscheduler>=0.5.0",
   "nonebot-plugin-chatrecorder>=0.7.0",
-  "nonebot-plugin-htmlrender>=0.6.6",
+  "nonebot-plugin-htmlrender>=0.6.7",
   "nonebot-plugin-localstore>=0.7.4",
   "nonebot-plugin-orm[asyncpg]>=0.8.2",
-  "nonebot-plugin-picstatus>=2.1.3.post1",
-  "nonebot-plugin-skland>=0.4.4",
+  "nonebot-plugin-picstatus>=2.1.4",
+  "nonebot-plugin-skland>=0.4.6",
   "nonebot-plugin-uninfo>=0.9.0",
-  "nonebot-plugin-user>=0.5.1",
+  "nonebot-plugin-user>=0.5.3",
   "nonebot-plugin-waiter>=0.8.1",
-  "nonebot-plugin-wakatime>=0.2.7",
+  "nonebot-plugin-wakatime>=0.3.0",
   "nonebot-plugin-wordcloud>=0.9.0",
   # plugin deps
   "aiocache[redis]>=0.12.3",
@@ -37,7 +37,7 @@ dependencies = [
   "cos-python-sdk-v5>=1.9.36",
   "gunicorn>=23.0.0",
   "httpx>=0.28.1",
-  "jmcomic>=2.6.4",
+  "jmcomic>=2.6.5",
   "msgspec[toml,yaml]>=0.19.0",
   "paramiko>=3.5.0",
   "playwright==1.52.0", # pinned in docker/Dockerfile
@@ -53,16 +53,16 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "ruff>=0.12.7",
-  "basedpyright>=1.31.0",
+  "ruff>=0.12.9",
+  "basedpyright>=1.31.2",
   "nonebot-adapter-console>=0.9.0",
   "nonebot-plugin-orm[aiosqlite]>=0.7.7",
   "nonebug>=0.4.3",
-  "pytest>=8.4.0",
-  "pytest-asyncio>=0.25.0,<1.0",
-  "pytest-cov>=6.1.0",
-  "pytest-mock>=3.14.0",
-  "pre-commit>=4.1.0",
+  "pytest>=8.4.1",
+  "pytest-asyncio>=0.25.0,<1",
+  "pytest-cov>=6.2.1",
+  "pytest-mock>=3.14.1",
+  "pre-commit>=4.3.0",
   "respx>=0.22.0",
 ]
 
