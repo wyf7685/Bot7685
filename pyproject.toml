@@ -37,9 +37,10 @@ dependencies = [
   "cos-python-sdk-v5>=1.9.36",
   "gunicorn>=23.0.0",
   "httpx>=0.28.1",
+  "humanize>=4.12.3,<5.0",
   "jmcomic>=2.6.5",
   "msgspec[toml,yaml]>=0.19.0",
-  "paramiko>=3.5.0",
+  "paramiko>=4.0.0",
   "playwright==1.52.0", # pinned in docker/Dockerfile
   "pydantic>=2.11.7",
   "tarina>=0.6.8",
@@ -48,26 +49,23 @@ dependencies = [
   "nonebot-plugin-talk-stats @ file:///${PROJECT_ROOT}/external/nonebot-plugin-talk-stats",
   "nonebot-plugin-werewolf @ file:///${PROJECT_ROOT}/external/nonebot-plugin-werewolf",
   "nonebot-plugin-zssm @ file:///${PROJECT_ROOT}/external/nonebot-plugin-zssm",
-  "humanize>=4.12.3,<5.0",
 ]
 
 [dependency-groups]
 dev = [
-  "ruff>=0.12.9",
-  "basedpyright>=1.31.2",
+  "ruff>=0.12.10",
+  "basedpyright>=1.31.3",
   "nonebot-adapter-console>=0.9.0",
   "nonebot-plugin-orm[aiosqlite]>=0.7.7",
   "nonebug>=0.4.3",
   "pytest>=8.4.1",
-  "pytest-asyncio>=0.25.0,<1",
-  "pytest-cov>=6.2.1",
   "pytest-mock>=3.14.1",
   "pre-commit>=4.3.0",
   "respx>=0.22.0",
 ]
 
-[tool.uv]
-resolution = "lowest-direct"
+# [tool.uv]
+# resolution = "lowest-direct"
 
 [tool.ruff]
 line-length = 88
