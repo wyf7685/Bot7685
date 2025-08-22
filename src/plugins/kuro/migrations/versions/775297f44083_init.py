@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 revision: str = "775297f44083"
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
-depends_on: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = "7d23eb54c6be"
 
 
 def upgrade(name: str = "") -> None:
