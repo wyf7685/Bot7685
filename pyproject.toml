@@ -64,9 +64,6 @@ dev = [
   "respx>=0.22.0",
 ]
 
-# [tool.uv]
-# resolution = "lowest-direct"
-
 [tool.ruff]
 line-length = 88
 target-version = "py313"
