@@ -19,10 +19,7 @@ async def fetch_for_user(config: ConfigModel) -> None:
     # fetch user info
     logger.info(f"正在获取用户 {config.user_id} 的信息")
     try:
-        resp = await fetch_me(
-            config.token,
-            config.cf_clearance,
-        )
+        resp = await fetch_me(config)
     except FetchFailed as e:
         logger.warning(f"获取用户 {config.user_id} 的信息失败: {e.msg}")
         return

@@ -53,14 +53,6 @@ async def assign_add(
 ) -> None:
     token = await prompt("请输入 WPlace 的 token (Cookies 中的 j)")
     cf_clearance = await prompt("请输入 wplace.live Cookies 中的 cf_clearance")
-
-    try:
-        await fetch_me(token, cf_clearance)
-    except FetchFailed as e:
-        await UniMessage.text(f"验证失败: {e.msg}").finish(at_sender=True)
-    except Exception:
-        await UniMessage.text("验证时发生意外错误，请稍后再试").finish(at_sender=True)
-
     cfg = ConfigModel(
         token=token,
         cf_clearance=cf_clearance,
@@ -68,13 +60,22 @@ async def assign_add(
         user_id=event.get_user_id(),
         notify_mins=notify_mins,
     )
-    config.add(cfg)
-    await UniMessage.text("添加成功").finish(at_sender=True)
+
+    try:
+        resp = await fetch_me(cfg)
+    except FetchFailed as e:
+        await UniMessage.text(f"验证失败: {e.msg}").finish(at_sender=True)
+    except Exception:
+        await UniMessage.text("验证时发生意外错误，请稍后再试").finish(at_sender=True)
+
+    cfg.save()
+    msg = f"添加成功\n{resp.format_notification()}"
+    await UniMessage.text(msg).finish(at_sender=True, reply_to=True)
 
 
 async def _fetch(config: ConfigModel, output: list[str]) -> None:
     try:
-        resp = await fetch_me(config.token, config.cf_clearance)
+        resp = await fetch_me(config)
         output.append(resp.format_notification())
     except FetchFailed as e:
         output.append(f"查询失败: {e.msg}")

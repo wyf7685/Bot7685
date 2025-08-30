@@ -1,14 +1,18 @@
 # ruff: noqa: N815
+import functools
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 
-import anyio.to_thread
 import cloudscraper
 import humanize
 from nonebot import logger
+from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_browser
 from playwright._impl._api_structures import SetCookieParam
 from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from pydantic import BaseModel
+
+from .config import ConfigModel
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
 USER_AGENT = (
@@ -103,16 +107,29 @@ class FetchMeResponse(BaseModel):
         )
 
 
-async def fetch_me_with_async_playwright(
-    token: str,
-    cf_clearance: str,
-) -> FetchMeResponse:
+type FetchFn = Callable[[ConfigModel], Awaitable[FetchMeResponse]]
+
+
+def _save_user_info(fn: FetchFn) -> FetchFn:
+    @functools.wraps(fn)
+    async def wrapper(cfg: ConfigModel) -> FetchMeResponse:
+        resp = await fn(cfg)
+        cfg.wp_user_id = resp.id
+        cfg.wp_user_name = resp.name
+        cfg.save()
+        return resp
+
+    return wrapper
+
+
+@_save_user_info
+async def fetch_me_with_async_playwright(cfg: ConfigModel) -> FetchMeResponse:
     async with await (await get_browser()).new_context(
         user_agent=USER_AGENT,
         viewport={"width": 1920, "height": 1080},
         java_script_enabled=True,
     ) as ctx:
-        await ctx.add_cookies(construct_pw_cookies(token, cf_clearance))
+        await ctx.add_cookies(construct_pw_cookies(cfg.token, cfg.cf_clearance))
         async with await ctx.new_page() as page:
             await page.add_init_script(PW_PAGE_SCRIPT)
             try:
@@ -134,13 +151,15 @@ async def fetch_me_with_async_playwright(
                 raise FetchFailed("Failed to parse JSON response") from e
 
 
-def fetch_me_with_cloudscraper(token: str, cf_clearance: str) -> FetchMeResponse:
+@_save_user_info
+@run_sync
+def fetch_me_with_cloudscraper(cfg: ConfigModel) -> FetchMeResponse:
     scraper = cloudscraper.create_scraper()
     try:
         resp = scraper.get(
             WPLACE_ME_API_URL,
             headers={"User-Agent": USER_AGENT},
-            cookies=construct_requests_cookies(token, cf_clearance),
+            cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
             timeout=20,
         )
         resp.raise_for_status()
@@ -153,15 +172,10 @@ def fetch_me_with_cloudscraper(token: str, cf_clearance: str) -> FetchMeResponse
         raise FetchFailed("Failed to parse JSON response") from e
 
 
-async def fetch_me(
-    token: str,
-    cf_clearance: str,
-) -> FetchMeResponse:
+async def fetch_me(cfg: ConfigModel) -> FetchMeResponse:
     try:
-        return await anyio.to_thread.run_sync(
-            fetch_me_with_cloudscraper, token, cf_clearance
-        )
+        return await fetch_me_with_cloudscraper(cfg)
     except FetchFailed as e:
         logger.warning(f"cloudscraper fetch failed ({e!r}), trying playwright...")
 
-    return await fetch_me_with_async_playwright(token, cf_clearance)
+    return await fetch_me_with_async_playwright(cfg)
