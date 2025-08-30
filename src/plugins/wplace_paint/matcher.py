@@ -1,5 +1,8 @@
+from typing import Annotated
+
 import anyio
 from nonebot.adapters import Event
+from nonebot.params import Depends
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -19,16 +22,31 @@ alc = Alconna(
     Subcommand(
         "add",
         Option(
-            "--notify_mins|-n",
+            "--notify-mins|-n",
             Args["notify_mins?", int],
             help_text="提前多少分钟通知 (默认10分钟)",
         ),
-        help_text="添加一个用户 (token 和 cf_clearance 可在网页端 Cookies 中找到)",
+        help_text="添加一个 WPlace 账号",
     ),
     Subcommand(
         "query",
         Args["target?#查询目标", At],
-        help_text="查询目标用户当前绑定的所有用户信息",
+        help_text="查询目标用户当前绑定的所有账号信息",
+    ),
+    Subcommand(
+        "config",
+        Args["identifier#账号标识,ID或用户名", str],
+        Option(
+            "--notify-mins|-n",
+            Args["notify_mins", int],
+            help_text="提前多少分钟通知 (默认10分钟)",
+        ),
+        help_text="修改已绑定账号的配置",
+    ),
+    Subcommand(
+        "remove",
+        Args["identifier#账号标识,ID或用户名", str],
+        help_text="移除已绑定的账号",
     ),
 )
 
@@ -51,8 +69,8 @@ async def assign_add(
     target: MsgTarget,
     notify_mins: int = 10,
 ) -> None:
-    token = await prompt("请输入 WPlace 的 token (Cookies 中的 j)")
-    cf_clearance = await prompt("请输入 wplace.live Cookies 中的 cf_clearance")
+    token = await prompt("请输入 WPlace Cookies 中的 j (token)")
+    cf_clearance = await prompt("请输入 WPlace Cookies 中的 cf_clearance")
     cfg = ConfigModel(
         token=token,
         cf_clearance=cf_clearance,
@@ -97,3 +115,37 @@ async def assign_query(event: Event, target: At | None = None) -> None:
             tg.start_soon(_fetch, cfg, output)
 
     await UniMessage.at(user_id).text("\n\n".join(output)).finish(reply_to=True)
+
+
+async def _select_cfg(event: Event, identifier: str) -> ConfigModel:
+    user_id = event.get_user_id()
+    cfgs = [
+        cfg
+        for cfg in config.load()
+        if cfg.user_id == user_id
+        and cfg.wp_user_id is not None
+        and (str(cfg.wp_user_id) == identifier or cfg.wp_user_name == identifier)
+    ]
+    if not cfgs:
+        await UniMessage.text("未找到对应的绑定账号").finish(at_sender=True)
+    return cfgs[0]
+
+
+SelectedConfig = Annotated[ConfigModel, Depends(_select_cfg)]
+
+
+@matcher.assign("~config.notify-mins")
+async def assign_config_notify_mins(cfg: SelectedConfig, notify_mins: int) -> None:
+    cfg.notify_mins = notify_mins
+    cfg.save()
+    await UniMessage.text(f"修改成功, {notify_mins = }").finish(
+        at_sender=True, reply_to=True
+    )
+
+
+@matcher.assign("~remove")
+async def assign_remove(cfg: SelectedConfig) -> None:
+    config.remove(lambda c: c is cfg)
+    await UniMessage.text(f"移除成功: {cfg.wp_user_name}({cfg.wp_user_id})").finish(
+        at_sender=True, reply_to=True
+    )
