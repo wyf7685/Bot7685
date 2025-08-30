@@ -41,6 +41,10 @@ alc = Alconna(
             Args["notify_mins", int],
             help_text="提前多少分钟通知 (默认10分钟)",
         ),
+        Option(
+            "--set-target",
+            help_text="设置当前会话为推送目标",
+        ),
         help_text="修改已绑定账号的配置",
     ),
     Subcommand(
@@ -138,7 +142,16 @@ SelectedConfig = Annotated[ConfigModel, Depends(_select_cfg)]
 async def assign_config_notify_mins(cfg: SelectedConfig, notify_mins: int) -> None:
     cfg.notify_mins = notify_mins
     cfg.save()
-    await UniMessage.text(f"修改成功, {notify_mins = }").finish(
+    await UniMessage.text(f"将在距离像素回满小于 {notify_mins} 分钟时推送通知").finish(
+        at_sender=True, reply_to=True
+    )
+
+
+@matcher.assign("~config.set-target")
+async def assign_config_set_target(cfg: SelectedConfig, target: MsgTarget) -> None:
+    cfg.target_data = target.dump()
+    cfg.save()
+    await UniMessage.text("已设置当前会话为推送目标").finish(
         at_sender=True, reply_to=True
     )
 
@@ -146,6 +159,6 @@ async def assign_config_notify_mins(cfg: SelectedConfig, notify_mins: int) -> No
 @matcher.assign("~remove")
 async def assign_remove(cfg: SelectedConfig) -> None:
     config.remove(lambda c: c is cfg)
-    await UniMessage.text(f"移除成功: {cfg.wp_user_name}({cfg.wp_user_id})").finish(
+    await UniMessage.text(f"移除成功: {cfg.wp_user_name}(ID: {cfg.wp_user_id})").finish(
         at_sender=True, reply_to=True
     )

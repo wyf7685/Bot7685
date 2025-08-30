@@ -53,8 +53,8 @@ async def fetch_for_user(config: ConfigModel) -> None:
         await msg.send(target=config.target)
     except Exception:
         logger.opt(exception=True).warning(f"向用户 {config.user_id} 发送通知失败")
-
-    await push_cache.set(cache_key, False)
+    else:
+        await push_cache.set(cache_key, False)
 
 
 async def _job() -> None:

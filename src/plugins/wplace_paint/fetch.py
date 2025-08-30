@@ -3,9 +3,6 @@ import functools
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 
-import cloudscraper
-import humanize
-from nonebot import logger
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_browser
 from playwright._impl._api_structures import SetCookieParam
@@ -64,7 +61,7 @@ class Charges(BaseModel):
     max: int
 
     def remaining_secs(self) -> float:
-        return (self.max - self.count) * self.cooldownMs / 1000
+        return (self.max - self.count) * (self.cooldownMs / 1000.0)
 
 
 class FavoriteLocation(BaseModel):
@@ -96,14 +93,13 @@ class FetchMeResponse(BaseModel):
     showLastPixel: bool
 
     def format_notification(self) -> str:
-        remaining = self.charges.remaining_secs()
-        recover_time = datetime.now() + timedelta(seconds=remaining)
+        r = int(self.charges.remaining_secs())
+        recover_time = datetime.now() + timedelta(seconds=r)
         return (
             f"用户: {self.name} (ID: {self.id})\n"
-            f"当前像素: {int(self.charges.count)}/{self.charges.max} "
-            f"(剩余 {remaining:.1f}s)\n"
-            f"预计恢复时间: {recover_time:%Y-%m-%d %H:%M:%S} "
-            f"({humanize.naturaltime(recover_time)})"
+            f"当前像素: {int(self.charges.count)}/{self.charges.max}\n"
+            f"恢复耗时: {r // 3600}:{r // 60 % 60:02}:{r % 60:02}\n"
+            f"预计回满: {recover_time:%Y-%m-%d %H:%M:%S}"
         )
 
 
@@ -154,6 +150,8 @@ async def fetch_me_with_async_playwright(cfg: ConfigModel) -> FetchMeResponse:
 @_save_user_info
 @run_sync
 def fetch_me_with_cloudscraper(cfg: ConfigModel) -> FetchMeResponse:
+    import cloudscraper
+
     scraper = cloudscraper.create_scraper()
     try:
         resp = scraper.get(
@@ -172,10 +170,15 @@ def fetch_me_with_cloudscraper(cfg: ConfigModel) -> FetchMeResponse:
         raise FetchFailed("Failed to parse JSON response") from e
 
 
-async def fetch_me(cfg: ConfigModel) -> FetchMeResponse:
-    try:
-        return await fetch_me_with_cloudscraper(cfg)
-    except FetchFailed as e:
-        logger.warning(f"cloudscraper fetch failed ({e!r}), trying playwright...")
+# async def fetch_me(cfg: ConfigModel) -> FetchMeResponse:
+#     try:
+#         return await fetch_me_with_cloudscraper(cfg)
+#     except FetchFailed as e:
+#         from nonebot import logger
 
-    return await fetch_me_with_async_playwright(cfg)
+#         logger.warning(f"cloudscraper fetch failed ({e!r}), trying playwright...")
+
+#     return await fetch_me_with_async_playwright(cfg)
+
+
+fetch_me = fetch_me_with_async_playwright
