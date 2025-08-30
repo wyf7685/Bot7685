@@ -36,7 +36,7 @@ async def fetch_for_user(config: ConfigModel) -> None:
 
     # calc remaining
     remaining = resp.charges.remaining_secs()
-    if remaining > config.notify_mins:
+    if remaining > config.notify_mins * 60:
         logger.info(f"用户 {config.user_id} 还剩 {remaining:.0f} 秒，跳过通知")
         await push_cache.set(cache_key, True)
         return
