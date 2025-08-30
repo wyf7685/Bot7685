@@ -65,8 +65,8 @@ async def _job() -> None:
 
 scheduler.add_job(
     _job,
-    CronTrigger(minute="*/10"),
-    misfire_grace_time=300,
+    CronTrigger(minute="*/5"),
+    misfire_grace_time=60,
     max_instances=1,
     id="wplace_paint_fetcher",
 )
