@@ -1,4 +1,5 @@
 import atexit
+import contextlib
 import functools
 import inspect
 import shutil
@@ -212,3 +213,13 @@ def with_semaphore[T: Callable](initial_value: int) -> Callable[[T], T]:
         return cast("T", functools.update_wrapper(wrapper, func))
 
     return decorator
+
+
+def _setup() -> None:
+    with contextlib.suppress(ImportError):
+        import humanize
+
+        humanize.activate("zh_CN")
+
+
+_setup()

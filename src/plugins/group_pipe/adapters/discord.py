@@ -30,7 +30,6 @@ from ..utils import guess_url_type
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
-humanize.activate("zh_CN")
 UTC8 = dt.timezone(dt.timedelta(hours=8))
 LINK_PATTERN = re.compile(r"\[(?P<name>.+?)\]\(<(?P<url>.+?)>\)")
 attachment_cache = get_cache[str, str](namespace="group_pipe:discord:attachment")

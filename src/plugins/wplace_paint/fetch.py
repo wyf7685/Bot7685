@@ -1,6 +1,7 @@
 # ruff: noqa: N815
 from datetime import datetime, timedelta
 
+import humanize
 from nonebot_plugin_htmlrender import get_browser
 from playwright._impl._api_structures import SetCookieParam
 from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
@@ -90,7 +91,8 @@ class FetchMeResponse(BaseModel):
             f"用户: {self.name} (ID: {self.id})\n"
             f"当前像素: {self.charges.count:.2f}/{self.charges.max} "
             f"(剩余 {remaining:.1f}s)\n"
-            f"预计恢复时间: {recover_time:%Y-%m-%d %H:%M:%S}"
+            f"预计恢复时间: {recover_time:%Y-%m-%d %H:%M:%S} "
+            f"({humanize.naturaltime(recover_time)})"
         )
 
 
