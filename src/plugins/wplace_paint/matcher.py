@@ -43,8 +43,7 @@ alc = Alconna(
             Args["notify_mins?", int],
             help_text="提前多少分钟通知 (默认10分钟)",
         ),
-        help_text="添加一个用户 "
-        "(token 和 cf_clearance 可在 https://wplace.live/ 的 Cookies 中找到)",
+        help_text="添加一个用户 (token 和 cf_clearance 可在网页端 Cookies 中找到)",
     ),
     Subcommand("query", help_text="查询当前绑定的所有用户信息"),
 )
