@@ -161,9 +161,7 @@ async def fetch_me(
         return await anyio.to_thread.run_sync(
             fetch_me_with_cloudscraper, token, cf_clearance
         )
-    except FetchFailed:
-        logger.opt(exception=True).warning(
-            "cloudscraper fetch failed, trying playwright..."
-        )
+    except FetchFailed as e:
+        logger.warning(f"cloudscraper fetch failed ({e!r}), trying playwright...")
 
     return await fetch_me_with_async_playwright(token, cf_clearance)
