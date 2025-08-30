@@ -3,6 +3,7 @@ from nonebot.adapters import Event
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
+    At,
     MsgTarget,
     Option,
     Subcommand,
@@ -24,7 +25,11 @@ alc = Alconna(
         ),
         help_text="添加一个用户 (token 和 cf_clearance 可在网页端 Cookies 中找到)",
     ),
-    Subcommand("query", help_text="查询当前绑定的所有用户信息"),
+    Subcommand(
+        "query",
+        Args["target?#查询目标", At],
+        help_text="查询目标用户当前绑定的所有用户信息",
+    ),
 )
 
 matcher = on_alconna(alc)
@@ -78,15 +83,16 @@ async def _fetch(config: ConfigModel, output: list[str]) -> None:
 
 
 @matcher.assign("~query")
-async def assign_query(event: Event) -> None:
-    user_id = event.get_user_id()
+async def assign_query(event: Event, target: At | None = None) -> None:
+    user_id = event.get_user_id() if target is None else target.target
+
     cfgs = [cfg for cfg in config.load() if cfg.user_id == user_id]
     if not cfgs:
-        await UniMessage.text("你还没有绑定任何用户").finish(at_sender=True)
+        await UniMessage.at(user_id).text("还没有绑定任何用户").finish(reply_to=True)
 
     output = ["查询结果:"]
     async with anyio.create_task_group() as tg:
         for cfg in cfgs:
             tg.start_soon(_fetch, cfg, output)
 
-    await UniMessage.text("\n\n".join(output)).finish(at_sender=True)
+    await UniMessage.at(user_id).text("\n\n".join(output)).finish(reply_to=True)
