@@ -46,7 +46,7 @@ async def assign_add(
     target: MsgTarget,
     notify_mins: int = 10,
 ) -> None:
-    token = await prompt("请输入 WPlace 的 token")
+    token = await prompt("请输入 WPlace 的 token (Cookies 中的 j)")
     cf_clearance = await prompt("请输入 wplace.live Cookies 中的 cf_clearance")
 
     try:
