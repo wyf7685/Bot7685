@@ -96,7 +96,7 @@ class FetchMeResponse(BaseModel):
         recover_time = datetime.now() + timedelta(seconds=remaining)
         return (
             f"用户: {self.name} (ID: {self.id})\n"
-            f"当前像素: {self.charges.count:.2f}/{self.charges.max} "
+            f"当前像素: {int(self.charges.count)}/{self.charges.max} "
             f"(剩余 {remaining:.1f}s)\n"
             f"预计恢复时间: {recover_time:%Y-%m-%d %H:%M:%S} "
             f"({humanize.naturaltime(recover_time)})"
