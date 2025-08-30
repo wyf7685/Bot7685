@@ -1,4 +1,6 @@
 # ruff: noqa: FBT003
+import hashlib
+
 import anyio
 from apscheduler.triggers.cron import CronTrigger
 from nonebot import logger
@@ -10,7 +12,7 @@ from src.plugins.cache import get_cache
 from .config import ConfigModel, config
 from .fetch import FetchFailed, fetch_me_with_async_playwright
 
-push_cache = get_cache[int, bool]("wplace_paint:push")
+push_cache = get_cache[str, bool]("wplace_paint:push")
 
 
 async def fetch_for_user(config: ConfigModel) -> None:
@@ -36,19 +38,18 @@ async def fetch_for_user(config: ConfigModel) -> None:
         logger.info(f"用户 {config.user_id} 还剩 {remaining:.0f} 秒，跳过通知")
         return
 
-    cache_key = hash(f"{config.user_id}${resp.id}")
+    # check whether should push
+    cache_key = hashlib.sha256(f"{config.user_id}${resp.id}".encode()).hexdigest()
     if not await push_cache.get(cache_key, True):
         logger.info(f"用户 {config.user_id} 跳过通知")
         return
 
-    # format message
-    msg = UniMessage.text(resp.format_notification())
-    if not config.target.private:
-        msg = UniMessage.at(config.user_id) + msg
-
     # send notification
     try:
-        await msg.send(target=config.target)
+        await UniMessage.text(resp.format_notification()).send(
+            target=config.target,
+            at_sender=not config.target.private,
+        )
     except Exception:
         logger.opt(exception=True).warning(f"向用户 {config.user_id} 发送通知失败")
 
