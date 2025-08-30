@@ -44,12 +44,14 @@ async def fetch_for_user(config: ConfigModel) -> None:
         logger.info(f"用户 {config.user_id} 跳过通知")
         return
 
+    # format message
+    msg = UniMessage.text(resp.format_notification())
+    if not config.target.private:
+        msg = UniMessage.at(config.user_id) + msg
+
     # send notification
     try:
-        await UniMessage.text(resp.format_notification()).send(
-            target=config.target,
-            at_sender=not config.target.private,
-        )
+        await msg.send(target=config.target)
     except Exception:
         logger.opt(exception=True).warning(f"向用户 {config.user_id} 发送通知失败")
 
