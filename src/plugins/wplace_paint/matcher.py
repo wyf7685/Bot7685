@@ -12,7 +12,7 @@ from nonebot_plugin_alconna import (
 )
 
 from .config import ConfigModel, config
-from .fetch import FetchFailed, fetch_me_with_async_playwright
+from .fetch import FetchFailed, fetch_me
 
 alc = Alconna(
     "wplace",
@@ -55,7 +55,7 @@ async def assign_add(
     cf_clearance = await prompt("请输入 wplace.live Cookies 中的 cf_clearance")
 
     try:
-        await fetch_me_with_async_playwright(token, cf_clearance)
+        await fetch_me(token, cf_clearance)
     except FetchFailed as e:
         await UniMessage.text(f"验证失败: {e.msg}").finish(at_sender=True)
     except Exception:
@@ -74,7 +74,7 @@ async def assign_add(
 
 async def _fetch(config: ConfigModel, output: list[str]) -> None:
     try:
-        resp = await fetch_me_with_async_playwright(config.token, config.cf_clearance)
+        resp = await fetch_me(config.token, config.cf_clearance)
         output.append(resp.format_notification())
     except FetchFailed as e:
         output.append(f"查询失败: {e.msg}\n")

@@ -49,6 +49,7 @@ dependencies = [
   "nonebot-plugin-talk-stats @ file:///${PROJECT_ROOT}/external/nonebot-plugin-talk-stats",
   "nonebot-plugin-werewolf @ file:///${PROJECT_ROOT}/external/nonebot-plugin-werewolf",
   "nonebot-plugin-zssm @ file:///${PROJECT_ROOT}/external/nonebot-plugin-zssm",
+  "cloudscraper>=1.2.71",
 ]
 
 [dependency-groups]
