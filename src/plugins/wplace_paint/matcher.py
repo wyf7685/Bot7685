@@ -77,7 +77,7 @@ async def _fetch(config: ConfigModel, output: list[str]) -> None:
         resp = await fetch_me(config.token, config.cf_clearance)
         output.append(resp.format_notification())
     except FetchFailed as e:
-        output.append(f"查询失败: {e.msg}\n")
+        output.append(f"查询失败: {e.msg}")
     except Exception as e:
         output.append(f"查询时发生意外错误: {e!r}")
 

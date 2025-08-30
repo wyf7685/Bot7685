@@ -32,14 +32,16 @@ async def fetch_for_user(config: ConfigModel) -> None:
         )
         return
 
+    cache_key = hashlib.sha256(f"{config.user_id}${resp.id}".encode()).hexdigest()
+
     # calc remaining
     remaining = resp.charges.remaining_secs()
     if remaining > config.notify_mins:
         logger.info(f"用户 {config.user_id} 还剩 {remaining:.0f} 秒，跳过通知")
+        await push_cache.set(cache_key, True)
         return
 
     # check whether should push
-    cache_key = hashlib.sha256(f"{config.user_id}${resp.id}".encode()).hexdigest()
     if not await push_cache.get(cache_key, True):
         logger.info(f"用户 {config.user_id} 跳过通知")
         return
