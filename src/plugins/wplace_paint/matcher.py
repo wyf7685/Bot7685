@@ -3,7 +3,6 @@ from nonebot.adapters import Event
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
-    Field,
     MsgTarget,
     Option,
     Subcommand,
@@ -19,26 +18,6 @@ alc = Alconna(
     Subcommand(
         "add",
         Option(
-            "--token|-t",
-            Args[
-                "token",
-                str,
-                Field(completion=lambda: "请输入 WPlace 的 token"),
-            ],
-            help_text="WPlace 的 token",
-        ),
-        Option(
-            "--cf_clearance|-c",
-            Args[
-                "cf_clearance",
-                str,
-                Field(
-                    completion=lambda: "请输入 wplace.live Cookies 中的 cf_clearance",
-                ),
-            ],
-            help_text="WPlace 的 cf_clearance",
-        ),
-        Option(
             "--notify_mins|-n",
             Args["notify_mins?", int],
             help_text="提前多少分钟通知 (默认10分钟)",
@@ -51,14 +30,25 @@ alc = Alconna(
 matcher = on_alconna(alc)
 
 
+async def prompt(msg: str) -> str:
+    resp = await matcher.prompt(msg + "\n(回复 “取消” 以取消操作)")
+    if resp is None:
+        await UniMessage.text("操作已取消").finish(at_sender=True)
+    text = resp.extract_plain_text().strip()
+    if text == "取消":
+        await UniMessage.text("操作已取消").finish(at_sender=True)
+    return text
+
+
 @matcher.assign("~add")
 async def assign_add(
     event: Event,
     target: MsgTarget,
-    token: str,
-    cf_clearance: str,
     notify_mins: int = 10,
 ) -> None:
+    token = await prompt("请输入 WPlace 的 token")
+    cf_clearance = await prompt("请输入 wplace.live Cookies 中的 cf_clearance")
+
     try:
         await fetch_me_with_async_playwright(token, cf_clearance)
     except FetchFailed as e:

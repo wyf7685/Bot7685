@@ -5,6 +5,7 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_localstore")
+require("nonebot_plugin_waiter")
 from . import matcher as matcher
 from . import scheduler as scheduler
 
