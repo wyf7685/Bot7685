@@ -134,7 +134,12 @@ class KuroHandler:
         return False
 
     async def check_energy(self, *, do_refresh: bool = False) -> bool:
-        mine = await self.api.mine()
+        try:
+            mine = await self.api.mine()
+        except KuroApiException as err:
+            self.log(f"获取库洛用户信息失败: {err.msg}", logger.warning)
+            return True
+
         self.log(f"鸣潮结波晶片: {mine.userName}({mine.userId})")
         self.logln()
 
