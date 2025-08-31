@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from typing import Annotated, Literal
 
 import anyio
@@ -48,6 +49,11 @@ alc = Alconna(
             "--set-target",
             help_text="设置当前会话为推送目标",
         ),
+        Option(
+            "--max-overflow-notify|-m",
+            Args["max_overflow_notify", int],
+            help_text="设置最大溢出通知次数 (默认3次, 0为禁用)",
+        ),
         alias={"c"},
         help_text="修改已绑定账号的配置",
     ),
@@ -96,13 +102,13 @@ async def assign_add(
     try:
         resp = await fetch_me(cfg)
     except FetchFailed as e:
-        await UniMessage.text(f"验证失败: {e.msg}").finish(at_sender=True)
+        await UniMessage.text(f"验证失败: {e.msg}").finish(reply_to=True)
     except Exception:
-        await UniMessage.text("验证时发生意外错误，请稍后再试").finish(at_sender=True)
+        await UniMessage.text("验证时发生意外错误，请稍后再试").finish(reply_to=True)
 
     cfg.save()
     msg = f"添加成功\n{resp.format_notification()}"
-    await UniMessage.text(msg).finish(at_sender=True, reply_to=True)
+    await UniMessage.text(msg).finish(reply_to=True)
 
 
 async def _query_target_cfgs(
@@ -158,34 +164,66 @@ async def _select_cfg(event: Event, identifier: str) -> ConfigModel:
         and (str(cfg.wp_user_id) == identifier or cfg.wp_user_name == identifier)
     ]
     if not cfgs:
-        await UniMessage.text("未找到对应的绑定账号").finish(at_sender=True)
+        await UniMessage.text("未找到对应的绑定账号").finish(reply_to=True)
     return cfgs[0]
 
 
 SelectedConfig = Annotated[ConfigModel, Depends(_select_cfg)]
 
 
+async def _config_output() -> AsyncIterator[list[str]]:
+    output: list[str] = []
+    try:
+        yield output
+    finally:
+        if output:
+            await UniMessage.text("\n\n".join(output)).finish(reply_to=True)
+
+
+ConfigOutput = Annotated[list[str], Depends(_config_output)]
+
+
 @matcher.assign("~config.notify-mins")
-async def assign_config_notify_mins(cfg: SelectedConfig, notify_mins: int) -> None:
+async def assign_config_notify_mins(
+    cfg: SelectedConfig,
+    output: ConfigOutput,
+    notify_mins: int,
+) -> None:
     cfg.notify_mins = notify_mins
     cfg.save()
-    await UniMessage.text(f"将在距离像素回满小于 {notify_mins} 分钟时推送通知").finish(
-        at_sender=True, reply_to=True
-    )
+    output.append(f"将在距离像素回满小于 {notify_mins} 分钟时推送通知")
 
 
 @matcher.assign("~config.set-target")
-async def assign_config_set_target(cfg: SelectedConfig, target: MsgTarget) -> None:
+async def assign_config_set_target(
+    cfg: SelectedConfig,
+    output: ConfigOutput,
+    target: MsgTarget,
+) -> None:
     cfg.target_data = target.dump()
     cfg.save()
-    await UniMessage.text("已设置当前会话为推送目标").finish(
-        at_sender=True, reply_to=True
+    output.append("已设置当前会话为推送目标")
+
+
+@matcher.assign("~config.max-overflow-notify")
+async def assign_config_max_overflow_notify(
+    cfg: SelectedConfig,
+    output: ConfigOutput,
+    max_overflow_notify: int,
+) -> None:
+    cfg.max_overflow_notify = max(0, max_overflow_notify)
+    cfg.save()
+
+    output.append(
+        "已禁用溢出通知"
+        if max_overflow_notify == 0
+        else f"已设置最大溢出通知次数为 {max_overflow_notify} 次"
     )
 
 
 @matcher.assign("~remove")
 async def assign_remove(cfg: SelectedConfig) -> None:
     config.remove(lambda c: c is cfg)
-    await UniMessage.text(f"移除成功: {cfg.wp_user_name}(ID: {cfg.wp_user_id})").finish(
-        at_sender=True, reply_to=True
-    )
+    await (
+        UniMessage.text(f"移除成功: {cfg.wp_user_name}(ID: {cfg.wp_user_id})")
+    ).finish(reply_to=True)

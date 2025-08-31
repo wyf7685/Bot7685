@@ -15,6 +15,7 @@ class ConfigModel(BaseModel):
     notify_mins: int = 10
     wp_user_id: int | None = None
     wp_user_name: str | None = None
+    max_overflow_notify: int = 3
 
     @property
     def target(self) -> Target:
