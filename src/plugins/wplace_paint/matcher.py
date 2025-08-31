@@ -71,6 +71,7 @@ alc = Alconna(
 )
 matcher = on_alconna(alc)
 matcher.shortcut("wpq", {"command": "wplace query {*}"})
+matcher.shortcut("wpg", {"command": "wplace query $group"})
 
 
 async def prompt(msg: str) -> str:
