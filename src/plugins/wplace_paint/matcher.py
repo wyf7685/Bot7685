@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 import anyio
 from nonebot.adapters import Event
@@ -7,6 +7,7 @@ from nonebot_plugin_alconna import (
     Alconna,
     Args,
     At,
+    CommandMeta,
     MsgTarget,
     Option,
     Subcommand,
@@ -26,11 +27,13 @@ alc = Alconna(
             Args["notify_mins?", int],
             help_text="提前多少分钟通知 (默认10分钟)",
         ),
+        alias={"a"},
         help_text="添加一个 WPlace 账号",
     ),
     Subcommand(
         "query",
-        Args["target?#查询目标", At],
+        Args["target?#查询目标", At | Literal["$group"]],
+        alias={"q"},
         help_text="查询目标用户当前绑定的所有账号信息",
     ),
     Subcommand(
@@ -45,16 +48,23 @@ alc = Alconna(
             "--set-target",
             help_text="设置当前会话为推送目标",
         ),
+        alias={"c"},
         help_text="修改已绑定账号的配置",
     ),
     Subcommand(
         "remove",
         Args["identifier#账号标识,ID或用户名", str],
+        alias={"rm"},
         help_text="移除已绑定的账号",
     ),
+    meta=CommandMeta(
+        description="WPlace 查询",
+        usage="wplace <add|query|config|remove> [参数...]",
+        author="wyf7685",
+    ),
 )
-
 matcher = on_alconna(alc)
+matcher.shortcut("wpq", {"command": "wplace query {*}"})
 
 
 async def prompt(msg: str) -> str:
@@ -95,30 +105,47 @@ async def assign_add(
     await UniMessage.text(msg).finish(at_sender=True, reply_to=True)
 
 
-async def _fetch(config: ConfigModel, output: list[str]) -> None:
-    try:
-        resp = await fetch_me(config)
-        output.append(resp.format_notification())
-    except FetchFailed as e:
-        output.append(f"查询失败: {e.msg}")
-    except Exception as e:
-        output.append(f"查询时发生意外错误: {e!r}")
+async def _query_target_cfgs(
+    event: Event,
+    uni_target: MsgTarget,
+    target: At | Literal["$group"] | None = None,
+) -> list[ConfigModel]:
+    if target == "$group" and uni_target.private:
+        await UniMessage.text("请在群聊中使用 $group 参数").finish(reply_to=True)
+
+    if target == "$group":
+        cfgs = [cfg for cfg in config.load() if cfg.target.verify(uni_target)]
+        if not cfgs:
+            await UniMessage.text("群内没有用户绑定推送").finish(reply_to=True)
+        return cfgs
+
+    user_id = event.get_user_id() if target is None else target.target
+    cfgs = [cfg for cfg in config.load() if cfg.user_id == user_id]
+    if not cfgs:
+        await UniMessage.text("用户没有绑定任何账号").finish(reply_to=True)
+    return cfgs
+
+
+QueryConfigs = Annotated[list[ConfigModel], Depends(_query_target_cfgs)]
 
 
 @matcher.assign("~query")
-async def assign_query(event: Event, target: At | None = None) -> None:
-    user_id = event.get_user_id() if target is None else target.target
-
-    cfgs = [cfg for cfg in config.load() if cfg.user_id == user_id]
-    if not cfgs:
-        await UniMessage.at(user_id).text("还没有绑定任何用户").finish(reply_to=True)
+async def assign_query(cfgs: QueryConfigs) -> None:
+    async def _fetch(config: ConfigModel) -> None:
+        try:
+            resp = await fetch_me(config)
+            output.append(resp.format_notification())
+        except FetchFailed as e:
+            output.append(f"查询失败: {e.msg}")
+        except Exception as e:
+            output.append(f"查询时发生意外错误: {e!r}")
 
     output = ["查询结果:"]
     async with anyio.create_task_group() as tg:
         for cfg in cfgs:
-            tg.start_soon(_fetch, cfg, output)
+            tg.start_soon(_fetch, cfg)
 
-    await UniMessage.at(user_id).text("\n\n".join(output)).finish(reply_to=True)
+    await UniMessage.text("\n\n".join(output)).finish(reply_to=True)
 
 
 async def _select_cfg(event: Event, identifier: str) -> ConfigModel:
