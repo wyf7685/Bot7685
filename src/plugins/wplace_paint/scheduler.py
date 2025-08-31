@@ -75,6 +75,7 @@ async def fetch_for_user(config: ConfigModel) -> None:
                 logger.warning(log_msg)
                 await anyio.sleep(5)
             else:
+                logger.info(f"已向 {colored_user} 推送通知")
                 break
 
         cache.last_notification = datetime.now()
