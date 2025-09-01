@@ -14,15 +14,12 @@ class Mine(ResponseData):
     gender: int
     goldNum: int
     headUrl: str
-    ifCompleteQuiz: int
     isFollow: int
     isLoginUser: int
     isMute: int
     lastLoginModelType: str
     lastLoginTime: str
-    levelTotal: int
     likeCount: int
-    medalList: list[object]
     mobile: str
     postCount: int
     registerTime: str

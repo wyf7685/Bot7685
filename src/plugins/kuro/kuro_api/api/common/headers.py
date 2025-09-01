@@ -80,7 +80,7 @@ class WebRequestHeaders(RequestHeaders):
         default='"Not)A;Brand";v="99", "Android WebView";v="128", "Chromium";v="128"',
         alias="sec-ch-ua",
     )
-    source: str = "android"
+    source: str = "h5"
     sec_ch_ua_mobile: str = Field(default="1", alias="sec-ch-ua-mobile")
     user_agent: str = Field(default=_WEB_REQ_UA, alias="user-agent")
     content_type: str = Field(
