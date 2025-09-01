@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from src.plugins.cache import get_cache
 
 from .config import ConfigModel, config
-from .fetch import FetchFailed, fetch_me
+from .fetch import RequestFailed, fetch_me
 
 FETCH_INTERVAL_MINS = 5
 MAX_PUSH_ATTEMPT = 3
@@ -44,10 +44,10 @@ async def fetch_for_user(config: ConfigModel) -> None:
     )
 
     # 获取用户信息
-    logger.info(f"正在获取 {colored_user} 的信息")
+    logger.debug(f"正在获取 {colored_user} 的信息")
     try:
         resp = await fetch_me(config)
-    except FetchFailed as e:
+    except RequestFailed as e:
         logger.warning(f"获取 {colored_user} 的信息失败: {escape_tag(e.msg)}")
         return
     except Exception:
@@ -97,12 +97,12 @@ async def fetch_for_user(config: ConfigModel) -> None:
         if remaining > config.notify_mins * 60:
             cache.last_notification = None
             await cache.save(cache_key)
-            logger.info(f"{colored_user} 还剩 {remaining:.0f} 秒，跳过通知")
+            logger.debug(f"{colored_user} 还剩 {remaining:.0f} 秒，跳过通知")
             return
 
         # 近期已通知
         if cache.last_notification is not None:
-            logger.info(f"{colored_user} 近期已通知，跳过通知")
+            logger.debug(f"{colored_user} 近期已通知，跳过通知")
             return
 
         # 执行推送
@@ -111,7 +111,7 @@ async def fetch_for_user(config: ConfigModel) -> None:
 
     # 如果用户禁用了溢出通知，则直接返回
     if not config.max_overflow_notify:
-        logger.info(f"{colored_user} 已禁用溢出通知，跳过")
+        logger.debug(f"{colored_user} 已禁用溢出通知，跳过")
         return
 
     # 记录溢出开始时间

@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from .config import ConfigModel
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
+WPLACE_PURCHASE_API_URL = "https://backend.wplace.live/purchase"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -49,7 +50,7 @@ def construct_pw_cookies(token: str, cf_clearance: str) -> list[SetCookieParam]:
     ]
 
 
-class FetchFailed(Exception):
+class RequestFailed(Exception):
     msg: str
 
     def __init__(self, msg: str) -> None:
@@ -138,16 +139,16 @@ async def fetch_me_with_async_playwright(cfg: ConfigModel) -> FetchMeResponse:
                     timeout=20000,
                 )
             except PlaywrightTimeoutError as e:
-                raise FetchFailed("Request timed out") from e
+                raise RequestFailed("Request timed out") from e
             if resp is None:
-                raise FetchFailed("Failed to get response")
+                raise RequestFailed("Failed to get response")
             if resp.status != 200:
-                raise FetchFailed(f"Request failed with status code: {resp.status}")
+                raise RequestFailed(f"Request failed with status code: {resp.status}")
 
             try:
                 return FetchMeResponse.model_validate_json(await resp.text())
             except Exception as e:
-                raise FetchFailed("Failed to parse JSON response") from e
+                raise RequestFailed("Failed to parse JSON response") from e
 
 
 def _proxy_config() -> dict[str, str] | None:
@@ -164,9 +165,8 @@ _proxies = _proxy_config()
 @_save_user_info
 @run_sync
 def fetch_me_with_cloudscraper(cfg: ConfigModel) -> FetchMeResponse:
-    scraper = cloudscraper.create_scraper()
     try:
-        resp = scraper.get(
+        resp = cloudscraper.create_scraper().get(
             WPLACE_ME_API_URL,
             headers={"User-Agent": USER_AGENT},
             cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
@@ -175,20 +175,43 @@ def fetch_me_with_cloudscraper(cfg: ConfigModel) -> FetchMeResponse:
         )
         resp.raise_for_status()
     except Exception as e:
-        raise FetchFailed("Request failed") from e
+        raise RequestFailed("Request failed") from e
 
     try:
         return FetchMeResponse.model_validate_json(resp.text)
     except Exception as e:
-        raise FetchFailed("Failed to parse JSON response") from e
+        raise RequestFailed("Failed to parse JSON response") from e
 
 
 async def fetch_me(cfg: ConfigModel) -> FetchMeResponse:
     try:
         return await fetch_me_with_cloudscraper(cfg)
-    except FetchFailed as e:
+    except RequestFailed as e:
         from nonebot import logger
 
         logger.warning(f"cloudscraper fetch failed ({e!r}), trying playwright...")
 
     return await fetch_me_with_async_playwright(cfg)
+
+
+@run_sync
+def purchase(cfg: ConfigModel, item_id: int, amount: int) -> None:
+    try:
+        resp = cloudscraper.create_scraper().post(
+            WPLACE_PURCHASE_API_URL,
+            headers={"User-Agent": USER_AGENT},
+            cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
+            proxies=_proxies,
+            json={"product": {"id": item_id, "amount": amount}},
+            timeout=20,
+        )
+        resp.raise_for_status()
+    except Exception as e:
+        raise RequestFailed("Request failed") from e
+
+    try:
+        data = resp.json()
+    except Exception as e:
+        raise RequestFailed("Failed to parse JSON response") from e
+    if not data["success"]:
+        raise RequestFailed("Purchase failed: Unknown error")

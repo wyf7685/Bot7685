@@ -16,7 +16,7 @@ from nonebot_plugin_alconna import (
 )
 
 from .config import ConfigModel, config
-from .fetch import FetchFailed, fetch_me
+from .fetch import RequestFailed, fetch_me
 
 alc = Alconna(
     "wplace",
@@ -105,7 +105,7 @@ async def assign_add(
 
     try:
         resp = await fetch_me(cfg)
-    except FetchFailed as e:
+    except RequestFailed as e:
         await finish(f"验证失败: {e.msg}")
     except Exception:
         await finish("验证时发生意外错误，请稍后再试")
@@ -144,7 +144,7 @@ async def assign_query(cfgs: QueryConfigs) -> None:
         try:
             resp = await fetch_me(config)
             output.append(resp.format_notification())
-        except FetchFailed as e:
+        except RequestFailed as e:
             output.append(f"查询失败: {e.msg}")
         except Exception as e:
             output.append(f"查询时发生意外错误: {e!r}")
