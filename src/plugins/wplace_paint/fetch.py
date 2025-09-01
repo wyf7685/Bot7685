@@ -3,6 +3,8 @@ import functools
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 
+import cloudscraper
+from nonebot import get_plugin_config
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_browser
 from playwright._impl._api_structures import SetCookieParam
@@ -148,17 +150,27 @@ async def fetch_me_with_async_playwright(cfg: ConfigModel) -> FetchMeResponse:
                 raise FetchFailed("Failed to parse JSON response") from e
 
 
+def _proxy_config() -> dict[str, str] | None:
+    class _ProxyConfig(BaseModel):
+        proxy: str | None = None
+
+    proxy = get_plugin_config(_ProxyConfig).proxy
+    return {"http": proxy, "https": proxy} if proxy is not None else None
+
+
+_proxies = _proxy_config()
+
+
 @_save_user_info
 @run_sync
 def fetch_me_with_cloudscraper(cfg: ConfigModel) -> FetchMeResponse:
-    import cloudscraper
-
     scraper = cloudscraper.create_scraper()
     try:
         resp = scraper.get(
             WPLACE_ME_API_URL,
             headers={"User-Agent": USER_AGENT},
             cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
+            proxies=_proxies,
             timeout=20,
         )
         resp.raise_for_status()
@@ -171,15 +183,12 @@ def fetch_me_with_cloudscraper(cfg: ConfigModel) -> FetchMeResponse:
         raise FetchFailed("Failed to parse JSON response") from e
 
 
-# async def fetch_me(cfg: ConfigModel) -> FetchMeResponse:
-#     try:
-#         return await fetch_me_with_cloudscraper(cfg)
-#     except FetchFailed as e:
-#         from nonebot import logger
+async def fetch_me(cfg: ConfigModel) -> FetchMeResponse:
+    try:
+        return await fetch_me_with_cloudscraper(cfg)
+    except FetchFailed as e:
+        from nonebot import logger
 
-#         logger.warning(f"cloudscraper fetch failed ({e!r}), trying playwright...")
+        logger.warning(f"cloudscraper fetch failed ({e!r}), trying playwright...")
 
-#     return await fetch_me_with_async_playwright(cfg)
-
-
-fetch_me = fetch_me_with_async_playwright
+    return await fetch_me_with_async_playwright(cfg)

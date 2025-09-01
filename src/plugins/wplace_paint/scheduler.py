@@ -153,7 +153,13 @@ async def fetch_for_user(config: ConfigModel) -> None:
         await push()
 
 
-async def _job() -> None:
+@scheduler.scheduled_job(
+    CronTrigger(minute=f"*/{FETCH_INTERVAL_MINS}"),
+    misfire_grace_time=60,
+    max_instances=1,
+    id="wplace_paint_fetcher",
+)
+async def job() -> None:
     async def wrapper(cfg: ConfigModel) -> None:
         try:
             await fetch_for_user(cfg)
@@ -165,12 +171,3 @@ async def _job() -> None:
     async with anyio.create_task_group() as tg:
         for cfg in config.load():
             tg.start_soon(wrapper, cfg)
-
-
-scheduler.add_job(
-    _job,
-    CronTrigger(minute=f"*/{FETCH_INTERVAL_MINS}"),
-    misfire_grace_time=60,
-    max_instances=1,
-    id="wplace_paint_fetcher",
-)
