@@ -1,5 +1,6 @@
 # ruff: noqa: N815
 import functools
+import math
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 
@@ -95,11 +96,18 @@ class FetchMeResponse(BaseModel):
     pixelsPainted: int
     showLastPixel: bool
 
+    def next_level_pixels(self) -> int:
+        return math.ceil(
+            math.pow(math.floor(self.level) * math.pow(30, 0.65), (1 / 0.65))
+            - self.pixelsPainted
+        )
+
     def format_notification(self) -> str:
         r = int(self.charges.remaining_secs())
         recover_time = datetime.now() + timedelta(seconds=r)
         return (
-            f"用户: {self.name} (ID: {self.id})\n"
+            f"{self.name} (ID: {self.id}) 💧{self.droplets}\n"
+            f"Lv. {int(self.level)} (升级还需 {self.next_level_pixels()} 像素)\n"
             f"当前像素: {int(self.charges.count)}/{self.charges.max}\n"
             f"恢复耗时: {r // 3600}:{r // 60 % 60:02}:{r % 60:02}\n"
             f"预计回满: {recover_time:%Y-%m-%d %H:%M:%S}"
