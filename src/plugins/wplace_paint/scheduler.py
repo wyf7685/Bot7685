@@ -59,9 +59,11 @@ async def fetch_for_user(config: ConfigModel) -> None:
     cache = await PushState.load(cache_key)
 
     async def push() -> NoReturn:
-        msg = UniMessage.text(resp.format_notification())
-        if not config.target.private:
-            msg = UniMessage.at(config.user_id) + msg
+        msg = (
+            UniMessage
+            if config.target.private
+            else UniMessage.at(config.user_id).text("\n")
+        ).text(resp.format_notification())
 
         for attempt in range(MAX_PUSH_ATTEMPT):
             try:
