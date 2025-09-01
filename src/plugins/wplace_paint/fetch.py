@@ -110,9 +110,10 @@ def _save_user_info(fn: FetchFn) -> FetchFn:
     @functools.wraps(fn)
     async def wrapper(cfg: ConfigModel) -> FetchMeResponse:
         resp = await fn(cfg)
-        cfg.wp_user_id = resp.id
-        cfg.wp_user_name = resp.name
-        cfg.save()
+        if resp.id != cfg.wp_user_id or resp.name != cfg.wp_user_name:
+            cfg.wp_user_id = resp.id
+            cfg.wp_user_name = resp.name
+            cfg.save()
         return resp
 
     return wrapper

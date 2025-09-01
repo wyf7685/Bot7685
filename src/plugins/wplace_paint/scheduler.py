@@ -95,6 +95,8 @@ async def fetch_for_user(config: ConfigModel) -> None:
 
         # 无需推送
         if remaining > config.notify_mins * 60:
+            cache.last_notification = None
+            await cache.save(cache_key)
             logger.info(f"{colored_user} 还剩 {remaining:.0f} 秒，跳过通知")
             return
 
@@ -104,6 +106,7 @@ async def fetch_for_user(config: ConfigModel) -> None:
             return
 
         # 执行推送
+        logger.info(f"{colored_user} 剩余时间 {remaining:.0f} 秒，准备推送")
         await push()
 
     # 如果用户禁用了溢出通知，则直接返回
@@ -117,6 +120,7 @@ async def fetch_for_user(config: ConfigModel) -> None:
     # 首次溢出通知
     if cache.last_notification is None:
         cache.overflow_notify_count = 1
+        logger.info(f"{colored_user} 首次溢出，准备推送")
         await push()
 
     # 已达到最大通知次数
@@ -134,6 +138,7 @@ async def fetch_for_user(config: ConfigModel) -> None:
     # 根据溢出时长确定通知频率
     if hours_since_overflow <= 1:
         # 溢出1小时内，无需额外通知
+        logger.info(f"{colored_user} 溢出未满1小时，跳过通知")
         return
     if (
         # 溢出1-4小时，每小时通知一次
@@ -144,6 +149,7 @@ async def fetch_for_user(config: ConfigModel) -> None:
         or (hours_since_overflow > 12 and last_notif_delta >= timedelta(hours=4))
     ):
         cache.overflow_notify_count += 1
+        logger.info(f"{colored_user} 已溢出 {hours_since_overflow:.1f} 小时，准备推送")
         await push()
 
 
