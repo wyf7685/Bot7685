@@ -53,6 +53,11 @@ alc = Alconna(
             Args["max_overflow_notify", int],
             help_text="设置最大溢出通知次数 (默认3次, 0为禁用)",
         ),
+        Option(
+            "--target-droplets|-t",
+            Args["target_droplets?#目标droplets值", int],
+            help_text="设置目标droplets值,查询时显示达成时间(不附带参数则取消设置)",
+        ),
         alias={"c"},
         help_text="修改已绑定账号的配置",
     ),
@@ -143,7 +148,7 @@ async def assign_query(cfgs: QueryConfigs) -> None:
     async def _fetch(config: ConfigModel) -> None:
         try:
             resp = await fetch_me(config)
-            output.append(resp.format_notification())
+            output.append(resp.format_notification(config.target_droplets))
         except RequestFailed as e:
             output.append(f"查询失败: {e.msg}")
         except Exception as e:
@@ -206,6 +211,24 @@ async def assign_config_max_overflow_notify(
         "已禁用溢出通知"
         if max_overflow_notify == 0
         else f"已设置最大溢出通知次数为 {max_overflow_notify} 次"
+    )
+
+
+@matcher.assign("~config.target-droplets")
+async def assign_config_target_droplets(
+    cfg: SelectedConfig,
+    target_droplets: int | None,
+) -> None:
+    if target_droplets is not None and target_droplets < 0:
+        await finish("目标 droplets 值必须为非负整数")
+
+    cfg.target_droplets = target_droplets
+    cfg.save()
+
+    await finish(
+        "已取消目标 droplets 设置"
+        if target_droplets is None
+        else f"已设置目标 droplets 值为 {target_droplets}💧"
     )
 
 

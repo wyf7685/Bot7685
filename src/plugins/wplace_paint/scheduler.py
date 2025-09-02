@@ -63,7 +63,7 @@ async def fetch_for_user(config: ConfigModel) -> None:
             UniMessage
             if config.target.private
             else UniMessage.at(config.user_id).text("\n")
-        ).text(resp.format_notification())
+        ).text(resp.format_notification(config.target_droplets))
 
         for attempt in range(MAX_PUSH_ATTEMPT):
             try:

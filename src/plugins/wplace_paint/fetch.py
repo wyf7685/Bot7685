@@ -102,16 +102,53 @@ class FetchMeResponse(BaseModel):
             - self.pixelsPainted
         )
 
-    def format_notification(self) -> str:
+    def format_target_droplets(self, target_droplets: int) -> str:
+        droplets_needed = target_droplets - self.droplets
+        pixels_to_paint = 0
+        current_level = int(self.level)
+        droplets_gained = 0
+
+        while droplets_gained < droplets_needed:
+            pixels_to_next_level = math.ceil(
+                math.pow(current_level * math.pow(30, 0.65), (1 / 0.65))
+            ) - (self.pixelsPainted + pixels_to_paint)
+
+            # 如果仅靠绘制像素就能达到目标
+            if droplets_gained + pixels_to_next_level >= droplets_needed:
+                pixels_to_paint += droplets_needed - droplets_gained
+                break
+
+            # 升级
+            pixels_to_paint += pixels_to_next_level
+            droplets_gained += pixels_to_next_level + 500  # 绘制像素+升级奖励
+            current_level += 1
+
+        # 减去当前已有的像素
+        net_pixels_needed = pixels_to_paint - self.charges.count
+        total_seconds = max(0, net_pixels_needed) * self.charges.cooldownMs / 1000.0
+        eta_time = datetime.now() + timedelta(seconds=total_seconds)
+
+        return (
+            f"[目标: {target_droplets}💧]\n"
+            f"预计需绘制: {pixels_to_paint} 像素\n"
+            f"预计达成: {eta_time:%Y-%m-%d %H:%M}"
+        )
+
+    def format_notification(self, target_droplets: int | None = None) -> str:
         r = int(self.charges.remaining_secs())
         recover_time = datetime.now() + timedelta(seconds=r)
-        return (
+        base_msg = (
             f"{self.name} (ID: {self.id}) 💧{self.droplets}\n"
             f"Lv. {int(self.level)} (升级还需 {self.next_level_pixels()} 像素)\n"
             f"当前像素: {int(self.charges.count)}/{self.charges.max}\n"
             f"恢复耗时: {r // 3600}:{r // 60 % 60:02}:{r % 60:02}\n"
             f"预计回满: {recover_time:%Y-%m-%d %H:%M:%S}"
         )
+
+        if target_droplets is None or target_droplets <= self.droplets:
+            return base_msg
+        extra_msg = self.format_target_droplets(target_droplets)
+        return f"{base_msg}\n{extra_msg}"
 
 
 type FetchFn = Callable[[ConfigModel], Awaitable[FetchMeResponse]]

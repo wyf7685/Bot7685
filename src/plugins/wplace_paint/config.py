@@ -16,6 +16,7 @@ class ConfigModel(BaseModel):
     wp_user_id: int | None = None
     wp_user_name: str | None = None
     max_overflow_notify: int = 3
+    target_droplets: int | None = None
 
     @property
     def target(self) -> Target:
