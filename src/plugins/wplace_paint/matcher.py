@@ -38,7 +38,7 @@ alc = Alconna(
     ),
     Subcommand(
         "config",
-        Args["identifier#账号标识,ID或用户名", str],
+        Args["identifier?#账号标识,ID或用户名", str],
         Option(
             "--notify-mins|-n",
             Args["notify_mins", int],
@@ -63,7 +63,7 @@ alc = Alconna(
     ),
     Subcommand(
         "remove",
-        Args["identifier#账号标识,ID或用户名", str],
+        Args["identifier?#账号标识,ID或用户名", str],
         alias={"rm"},
         help_text="移除已绑定的账号",
     ),
@@ -162,18 +162,42 @@ async def assign_query(cfgs: QueryConfigs) -> None:
     await finish("\n\n".join(output))
 
 
-async def _select_cfg(event: Event, identifier: str) -> ConfigModel:
+async def _select_cfg(
+    event: Event,
+    identifier: str | None = None,
+) -> ConfigModel:
     user_id = event.get_user_id()
-    cfgs = [
-        cfg
-        for cfg in config.load()
-        if cfg.user_id == user_id
-        and cfg.wp_user_id is not None
-        and (str(cfg.wp_user_id) == identifier or cfg.wp_user_name == identifier)
-    ]
-    if not cfgs:
+    user_cfgs = [cfg for cfg in config.load() if cfg.user_id == user_id]
+    if not user_cfgs:
+        await finish("你还没有绑定任何账号")
+
+    if identifier is not None:
+        gen = (
+            cfg
+            for cfg in user_cfgs
+            if cfg.wp_user_id is not None
+            and (str(cfg.wp_user_id) == identifier or cfg.wp_user_name == identifier)
+        )
+        if cfg := next(gen, None):
+            return cfg
         await finish("未找到对应的绑定账号")
-    return cfgs[0]
+
+    if len(user_cfgs) == 1:
+        return user_cfgs[0]
+
+    formatted_cfgs = "".join(
+        f"{i}. {cfg.wp_user_name}(ID: {cfg.wp_user_id})\n"
+        for i, cfg in enumerate(user_cfgs, start=1)
+    )
+    msg = "你绑定了多个账号，请回复要操作的账号序号:\n" + formatted_cfgs
+
+    while True:
+        text = await prompt(msg)
+        if text.isdigit():
+            idx = int(text)
+            if 1 <= idx <= len(user_cfgs):
+                return user_cfgs[idx - 1]
+        msg = "无效的序号，请重新输入:\n" + formatted_cfgs
 
 
 SelectedConfig = Annotated[ConfigModel, Depends(_select_cfg)]
