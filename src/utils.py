@@ -14,6 +14,7 @@ import anyio
 import nonebot
 from msgspec import json as msgjson
 from msgspec import toml as msgtoml
+from nonebot.typing import T_State
 from nonebot.utils import escape_tag
 from pydantic import BaseModel, TypeAdapter
 
@@ -236,10 +237,15 @@ def ParamOrPrompt(  # noqa: N802
 
         prompt = fn
 
-    async def dependency(arp: Arparma) -> str:
+    sem_key = "ParamOrPrompt#semaphore"
+
+    async def dependency(arp: Arparma, state: T_State) -> str:
         arg: UniMessage | str | None = arp.all_matched_args.get(param)
         if arg is None:
-            arg = await prompt()
+            if sem_key not in state:
+                state[sem_key] = anyio.Semaphore(1)
+            async with state[sem_key]:
+                arg = await prompt()
         if isinstance(arg, UniMessage):
             arg = arg.extract_plain_text().strip()
         return arg
