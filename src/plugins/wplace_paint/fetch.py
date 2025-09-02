@@ -21,7 +21,7 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/138.0.0.0 Safari/537.36"
 )
-PW_PAGE_SCRIPT = "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+PW_INIT_SCRIPT = "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
 
 
 def construct_requests_cookies(token: str, cf_clearance: str) -> dict[str, str]:
@@ -168,14 +168,16 @@ def _save_user_info(fn: FetchFn) -> FetchFn:
 
 @_save_user_info
 async def fetch_me_with_async_playwright(cfg: ConfigModel) -> FetchMeResponse:
-    async with await (await get_browser()).new_context(
+    browser = await get_browser()
+    async with await browser.new_context(
         user_agent=USER_AGENT,
         viewport={"width": 1920, "height": 1080},
         java_script_enabled=True,
     ) as ctx:
         await ctx.add_cookies(construct_pw_cookies(cfg.token, cfg.cf_clearance))
+        await ctx.add_init_script(PW_INIT_SCRIPT)
+
         async with await ctx.new_page() as page:
-            await page.add_init_script(PW_PAGE_SCRIPT)
             try:
                 resp = await page.goto(
                     WPLACE_ME_API_URL,

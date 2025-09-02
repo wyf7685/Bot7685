@@ -73,7 +73,7 @@ alc = Alconna(
         author="wyf7685",
     ),
 )
-matcher = on_alconna(alc)
+matcher = on_alconna(alc, aliases={"wp"})
 matcher.shortcut("wpq", {"command": "wplace query {*}"})
 matcher.shortcut("wpg", {"command": "wplace query $group"})
 
