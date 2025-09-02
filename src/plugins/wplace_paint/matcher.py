@@ -67,6 +67,11 @@ alc = Alconna(
         alias={"rm"},
         help_text="移除已绑定的账号",
     ),
+    Subcommand(
+        "bind",
+        Args["identifier?#账号标识,ID或用户名", str],
+        help_text="将账号绑定到当前群组(使其对$group可见)",
+    ),
     meta=CommandMeta(
         description="WPlace 查询",
         usage="wplace <add|query|config|remove> [参数...]",
@@ -132,9 +137,13 @@ async def _query_target_cfgs(
         await finish("请在群聊中使用 $group 参数")
 
     if target == "$group":
-        cfgs = [cfg for cfg in config.load() if cfg.target.verify(uni_target)]
+        cfgs = [
+            cfg
+            for cfg in config.load()
+            if cfg.target.verify(uni_target) or uni_target.id in cfg.bind_groups
+        ]
         if not cfgs:
-            await finish("群内没有用户绑定推送")
+            await finish("群内没有用户绑定账号")
         return cfgs
 
     user_id = event.get_user_id() if target is None else target.target
@@ -263,3 +272,16 @@ async def assign_config_target_droplets(
 async def assign_remove(cfg: SelectedConfig) -> None:
     config.remove(lambda c: c is cfg)
     await finish(f"移除成功: {cfg.wp_user_name}(ID: {cfg.wp_user_id})")
+
+
+@matcher.assign("~bind")
+async def assign_bind(
+    cfg: SelectedConfig,
+    target: MsgTarget,
+) -> None:
+    if target.private:
+        await finish("请在群聊中使用绑定功能")
+
+    cfg.bind_groups.add(target.id)
+    cfg.save()
+    await finish(f"{cfg.wp_user_name}(ID: {cfg.wp_user_id}) 已绑定到当前群组")

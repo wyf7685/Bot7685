@@ -2,7 +2,7 @@ from typing import Any
 
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_localstore import get_plugin_data_file
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.utils import ConfigListFile
 
@@ -17,6 +17,7 @@ class ConfigModel(BaseModel):
     wp_user_name: str | None = None
     max_overflow_notify: int = 3
     target_droplets: int | None = None
+    bind_groups: set[str] = Field(default_factory=set)
 
     @property
     def target(self) -> Target:
