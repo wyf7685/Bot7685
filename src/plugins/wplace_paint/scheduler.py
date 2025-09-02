@@ -117,7 +117,9 @@ async def fetch_for_user(config: ConfigModel) -> None:
         return
 
     # 记录溢出开始时间
-    cache.overflow = cache.overflow or datetime.now()
+    if cache.overflow is None:
+        cache.overflow = datetime.now()
+        cache.last_notification = None
 
     # 首次溢出通知
     if cache.last_notification is None:
@@ -138,13 +140,15 @@ async def fetch_for_user(config: ConfigModel) -> None:
     hours_since_overflow = (datetime.now() - cache.overflow).total_seconds() / 3600
 
     # 根据溢出时长确定通知频率
-    if hours_since_overflow <= 1:
-        # 溢出1小时内，无需额外通知
-        logger.info(f"{colored_user} 溢出未满1小时，跳过通知")
+    if hours_since_overflow < 0.5:
+        # 溢出半小时内，无需额外通知
+        logger.info(f"{colored_user} 溢出未满半小时，跳过通知")
         return
     if (
+        # 溢出1小时内，每30分钟通知一次
+        (hours_since_overflow <= 1 and last_notif_delta >= timedelta(minutes=30))
         # 溢出1-4小时，每小时通知一次
-        (hours_since_overflow <= 4 and last_notif_delta >= timedelta(hours=1))
+        or (hours_since_overflow <= 4 and last_notif_delta >= timedelta(hours=1))
         # 溢出4-12小时，每2小时通知一次
         or (hours_since_overflow <= 12 and last_notif_delta >= timedelta(hours=2))
         # 溢出12小时以上，每4小时通知一次

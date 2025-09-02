@@ -6,7 +6,7 @@ import shutil
 import sys
 import tempfile
 import threading
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from pathlib import Path
 from typing import Any, cast
 
@@ -213,6 +213,38 @@ def with_semaphore[T: Callable](initial_value: int) -> Callable[[T], T]:
         return cast("T", functools.update_wrapper(wrapper, func))
 
     return decorator
+
+
+def ParamOrPrompt(  # noqa: N802
+    param: str,
+    prompt: str | Callable[[], Awaitable[str]],
+) -> Any:
+    from nonebot import require
+    from nonebot.params import Depends
+
+    require("nonebot_plugin_alconna")
+    from nonebot_plugin_alconna import AlconnaMatcher, Arparma, UniMessage
+
+    if not callable(prompt):
+        prompt_msg = prompt
+
+        async def fn() -> str:
+            resp = await AlconnaMatcher.prompt(prompt_msg)
+            if resp is None:
+                await AlconnaMatcher.finish("操作已取消")
+            return resp.extract_plain_text().strip()
+
+        prompt = fn
+
+    async def dependency(arp: Arparma) -> str:
+        arg: UniMessage | str | None = arp.all_matched_args.get(param)
+        if arg is None:
+            arg = await prompt()
+        if isinstance(arg, UniMessage):
+            arg = arg.extract_plain_text().strip()
+        return arg
+
+    return Depends(dependency)
 
 
 def _setup() -> None:

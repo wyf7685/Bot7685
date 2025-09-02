@@ -15,18 +15,18 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 
+from src.utils import ParamOrPrompt
+
 from .config import ConfigModel, config
 from .fetch import RequestFailed, fetch_me
+from .scheduler import FETCH_INTERVAL_MINS
 
 alc = Alconna(
     "wplace",
     Subcommand(
         "add",
-        Option(
-            "--notify-mins|-n",
-            Args["notify_mins?", int],
-            help_text="提前多少分钟通知 (默认10分钟)",
-        ),
+        Args["token?#WPlace Cookies 中的 j (token)", str],
+        Args["cf_clearance?#WPlace Cookies 中的 cf_clearance", str],
         alias={"a"},
         help_text="添加一个 WPlace 账号",
     ),
@@ -42,7 +42,7 @@ alc = Alconna(
         Option(
             "--notify-mins|-n",
             Args["notify_mins", int],
-            help_text="提前多少分钟通知 (默认10分钟)",
+            help_text=f"提前多少分钟通知 (默认10,最小{FETCH_INTERVAL_MINS})",
         ),
         Option(
             "--set-target",
@@ -96,24 +96,28 @@ async def prompt(msg: str) -> str:
 async def assign_add(
     event: Event,
     target: MsgTarget,
-    notify_mins: int = 10,
+    token: str = ParamOrPrompt(
+        "token",
+        lambda: prompt("请输入 WPlace Cookies 中的 j (token)"),
+    ),
+    cf_clearance: str = ParamOrPrompt(
+        "cf_clearance",
+        lambda: prompt("请输入 WPlace Cookies 中的 cf_clearance"),
+    ),
 ) -> None:
-    token = await prompt("请输入 WPlace Cookies 中的 j (token)")
-    cf_clearance = await prompt("请输入 WPlace Cookies 中的 cf_clearance")
     cfg = ConfigModel(
         token=token,
         cf_clearance=cf_clearance,
         target_data=target.dump(),
         user_id=event.get_user_id(),
-        notify_mins=notify_mins,
     )
 
     try:
         resp = await fetch_me(cfg)
     except RequestFailed as e:
         await finish(f"验证失败: {e.msg}")
-    except Exception:
-        await finish("验证时发生意外错误，请稍后再试")
+    except Exception as e:
+        await finish(f"验证时发生意外错误: {e!r}")
 
     cfg.save()
     await finish(f"添加成功\n{resp.format_notification()}")
@@ -174,9 +178,8 @@ async def _select_cfg(
     if identifier is not None:
         gen = (
             cfg
-            for cfg in user_cfgs
-            if cfg.wp_user_id is not None
-            and (str(cfg.wp_user_id) == identifier or cfg.wp_user_name == identifier)
+            for cfg in filter(lambda c: c.wp_user_id is not None, user_cfgs)
+            if str(cfg.wp_user_id) == identifier or cfg.wp_user_name == identifier
         )
         if cfg := next(gen, None):
             return cfg
@@ -208,7 +211,7 @@ async def assign_config_notify_mins(
     cfg: SelectedConfig,
     notify_mins: int,
 ) -> None:
-    cfg.notify_mins = notify_mins
+    cfg.notify_mins = max(FETCH_INTERVAL_MINS, notify_mins)
     cfg.save()
     await finish(f"将在距离像素回满小于 {notify_mins} 分钟时推送通知")
 
