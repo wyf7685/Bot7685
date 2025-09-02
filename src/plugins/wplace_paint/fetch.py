@@ -129,8 +129,7 @@ class FetchMeResponse(BaseModel):
         eta_time = datetime.now() + timedelta(seconds=total_seconds)
 
         return (
-            f"[目标: {target_droplets}💧]\n"
-            f"预计需绘制: {pixels_to_paint} 像素\n"
+            f"[目标: 💧{target_droplets}] 还需 {pixels_to_paint} 像素\n"
             f"预计达成: {eta_time:%Y-%m-%d %H:%M}"
         )
 
