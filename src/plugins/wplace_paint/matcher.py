@@ -76,6 +76,7 @@ alc = Alconna(
     Subcommand(
         "preview",
         Args["coord1#坐标1", str]["coord2#坐标2", str],
+        Option("--background|-b", Args["background#背景色RGB", str]),
         help_text="获取指定区域的预览图",
     ),
     meta=CommandMeta(
@@ -303,6 +304,7 @@ async def assign_preview(
         "coord2",
         lambda: prompt("请输入第二个坐标(选点并复制BlueMarble的坐标)"),
     ),
+    background: str | None = None,
 ) -> None:
     try:
         c1 = parse_coords(coord1)
@@ -311,7 +313,7 @@ async def assign_preview(
         await finish(f"坐标解析失败: {e}")
 
     try:
-        img_bytes = await download_preview(c1, c2)
+        img_bytes = await download_preview(c1, c2, background)
     except Exception as e:
         await finish(f"获取预览图失败: {e!r}")
 
