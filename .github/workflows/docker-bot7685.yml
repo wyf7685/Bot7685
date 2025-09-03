@@ -8,7 +8,6 @@ on:
       - "uv.lock"
       - "src/dev/**"
       - "docker/Dockerfile"
-      - "docker/Dockerfile.cli"
       - "docker/assets/**"
       - ".github/workflows/docker-bot7685.yml"
       - "external/**"
