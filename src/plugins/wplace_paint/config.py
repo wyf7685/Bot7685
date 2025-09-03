@@ -1,5 +1,6 @@
 from typing import Any
 
+from nonebot import get_plugin_config
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_localstore import get_plugin_data_file
 from pydantic import BaseModel, Field
@@ -38,3 +39,13 @@ class ConfigModel(BaseModel):
 
 
 config = ConfigListFile(get_plugin_data_file("config.json"), ConfigModel)
+
+
+def _get_proxy() -> str | None:
+    class _ProxyConfig(BaseModel):
+        proxy: str | None = None
+
+    return get_plugin_config(_ProxyConfig).proxy
+
+
+proxy = _get_proxy()

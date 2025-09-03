@@ -7,6 +7,8 @@ import anyio.to_thread
 import httpx
 from PIL import Image
 
+from .config import proxy
+
 TILE_URL = "https://backend.wplace.live/files/s0/tiles/{x}/{y}.png"
 
 
@@ -65,7 +67,7 @@ async def download_preview(
         tile_imgs[(x, y)] = resp.raise_for_status().read()
 
     async with (
-        httpx.AsyncClient() as client,
+        httpx.AsyncClient(proxy=proxy) as client,
         anyio.create_task_group() as tg,
     ):
         for x, y in get_all_tile_coords(coord1, coord2):

@@ -5,7 +5,6 @@ from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
 
 import cloudscraper
-from nonebot import get_plugin_config
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_browser
 from playwright._impl._api_structures import SetCookieParam
@@ -198,10 +197,8 @@ async def fetch_me_with_async_playwright(cfg: ConfigModel) -> FetchMeResponse:
 
 
 def _proxy_config() -> dict[str, str] | None:
-    class _ProxyConfig(BaseModel):
-        proxy: str | None = None
+    from .config import proxy
 
-    proxy = get_plugin_config(_ProxyConfig).proxy
     return {"http": proxy, "https": proxy} if proxy is not None else None
 
 
