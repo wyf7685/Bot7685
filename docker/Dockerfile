@@ -8,6 +8,10 @@ RUN chmod +x /data/converter.sh && \
     mv /data/converter.sh /out && \
     mv /data/silk/decoder /out/silk
 
+FROM python:3.13-slim-bookworm AS uv
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /
+
 FROM python:3.13-slim-bookworm AS venv
 
 RUN apt-get update && \
@@ -16,7 +20,7 @@ RUN apt-get update && \
         libffi-dev libssl-dev zlib1g-dev liblzma-dev libbz2-dev libreadline-dev \
         libfreetype6-dev pkg-config
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
+COPY --from=uv /uv /bin/
 WORKDIR /app
 
 RUN uv venv /opt/venv
@@ -44,8 +48,8 @@ ENV TZ=Asia/Shanghai \
     VIRTUAL_ENV=/opt/venv \
     UV_TOOL_BIN_DIR=/opt/uv-bin/
 
-ADD docker/fonts/*.ttf /usr/share/fonts/
-ADD docker/assets/* /
+COPY docker/fonts/*.ttf /usr/share/fonts/
+COPY docker/assets/* /
 
 RUN apt-get update && apt-get install -y --no-install-recommends \ 
         nano ffmpeg fontconfig locales locales-all fonts-noto \
@@ -55,8 +59,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/* && \
     chmod +x /entrypoint.sh
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-RUN uvx --no-cache playwright@1.55.0 install chromium --with-deps && \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,from=uv,source=/uv,target=/bin/uv \
+    --mount=type=bind,from=uv,source=/uvx,target=/bin/uvx \
+    --mount=type=bind,source=pw,target=pw \
+    uvx $(cat pw) install chromium --with-deps && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=silk /out /opt/silk-decoder

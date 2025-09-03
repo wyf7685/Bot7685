@@ -32,8 +32,10 @@ jobs:
           python-version: "3.13"
           enable-cache: true
 
-      - name: Check Lockfile
-        run: uv lock --check
+      - name: Check Lockfile & Playwright Version
+        run: |
+            uv lock --check
+            uv export --no-hashes | grep playwright== > pw
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -64,18 +66,3 @@ jobs:
           labels: ${{ steps.metadata.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Generate CLI Tags
-        uses: docker/metadata-action@v5
-        id: metadata-cli
-        with:
-          images: wyf7685/bot7685
-          tags: type=raw,value=cli
-
-      - name: Build CLI and Publish
-        uses: docker/build-push-action@v6
-        with:
-          file: ./docker/Dockerfile.cli
-          push: true
-          tags: ${{ steps.metadata-cli.outputs.tags }}
-          labels: ${{ steps.metadata-cli.outputs.labels }}

@@ -1,5 +1,0 @@
-FROM wyf7685/bot7685:latest
-
-RUN uv tool install nb-cli
-
-CMD ["nb"]
