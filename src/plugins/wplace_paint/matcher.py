@@ -19,6 +19,7 @@ from src.utils import ParamOrPrompt
 
 from .config import ConfigModel, config
 from .fetch import RequestFailed, fetch_me
+from .preview import download_preview, parse_coords
 from .scheduler import FETCH_INTERVAL_MINS
 
 alc = Alconna(
@@ -71,6 +72,11 @@ alc = Alconna(
         "bind",
         Args["identifier?#账号标识,ID或用户名", str],
         help_text="将账号绑定到当前群组(使其对$group可见)",
+    ),
+    Subcommand(
+        "preview",
+        Args["coord1#坐标1", str]["coord2#坐标2", str],
+        help_text="获取指定区域的预览图",
     ),
     meta=CommandMeta(
         description="WPlace 查询",
@@ -285,3 +291,28 @@ async def assign_bind(
     cfg.bind_groups.add(target.id)
     cfg.save()
     await finish(f"{cfg.wp_user_name}(ID: {cfg.wp_user_id}) 已绑定到当前群组")
+
+
+@matcher.assign("~preview")
+async def assign_preview(
+    coord1: str = ParamOrPrompt(
+        "coord1",
+        lambda: prompt("请输入第一个坐标(选点并复制BlueMarble的坐标)"),
+    ),
+    coord2: str = ParamOrPrompt(
+        "coord2",
+        lambda: prompt("请输入第二个坐标(选点并复制BlueMarble的坐标)"),
+    ),
+) -> None:
+    try:
+        c1 = parse_coords(coord1)
+        c2 = parse_coords(coord2)
+    except ValueError as e:
+        await finish(f"坐标解析失败: {e}")
+
+    try:
+        img_bytes = await download_preview(c1, c2)
+    except Exception as e:
+        await finish(f"获取预览图失败: {e!r}")
+
+    await UniMessage.image(raw=img_bytes).finish(reply_to=True)
