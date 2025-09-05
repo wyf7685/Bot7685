@@ -294,7 +294,7 @@ async def assign_config_max_overflow_notify(
 @matcher.assign("~config.target-droplets")
 async def assign_config_target_droplets(
     cfg: SelectedConfig,
-    target_droplets: int | None,
+    target_droplets: int | None = None,
 ) -> None:
     if target_droplets is not None and target_droplets < 0:
         await finish("目标 droplets 值必须为非负整数")
