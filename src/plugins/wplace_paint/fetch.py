@@ -3,15 +3,17 @@ import functools
 import math
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta
+from typing import Literal
 
 import cloudscraper
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_browser
 from playwright._impl._api_structures import SetCookieParam
 from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
-from .config import ConfigModel
+from .config import UserConfig
+from .utils import WplacePixelCoords
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
 WPLACE_PURCHASE_API_URL = "https://backend.wplace.live/purchase"
@@ -149,12 +151,12 @@ class FetchMeResponse(BaseModel):
         return f"{base_msg}\n{extra_msg}"
 
 
-type FetchFn = Callable[[ConfigModel], Awaitable[FetchMeResponse]]
+type FetchFn = Callable[[UserConfig], Awaitable[FetchMeResponse]]
 
 
 def _save_user_info(fn: FetchFn) -> FetchFn:
     @functools.wraps(fn)
-    async def wrapper(cfg: ConfigModel) -> FetchMeResponse:
+    async def wrapper(cfg: UserConfig) -> FetchMeResponse:
         resp = await fn(cfg)
         if resp.id != cfg.wp_user_id or resp.name != cfg.wp_user_name:
             cfg.wp_user_id = resp.id
@@ -166,7 +168,7 @@ def _save_user_info(fn: FetchFn) -> FetchFn:
 
 
 @_save_user_info
-async def fetch_me_with_async_playwright(cfg: ConfigModel) -> FetchMeResponse:
+async def fetch_me_with_async_playwright(cfg: UserConfig) -> FetchMeResponse:
     browser = await get_browser()
     async with await browser.new_context(
         user_agent=USER_AGENT,
@@ -207,7 +209,7 @@ _proxies = _proxy_config()
 
 @_save_user_info
 @run_sync
-def fetch_me_with_cloudscraper(cfg: ConfigModel) -> FetchMeResponse:
+def fetch_me_with_cloudscraper(cfg: UserConfig) -> FetchMeResponse:
     try:
         resp = cloudscraper.create_scraper().get(
             WPLACE_ME_API_URL,
@@ -226,7 +228,7 @@ def fetch_me_with_cloudscraper(cfg: ConfigModel) -> FetchMeResponse:
         raise RequestFailed("Failed to parse JSON response") from e
 
 
-async def fetch_me(cfg: ConfigModel) -> FetchMeResponse:
+async def fetch_me(cfg: UserConfig) -> FetchMeResponse:
     try:
         return await fetch_me_with_cloudscraper(cfg)
     except RequestFailed as e:
@@ -238,7 +240,7 @@ async def fetch_me(cfg: ConfigModel) -> FetchMeResponse:
 
 
 @run_sync
-def purchase(cfg: ConfigModel, item_id: int, amount: int) -> None:
+def purchase(cfg: UserConfig, item_id: int, amount: int) -> None:
     try:
         resp = cloudscraper.create_scraper().post(
             WPLACE_PURCHASE_API_URL,
@@ -258,3 +260,87 @@ def purchase(cfg: ConfigModel, item_id: int, amount: int) -> None:
         raise RequestFailed("Failed to parse JSON response") from e
     if not data["success"]:
         raise RequestFailed("Purchase failed: Unknown error")
+
+
+PIXEL_INFO_URL = "https://backend.wplace.live/s0/pixel/{tlx}/{tly}?x={pxx}&y={pxy}"
+
+
+class PixelPaintedBy(BaseModel):
+    id: int
+    name: str
+    allianceId: int
+    allianceName: str
+    equippedFlag: int
+    discord: str | None = None
+
+
+class PixelRegion(BaseModel):
+    id: int
+    cityId: int
+    name: str
+    number: int
+    countryId: int
+
+
+class PixelInfo(BaseModel):
+    paintedBy: PixelPaintedBy
+    region: PixelRegion
+
+
+@run_sync
+def get_pixel_info(coord: WplacePixelCoords) -> PixelInfo:
+    url = PIXEL_INFO_URL.format(
+        tlx=coord.tlx,
+        tly=coord.tly,
+        pxx=coord.pxx,
+        pxy=coord.pxy,
+    )
+    try:
+        resp = cloudscraper.create_scraper().get(
+            url,
+            headers={"User-Agent": USER_AGENT},
+            proxies=_proxies,
+            timeout=20,
+        )
+        resp.raise_for_status()
+    except Exception as e:
+        raise RequestFailed("Request failed") from e
+
+    try:
+        return PixelInfo.model_validate_json(resp.text)
+    except Exception as e:
+        raise RequestFailed("Failed to parse JSON response") from e
+
+
+class RankUser(BaseModel):
+    id: int
+    name: str
+    allianceId: int
+    allianceName: str
+    pixelsPainted: int
+    equippedFlag: int
+
+
+type RankType = Literal["today", "week", "month", "all-time"]
+RANK_URL = "https://backend.wplace.live/leaderboard/region/players/{}/{}"
+_rank_resp_ta = TypeAdapter[list[RankUser]](list[RankUser])
+
+
+@run_sync
+def fetch_region_rank(region_id: int, rank_type: RankType) -> list[RankUser]:
+    url = RANK_URL.format(region_id, rank_type)
+    try:
+        resp = cloudscraper.create_scraper().get(
+            url,
+            headers={"User-Agent": USER_AGENT},
+            proxies=_proxies,
+            timeout=20,
+        )
+        resp.raise_for_status()
+    except Exception as e:
+        raise RequestFailed("Request failed") from e
+
+    try:
+        return _rank_resp_ta.validate_json(resp.text)
+    except Exception as e:
+        raise RequestFailed("Failed to parse JSON response") from e

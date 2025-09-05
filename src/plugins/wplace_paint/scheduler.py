@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 from src.plugins.cache import get_cache
 
-from .config import ConfigModel, config
+from .config import UserConfig, users
 from .fetch import RequestFailed, fetch_me
 
 FETCH_INTERVAL_MINS = 5
@@ -37,7 +37,7 @@ class PushState(BaseModel):
 class FetchDone(Exception): ...
 
 
-async def fetch_for_user(config: ConfigModel) -> None:
+async def fetch_for_user(config: UserConfig) -> None:
     colored_user = (
         f"用户 <c>{config.user_id}</> "
         f"[<y>{config.wp_user_name}</>(<c>{config.wp_user_id}</>)]"
@@ -166,7 +166,7 @@ async def fetch_for_user(config: ConfigModel) -> None:
     id="wplace_paint_fetcher",
 )
 async def job() -> None:
-    async def wrapper(cfg: ConfigModel) -> None:
+    async def wrapper(cfg: UserConfig) -> None:
         try:
             await fetch_for_user(cfg)
         except FetchDone:
@@ -175,5 +175,5 @@ async def job() -> None:
             logger.exception(f"处理用户 {cfg.user_id} 时发生错误")
 
     async with anyio.create_task_group() as tg:
-        for cfg in config.load():
+        for cfg in users.load():
             tg.start_soon(wrapper, cfg)

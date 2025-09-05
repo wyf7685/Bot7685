@@ -2,13 +2,15 @@ from typing import Any
 
 from nonebot import get_plugin_config
 from nonebot_plugin_alconna import Target
-from nonebot_plugin_localstore import get_plugin_data_file
+from nonebot_plugin_localstore import get_plugin_data_dir
 from pydantic import BaseModel, Field
 
-from src.utils import ConfigListFile
+from src.utils import ConfigFile, ConfigListFile
+
+DATA_DIR = get_plugin_data_dir()
 
 
-class ConfigModel(BaseModel):
+class UserConfig(BaseModel):
     token: str
     cf_clearance: str
     target_data: dict[str, Any]
@@ -25,7 +27,7 @@ class ConfigModel(BaseModel):
         return Target.load(self.target_data)
 
     def save(self) -> None:
-        cfgs = config.load()
+        cfgs = users.load()
         for cfg in cfgs[:]:
             if cfg is self or (
                 cfg.user_id == self.user_id
@@ -35,10 +37,15 @@ class ConfigModel(BaseModel):
                 cfgs.remove(cfg)
                 break
         cfgs.append(self)
-        config.save(cfgs)
+        users.save(cfgs)
 
 
-config = ConfigListFile(get_plugin_data_file("config.json"), ConfigModel)
+if (DATA_DIR / "config.json").exists():
+    (DATA_DIR / "config.json").rename(DATA_DIR / "users.json")
+users = ConfigListFile(DATA_DIR / "users.json", UserConfig)
+
+RankConfig = dict[str, set[int]]  # group target id -> set of region id
+ranks = ConfigFile[RankConfig](DATA_DIR / "rank.json", RankConfig, dict)
 
 
 def _get_proxy() -> str | None:

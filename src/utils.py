@@ -6,7 +6,7 @@ import shutil
 import sys
 import tempfile
 import threading
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any, cast
 
@@ -31,7 +31,7 @@ def logger_wrapper(logger_name: str, /):  # noqa: ANN201
     return log
 
 
-class ConfigFile[T: BaseModel | Sequence[BaseModel]]:
+class ConfigFile[T]:
     type_: type[T]
     _file: Path
     _ta: TypeAdapter[T]
@@ -58,7 +58,7 @@ class ConfigFile[T: BaseModel | Sequence[BaseModel]]:
         return self._cache
 
     def save(self, data: T | None = None) -> None:
-        self._cache = data if data is not None else self.load()
+        self._cache = cast("T", data) if data is not None else self.load()
         encoded = msgjson.encode(self._ta.dump_python(self._cache))
         self._file.write_bytes(encoded)
 

@@ -1,6 +1,7 @@
 from typing import Annotated, Literal, NoReturn
 
 import anyio
+from arclet.alconna import store_true
 from nonebot.adapters import Event
 from nonebot.params import Depends
 from nonebot_plugin_alconna import (
@@ -8,6 +9,7 @@ from nonebot_plugin_alconna import (
     Args,
     At,
     CommandMeta,
+    Match,
     MsgTarget,
     Option,
     Subcommand,
@@ -17,10 +19,12 @@ from nonebot_plugin_alconna import (
 
 from src.utils import ParamOrPrompt
 
-from .config import ConfigModel, config
-from .fetch import RequestFailed, fetch_me
-from .preview import download_preview, parse_coords
+from .config import UserConfig, ranks, users
+from .fetch import RankType, RequestFailed, fetch_me
+from .preview import download_preview
+from .rank import find_regions_in_rect, get_regions_rank
 from .scheduler import FETCH_INTERVAL_MINS
+from .utils import parse_coords
 
 alc = Alconna(
     "wplace",
@@ -75,9 +79,38 @@ alc = Alconna(
     ),
     Subcommand(
         "preview",
-        Args["coord1#坐标1", str]["coord2#坐标2", str],
+        Args["coord1?#坐标1", str]["coord2?#坐标2", str],
         Option("--background|-b", Args["background#背景色RGB", str]),
         help_text="获取指定区域的预览图",
+    ),
+    Subcommand(
+        "rank",
+        Subcommand(
+            "bind",
+            Option("--revoke|-r"),
+            Args["coord1?#坐标1", str]["coord2?#坐标2", str],
+        ),
+        Subcommand(
+            "today",
+            Option("--all-users|-a", dest="all_users", action=store_true),
+            help_text="查询指定区域的当日排行榜",
+        ),
+        Subcommand(
+            "week",
+            Option("--all-users|-a", dest="all_users", action=store_true),
+            help_text="查询指定区域的本周排行榜",
+        ),
+        Subcommand(
+            "month",
+            Option("--all-users|-a", dest="all_users", action=store_true),
+            help_text="查询指定区域的本月排行榜",
+        ),
+        Subcommand(
+            "all",
+            Option("--all-users|-a", dest="all_users", action=store_true),
+            help_text="查询指定区域的历史总排行榜",
+        ),
+        help_text="查询指定区域的排行榜",
     ),
     meta=CommandMeta(
         description="WPlace 查询",
@@ -117,7 +150,7 @@ async def assign_add(
         lambda: prompt("请输入 WPlace Cookies 中的 cf_clearance"),
     ),
 ) -> None:
-    cfg = ConfigModel(
+    cfg = UserConfig(
         token=token,
         cf_clearance=cf_clearance,
         target_data=target.dump(),
@@ -139,14 +172,14 @@ async def _query_target_cfgs(
     event: Event,
     uni_target: MsgTarget,
     target: At | Literal["$group"] | None = None,
-) -> list[ConfigModel]:
+) -> list[UserConfig]:
     if target == "$group" and uni_target.private:
         await finish("请在群聊中使用 $group 参数")
 
     if target == "$group":
         cfgs = [
             cfg
-            for cfg in config.load()
+            for cfg in users.load()
             if cfg.target.verify(uni_target) or uni_target.id in cfg.bind_groups
         ]
         if not cfgs:
@@ -154,18 +187,18 @@ async def _query_target_cfgs(
         return cfgs
 
     user_id = event.get_user_id() if target is None else target.target
-    cfgs = [cfg for cfg in config.load() if cfg.user_id == user_id]
+    cfgs = [cfg for cfg in users.load() if cfg.user_id == user_id]
     if not cfgs:
         await finish("用户没有绑定任何账号")
     return cfgs
 
 
-QueryConfigs = Annotated[list[ConfigModel], Depends(_query_target_cfgs)]
+QueryConfigs = Annotated[list[UserConfig], Depends(_query_target_cfgs)]
 
 
 @matcher.assign("~query")
 async def assign_query(cfgs: QueryConfigs) -> None:
-    async def _fetch(config: ConfigModel) -> None:
+    async def _fetch(config: UserConfig) -> None:
         try:
             resp = await fetch_me(config)
             output.append(resp.format_notification(config.target_droplets))
@@ -185,9 +218,9 @@ async def assign_query(cfgs: QueryConfigs) -> None:
 async def _select_cfg(
     event: Event,
     identifier: str | None = None,
-) -> ConfigModel:
+) -> UserConfig:
     user_id = event.get_user_id()
-    user_cfgs = [cfg for cfg in config.load() if cfg.user_id == user_id]
+    user_cfgs = [cfg for cfg in users.load() if cfg.user_id == user_id]
     if not user_cfgs:
         await finish("你还没有绑定任何账号")
 
@@ -219,7 +252,7 @@ async def _select_cfg(
         msg = "无效的序号，请重新输入:\n" + formatted_cfgs
 
 
-SelectedConfig = Annotated[ConfigModel, Depends(_select_cfg)]
+SelectedConfig = Annotated[UserConfig, Depends(_select_cfg)]
 
 
 @matcher.assign("~config.notify-mins")
@@ -277,7 +310,7 @@ async def assign_config_target_droplets(
 
 @matcher.assign("~remove")
 async def assign_remove(cfg: SelectedConfig) -> None:
-    config.remove(lambda c: c is cfg)
+    users.remove(lambda c: c is cfg)
     await finish(f"移除成功: {cfg.wp_user_name}(ID: {cfg.wp_user_id})")
 
 
@@ -318,3 +351,104 @@ async def assign_preview(
         await finish(f"获取预览图失败: {e!r}")
 
     await UniMessage.image(raw=img_bytes).finish(reply_to=True)
+
+
+@matcher.assign("~rank.bind.revoke")
+async def assign_rank_bind_revoke(target: MsgTarget) -> None:
+    if target.id not in ranks.load():
+        await finish("当前群组没有绑定任何 region ID")
+
+    cfg = ranks.load()
+    del cfg[target.id]
+    ranks.save(cfg)
+    await finish("已取消当前群组的 region ID 绑定")
+
+
+@matcher.assign("~rank.bind")
+async def assign_rank_bind(
+    target: MsgTarget,
+    coord1: str = ParamOrPrompt(
+        "coord1",
+        lambda: prompt("请输入第一个坐标(选点并复制BlueMarble的坐标)"),
+    ),
+    coord2: str = ParamOrPrompt(
+        "coord2",
+        lambda: prompt("请输入第二个坐标(选点并复制BlueMarble的坐标)"),
+    ),
+) -> None:
+    try:
+        c1 = parse_coords(coord1)
+        c2 = parse_coords(coord2)
+    except ValueError as e:
+        await finish(f"坐标解析失败: {e}")
+
+    try:
+        regions = await find_regions_in_rect(c1, c2)
+    except RequestFailed as e:
+        await finish(f"查询区域内的 region ID 失败: {e.msg}")
+    except Exception as e:
+        await finish(f"查询区域内的 region ID 时发生意外错误: {e!r}")
+
+    if not regions:
+        await finish("未找到任何 region ID")
+
+    cfg = ranks.load()
+    cfg[target.id] = set(regions.keys())
+    ranks.save(cfg)
+    await finish(
+        f"成功绑定 {len(regions)} 个 region ID 到当前群组\n"
+        f"{'\n'.join(f'{r.id}: {r.name} #{r.number}' for r in regions.values())}"
+    )
+
+
+RANK_HEADER: dict[RankType, str] = {
+    "today": "今日排行榜",
+    "week": "本周排行榜",
+    "month": "本月排行榜",
+    "all-time": "历史总排行榜",
+}
+
+
+async def _handle_rank_query(
+    target: MsgTarget,
+    rank_type: RankType,
+    only_known_users: bool = True,  # noqa
+) -> None:
+    if target.private:
+        await finish("请在群聊中使用排行榜查询功能")
+
+    cfg = ranks.load()
+    if target.id not in cfg or not cfg[target.id]:
+        await finish("当前群组没有绑定任何 region ID，请先使用 wplace rank bind 绑定")
+
+    try:
+        rank_data = await get_regions_rank(cfg[target.id], rank_type)
+    except RequestFailed as e:
+        await finish(f"获取排行榜失败: {e.msg}")
+    except Exception as e:
+        await finish(f"获取排行榜时发生意外错误: {e!r}")
+
+    if only_known_users:
+        known_users = {*filter(None, (cfg.wp_user_id for cfg in users.load()))}
+        rank_data = [entry for entry in rank_data if entry[0] in known_users]
+
+    if not rank_data:
+        await finish("未获取到任何排行榜数据，可能是 region ID 无效或暂无数据")
+
+    msg = "\n".join(
+        f"{idx}. {user_name} (ID: {user_id}) - {painted} 像素"
+        for idx, (user_id, user_name, painted) in enumerate(rank_data, 1)
+    )
+    await finish(f"{RANK_HEADER[rank_type]}:\n{msg}")
+
+
+def _rank_query(rank_type: RankType) -> None:
+    async def assign_rank(target: MsgTarget, all_users: Match[bool]) -> None:
+        await _handle_rank_query(target, rank_type, not all_users.result)
+
+    path = rank_type.split("-")[0]
+    assign_rank.__name__ += f"_{path}"
+    matcher.assign(f"~rank.{path}")(assign_rank)
+
+
+[_rank_query(rt) for rt in ("today", "week", "month", "all-time")]
