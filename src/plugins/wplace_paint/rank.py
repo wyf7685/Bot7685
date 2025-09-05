@@ -1,7 +1,9 @@
 from collections.abc import Iterable
 
 import anyio
+from nonebot_plugin_htmlrender import get_new_page, template_to_html
 
+from .config import TEMPLATE_DIR
 from .fetch import (
     PixelRegion,
     RankType,
@@ -123,3 +125,60 @@ async def get_regions_rank(
         (user_id, names[user_id], count)
         for user_id, count in sorted(painted.items(), key=lambda x: x[1], reverse=True)
     ]
+
+
+RANK_TITLE: dict[RankType, str] = {
+    "today": "今日排行榜",
+    "week": "本周排行榜",
+    "month": "本月排行榜",
+    "all-time": "历史总排行榜",
+}
+
+_RANK_COLORS = (29, 113, 48), (52, 208, 88)
+
+
+async def render_rank(
+    rank_type: RankType,
+    rank_data: list[tuple[int, str, int]],
+) -> bytes:
+    title = RANK_TITLE[rank_type]
+    subtitle = f"共计 {sum(count for _, _, count in rank_data)} 像素"
+    max_cnt = max(count for _, _, count in rank_data)
+    (r1, g1, b1), (r2, g2, b2) = _RANK_COLORS
+
+    def fn(t: float) -> str:
+        r = int(r1 + (r2 - r1) * t)
+        g = int(g1 + (g2 - g1) * t)
+        b = int(b1 + (b2 - b1) * t)
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    chart_data = [
+        {
+            "id": user_id,
+            "name": name,
+            "count": count,
+            "width": f"{(count / max_cnt * 100):.1f}%",
+            "color": fn(idx / len(rank_data)),
+        }
+        for idx, (user_id, name, count) in enumerate(rank_data)
+    ]
+    view_height = 150 + len(chart_data) * 55  # 基础高度 + 每行高度
+    template_data = {
+        "chart_data": chart_data,
+        "title": title,
+        "subtitle": subtitle,
+        "container_height": view_height - 50,  # 容器高度略小于视图
+    }
+
+    html = await template_to_html(
+        template_path=str(TEMPLATE_DIR),
+        template_name="rank.html.jinja2",
+        filters=None,
+        **template_data,
+    )
+
+    async with get_new_page(viewport={"width": 600, "height": view_height}) as page:
+        await page.set_content(html, wait_until="networkidle")
+        if chart_element := await page.query_selector("#chart-container"):
+            return await chart_element.screenshot(type="png")
+        return await page.screenshot(full_page=True, type="png")

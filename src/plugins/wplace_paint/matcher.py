@@ -1,7 +1,9 @@
 from typing import Annotated, Literal, NoReturn
 
 import anyio
+from nonebot import logger
 from nonebot.adapters import Event
+from nonebot.exception import MatcherException
 from nonebot.params import Depends
 from nonebot_plugin_alconna import (
     Alconna,
@@ -21,7 +23,7 @@ from src.utils import ParamOrPrompt
 from .config import UserConfig, ranks, users
 from .fetch import RankType, RequestFailed, fetch_me
 from .preview import download_preview
-from .rank import find_regions_in_rect, get_regions_rank
+from .rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
 from .scheduler import FETCH_INTERVAL_MINS
 from .utils import parse_coords
 
@@ -122,8 +124,8 @@ matcher.shortcut("wpq", {"command": "wplace query {*}"})
 matcher.shortcut("wpg", {"command": "wplace query $group"})
 
 
-async def finish(msg: str) -> NoReturn:
-    await UniMessage.text(msg).finish(reply_to=True)
+async def finish(msg: str | UniMessage) -> NoReturn:
+    await (UniMessage.text(msg) if isinstance(msg, str) else msg).finish(reply_to=True)
 
 
 async def prompt(msg: str) -> str:
@@ -349,7 +351,7 @@ async def assign_preview(
     except Exception as e:
         await finish(f"获取预览图失败: {e!r}")
 
-    await UniMessage.image(raw=img_bytes).finish(reply_to=True)
+    await finish(UniMessage.image(raw=img_bytes))
 
 
 @matcher.assign("~rank.bind.revoke")
@@ -400,14 +402,6 @@ async def assign_rank_bind(
     )
 
 
-RANK_HEADER: dict[RankType, str] = {
-    "today": "今日排行榜",
-    "week": "本周排行榜",
-    "month": "本月排行榜",
-    "all-time": "历史总排行榜",
-}
-
-
 async def _handle_rank_query(
     target: MsgTarget,
     rank_type: RankType,
@@ -434,11 +428,20 @@ async def _handle_rank_query(
     if not rank_data:
         await finish("未获取到任何排行榜数据，可能是 region ID 无效或暂无数据")
 
+    try:
+        img = await render_rank(rank_type, rank_data)
+        await finish(UniMessage.image(raw=img))
+    except MatcherException:
+        raise
+    except Exception:
+        logger.opt(exception=True).warning("渲染排行榜时发生错误")
+
+    # fallback
     msg = "\n".join(
         f"{idx}. {user_name} (ID: {user_id}) - {painted} 像素"
         for idx, (user_id, user_name, painted) in enumerate(rank_data, 1)
     )
-    await finish(f"{RANK_HEADER[rank_type]}:\n{msg}")
+    await finish(f"{RANK_TITLE[rank_type]}:\n{msg}")
 
 
 def _rank_query(rank_type: RankType) -> None:

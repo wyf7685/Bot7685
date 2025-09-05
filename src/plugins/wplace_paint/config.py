@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any
 
 from nonebot import get_plugin_config
@@ -56,3 +57,5 @@ def _get_proxy() -> str | None:
 
 
 proxy = _get_proxy()
+
+TEMPLATE_DIR = Path(__file__).parent / "templates"
