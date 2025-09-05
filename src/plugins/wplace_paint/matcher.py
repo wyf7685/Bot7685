@@ -1,7 +1,6 @@
 from typing import Annotated, Literal, NoReturn
 
 import anyio
-from arclet.alconna import store_true
 from nonebot.adapters import Event
 from nonebot.params import Depends
 from nonebot_plugin_alconna import (
@@ -9,9 +8,9 @@ from nonebot_plugin_alconna import (
     Args,
     At,
     CommandMeta,
-    Match,
     MsgTarget,
     Option,
+    Query,
     Subcommand,
     UniMessage,
     on_alconna,
@@ -92,22 +91,22 @@ alc = Alconna(
         ),
         Subcommand(
             "today",
-            Option("--all-users|-a", dest="all_users", action=store_true),
+            Option("--all-users|-a"),
             help_text="查询指定区域的当日排行榜",
         ),
         Subcommand(
             "week",
-            Option("--all-users|-a", dest="all_users", action=store_true),
+            Option("--all-users|-a"),
             help_text="查询指定区域的本周排行榜",
         ),
         Subcommand(
             "month",
-            Option("--all-users|-a", dest="all_users", action=store_true),
+            Option("--all-users|-a"),
             help_text="查询指定区域的本月排行榜",
         ),
         Subcommand(
             "all",
-            Option("--all-users|-a", dest="all_users", action=store_true),
+            Option("--all-users|-a"),
             help_text="查询指定区域的历史总排行榜",
         ),
         help_text="查询指定区域的排行榜",
@@ -443,10 +442,14 @@ async def _handle_rank_query(
 
 
 def _rank_query(rank_type: RankType) -> None:
-    async def assign_rank(target: MsgTarget, all_users: Match[bool]) -> None:
+    path = rank_type.split("-")[0]
+
+    async def assign_rank(
+        target: MsgTarget,
+        all_users: Query[bool] = Query(f"~rank.{path}.all-users", default=False),  # noqa: B008
+    ) -> None:
         await _handle_rank_query(target, rank_type, not all_users.result)
 
-    path = rank_type.split("-")[0]
     assign_rank.__name__ += f"_{path}"
     matcher.assign(f"~rank.{path}")(assign_rank)
 
