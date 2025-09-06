@@ -423,7 +423,7 @@ async def _handle_rank_query(
 
     if only_known_users:
         known_users = {*filter(None, (cfg.wp_user_id for cfg in users.load()))}
-        rank_data = [entry for entry in rank_data if entry[0] in known_users]
+        rank_data = [entry for entry in rank_data if entry.user_id in known_users]
 
     if not rank_data:
         await finish("未获取到任何排行榜数据，可能是 region ID 无效或暂无数据")
@@ -438,8 +438,8 @@ async def _handle_rank_query(
 
     # fallback
     msg = "\n".join(
-        f"{idx}. {user_name} (ID: {user_id}) - {painted} 像素"
-        for idx, (user_id, user_name, painted) in enumerate(rank_data, 1)
+        f"{idx}. {r.name} (ID: {r.user_id}) - {r.pixels} 像素"
+        for idx, r in enumerate(rank_data, 1)
     )
     await finish(f"{RANK_TITLE[rank_type]}:\n{msg}")
 

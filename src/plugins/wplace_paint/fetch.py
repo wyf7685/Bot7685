@@ -319,6 +319,7 @@ class RankUser(BaseModel):
     allianceName: str
     pixelsPainted: int
     equippedFlag: int
+    picture: str | None = None
 
 
 type RankType = Literal["today", "week", "month", "all-time"]

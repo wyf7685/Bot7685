@@ -1,8 +1,10 @@
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 import anyio
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
 
+from .avartar import get_wplace_avatar
 from .config import TEMPLATE_DIR
 from .fetch import (
     PixelRegion,
@@ -97,13 +99,19 @@ async def find_regions_in_rect(
     return found_region
 
 
+@dataclass
+class RankData:
+    user_id: int
+    name: str
+    pixels: int = 0
+    picture: str | None = None
+
+
 async def get_regions_rank(
     region_ids: Iterable[int],
     rank_type: RankType,
-) -> list[tuple[int, str, int]]:
-    # user_id -> pixelsPainted
-    painted: dict[int, int] = {}
-    names: dict[int, str] = {}
+) -> list[RankData]:
+    result: dict[int, RankData] = {}
     lock = anyio.Lock()
 
     async def fetch(region_id: int) -> None:
@@ -114,17 +122,15 @@ async def get_regions_rank(
 
         async with lock:
             for user in users:
-                names[user.id] = user.name
-                painted[user.id] = painted.get(user.id, 0) + user.pixelsPainted
+                if user.id not in result:
+                    result[user.id] = RankData(user.id, user.name, picture=user.picture)
+                result[user.id].pixels += user.pixelsPainted
 
     async with anyio.create_task_group() as tg:
         for rid in region_ids:
             tg.start_soon(fetch, rid)
 
-    return [
-        (user_id, names[user_id], count)
-        for user_id, count in sorted(painted.items(), key=lambda x: x[1], reverse=True)
-    ]
+    return sorted(result.values(), key=lambda x: x.pixels, reverse=True)
 
 
 RANK_TITLE: dict[RankType, str] = {
@@ -139,11 +145,11 @@ _RANK_COLORS = (29, 113, 48), (52, 208, 88)
 
 async def render_rank(
     rank_type: RankType,
-    rank_data: list[tuple[int, str, int]],
+    rank_data: list[RankData],
 ) -> bytes:
     title = RANK_TITLE[rank_type]
-    subtitle = f"共计 {sum(count for _, _, count in rank_data)} 像素"
-    max_cnt = max(count for _, _, count in rank_data)
+    subtitle = f"共计 {sum(r.pixels for r in rank_data)} 像素"
+    max_cnt = max(r.pixels for r in rank_data)
     (r1, g1, b1), (r2, g2, b2) = _RANK_COLORS
 
     def fn(t: float) -> str:
@@ -154,13 +160,14 @@ async def render_rank(
 
     chart_data = [
         {
-            "id": user_id,
-            "name": name,
-            "count": count,
-            "width": f"{(count / max_cnt * 100):.1f}%",
+            "id": r.user_id,
+            "name": r.name,
+            "count": r.pixels,
+            "width": f"{r.pixels / max_cnt * 100:.1f}%",
             "color": fn(idx / len(rank_data)),
+            "avatar": r.picture or get_wplace_avatar(str(r.user_id)),
         }
-        for idx, (user_id, name, count) in enumerate(rank_data)
+        for idx, r in enumerate(rank_data)
     ]
     view_height = 150 + len(chart_data) * 55  # 基础高度 + 每行高度
     template_data = {

@@ -47,9 +47,21 @@
     }
 
     .user-info {
-      width: 90px;
+      width: 120px;
       display: flex;
       padding-right: 15px;
+    }
+
+    .user-avatar-container {
+      margin-right: 8px;
+    }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      background-color: #e1e4e8;
     }
 
     .user-text {
@@ -117,6 +129,9 @@
       {% for item in chart_data %}
       <div class="chart-row">
         <div class="user-info">
+          <div class="user-avatar-container">
+            <img class="user-avatar" src="{{ item.avatar }}" alt="{{ item.name }}">
+          </div>
           <div class="user-text">
             <span class="user-name" title="{{ item.name }}">{{ item.name }}</span>
             <span class="user-id" title="{{ item.id }}">{{ item.id }}</span>
