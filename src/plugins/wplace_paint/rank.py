@@ -13,7 +13,7 @@ from .fetch import (
     fetch_region_rank,
     get_pixel_info,
 )
-from .utils import WplacePixelCoords, fix_coords
+from .utils import WplacePixelCoords, fix_coords, get_flag_emoji
 
 
 async def find_regions_in_rect(
@@ -103,8 +103,9 @@ async def find_regions_in_rect(
 class RankData:
     user_id: int
     name: str
+    picture: str | None
+    flag: int
     pixels: int = 0
-    picture: str | None = None
 
 
 async def get_regions_rank(
@@ -123,7 +124,12 @@ async def get_regions_rank(
         async with lock:
             for user in users:
                 if user.id not in result:
-                    result[user.id] = RankData(user.id, user.name, picture=user.picture)
+                    result[user.id] = RankData(
+                        user.id,
+                        user.name,
+                        user.picture,
+                        user.equippedFlag,
+                    )
                 result[user.id].pixels += user.pixelsPainted
 
     async with anyio.create_task_group() as tg:
@@ -160,7 +166,7 @@ async def render_rank(
 
     chart_data = [
         {
-            "id": r.user_id,
+            "id": r.user_id if not r.flag else f"{r.user_id} {get_flag_emoji(r.flag)}",
             "name": r.name,
             "count": r.pixels,
             "width": f"{r.pixels / max_cnt * 100:.1f}%",

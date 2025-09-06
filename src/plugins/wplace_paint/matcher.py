@@ -241,7 +241,7 @@ async def _select_cfg(
         return user_cfgs[0]
 
     formatted_cfgs = "".join(
-        f"{i}. {cfg.wp_user_name}(ID: {cfg.wp_user_id})\n"
+        f"{i}. {cfg.wp_user_name} #{cfg.wp_user_id}\n"
         for i, cfg in enumerate(user_cfgs, start=1)
     )
     msg = "你绑定了多个账号，请回复要操作的账号序号:\n" + formatted_cfgs
@@ -314,7 +314,7 @@ async def assign_config_target_droplets(
 @matcher.assign("~remove")
 async def assign_remove(cfg: SelectedConfig) -> None:
     users.remove(lambda c: c is cfg)
-    await finish(f"移除成功: {cfg.wp_user_name}(ID: {cfg.wp_user_id})")
+    await finish(f"移除成功: {cfg.wp_user_name} #{cfg.wp_user_id}")
 
 
 @matcher.assign("~bind")
@@ -327,7 +327,7 @@ async def assign_bind(
 
     cfg.bind_groups.add(target.id)
     cfg.save()
-    await finish(f"{cfg.wp_user_name}(ID: {cfg.wp_user_id}) 已绑定到当前群组")
+    await finish(f"{cfg.wp_user_name} #{cfg.wp_user_id} 已绑定到当前群组")
 
 
 @matcher.assign("~preview")
@@ -437,7 +437,7 @@ async def _handle_rank_query(
 
     # fallback
     msg = "\n".join(
-        f"{idx}. {r.name} (ID: {r.user_id}) - {r.pixels} 像素"
+        f"{idx}. {r.name} #{r.user_id} - {r.pixels} 像素"
         for idx, r in enumerate(rank_data, 1)
     )
     await finish(f"{RANK_TITLE[rank_type]}:\n{msg}")

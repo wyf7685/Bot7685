@@ -13,7 +13,7 @@ from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from pydantic import BaseModel, TypeAdapter
 
 from .config import UserConfig
-from .utils import WplacePixelCoords
+from .utils import WplacePixelCoords, get_flag_emoji
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
 WPLACE_PURCHASE_API_URL = "https://backend.wplace.live/purchase"
@@ -83,7 +83,7 @@ class FetchMeResponse(BaseModel):
     country: str
     discord: str | None = None
     droplets: int
-    equippedFlag: int
+    equippedFlag: int  # 0 when not equipped
     extraColorsBitmap: int
     favoriteLocations: list[FavoriteLocation]
     flagsBitmap: str
@@ -137,8 +137,9 @@ class FetchMeResponse(BaseModel):
     def format_notification(self, target_droplets: int | None = None) -> str:
         r = int(self.charges.remaining_secs())
         recover_time = datetime.now() + timedelta(seconds=r)
+        flag = f" {get_flag_emoji(self.equippedFlag)}" if self.equippedFlag else ""
         base_msg = (
-            f"{self.name} (ID: {self.id}) 💧{self.droplets}\n"
+            f"{self.name} #{self.id}{flag} 💧{self.droplets}\n"
             f"Lv. {int(self.level)} (升级还需 {self.next_level_pixels()} 像素)\n"
             f"当前像素: {int(self.charges.count)}/{self.charges.max}\n"
             f"恢复耗时: {r // 3600}:{r // 60 % 60:02}:{r % 60:02}\n"
