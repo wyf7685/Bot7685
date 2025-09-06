@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from src.utils import ConfigFile, ConfigListFile
 
 DATA_DIR = get_plugin_data_dir()
+TEMPLATE_DIR = Path(__file__).parent / "templates"
 
 
 class UserConfig(BaseModel):
@@ -41,21 +42,14 @@ class UserConfig(BaseModel):
         users.save(cfgs)
 
 
-if (DATA_DIR / "config.json").exists():
-    (DATA_DIR / "config.json").rename(DATA_DIR / "users.json")
 users = ConfigListFile(DATA_DIR / "users.json", UserConfig)
 
 RankConfig = dict[str, set[int]]  # group target id -> set of region id
 ranks = ConfigFile[RankConfig](DATA_DIR / "rank.json", RankConfig, dict)
 
 
-def _get_proxy() -> str | None:
-    class _ProxyConfig(BaseModel):
-        proxy: str | None = None
-
-    return get_plugin_config(_ProxyConfig).proxy
+class _ProxyConfig(BaseModel):
+    proxy: str | None = None
 
 
-proxy = _get_proxy()
-
-TEMPLATE_DIR = Path(__file__).parent / "templates"
+proxy = get_plugin_config(_ProxyConfig).proxy
