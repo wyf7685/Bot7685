@@ -23,6 +23,7 @@ class UserConfig(BaseModel):
     max_overflow_notify: int = 3
     target_droplets: int | None = None
     bind_groups: set[str] = Field(default_factory=set)
+    adapter: str | None = None
 
     @property
     def target(self) -> Target:

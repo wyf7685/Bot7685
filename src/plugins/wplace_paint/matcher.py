@@ -2,7 +2,7 @@ from typing import Annotated, Literal, NoReturn
 
 import anyio
 from nonebot import logger
-from nonebot.adapters import Event
+from nonebot.adapters import Bot, Event
 from nonebot.exception import MatcherException
 from nonebot.params import Depends
 from nonebot_plugin_alconna import (
@@ -140,6 +140,7 @@ async def prompt(msg: str) -> str:
 
 @matcher.assign("~add")
 async def assign_add(
+    bot: Bot,
     event: Event,
     target: MsgTarget,
     token: str = ParamOrPrompt(
@@ -156,6 +157,7 @@ async def assign_add(
         cf_clearance=cf_clearance,
         target_data=target.dump(),
         user_id=event.get_user_id(),
+        adapter=bot.type,
     )
 
     try:

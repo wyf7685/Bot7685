@@ -65,9 +65,19 @@ async def fetch_for_user(config: UserConfig) -> None:
             else UniMessage.at(config.user_id).text("\n")
         ).text(resp.format_notification(config.target_droplets))
 
+        try:
+            bot = await config.target.select()
+        except Exception:
+            logger.warning(f"获取 {colored_user} 的发送目标失败，跳过通知")
+            raise FetchDone from None
+
+        if config.adapter is not None and bot.type != config.adapter:
+            logger.warning(f"{colored_user} 绑定的适配器不匹配，跳过通知")
+            raise FetchDone
+
         for attempt in range(MAX_PUSH_ATTEMPT):
             try:
-                await msg.send(target=config.target)
+                await msg.send(target=config.target, bot=bot)
             except Exception:
                 attempts = f"(<y>{attempt + 1}</>/<y>{MAX_PUSH_ATTEMPT}</>)"
                 log_msg = f"向 {colored_user} 推送通知失败 {attempts}"
