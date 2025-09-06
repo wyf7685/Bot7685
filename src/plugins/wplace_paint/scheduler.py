@@ -72,7 +72,7 @@ async def fetch_for_user(config: UserConfig) -> None:
                 attempts = f"(<y>{attempt + 1}</>/<y>{MAX_PUSH_ATTEMPT}</>)"
                 log_msg = f"向 {colored_user} 推送通知失败 {attempts}"
                 if attempt == MAX_PUSH_ATTEMPT - 1:
-                    logger.opt(exception=True).warning(log_msg)
+                    logger.opt(colors=True, exception=True).warning(log_msg)
                     raise FetchDone from None
                 logger.warning(log_msg)
                 await anyio.sleep(5)
