@@ -399,7 +399,7 @@ async def assign_rank_bind(
     cfg[target.id] = set(regions.keys())
     ranks.save(cfg)
     await finish(
-        f"成功绑定 {len(regions)} 个 region ID 到当前群组\n"
+        f"成功绑定 {len(regions)} 个 region ID 到当前会话\n"
         f"{'\n'.join(f'{r.id}: {r.name} #{r.number}' for r in regions.values())}"
     )
 
@@ -409,12 +409,9 @@ async def _handle_rank_query(
     rank_type: RankType,
     only_known_users: bool = True,  # noqa
 ) -> None:
-    if target.private:
-        await finish("请在群聊中使用排行榜查询功能")
-
     cfg = ranks.load()
     if target.id not in cfg or not cfg[target.id]:
-        await finish("当前群组没有绑定任何 region ID，请先使用 wplace rank bind 绑定")
+        await finish("当前会话没有绑定任何 region ID，请先使用 wplace rank bind 绑定")
 
     try:
         rank_data = await get_regions_rank(cfg[target.id], rank_type)
