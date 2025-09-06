@@ -91,7 +91,7 @@ select = [
   "ASYNC", # flake8-async
   "ANN",   # flake8-annotations
   "S",     # flake8-bandit
-  "FBT",   # flake8-boolean-trap
+  # "FBT",   # flake8-boolean-trap
   "A",     # flake8-builtins
   "B",     # flake8-bugbear
   "COM",   # flake8-commas

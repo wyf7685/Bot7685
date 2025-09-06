@@ -74,7 +74,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
     @register(bool)
     @classmethod
     @functools.cache
-    def _(cls, data: bool) -> str:  # noqa: FBT001
+    def _(cls, data: bool) -> str:
         return cls.repr(data, "lg")
 
     @register(int)

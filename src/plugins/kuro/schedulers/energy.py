@@ -1,4 +1,3 @@
-# ruff: noqa: FBT003
 import random
 
 import anyio

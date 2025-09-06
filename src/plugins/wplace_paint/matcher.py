@@ -10,6 +10,7 @@ from nonebot_plugin_alconna import (
     Args,
     At,
     CommandMeta,
+    Field,
     MsgTarget,
     Option,
     Query,
@@ -17,8 +18,6 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
-
-from src.utils import ParamOrPrompt
 
 from .config import UserConfig, ranks, users
 from .fetch import RankType, RequestFailed, fetch_me
@@ -31,8 +30,15 @@ alc = Alconna(
     "wplace",
     Subcommand(
         "add",
-        Args["token?#WPlace Cookies 中的 j (token)", str],
-        Args["cf_clearance?#WPlace Cookies 中的 cf_clearance", str],
+        Args[
+            "token",
+            str,
+            Field(completion=lambda: "请输入 wplace Cookies 中的 j (token)"),
+        ][
+            "cf_clearance",
+            str,
+            Field(completion=lambda: "请输入 wplace Cookies 中的 cf_clearance"),
+        ],
         alias={"a"},
         help_text="添加一个 WPlace 账号",
     ),
@@ -80,7 +86,15 @@ alc = Alconna(
     ),
     Subcommand(
         "preview",
-        Args["coord1?#坐标1", str]["coord2?#坐标2", str],
+        Args[
+            "coord1",
+            str,
+            Field(completion=lambda: "请输入第一个坐标(选点并复制BlueMarble的坐标)"),
+        ][
+            "coord2",
+            str,
+            Field(completion=lambda: "请输入第二个坐标(选点并复制BlueMarble的坐标)"),
+        ],
         Option("--background|-b", Args["background#背景色RGB", str]),
         help_text="获取指定区域的预览图",
     ),
@@ -89,7 +103,19 @@ alc = Alconna(
         Subcommand(
             "bind",
             Option("--revoke|-r"),
-            Args["coord1?#坐标1", str]["coord2?#坐标2", str],
+            Args[
+                "coord1",
+                str,
+                Field(
+                    completion=lambda: "请输入第一个坐标(选点并复制BlueMarble的坐标)"
+                ),
+            ][
+                "coord2",
+                str,
+                Field(
+                    completion=lambda: "请输入第二个坐标(选点并复制BlueMarble的坐标)"
+                ),
+            ],
         ),
         Subcommand(
             "today",
@@ -119,7 +145,13 @@ alc = Alconna(
         author="wyf7685",
     ),
 )
-matcher = on_alconna(alc, aliases={"wp"})
+matcher = on_alconna(
+    alc,
+    aliases={"wp"},
+    comp_config={"lite": True},
+    skip_for_unmatch=False,
+    use_cmd_start=True,
+)
 matcher.shortcut("wpq", {"command": "wplace query {*}"})
 matcher.shortcut("wpg", {"command": "wplace query $group"})
 
@@ -143,14 +175,8 @@ async def assign_add(
     bot: Bot,
     event: Event,
     target: MsgTarget,
-    token: str = ParamOrPrompt(
-        "token",
-        lambda: prompt("请输入 WPlace Cookies 中的 j (token)"),
-    ),
-    cf_clearance: str = ParamOrPrompt(
-        "cf_clearance",
-        lambda: prompt("请输入 WPlace Cookies 中的 cf_clearance"),
-    ),
+    token: str,
+    cf_clearance: str,
 ) -> None:
     cfg = UserConfig(
         token=token,
@@ -332,14 +358,8 @@ async def assign_bind(
 
 @matcher.assign("~preview")
 async def assign_preview(
-    coord1: str = ParamOrPrompt(
-        "coord1",
-        lambda: prompt("请输入第一个坐标(选点并复制BlueMarble的坐标)"),
-    ),
-    coord2: str = ParamOrPrompt(
-        "coord2",
-        lambda: prompt("请输入第二个坐标(选点并复制BlueMarble的坐标)"),
-    ),
+    coord1: str,
+    coord2: str,
     background: str | None = None,
 ) -> None:
     try:
@@ -368,17 +388,7 @@ async def assign_rank_bind_revoke(target: MsgTarget) -> None:
 
 
 @matcher.assign("~rank.bind")
-async def assign_rank_bind(
-    target: MsgTarget,
-    coord1: str = ParamOrPrompt(
-        "coord1",
-        lambda: prompt("请输入第一个坐标(选点并复制BlueMarble的坐标)"),
-    ),
-    coord2: str = ParamOrPrompt(
-        "coord2",
-        lambda: prompt("请输入第二个坐标(选点并复制BlueMarble的坐标)"),
-    ),
-) -> None:
+async def assign_rank_bind(target: MsgTarget, coord1: str, coord2: str) -> None:
     try:
         c1 = parse_coords(coord1)
         c2 = parse_coords(coord2)
@@ -407,7 +417,7 @@ async def assign_rank_bind(
 async def _handle_rank_query(
     target: MsgTarget,
     rank_type: RankType,
-    only_known_users: bool = True,  # noqa
+    only_known_users: bool = True,
 ) -> None:
     cfg = ranks.load()
     if target.id not in cfg or not cfg[target.id]:
