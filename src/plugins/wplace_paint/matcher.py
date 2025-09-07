@@ -14,6 +14,7 @@ from nonebot_plugin_alconna import (
     Field,
     Image,
     MsgTarget,
+    MultiVar,
     Option,
     Query,
     Subcommand,
@@ -162,7 +163,7 @@ alc = Alconna(
         Subcommand("progress", help_text="查询模板的绘制进度"),
         Subcommand(
             "color",
-            Args["color_name", str, Field(completion=lambda: "颜色名称")],
+            Args["color_name", MultiVar(str), Field(completion=lambda: "颜色名称")],
             Option("--background|-b", Args["background#背景色RGB", str]),
             help_text="选择模板中指定的颜色并渲染",
         ),
@@ -596,11 +597,15 @@ async def assign_template_progress(target: MsgTarget) -> None:
 @matcher.assign("~template.color")
 async def assign_template_color(
     target: MsgTarget,
-    color_name: str,
+    color_name: list[str],
     background: str | None = None,
 ) -> None:
-    if not (fixed_name := normalize_color_name(color_name)):
-        await finish(f"无效的颜色名称: {color_name}")
+    fixed_colors: list[str] = []
+    for name in color_name:
+        if fixed_name := normalize_color_name(name):
+            fixed_colors.append(fixed_name)
+        else:
+            await finish(f"无效的颜色名称: {name}")
 
     cfg = templates.load()
     if target.id not in cfg:
@@ -608,9 +613,7 @@ async def assign_template_color(
 
     try:
         img_bytes = await render_template_with_color(
-            cfg[target.id],
-            fixed_name,
-            background,
+            cfg[target.id], fixed_colors, background
         )
         await finish(UniMessage.image(raw=img_bytes))
     except RequestFailed as e:

@@ -1,5 +1,6 @@
 import io
 import itertools
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, cast
@@ -136,9 +137,10 @@ async def render_progress(progress_data: list[ColorEntry]) -> bytes:
 @run_sync
 def render_template_with_color(
     cfg: TemplateConfig,
-    color: str,
+    colors: Iterable[str],
     background: str | None = None,
 ) -> bytes:
+    colors = set(colors)
     fill_rgba: tuple[int, int, int, int] = (
         (*bg_rgb, 255)
         if background and (bg_rgb := parse_rgb_str(background))
@@ -149,7 +151,7 @@ def render_template_with_color(
     pixels = cast("PixelAccess[RGBA]", template_img.load())
     for x, y in itertools.product(range(width), range(height)):
         r, g, b, a = pixels[x, y]
-        if a != 0 and find_color_name((r, g, b, a)) != color:
+        if a != 0 and find_color_name((r, g, b, a)) not in colors:
             pixels[x, y] = fill_rgba
 
     with io.BytesIO() as output:
