@@ -37,11 +37,11 @@ alc = Alconna(
         Args[
             "token",
             str,
-            Field(completion=lambda: "请输入 wplace Cookies 中的 j (token)"),
+            Field(completion=lambda: "wplace Cookies 中的 j (token)"),
         ][
             "cf_clearance",
             str,
-            Field(completion=lambda: "请输入 wplace Cookies 中的 cf_clearance"),
+            Field(completion=lambda: "wplace Cookies 中的 cf_clearance"),
         ],
         alias={"a"},
         help_text="添加一个 WPlace 账号",
@@ -57,7 +57,7 @@ alc = Alconna(
         Args["identifier?#账号标识,ID或用户名", str],
         Option(
             "--notify-mins|-n",
-            Args["notify_mins", int, Field(completion=lambda: "请输入提前通知分钟数")],
+            Args["notify_mins", int, Field(completion=lambda: "提前通知分钟数")],
             help_text=f"提前多少分钟通知 (默认10,最小{FETCH_INTERVAL_MINS})",
         ),
         Option(
@@ -69,7 +69,7 @@ alc = Alconna(
             Args[
                 "max_overflow_notify",
                 int,
-                Field(completion=lambda: "请输入最大溢出通知次数 (默认3次, 0为禁用)"),
+                Field(completion=lambda: "最大溢出通知次数 (默认3次, 0为禁用)"),
             ],
             help_text="设置最大溢出通知次数 (默认3次, 0为禁用)",
         ),
@@ -97,11 +97,11 @@ alc = Alconna(
         Args[
             "coord1#对角坐标1",
             str,
-            Field(completion=lambda: "请输入第一个坐标(选点并复制BlueMarble的坐标)"),
+            Field(completion=lambda: "第一个坐标(选点并复制BlueMarble的坐标)"),
         ][
             "coord2#对角坐标2",
             str,
-            Field(completion=lambda: "请输入第二个坐标(选点并复制BlueMarble的坐标)"),
+            Field(completion=lambda: "第二个坐标(选点并复制BlueMarble的坐标)"),
         ],
         Option("--background|-b", Args["background#背景色RGB", str]),
         help_text="获取指定区域的预览图",
@@ -114,15 +114,11 @@ alc = Alconna(
             Args[
                 "coord1#对角坐标1",
                 str,
-                Field(
-                    completion=lambda: "请输入第一个坐标(选点并复制BlueMarble的坐标)"
-                ),
+                Field(completion=lambda: "第一个坐标(选点并复制BlueMarble的坐标)"),
             ][
                 "coord2#对角坐标2",
                 str,
-                Field(
-                    completion=lambda: "请输入第二个坐标(选点并复制BlueMarble的坐标)"
-                ),
+                Field(completion=lambda: "第二个坐标(选点并复制BlueMarble的坐标)"),
             ],
         ),
         Subcommand(
@@ -155,13 +151,7 @@ alc = Alconna(
             Args[
                 "coord#模板起始坐标",
                 str,
-                Field(
-                    completion=lambda: "请输入模板起始坐标(选点并复制BlueMarble的坐标)"
-                ),
-            ][
-                "image#模板图片",
-                Image,
-                Field(completion=lambda: "请发送模板图片"),
+                Field(completion=lambda: "模板起始坐标(选点并复制BlueMarble的坐标)"),
             ],
         ),
         Subcommand("progress", help_text="查询模板的绘制进度"),
@@ -519,13 +509,16 @@ async def assign_template_bind(
     event: Event,
     target: MsgTarget,
     coord: str,
-    image: Image,
 ) -> None:
     try:
         coords = parse_coords(coord)
     except ValueError as e:
         await finish(f"坐标解析失败: {e}")
 
+    response = await matcher.prompt("请发送模板图片\n(回复其他内容以取消操作)")
+    if response is None or not response[Image]:
+        await finish("操作已取消")
+    image = response[Image, 0]
     img_bytes = await image_fetch(event, bot, {}, image)
     if img_bytes is None:
         await finish("获取图片数据失败")

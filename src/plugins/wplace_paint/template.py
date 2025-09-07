@@ -94,7 +94,7 @@ async def render_progress(progress_data: list[ColorEntry]) -> bytes:
     overall_progress = (drawn_pixels / total_pixels * 100) if total_pixels else 0
 
     # 基础高度 + 每行高度
-    view_height = 150 + len(progress_data) * 55
+    view_height = 150 + len(progress_data) * 66
     template_data = {
         "progress_data": progress_data,
         "title": "模板绘制进度",
