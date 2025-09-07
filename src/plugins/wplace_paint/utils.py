@@ -10,6 +10,14 @@ class WplacePixelCoords:
     pxx: int  # pixel X
     pxy: int  # pixel Y
 
+    def human_repr(self) -> str:
+        return f"Tl X: {self.tlx}, Tl Y: {self.tly}, Px X: {self.pxx}, Px Y: {self.pxy}"
+
+    def offset(self, dx: int, dy: int) -> "WplacePixelCoords":
+        x = self.tlx * 1000 + self.pxx + dx
+        y = self.tly * 1000 + self.pxy + dy
+        return WplacePixelCoords(x // 1000, y // 1000, x % 1000, y % 1000)
+
 
 def fix_coords(
     coord1: WplacePixelCoords,
@@ -313,3 +321,129 @@ FLAG_MAPPING = {
 
 def get_flag_emoji(id: int) -> str:
     return FLAG_MAPPING.get(id, "")
+
+
+FREE_COLORS = {
+    "Black",
+    "Dark Gray",
+    "Gray",
+    "Light Gray",
+    "White",
+    "Deep Red",
+    "Red",
+    "Orange",
+    "Gold",
+    "Yellow",
+    "Light Yellow",
+    "Dark Green",
+    "Green",
+    "Light Green",
+    "Dark Teal",
+    "Teal",
+    "Light Teal",
+    "Dark Blue",
+    "Blue",
+    "Cyan",
+    "Indigo",
+    "Light Indigo",
+    "Dark Purple",
+    "Purple",
+    "Light Purple",
+    "Dark Pink",
+    "Pink",
+    "Light Pink",
+    "Dark Brown",
+    "Brown",
+    "Beige",
+}
+
+ALL_COLORS = {
+    "Black": (0, 0, 0),
+    "Dark Gray": (60, 60, 60),
+    "Gray": (120, 120, 120),
+    "Medium Gray": (170, 170, 170),
+    "Light Gray": (210, 210, 210),
+    "White": (255, 255, 255),
+    "Deep Red": (96, 0, 24),
+    "Dark Red": (165, 14, 30),
+    "Red": (237, 28, 36),
+    "Light Red": (250, 128, 114),
+    "Dark Orange": (228, 92, 26),
+    "Orange": (255, 127, 39),
+    "Gold": (246, 170, 9),
+    "Yellow": (249, 221, 59),
+    "Light Yellow": (255, 250, 188),
+    "Dark Goldenrod": (156, 132, 49),
+    "Goldenrod": (197, 173, 49),
+    "Light Goldenrod": (232, 212, 95),
+    "Dark Olive": (74, 107, 58),
+    "Olive": (90, 148, 74),
+    "Light Olive": (132, 197, 115),
+    "Dark Green": (14, 185, 104),
+    "Green": (19, 230, 123),
+    "Light Green": (135, 255, 94),
+    "Dark Teal": (12, 129, 110),
+    "Teal": (16, 174, 166),
+    "Light Teal": (19, 225, 190),
+    "Dark Cyan": (15, 121, 159),
+    "Cyan": (96, 247, 242),
+    "Light Cyan": (187, 250, 242),
+    "Dark Blue": (40, 80, 158),
+    "Blue": (64, 147, 228),
+    "Light Blue": (125, 199, 255),
+    "Dark Indigo": (77, 49, 184),
+    "Indigo": (107, 80, 246),
+    "Light Indigo": (153, 177, 251),
+    "Dark Slate Blue": (74, 66, 132),
+    "Slate Blue": (122, 113, 196),
+    "Light Slate Blue": (181, 174, 241),
+    "Dark Purple": (120, 12, 153),
+    "Purple": (170, 56, 185),
+    "Light Purple": (224, 159, 249),
+    "Dark Pink": (203, 0, 122),
+    "Pink": (236, 31, 128),
+    "Light Pink": (243, 141, 169),
+    "Dark Peach": (155, 82, 73),
+    "Peach": (209, 128, 120),
+    "Light Peach": (250, 182, 164),
+    "Dark Brown": (104, 70, 52),
+    "Brown": (149, 104, 42),
+    "Light Brown": (219, 164, 99),
+    "Dark Tan": (123, 99, 82),
+    "Tan": (156, 132, 107),
+    "Light Tan": (214, 181, 148),
+    "Dark Beige": (209, 128, 81),
+    "Beige": (248, 178, 119),
+    "Light Beige": (255, 197, 165),
+    "Dark Stone": (109, 100, 63),
+    "Stone": (148, 140, 107),
+    "Light Stone": (205, 197, 158),
+    "Dark Slate": (51, 57, 65),
+    "Slate": (109, 117, 141),
+    "Light Slate": (179, 185, 209),
+}
+
+PAID_COLORS = set(ALL_COLORS) - FREE_COLORS
+
+
+def find_color_name(rgba: tuple[int, int, int, int]) -> str:
+    if rgba[3] == 0:
+        return "Transparent"
+
+    rgb = rgba[:3]
+    for name, value in ALL_COLORS.items():
+        if value == rgb:
+            return name
+
+    # not found, find the closest one
+    def color_distance(c1: tuple[int, int, int], c2: tuple[int, int, int]) -> int:
+        return sum((a - b) ** 2 for a, b in zip(c1, c2, strict=True))
+
+    closest_name = ""
+    closest_distance = float("inf")
+    for name, value in ALL_COLORS.items():
+        dist = color_distance(rgb, value)
+        if dist < closest_distance:
+            closest_distance = dist
+            closest_name = name
+    return closest_name

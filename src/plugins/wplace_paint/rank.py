@@ -192,6 +192,6 @@ async def render_rank(
 
     async with get_new_page(viewport={"width": 600, "height": view_height}) as page:
         await page.set_content(html, wait_until="networkidle")
-        if chart_element := await page.query_selector("#chart-container"):
-            return await chart_element.screenshot(type="png")
+        if container := await page.query_selector("#chart-container"):
+            return await container.screenshot(type="png")
         return await page.screenshot(full_page=True, type="png")

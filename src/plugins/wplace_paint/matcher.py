@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated, Literal, NoReturn
 
 import anyio
@@ -11,19 +12,22 @@ from nonebot_plugin_alconna import (
     At,
     CommandMeta,
     Field,
+    Image,
     MsgTarget,
     Option,
     Query,
     Subcommand,
     UniMessage,
+    image_fetch,
     on_alconna,
 )
 
-from .config import UserConfig, ranks, users
+from .config import IMAGE_DIR, TemplateConfig, UserConfig, ranks, templates, users
 from .fetch import RankType, RequestFailed, fetch_me
 from .preview import download_preview
 from .rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
 from .scheduler import FETCH_INTERVAL_MINS
+from .template import calc_template_progress, render_progress
 from .utils import parse_coords
 
 alc = Alconna(
@@ -91,11 +95,11 @@ alc = Alconna(
     Subcommand(
         "preview",
         Args[
-            "coord1",
+            "coord1#对角坐标1",
             str,
             Field(completion=lambda: "请输入第一个坐标(选点并复制BlueMarble的坐标)"),
         ][
-            "coord2",
+            "coord2#对角坐标2",
             str,
             Field(completion=lambda: "请输入第二个坐标(选点并复制BlueMarble的坐标)"),
         ],
@@ -106,15 +110,15 @@ alc = Alconna(
         "rank",
         Subcommand(
             "bind",
-            Option("--revoke|-r"),
+            Option("--revoke|-r", help_text="取消当前会话的区域 ID 绑定"),
             Args[
-                "coord1",
+                "coord1#对角坐标1",
                 str,
                 Field(
                     completion=lambda: "请输入第一个坐标(选点并复制BlueMarble的坐标)"
                 ),
             ][
-                "coord2",
+                "coord2#对角坐标2",
                 str,
                 Field(
                     completion=lambda: "请输入第二个坐标(选点并复制BlueMarble的坐标)"
@@ -142,6 +146,26 @@ alc = Alconna(
             help_text="查询指定区域的历史总排行榜",
         ),
         help_text="查询指定区域的排行榜",
+    ),
+    Subcommand(
+        "template",
+        Subcommand(
+            "bind",
+            Option("--revoke|-r", help_text="取消当前会话的模板绑定"),
+            Args[
+                "coord#模板起始坐标",
+                str,
+                Field(
+                    completion=lambda: "请输入模板起始坐标(选点并复制BlueMarble的坐标)"
+                ),
+            ][
+                "image#模板图片",
+                Image,
+                Field(completion=lambda: "请发送模板图片"),
+            ],
+        ),
+        Subcommand("progress", help_text="查询模板的绘制进度"),
+        help_text="模板相关功能",
     ),
     meta=CommandMeta(
         description="WPlace 查询",
@@ -471,3 +495,89 @@ def _rank_query(rank_type: RankType) -> None:
 
 
 [_rank_query(rt) for rt in ("today", "week", "month", "all-time")]
+
+
+@matcher.assign("~template.bind.revoke")
+async def assign_template_bind_revoke(target: MsgTarget) -> None:
+    cfg = templates.load()
+    if target.id not in cfg:
+        await finish("当前会话没有绑定模板")
+
+    try:
+        cfg[target.id].file.unlink(missing_ok=True)
+    except Exception:
+        logger.opt(exception=True).warning("删除模板图片时发生错误")
+
+    del cfg[target.id]
+    templates.save(cfg)
+    await finish("已取消当前会话的模板绑定")
+
+
+@matcher.assign("~template.bind")
+async def assign_template_bind(
+    bot: Bot,
+    event: Event,
+    target: MsgTarget,
+    coord: str,
+    image: Image,
+) -> None:
+    try:
+        coords = parse_coords(coord)
+    except ValueError as e:
+        await finish(f"坐标解析失败: {e}")
+
+    img_bytes = await image_fetch(event, bot, {}, image)
+    if img_bytes is None:
+        await finish("获取图片数据失败")
+
+    fp = IMAGE_DIR / f"{uuid.uuid4()}.png"
+    fp.write_bytes(img_bytes)
+
+    cfg = templates.load()
+    cfg[target.id] = TemplateConfig(coords=coords, image=fp.name)
+    templates.save(cfg)
+    await finish(f"模板绑定成功\n{coords.human_repr()}")
+
+
+@matcher.assign("~template.progress")
+async def assign_template_progress(target: MsgTarget) -> None:
+    cfg = templates.load()
+    if target.id not in cfg:
+        await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
+
+    try:
+        progress_data = await calc_template_progress(cfg[target.id])
+    except RequestFailed as e:
+        await finish(f"获取模板进度失败: {e.msg}")
+    except Exception as e:
+        await finish(f"计算模板进度时发生意外错误: {e!r}")
+
+    if not progress_data:
+        await finish("模板中没有任何需要绘制的像素")
+
+    try:
+        img_bytes = await render_progress(progress_data)
+        await finish(UniMessage.image(raw=img_bytes))
+    except MatcherException:
+        raise
+    except Exception:
+        logger.opt(exception=True).warning("渲染模板进度时发生错误")
+
+    # fallback
+    drawn_pixels = sum(entry.drawn for entry in progress_data)
+    total_pixels = sum(entry.total for entry in progress_data)
+    remaining_pixels = total_pixels - drawn_pixels
+    overall_progress = (drawn_pixels / total_pixels * 100) if total_pixels > 0 else 0
+    msg_lines = [
+        f"总体进度: {drawn_pixels} / {total_pixels} "
+        f"({overall_progress:.2f}%)，"
+        f"剩余 {remaining_pixels} 像素",
+        "各颜色进度:",
+    ]
+    msg_lines.extend(
+        f"{'★' if entry.is_paid else ''}{entry.name}: "
+        f"{entry.drawn} / {entry.total} "
+        f"({entry.progress:.2f}%)"
+        for entry in progress_data
+    )
+    await finish("\n".join(msg_lines))

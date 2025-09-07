@@ -8,7 +8,11 @@ from pydantic import BaseModel, Field
 
 from src.utils import ConfigFile, ConfigListFile
 
+from .utils import WplacePixelCoords
+
 DATA_DIR = get_plugin_data_dir()
+IMAGE_DIR = DATA_DIR / "images"
+IMAGE_DIR.mkdir(parents=True, exist_ok=True)
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 
 
@@ -47,6 +51,19 @@ users = ConfigListFile(DATA_DIR / "users.json", UserConfig)
 
 RankConfig = dict[str, set[int]]  # group target id -> set of region id
 ranks = ConfigFile[RankConfig](DATA_DIR / "rank.json", RankConfig, dict)
+
+
+class TemplateConfig(BaseModel):
+    coords: WplacePixelCoords
+    image: str  # image file in IMAGE_DIR
+
+    @property
+    def file(self) -> Path:
+        return IMAGE_DIR / self.image
+
+
+# group target id -> TemplateConfig
+templates = ConfigFile(DATA_DIR / "templates.json", dict[str, TemplateConfig], dict)
 
 
 class _ProxyConfig(BaseModel):
