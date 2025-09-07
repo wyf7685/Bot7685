@@ -29,20 +29,20 @@
       color: #24292e;
     }
 
-    .subtitle {
+    .subtitle{
       font-size: 14px;
       color: #586069;
       margin-bottom: 20px;
     }
 
     .chart {
-      margin-top: 24px;
+      margin-top: 12px;
     }
 
-    .chart-row {
+    .chart-row{
       display: flex;
       align-items: center;
-      margin-bottom: 16px;
+      margin-bottom: 8px;
       height: 50px;
     }
 
@@ -57,10 +57,11 @@
     }
 
     .color-swatch {
+      margin-top: 6px;
       width: 28px;
       height: 28px;
-      border-radius: 4px;
-      border: 1px solid #e1e4e8;
+      border-radius: 6px;
+      box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
     }
 
     .color-name-container {
@@ -82,13 +83,13 @@
       flex-grow: 1;
       height: 24px;
       background-color: #e1e4e8;
-      border-radius: 3px;
+      border-radius: 6px;
       overflow: hidden;
     }
 
     .bar {
       height: 100%;
-      border-radius: 3px;
+      border-radius: 10px;;
       transition: width 0.5s ease;
       display: flex;
       align-items: center;
@@ -115,8 +116,34 @@
       color: #586069;
       text-align: right;
     }
+
+    .completed-color-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      height: 50px;
+      filter: blur(1px);
+      position: relative;
+    }
+
+    .completed-color-row::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 2px;
+      background: red;
+      opacity: 0.7;
+      transform: translateY(-50%);
+      pointer-events: none;
+      z-index: 2;
+    }
   </style>
 </head>
+
+{% set progressed_data = progress_data | sort(attribute='progress', reverse=True) | rejectattr('count', 'equalto', 0) | list%}
+{% set completed_color = progress_data | selectattr('count', 'equalto', 0) | selectattr('total', 'gt', 0) | list %}
 
 <body>
   <div class="container" id="progress-container" style="height: {{ container_height }}px;">
@@ -124,7 +151,7 @@
     <div class="subtitle">{{ subtitle }}</div>
 
     <div class="chart">
-      {% for item in progress_data %}
+      {% for item in progressed_data %}
       <div class="chart-row">
         <div class="color-info">
           <div class="color-swatch" style="background-color: {{ item.rgb_str }};"></div>
@@ -136,7 +163,28 @@
         </div>
         <div class="bar-container">
           <div class="bar" style="width: {{ item.progress }}%;">
-            {% if item.progress > 25 %}{{ "%.1f"|format(item.progress) }}%{% endif %}
+            {% if item.progress > 25 %}
+              {% set display_value = item.progress if item.progress <= 99.9 else 99.9 %}
+              {{ "%.1f"|format(display_value) }}%
+            {% endif %}
+          </div>
+        </div>
+        <div class="progress-text">{{ item.drawn }} / {{ item.total }}</div>
+      </div>
+      {% endfor %}
+      {% for item in completed_color %}
+      <div class="completed-color-row">
+        <div class="color-info">
+          <div class="color-swatch" style="background-color: {{ item.rgb_str }};"></div>
+          <div class="color-name-container">
+            <span class="color-name" title="{{ item.name }}">
+              {% if item.is_paid %}★ {% endif %}{{ item.name }}
+            </span>
+          </div>
+        </div>
+        <div class="bar-container">
+          <div class="bar" style="width: {{ item.progress }}%;">
+            100%
           </div>
         </div>
         <div class="progress-text">{{ item.drawn }} / {{ item.total }}</div>
