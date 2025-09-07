@@ -28,11 +28,12 @@ from .preview import download_preview
 from .rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
 from .scheduler import FETCH_INTERVAL_MINS
 from .template import (
-    calc_template_progress,
+    calc_template_diff,
+    get_color_location,
     render_progress,
     render_template_with_color,
 )
-from .utils import ALL_COLORS, parse_coords
+from .utils import normalize_color_name, parse_coords
 
 alc = Alconna(
     "wplace",
@@ -163,6 +164,12 @@ alc = Alconna(
             "color",
             Args["color_name", str, Field(completion=lambda: "颜色名称")],
             help_text="选择模板中指定的颜色并渲染",
+        ),
+        Subcommand(
+            "locate",
+            Args["color_name", str, Field(completion=lambda: "颜色名称")],
+            Option("-n", Args["max_count#最大数量", int], default=5),
+            help_text="查询模板中指定颜色的像素位置",
         ),
         help_text="模板相关功能",
     ),
@@ -548,7 +555,7 @@ async def assign_template_progress(target: MsgTarget) -> None:
         await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
 
     try:
-        progress_data = await calc_template_progress(cfg[target.id])
+        progress_data = await calc_template_diff(cfg[target.id])
     except RequestFailed as e:
         await finish(f"获取模板进度失败: {e.msg}")
     except Exception as e:
@@ -590,13 +597,12 @@ async def assign_template_color(
     target: MsgTarget,
     color_name: str,
 ) -> None:
+    if not (fixed_name := normalize_color_name(color_name)):
+        await finish(f"无效的颜色名称: {color_name}")
+
     cfg = templates.load()
     if target.id not in cfg:
         await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
-
-    fixed_name = " ".join(word.lower().capitalize() for word in color_name.split())
-    if fixed_name not in ALL_COLORS:
-        await finish(f"无效的颜色名称: {color_name}")
 
     try:
         img_bytes = await render_template_with_color(cfg[target.id], fixed_name)
@@ -608,3 +614,40 @@ async def assign_template_color(
     except Exception as e:
         logger.opt(exception=True).warning("渲染模板图时发生错误")
         await finish(f"渲染模板图时发生意外错误: {e!r}")
+
+
+@matcher.assign("~template.locate")
+async def assign_template_locate(
+    target: MsgTarget,
+    color_name: str,
+    max_count: int,
+) -> None:
+    if not (fixed_name := normalize_color_name(color_name)):
+        await finish(f"无效的颜色名称: {color_name}")
+
+    cfg = templates.load()
+    if target.id not in cfg:
+        await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
+
+    try:
+        locations = await get_color_location(cfg[target.id], fixed_name)
+    except RequestFailed as e:
+        await finish(f"获取模板图失败: {e.msg}")
+    except Exception as e:
+        logger.opt(exception=True).warning("查询模板颜色位置时发生错误")
+        await finish(f"查询模板颜色位置时发生意外错误: {e!r}")
+
+    if not locations:
+        await finish(f"模板中没有待绘制的 {fixed_name} 像素")
+
+    base = cfg[target.id].coords
+    urls: list[str] = []
+    for x, y in locations[:max_count]:
+        coord = base.offset(x, y)
+        urls.append(f"[{coord.human_repr()}]\n{coord.to_share_url()}\n")
+
+    msg = (
+        f"模板中共有 {len(locations)} 个待绘制的 {fixed_name} 像素\n"
+        f"以下是前 {len(urls)} 个像素的位置:\n\n"
+    ) + "\n".join(urls)
+    await finish(msg)

@@ -1,6 +1,6 @@
 import io
 import itertools
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, cast
 
@@ -10,8 +10,9 @@ from nonebot_plugin_htmlrender import get_new_page, template_to_html
 from PIL import Image
 
 from .config import TEMPLATE_DIR, TemplateConfig
+from .consts import PAID_COLORS
 from .preview import download_preview
-from .utils import PAID_COLORS, find_color_name
+from .utils import find_color_name
 
 type RGBA = tuple[int, int, int, int]
 
@@ -27,6 +28,7 @@ class ColorEntry:
     rgb: tuple[int, int, int]
     count: int = 0
     total: int = 0
+    pixels: list[tuple[int, int]] = field(default_factory=list)
 
     @property
     def is_paid(self) -> bool:
@@ -49,7 +51,11 @@ class ColorEntry:
         return (self.drawn / self.total * 100) if self.total > 0 else 0
 
 
-async def calc_template_progress(cfg: TemplateConfig) -> list[ColorEntry]:
+async def calc_template_diff(
+    cfg: TemplateConfig,
+    *,
+    include_pixels: bool = False,
+) -> list[ColorEntry]:
     template_img = Image.open(cfg.file)
     width, height = template_img.size
     coord1 = cfg.coords
@@ -78,6 +84,8 @@ async def calc_template_progress(cfg: TemplateConfig) -> list[ColorEntry]:
             # 如果模板像素颜色与实际像素颜色不同
             if template_pixel[:3] != actual_pixels[x, y][:3]:
                 diff_pixels[color_name].count += 1
+                if include_pixels:
+                    diff_pixels[color_name].pixels.append((x, y))
 
         return sorted(
             diff_pixels.values(),
@@ -138,3 +146,11 @@ def render_template_with_color(cfg: TemplateConfig, color: str) -> bytes:
     with io.BytesIO() as output:
         template_img.save(output, format="PNG")
         return output.getvalue()
+
+
+async def get_color_location(cfg: TemplateConfig, color: str) -> list[tuple[int, int]]:
+    progress_data = await calc_template_diff(cfg, include_pixels=True)
+    for entry in progress_data:
+        if entry.name == color:
+            return entry.pixels
+    return []
