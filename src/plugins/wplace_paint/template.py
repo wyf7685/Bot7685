@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Protocol, cast
 
 import anyio.to_thread
+from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
 from PIL import Image
 
@@ -17,8 +18,7 @@ type RGBA = tuple[int, int, int, int]
 
 class PixelAccess[TPixel](Protocol):
     def __getitem__(self, xy: tuple[int, int]) -> TPixel: ...
-
-    # def __setitem__(self, xy: tuple[int, int], color: TPixel) -> None: ...
+    def __setitem__(self, xy: tuple[int, int], color: TPixel) -> None: ...
 
 
 @dataclass
@@ -123,3 +123,18 @@ async def render_progress(progress_data: list[ColorEntry]) -> bytes:
         if container := await page.query_selector("#progress-container"):
             return await container.screenshot(type="png")
         return await page.screenshot(full_page=True, type="png")
+
+
+@run_sync
+def render_template_with_color(cfg: TemplateConfig, color: str) -> bytes:
+    template_img = Image.open(cfg.file).convert("RGBA")
+    width, height = template_img.size
+    pixels = cast("PixelAccess[RGBA]", template_img.load())
+    for x, y in itertools.product(range(width), range(height)):
+        r, g, b, a = pixels[x, y]
+        if a != 0 and find_color_name((r, g, b, a)) != color:
+            pixels[x, y] = (255, 255, 255, 0)
+
+    with io.BytesIO() as output:
+        template_img.save(output, format="PNG")
+        return output.getvalue()

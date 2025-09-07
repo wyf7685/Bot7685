@@ -27,8 +27,12 @@ from .fetch import RankType, RequestFailed, fetch_me
 from .preview import download_preview
 from .rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
 from .scheduler import FETCH_INTERVAL_MINS
-from .template import calc_template_progress, render_progress
-from .utils import parse_coords
+from .template import (
+    calc_template_progress,
+    render_progress,
+    render_template_with_color,
+)
+from .utils import ALL_COLORS, parse_coords
 
 alc = Alconna(
     "wplace",
@@ -155,6 +159,11 @@ alc = Alconna(
             ],
         ),
         Subcommand("progress", help_text="查询模板的绘制进度"),
+        Subcommand(
+            "color",
+            Args["color_name", str, Field(completion=lambda: "颜色名称")],
+            help_text="选择模板中指定的颜色并渲染",
+        ),
         help_text="模板相关功能",
     ),
     meta=CommandMeta(
@@ -574,3 +583,28 @@ async def assign_template_progress(target: MsgTarget) -> None:
         for entry in progress_data
     )
     await finish("\n".join(msg_lines))
+
+
+@matcher.assign("~template.color")
+async def assign_template_color(
+    target: MsgTarget,
+    color_name: str,
+) -> None:
+    cfg = templates.load()
+    if target.id not in cfg:
+        await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
+
+    fixed_name = " ".join(word.lower().capitalize() for word in color_name.split())
+    if fixed_name not in ALL_COLORS:
+        await finish(f"无效的颜色名称: {color_name}")
+
+    try:
+        img_bytes = await render_template_with_color(cfg[target.id], fixed_name)
+        await finish(UniMessage.image(raw=img_bytes))
+    except RequestFailed as e:
+        await finish(f"获取模板图失败: {e.msg}")
+    except MatcherException:
+        raise
+    except Exception as e:
+        logger.opt(exception=True).warning("渲染模板图时发生错误")
+        await finish(f"渲染模板图时发生意外错误: {e!r}")
