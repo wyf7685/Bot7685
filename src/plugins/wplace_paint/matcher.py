@@ -163,12 +163,13 @@ alc = Alconna(
         Subcommand(
             "color",
             Args["color_name", str, Field(completion=lambda: "颜色名称")],
+            Option("--background|-b", Args["background#背景色RGB", str]),
             help_text="选择模板中指定的颜色并渲染",
         ),
         Subcommand(
             "locate",
             Args["color_name", str, Field(completion=lambda: "颜色名称")],
-            Option("-n", Args["max_count#最大数量", int], default=5),
+            Option("-n", Args["max_count?#最大数量", int]),
             help_text="查询模板中指定颜色的像素位置",
         ),
         help_text="模板相关功能",
@@ -596,6 +597,7 @@ async def assign_template_progress(target: MsgTarget) -> None:
 async def assign_template_color(
     target: MsgTarget,
     color_name: str,
+    background: str | None = None,
 ) -> None:
     if not (fixed_name := normalize_color_name(color_name)):
         await finish(f"无效的颜色名称: {color_name}")
@@ -605,7 +607,11 @@ async def assign_template_color(
         await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
 
     try:
-        img_bytes = await render_template_with_color(cfg[target.id], fixed_name)
+        img_bytes = await render_template_with_color(
+            cfg[target.id],
+            fixed_name,
+            background,
+        )
         await finish(UniMessage.image(raw=img_bytes))
     except RequestFailed as e:
         await finish(f"获取模板图失败: {e.msg}")
@@ -620,7 +626,7 @@ async def assign_template_color(
 async def assign_template_locate(
     target: MsgTarget,
     color_name: str,
-    max_count: int,
+    max_count: int = 5,
 ) -> None:
     if not (fixed_name := normalize_color_name(color_name)):
         await finish(f"无效的颜色名称: {color_name}")

@@ -6,7 +6,13 @@ import httpx
 from PIL import Image
 
 from .config import proxy
-from .utils import WplacePixelCoords, fix_coords, get_all_tile_coords, get_size
+from .utils import (
+    WplacePixelCoords,
+    fix_coords,
+    get_all_tile_coords,
+    get_size,
+    parse_rgb_str,
+)
 
 TILE_URL = "https://backend.wplace.live/files/s0/tiles/{x}/{y}.png"
 
@@ -32,13 +38,8 @@ async def download_preview(
 
     def create_image() -> bytes:
         bg_color = (0, 0, 0, 0)
-        if (
-            background is not None
-            and (bg := background.removeprefix("#").lower())
-            and len(bg) == 6
-            and all(c in "0123456789abcdef" for c in bg)
-        ):
-            bg_color = (*(int(bg[i : i + 2], 16) for i in (0, 2, 4)), 255)
+        if background is not None and (bg_rgb := parse_rgb_str(background)):
+            bg_color = (*bg_rgb, 255)
 
         img = Image.new("RGBA", get_size(coord1, coord2), bg_color)
         for (tx, ty), tile_bytes in tile_imgs.items():

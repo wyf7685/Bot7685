@@ -172,3 +172,13 @@ def normalize_color_name(name: str) -> str | None:
             return color_name
 
     return None
+
+
+def parse_rgb_str(s: str) -> tuple[int, int, int] | None:
+    if not (s := s.removeprefix("#").lower()) or len(s) != 6:
+        return None
+
+    if any(c not in "0123456789abcdef" for c in s):
+        return None
+
+    return tuple(int(s[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore

@@ -12,7 +12,7 @@ from PIL import Image
 from .config import TEMPLATE_DIR, TemplateConfig
 from .consts import PAID_COLORS
 from .preview import download_preview
-from .utils import find_color_name
+from .utils import find_color_name, parse_rgb_str
 
 type RGBA = tuple[int, int, int, int]
 
@@ -134,14 +134,23 @@ async def render_progress(progress_data: list[ColorEntry]) -> bytes:
 
 
 @run_sync
-def render_template_with_color(cfg: TemplateConfig, color: str) -> bytes:
+def render_template_with_color(
+    cfg: TemplateConfig,
+    color: str,
+    background: str | None = None,
+) -> bytes:
+    fill_rgba: tuple[int, int, int, int] = (
+        (*bg_rgb, 255)
+        if background and (bg_rgb := parse_rgb_str(background))
+        else (255, 255, 255, 0)
+    )
     template_img = Image.open(cfg.file).convert("RGBA")
     width, height = template_img.size
     pixels = cast("PixelAccess[RGBA]", template_img.load())
     for x, y in itertools.product(range(width), range(height)):
         r, g, b, a = pixels[x, y]
         if a != 0 and find_color_name((r, g, b, a)) != color:
-            pixels[x, y] = (255, 255, 255, 0)
+            pixels[x, y] = fill_rgba
 
     with io.BytesIO() as output:
         template_img.save(output, format="PNG")
