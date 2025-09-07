@@ -93,10 +93,15 @@ async def render_progress(progress_data: list[ColorEntry]) -> bytes:
     drawn_pixels = total_pixels - remaining_pixels
     overall_progress = (drawn_pixels / total_pixels * 100) if total_pixels else 0
 
-    # 基础高度 + 每行高度
-    view_height = 150 + len(progress_data) * 66
     template_data = {
-        "progress_data": progress_data,
+        "incomplete_colors": sorted(
+            filter(lambda e: e.count > 0, progress_data),
+            key=lambda e: (-e.progress, -e.total, e.name),
+        ),
+        "completed_colors": sorted(
+            filter(lambda e: e.count == 0 and e.total > 0, progress_data),
+            key=lambda e: e.total,
+        ),
         "title": "模板绘制进度",
         "subtitle": (
             f"总体进度: {drawn_pixels} / {total_pixels} "
@@ -104,7 +109,6 @@ async def render_progress(progress_data: list[ColorEntry]) -> bytes:
             f"剩余 {remaining_pixels} 像素"
         ),
         "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "container_height": view_height - 50,  # 容器高度略小于视图
     }
 
     html = await template_to_html(
@@ -113,7 +117,8 @@ async def render_progress(progress_data: list[ColorEntry]) -> bytes:
         **template_data,
     )
 
-    async with get_new_page(viewport={"width": 600, "height": view_height}) as page:
+    viewport = {"width": 600, "height": 144 + len(progress_data) * 58}
+    async with get_new_page(viewport=viewport) as page:
         await page.set_content(html, wait_until="networkidle")
         if container := await page.query_selector("#progress-container"):
             return await container.screenshot(type="png")

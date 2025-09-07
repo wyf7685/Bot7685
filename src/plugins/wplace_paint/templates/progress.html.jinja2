@@ -29,7 +29,7 @@
       color: #24292e;
     }
 
-    .subtitle{
+    .subtitle {
       font-size: 14px;
       color: #586069;
       margin-bottom: 20px;
@@ -39,7 +39,7 @@
       margin-top: 12px;
     }
 
-    .chart-row{
+    .chart-row {
       display: flex;
       align-items: center;
       margin-bottom: 8px;
@@ -89,7 +89,7 @@
 
     .bar {
       height: 100%;
-      border-radius: 10px;;
+      border-radius: 10px;
       transition: width 0.5s ease;
       display: flex;
       align-items: center;
@@ -142,16 +142,13 @@
   </style>
 </head>
 
-{% set progressed_data = progress_data | sort(attribute='progress', reverse=True) | rejectattr('count', 'equalto', 0) | list%}
-{% set completed_color = progress_data | selectattr('count', 'equalto', 0) | selectattr('total', 'gt', 0) | list %}
-
 <body>
-  <div class="container" id="progress-container" style="height: {{ container_height }}px;">
+  <div class="container" id="progress-container">
     <div class="title">{{ title }}</div>
     <div class="subtitle">{{ subtitle }}</div>
 
     <div class="chart">
-      {% for item in progressed_data %}
+      {% for item in incomplete_colors %}
       <div class="chart-row">
         <div class="color-info">
           <div class="color-swatch" style="background-color: {{ item.rgb_str }};"></div>
@@ -164,37 +161,35 @@
         <div class="bar-container">
           <div class="bar" style="width: {{ item.progress }}%;">
             {% if item.progress > 25 %}
-              {% set display_value = item.progress if item.progress <= 99.9 else 99.9 %}
-              {{ "%.1f"|format(display_value) }}%
-            {% endif %}
+            {% set display_value = item.progress if item.progress <= 99.9 else 99.9 %} {{ "%.1f" |format(display_value)
+              }}% {% endif %} </div>
           </div>
+          <div class="progress-text">{{ item.drawn }} / {{ item.total }}</div>
         </div>
-        <div class="progress-text">{{ item.drawn }} / {{ item.total }}</div>
+        {% endfor %}
+        {% for item in completed_colors %}
+        <div class="completed-color-row">
+          <div class="color-info">
+            <div class="color-swatch" style="background-color: {{ item.rgb_str }};"></div>
+            <div class="color-name-container">
+              <span class="color-name" title="{{ item.name }}">
+                {% if item.is_paid %}★ {% endif %}{{ item.name }}
+              </span>
+            </div>
+          </div>
+          <div class="bar-container">
+            <div class="bar" style="width: {{ item.progress }}%;">
+              100%
+            </div>
+          </div>
+          <div class="progress-text">{{ item.drawn }} / {{ item.total }}</div>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
-      {% for item in completed_color %}
-      <div class="completed-color-row">
-        <div class="color-info">
-          <div class="color-swatch" style="background-color: {{ item.rgb_str }};"></div>
-          <div class="color-name-container">
-            <span class="color-name" title="{{ item.name }}">
-              {% if item.is_paid %}★ {% endif %}{{ item.name }}
-            </span>
-          </div>
-        </div>
-        <div class="bar-container">
-          <div class="bar" style="width: {{ item.progress }}%;">
-            100%
-          </div>
-        </div>
-        <div class="progress-text">{{ item.drawn }} / {{ item.total }}</div>
+      <div class="footer">
+        更新于 {{ update_time }}
       </div>
-      {% endfor %}
     </div>
-    <div class="footer">
-      更新于 {{ update_time }}
-    </div>
-  </div>
 </body>
 
 </html>
