@@ -53,7 +53,7 @@ alc = Alconna(
         Args["identifier?#账号标识,ID或用户名", str],
         Option(
             "--notify-mins|-n",
-            Args["notify_mins", int],
+            Args["notify_mins", int, Field(completion=lambda: "请输入提前通知分钟数")],
             help_text=f"提前多少分钟通知 (默认10,最小{FETCH_INTERVAL_MINS})",
         ),
         Option(
@@ -62,7 +62,11 @@ alc = Alconna(
         ),
         Option(
             "--max-overflow-notify|-m",
-            Args["max_overflow_notify", int],
+            Args[
+                "max_overflow_notify",
+                int,
+                Field(completion=lambda: "请输入最大溢出通知次数 (默认3次, 0为禁用)"),
+            ],
             help_text="设置最大溢出通知次数 (默认3次, 0为禁用)",
         ),
         Option(
