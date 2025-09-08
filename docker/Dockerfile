@@ -10,7 +10,7 @@ RUN chmod +x /data/converter.sh && \
 
 FROM python:3.13-slim-bookworm AS uv
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /
+COPY --from=ghcr.io/astral-sh/uv:0.8.15 /uv /uvx /
 
 FROM python:3.13-slim-bookworm AS venv
 
