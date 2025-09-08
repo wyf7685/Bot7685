@@ -1,0 +1,102 @@
+from nonebot import logger
+from nonebot.exception import MatcherException
+from nonebot_plugin_alconna import Query, UniMessage
+
+from ..config import ranks, users
+from ..fetch import RankType, RequestFailed
+from ..rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
+from ..utils import TargetHash, parse_coords
+from .matcher import finish, matcher
+
+
+@matcher.assign("~rank.bind.revoke")
+async def assign_rank_bind_revoke(key: TargetHash) -> None:
+    if key not in ranks.load():
+        await finish("当前群组没有绑定任何 region ID")
+
+    cfg = ranks.load()
+    del cfg[key]
+    ranks.save(cfg)
+    await finish("已取消当前群组的 region ID 绑定")
+
+
+@matcher.assign("~rank.bind")
+async def assign_rank_bind(key: TargetHash, coord1: str, coord2: str) -> None:
+    try:
+        c1 = parse_coords(coord1)
+        c2 = parse_coords(coord2)
+    except ValueError as e:
+        await finish(f"坐标解析失败: {e}")
+
+    try:
+        regions = await find_regions_in_rect(c1, c2)
+    except RequestFailed as e:
+        await finish(f"查询区域内的 region ID 失败: {e.msg}")
+    except Exception as e:
+        await finish(f"查询区域内的 region ID 时发生意外错误: {e!r}")
+
+    if not regions:
+        await finish("未找到任何 region ID")
+
+    cfg = ranks.load()
+    cfg[key] = set(regions.keys())
+    ranks.save(cfg)
+    await finish(
+        f"成功绑定 {len(regions)} 个 region ID 到当前会话\n"
+        f"{'\n'.join(f'{r.id}: {r.name} #{r.number}' for r in regions.values())}"
+    )
+
+
+async def _handle_rank_query(
+    key: TargetHash,
+    rank_type: RankType,
+    only_known_users: bool = True,
+) -> None:
+    cfg = ranks.load()
+    if key not in cfg or not cfg[key]:
+        await finish("当前会话没有绑定任何 region ID，请先使用 wplace rank bind 绑定")
+
+    try:
+        rank_data = await get_regions_rank(cfg[key], rank_type)
+    except RequestFailed as e:
+        await finish(f"获取排行榜失败: {e.msg}")
+    except Exception as e:
+        await finish(f"获取排行榜时发生意外错误: {e!r}")
+
+    if only_known_users:
+        known_users = {*filter(None, (cfg.wp_user_id for cfg in users.load()))}
+        rank_data = [entry for entry in rank_data if entry.user_id in known_users]
+
+    if not rank_data:
+        await finish("未获取到任何排行榜数据，可能是 region ID 无效或暂无数据")
+
+    try:
+        img = await render_rank(rank_type, rank_data)
+        await finish(UniMessage.image(raw=img))
+    except MatcherException:
+        raise
+    except Exception:
+        logger.opt(exception=True).warning("渲染排行榜时发生错误")
+
+    # fallback
+    msg = "\n".join(
+        f"{idx}. {r.name} #{r.user_id} - {r.pixels} 像素"
+        for idx, r in enumerate(rank_data, 1)
+    )
+    await finish(f"{RANK_TITLE[rank_type]}:\n{msg}")
+
+
+def _rank_query(rank_type: RankType) -> None:
+    path = rank_type.split("-")[0]
+
+    async def assign_rank(
+        key: TargetHash,
+        all_users: Query[bool] = Query(f"~rank.{path}.all-users", default=False),  # noqa: B008
+    ) -> None:
+        await _handle_rank_query(key, rank_type, not all_users.result)
+
+    assign_rank.__name__ += f"_{path}"
+    matcher.assign(f"~rank.{path}")(assign_rank)
+
+
+[_rank_query(rt) for rt in ("today", "week", "month", "all-time")]

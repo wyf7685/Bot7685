@@ -30,6 +30,10 @@ class WplaceAbsCoords:
             self.y % 1000,
         )
 
+    @property
+    def tuple(self) -> tuple[int, int]:
+        return self.x, self.y
+
 
 @dataclass
 class WplacePixelCoords:
@@ -46,9 +50,7 @@ class WplacePixelCoords:
         return f"({self.tlx}, {self.tly}) + ({self.pxx}, {self.pxy})"
 
     def offset(self, dx: int, dy: int) -> "WplacePixelCoords":
-        x = self.tlx * 1000 + self.pxx + dx
-        y = self.tly * 1000 + self.pxy + dy
-        return WplacePixelCoords(x // 1000, y // 1000, x % 1000, y % 1000)
+        return self.to_abs().offset(dx, dy).to_pixel()
 
     def to_abs(self) -> WplaceAbsCoords:
         return WplaceAbsCoords(self.tlx * 1000 + self.pxx, self.tly * 1000 + self.pxy)
@@ -62,12 +64,10 @@ def fix_coords(
     coord1: WplacePixelCoords,
     coord2: WplacePixelCoords,
 ) -> tuple[WplacePixelCoords, WplacePixelCoords]:
-    x1, x2 = sorted((coord1.tlx * 1000 + coord1.pxx, coord2.tlx * 1000 + coord2.pxx))
-    y1, y2 = sorted((coord1.tly * 1000 + coord1.pxy, coord2.tly * 1000 + coord2.pxy))
-    return (
-        WplacePixelCoords(x1 // 1000, y1 // 1000, x1 % 1000, y1 % 1000),
-        WplacePixelCoords(x2 // 1000, y2 // 1000, x2 % 1000, y2 % 1000),
-    )
+    x1, y1 = coord1.to_abs().tuple
+    x2, y2 = coord2.to_abs().tuple
+    (x1, x2), (y1, y2) = sorted((x1, x2)), sorted((y1, y2))
+    return WplaceAbsCoords(x1, y1).to_pixel(), WplaceAbsCoords(x2, y2).to_pixel()
 
 
 def get_all_tile_coords(
@@ -87,9 +87,9 @@ def get_size(
     coord2: WplacePixelCoords,
 ) -> tuple[int, int]:
     coord1, coord2 = fix_coords(coord1, coord2)
-    width = (coord2.tlx - coord1.tlx) * 1000 + (coord2.pxx - coord1.pxx) + 1
-    height = (coord2.tly - coord1.tly) * 1000 + (coord2.pxy - coord1.pxy) + 1
-    return width, height
+    x1, y1 = coord1.to_abs().tuple
+    x2, y2 = coord2.to_abs().tuple
+    return x2 - x1 + 1, y2 - y1 + 1
 
 
 BLUE_MARBLE_COORDS_PATTERN = re.compile(
