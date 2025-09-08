@@ -13,7 +13,7 @@ from PIL import Image
 from .config import TEMPLATE_DIR, TemplateConfig
 from .consts import PAID_COLORS
 from .preview import download_preview
-from .utils import find_color_name, parse_rgb_str
+from .utils import WplacePixelCoords, find_color_name, parse_rgb_str
 
 type RGBA = tuple[int, int, int, int]
 
@@ -52,15 +52,26 @@ class ColorEntry:
         return (self.drawn / self.total * 100) if self.total > 0 else 0
 
 
+def load_template(
+    cfg: TemplateConfig,
+) -> tuple[Image.Image, tuple[WplacePixelCoords, WplacePixelCoords]]:
+    im = Image.open(cfg.file)
+    w, h = im.size
+    return im, (cfg.coords, cfg.coords.offset(w - 1, h - 1))
+
+
+async def download_template_preview(cfg: TemplateConfig) -> bytes:
+    _, (coord1, coord2) = load_template(cfg)
+    return await download_preview(coord1, coord2)
+
+
 async def calc_template_diff(
     cfg: TemplateConfig,
     *,
     include_pixels: bool = False,
 ) -> list[ColorEntry]:
-    template_img = Image.open(cfg.file)
+    template_img, (coord1, coord2) = load_template(cfg)
     width, height = template_img.size
-    coord1 = cfg.coords
-    coord2 = coord1.offset(width - 1, height - 1)
     actual_img_bytes = await download_preview(coord1, coord2)
     actual_img = Image.open(io.BytesIO(actual_img_bytes))
 

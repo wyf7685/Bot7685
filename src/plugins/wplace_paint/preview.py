@@ -12,6 +12,7 @@ from .utils import (
     get_all_tile_coords,
     get_size,
     parse_rgb_str,
+    with_retry,
 )
 
 TILE_URL = "https://backend.wplace.live/files/s0/tiles/{x}/{y}.png"
@@ -25,6 +26,7 @@ async def download_preview(
     coord1, coord2 = fix_coords(coord1, coord2)
     tile_imgs: dict[tuple[int, int], bytes] = {}
 
+    @with_retry(httpx.ConnectError, httpx.TimeoutException, delay=0.5)
     async def fetch_tile(x: int, y: int) -> None:
         resp = await client.get(TILE_URL.format(x=x, y=y))
         tile_imgs[(x, y)] = resp.raise_for_status().read()

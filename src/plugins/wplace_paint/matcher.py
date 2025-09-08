@@ -30,11 +30,12 @@ from .rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_ran
 from .scheduler import FETCH_INTERVAL_MINS
 from .template import (
     calc_template_diff,
+    download_template_preview,
     get_color_location,
     render_progress,
     render_template_with_color,
 )
-from .utils import normalize_color_name, parse_coords
+from .utils import TargetHash, normalize_color_name, parse_coords
 
 alc = Alconna(
     "wplace",
@@ -160,6 +161,7 @@ alc = Alconna(
                 Field(completion=lambda: "模板起始坐标(选点并复制BlueMarble的坐标)"),
             ],
         ),
+        Subcommand("preview", help_text="预览当前会话绑定的模板"),
         Subcommand("progress", help_text="查询模板的绘制进度"),
         Subcommand(
             "color",
@@ -173,6 +175,7 @@ alc = Alconna(
             Option("-n", Args["max_count?#最大数量", int]),
             help_text="查询模板中指定颜色的像素位置",
         ),
+        alias={"tp"},
         help_text="模板相关功能",
     ),
     meta=CommandMeta(
@@ -190,6 +193,7 @@ matcher = on_alconna(
 )
 matcher.shortcut("wpq", {"command": "wplace query {*}"})
 matcher.shortcut("wpg", {"command": "wplace query $group"})
+matcher.shortcut("wpt", {"command": "wplace template progress"})
 
 
 async def finish(msg: str | UniMessage) -> NoReturn:
@@ -413,18 +417,18 @@ async def assign_preview(
 
 
 @matcher.assign("~rank.bind.revoke")
-async def assign_rank_bind_revoke(target: MsgTarget) -> None:
-    if target.id not in ranks.load():
+async def assign_rank_bind_revoke(key: TargetHash) -> None:
+    if key not in ranks.load():
         await finish("当前群组没有绑定任何 region ID")
 
     cfg = ranks.load()
-    del cfg[target.id]
+    del cfg[key]
     ranks.save(cfg)
     await finish("已取消当前群组的 region ID 绑定")
 
 
 @matcher.assign("~rank.bind")
-async def assign_rank_bind(target: MsgTarget, coord1: str, coord2: str) -> None:
+async def assign_rank_bind(key: TargetHash, coord1: str, coord2: str) -> None:
     try:
         c1 = parse_coords(coord1)
         c2 = parse_coords(coord2)
@@ -442,7 +446,7 @@ async def assign_rank_bind(target: MsgTarget, coord1: str, coord2: str) -> None:
         await finish("未找到任何 region ID")
 
     cfg = ranks.load()
-    cfg[target.id] = set(regions.keys())
+    cfg[key] = set(regions.keys())
     ranks.save(cfg)
     await finish(
         f"成功绑定 {len(regions)} 个 region ID 到当前会话\n"
@@ -451,16 +455,16 @@ async def assign_rank_bind(target: MsgTarget, coord1: str, coord2: str) -> None:
 
 
 async def _handle_rank_query(
-    target: MsgTarget,
+    key: TargetHash,
     rank_type: RankType,
     only_known_users: bool = True,
 ) -> None:
     cfg = ranks.load()
-    if target.id not in cfg or not cfg[target.id]:
+    if key not in cfg or not cfg[key]:
         await finish("当前会话没有绑定任何 region ID，请先使用 wplace rank bind 绑定")
 
     try:
-        rank_data = await get_regions_rank(cfg[target.id], rank_type)
+        rank_data = await get_regions_rank(cfg[key], rank_type)
     except RequestFailed as e:
         await finish(f"获取排行榜失败: {e.msg}")
     except Exception as e:
@@ -493,10 +497,10 @@ def _rank_query(rank_type: RankType) -> None:
     path = rank_type.split("-")[0]
 
     async def assign_rank(
-        target: MsgTarget,
+        key: TargetHash,
         all_users: Query[bool] = Query(f"~rank.{path}.all-users", default=False),  # noqa: B008
     ) -> None:
-        await _handle_rank_query(target, rank_type, not all_users.result)
+        await _handle_rank_query(key, rank_type, not all_users.result)
 
     assign_rank.__name__ += f"_{path}"
     matcher.assign(f"~rank.{path}")(assign_rank)
@@ -506,18 +510,18 @@ def _rank_query(rank_type: RankType) -> None:
 
 
 @matcher.assign("~template.bind.revoke")
-async def assign_template_bind_revoke(target: MsgTarget) -> None:
-    cfg = templates.load()
-    if target.id not in cfg:
+async def assign_template_bind_revoke(key: TargetHash) -> None:
+    cfgs = templates.load()
+    if key not in cfgs:
         await finish("当前会话没有绑定模板")
 
     try:
-        cfg[target.id].file.unlink(missing_ok=True)
+        cfgs[key].file.unlink(missing_ok=True)
     except Exception:
         logger.opt(exception=True).warning("删除模板图片时发生错误")
 
-    del cfg[target.id]
-    templates.save(cfg)
+    del cfgs[key]
+    templates.save(cfgs)
     await finish("已取消当前会话的模板绑定")
 
 
@@ -525,7 +529,7 @@ async def assign_template_bind_revoke(target: MsgTarget) -> None:
 async def assign_template_bind(
     bot: Bot,
     event: Event,
-    target: MsgTarget,
+    key: TargetHash,
     coord: str,
 ) -> None:
     try:
@@ -544,20 +548,38 @@ async def assign_template_bind(
     fp = IMAGE_DIR / f"{uuid.uuid4()}.png"
     fp.write_bytes(img_bytes)
 
-    cfg = templates.load()
-    cfg[target.id] = TemplateConfig(coords=coords, image=fp.name)
-    templates.save(cfg)
+    cfgs = templates.load()
+    cfgs[key] = TemplateConfig(coords=coords, image=fp.name)
+    templates.save(cfgs)
     await finish(f"模板绑定成功\n{coords.human_repr()}")
 
 
-@matcher.assign("~template.progress")
-async def assign_template_progress(target: MsgTarget) -> None:
-    cfg = templates.load()
-    if target.id not in cfg:
+async def _target_template_cfg(key: TargetHash) -> TemplateConfig:
+    cfgs = templates.load()
+    if key not in cfgs:
         await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
+    return cfgs[key]
 
+
+TargetTemplate = Annotated[TemplateConfig, Depends(_target_template_cfg)]
+
+
+@matcher.assign("~template.preview")
+async def assign_template_preview(cfg: TargetTemplate) -> None:
     try:
-        progress_data = await calc_template_diff(cfg[target.id])
+        img_bytes = await download_template_preview(cfg)
+        await finish(UniMessage.image(raw=img_bytes))
+    except RequestFailed as e:
+        await finish(f"获取模板预览失败: {e.msg}")
+    except Exception as e:
+        logger.opt(exception=True).warning("获取模板预览时发生错误")
+        await finish(f"获取模板预览时发生意外错误: {e!r}")
+
+
+@matcher.assign("~template.progress")
+async def assign_template_progress(cfg: TargetTemplate) -> None:
+    try:
+        progress_data = await calc_template_diff(cfg)
     except RequestFailed as e:
         await finish(f"获取模板进度失败: {e.msg}")
     except Exception as e:
@@ -596,7 +618,7 @@ async def assign_template_progress(target: MsgTarget) -> None:
 
 @matcher.assign("~template.color")
 async def assign_template_color(
-    target: MsgTarget,
+    cfg: TargetTemplate,
     color_name: list[str],
     background: str | None = None,
 ) -> None:
@@ -607,14 +629,8 @@ async def assign_template_color(
         else:
             await finish(f"无效的颜色名称: {name}")
 
-    cfg = templates.load()
-    if target.id not in cfg:
-        await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
-
     try:
-        img_bytes = await render_template_with_color(
-            cfg[target.id], fixed_colors, background
-        )
+        img_bytes = await render_template_with_color(cfg, fixed_colors, background)
         await finish(UniMessage.image(raw=img_bytes))
     except RequestFailed as e:
         await finish(f"获取模板图失败: {e.msg}")
@@ -627,19 +643,15 @@ async def assign_template_color(
 
 @matcher.assign("~template.locate")
 async def assign_template_locate(
-    target: MsgTarget,
+    cfg: TargetTemplate,
     color_name: str,
     max_count: int = 5,
 ) -> None:
     if not (fixed_name := normalize_color_name(color_name)):
         await finish(f"无效的颜色名称: {color_name}")
 
-    cfg = templates.load()
-    if target.id not in cfg:
-        await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
-
     try:
-        locations = await get_color_location(cfg[target.id], fixed_name)
+        locations = await get_color_location(cfg, fixed_name)
     except RequestFailed as e:
         await finish(f"获取模板图失败: {e.msg}")
     except Exception as e:
@@ -649,7 +661,7 @@ async def assign_template_locate(
     if not locations:
         await finish(f"模板中没有待绘制的 {fixed_name} 像素")
 
-    base = cfg[target.id].coords
+    base = cfg.coords
     urls: list[str] = []
     for x, y in locations[:max_count]:
         coord = base.offset(x, y)

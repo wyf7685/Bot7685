@@ -1,6 +1,15 @@
+import functools
+import hashlib
 import math
 import re
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
+from typing import Annotated
+
+import anyio
+from loguru import logger
+from nonebot.params import Depends
+from nonebot_plugin_alconna import MsgTarget
 
 from .consts import ALL_COLORS, FLAG_MAPPING
 
@@ -45,8 +54,8 @@ class WplacePixelCoords:
         return WplaceAbsCoords(self.tlx * 1000 + self.pxx, self.tly * 1000 + self.pxy)
 
     def to_share_url(self) -> str:
-        latlon = pixel_to_latlon(self)
-        return f"https://wplace.live/?lat={latlon.lat}&lng={latlon.lon}&zoom=20"
+        lat, lon = pixel_to_latlon(self).tuple
+        return f"https://wplace.live/?lat={lat}&lng={lon}&zoom=20"
 
 
 def fix_coords(
@@ -98,6 +107,10 @@ def parse_coords(s: str) -> WplacePixelCoords:
 class LatLon:
     lat: float
     lon: float
+
+    @property
+    def tuple(self) -> tuple[float, float]:
+        return self.lat, self.lon
 
 
 # 从多点校准中提取的常量参数
@@ -182,3 +195,54 @@ def parse_rgb_str(s: str) -> tuple[int, int, int] | None:
         return None
 
     return tuple(int(s[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore
+
+
+type AsyncCallable[**P, R] = Callable[P, Coroutine[None, None, R]]
+
+
+def with_retry[**P, R](
+    *exc: type[BaseException],
+    retries: int = 3,
+    delay: float = 0,
+) -> Callable[[AsyncCallable[P, R]], AsyncCallable[P, R]]:
+    assert retries >= 1
+    if not exc:
+        exc_types = Exception
+    elif len(exc) == 1:
+        exc_types = exc[0]
+    else:
+        exc_types = tuple(exc)
+
+    def decorator(func: AsyncCallable[P, R]) -> AsyncCallable[P, R]:
+        @functools.wraps(func)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            last_exc: BaseException | None = None
+            for attempt in range(retries):
+                try:
+                    return await func(*args, **kwargs)
+                except exc_types as e:
+                    logger.debug(
+                        f"函数 {func.__name__} "
+                        f"第 {attempt + 1}/{retries} 次调用失败: {e!r}"
+                    )
+                    last_exc = e
+                    if delay > 0:
+                        await anyio.sleep(delay)
+
+            assert isinstance(last_exc, BaseException)
+            raise last_exc
+
+        return wrapper
+
+    return decorator
+
+
+def target_hash(target: MsgTarget) -> str:
+    args = (target.id, target.channel, target.private, target.self_id)
+    for k, v in target.extra.items():
+        args += (k, v)
+    key = "".join(map(str, args)).encode("utf-8")
+    return hashlib.sha256(key).hexdigest()
+
+
+TargetHash = Annotated[str, Depends(target_hash)]
