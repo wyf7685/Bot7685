@@ -1,3 +1,4 @@
+import random
 import uuid
 from typing import Annotated, Literal, NoReturn
 
@@ -663,6 +664,7 @@ async def assign_template_locate(
 
     base = cfg.coords
     urls: list[str] = []
+    random.shuffle(locations)
     for x, y in locations[:max_count]:
         coord = base.offset(x, y)
         urls.append(f"[{coord.human_repr()}]\n{coord.to_share_url()}\n")
