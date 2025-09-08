@@ -460,4 +460,5 @@ async def on_bot_connect(bot: Bot) -> None:
 @get_driver().on_bot_disconnect
 async def on_bot_disconnect(bot: Bot) -> None:
     for job in scheduler_job.pop(bot, []):
-        job.remove()
+        with contextlib.suppress(Exception):
+            job.remove()
