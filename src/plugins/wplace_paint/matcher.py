@@ -3,10 +3,12 @@ import uuid
 from typing import Annotated, Literal, NoReturn
 
 import anyio
+import httpx
 from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.exception import MatcherException
 from nonebot.params import Depends
+from nonebot.utils import flatten_exception_group
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -162,7 +164,11 @@ alc = Alconna(
                 Field(completion=lambda: "模板起始坐标(选点并复制BlueMarble的坐标)"),
             ],
         ),
-        Subcommand("preview", help_text="预览当前会话绑定的模板"),
+        Subcommand(
+            "preview",
+            Option("--background|-b", Args["background#背景色RGB", str]),
+            help_text="预览当前会话绑定的模板",
+        ),
         Subcommand("progress", help_text="查询模板的绘制进度"),
         Subcommand(
             "color",
@@ -566,15 +572,22 @@ TargetTemplate = Annotated[TemplateConfig, Depends(_target_template_cfg)]
 
 
 @matcher.assign("~template.preview")
-async def assign_template_preview(cfg: TargetTemplate) -> None:
+async def assign_template_preview(
+    cfg: TargetTemplate,
+    background: str | None = None,
+) -> None:
     try:
-        img_bytes = await download_template_preview(cfg)
-        await finish(UniMessage.image(raw=img_bytes))
-    except RequestFailed as e:
-        await finish(f"获取模板预览失败: {e.msg}")
-    except Exception as e:
+        img_bytes = await download_template_preview(cfg, background)
+    except* httpx.HTTPError as exc_group:
+        await finish(
+            "获取模板预览失败:\n"
+            + "\n".join(f"- {e!r}" for e in flatten_exception_group(exc_group))
+        )
+    except* Exception as exc_group:
         logger.opt(exception=True).warning("获取模板预览时发生错误")
-        await finish(f"获取模板预览时发生意外错误: {e!r}")
+        await finish(f"获取模板预览时发生意外错误: {exc_group!r}")
+
+    await finish(UniMessage.image(raw=img_bytes))
 
 
 @matcher.assign("~template.progress")

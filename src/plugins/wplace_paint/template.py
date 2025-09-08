@@ -60,9 +60,12 @@ def load_template(
     return im, (cfg.coords, cfg.coords.offset(w - 1, h - 1))
 
 
-async def download_template_preview(cfg: TemplateConfig) -> bytes:
+async def download_template_preview(
+    cfg: TemplateConfig,
+    background: str | None = None,
+) -> bytes:
     _, (coord1, coord2) = load_template(cfg)
-    return await download_preview(coord1, coord2)
+    return await download_preview(coord1, coord2, background)
 
 
 async def calc_template_diff(
