@@ -153,6 +153,11 @@ alc = Alconna(
         alias={"tp"},
         help_text="模板相关功能",
     ),
+    Subcommand(
+        "find-color",
+        Args["color_name", str, Field(completion=lambda: "颜色名称")],
+        help_text="查询当前群组中拥有指定颜色的用户",
+    ),
     meta=CommandMeta(
         description="WPlace 查询",
         usage="wplace <add|query|config|remove> [参数...]",

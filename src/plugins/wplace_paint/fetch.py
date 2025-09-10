@@ -14,6 +14,7 @@ from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from pydantic import BaseModel, TypeAdapter
 
 from .config import UserConfig
+from .consts import FREE_COLORS, PAID_COLORS
 from .utils import WplacePixelCoords, get_flag_emoji
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
@@ -160,6 +161,12 @@ class FetchMeResponse(BaseModel):
     def own_flags(self) -> set[int]:
         b = base64.b64decode(self.flagsBitmap.encode("ascii"))
         return {i for i in range(len(b) * 8) if b[-(i // 8) - 1] & (1 << (i % 8))}
+
+    @functools.cached_property
+    def own_colors(self) -> set[str]:
+        bitmap = self.extraColorsBitmap
+        paid = {color for idx, color in enumerate(PAID_COLORS) if bitmap & (1 << idx)}
+        return {"Transparent"} | set(FREE_COLORS) | paid
 
 
 type FetchFn = Callable[[UserConfig], Awaitable[FetchMeResponse]]

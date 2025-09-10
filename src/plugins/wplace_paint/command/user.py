@@ -1,3 +1,4 @@
+import contextlib
 from typing import Annotated, Literal
 
 import anyio
@@ -8,6 +9,7 @@ from nonebot_plugin_alconna import At, MsgTarget
 from ..config import UserConfig, users
 from ..fetch import RequestFailed, fetch_me
 from ..scheduler import FETCH_INTERVAL_MINS
+from ..utils import normalize_color_name
 from .matcher import finish, matcher, prompt
 
 
@@ -195,3 +197,30 @@ async def assign_bind(
     cfg.bind_groups.add(target.id)
     cfg.save()
     await finish(f"{cfg.wp_user_name} #{cfg.wp_user_id} 已绑定到当前群组")
+
+
+@matcher.assign("~find-color")
+async def assign_find_color(target: MsgTarget, color_name: str) -> None:
+    if target.private:
+        await finish("请在群聊中使用查询颜色功能")
+
+    if not (fixed_name := normalize_color_name(color_name)):
+        await finish(f"无效的颜色名称: {color_name}")
+
+    async def check_user(cfg: UserConfig) -> None:
+        with contextlib.suppress(Exception):
+            resp = await fetch_me(cfg)
+            if fixed_name in resp.own_colors:
+                result.append(f"- {cfg.wp_user_name} #{cfg.wp_user_id}")
+
+    result: list[str] = []
+    async with anyio.create_task_group() as tg:
+        for cfg in users.load():
+            if cfg.target.verify(target) or target.id in cfg.bind_groups:
+                tg.start_soon(check_user, cfg)
+
+    await finish(
+        f"拥有 {fixed_name} 颜色的用户:\n" + "\n".join(result)
+        if result
+        else f"群内没有用户拥有颜色 {fixed_name}"
+    )
