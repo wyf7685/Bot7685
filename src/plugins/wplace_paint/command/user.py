@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 import anyio
 from nonebot.adapters import Bot, Event
 from nonebot.params import Depends
-from nonebot_plugin_alconna import At, MsgTarget
+from nonebot_plugin_alconna import At, CustomNode, MsgTarget, SupportScope, UniMessage
 
 from ..config import UserConfig, users
 from ..fetch import RequestFailed, fetch_me
@@ -70,7 +70,11 @@ QueryConfigs = Annotated[list[UserConfig], Depends(_query_target_cfgs)]
 
 
 @matcher.assign("~query")
-async def assign_query(cfgs: QueryConfigs) -> None:
+async def assign_query(
+    event: Event,
+    target: MsgTarget,
+    cfgs: QueryConfigs,
+) -> None:
     async def _fetch(config: UserConfig) -> None:
         try:
             resp = await fetch_me(config)
@@ -80,12 +84,19 @@ async def assign_query(cfgs: QueryConfigs) -> None:
         except Exception as e:
             output.append(f"查询时发生意外错误: {e!r}")
 
-    output = ["查询结果:"]
+    output: list[str] = []
     async with anyio.create_task_group() as tg:
         for cfg in cfgs:
             tg.start_soon(_fetch, cfg)
 
-    await finish("\n\n".join(output))
+    if target.private or len(output) == 1 or target.scope != SupportScope.qq_client:
+        await finish("查询结果:\n\n" + "\n\n".join(output))
+
+    nodes = [
+        CustomNode(event.get_user_id(), f"查询结果 | {idx}", part, context=target.id)
+        for idx, part in enumerate(output, start=1)
+    ]
+    await UniMessage.reference(*nodes).finish(reply_to=True)
 
 
 async def _select_cfg(
