@@ -401,7 +401,7 @@ requires-dist = [
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
     { name = "nonebot-plugin-orm", extras = ["asyncpg"], specifier = ">=0.8.2" },
     { name = "nonebot-plugin-picstatus", specifier = ">=2.1.4" },
-    { name = "nonebot-plugin-skland", specifier = ">=0.4.6" },
+    { name = "nonebot-plugin-skland", specifier = ">=0.5.3" },
     { name = "nonebot-plugin-talk-stats", directory = "external/nonebot-plugin-talk-stats" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.9.0" },
     { name = "nonebot-plugin-user", specifier = ">=0.5.3" },
@@ -1890,7 +1890,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-skland"
-version = "0.5.2"
+version = "0.5.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arclet-alconna" },
@@ -1906,9 +1906,9 @@ dependencies = [
     { name = "qrcode", extra = ["pil"] },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ae/49/464a34c7df9b49faf5282da13c1bb32dafb8e521b6b9bffda9b2f8498563/nonebot_plugin_skland-0.5.2.tar.gz", hash = "sha256:9e45c1d8fa3a2373d00c906aceffa662559ff937b56c9b5b467fa8459d00a6cd", size = 23032697, upload-time = "2025-09-08T03:45:44.307Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/00/62/2fd355234013c6081f9d3372c05e47c96b57bbdd9ecdc533a8985edfbcb7/nonebot_plugin_skland-0.5.3.tar.gz", hash = "sha256:610f8e0ac631e185279bb0c40bcf02dd07715a2c58f2a8ba77f8c9c8d3bd033b", size = 23034544, upload-time = "2025-09-10T07:52:17.72Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/aa/15eb83ad83dee13156e237008e688bd850b6fc04504702870e757b566566/nonebot_plugin_skland-0.5.2-py3-none-any.whl", hash = "sha256:8966e5cbee80a6277056281af191d15b84165d3ba00c8a37f021cbdf4867c702", size = 23108228, upload-time = "2025-09-08T03:45:41.098Z" },
+    { url = "https://files.pythonhosted.org/packages/ae/8c/fca3e183e33b6407508dc3731b6f883418d0119503a8788cfb5220602c14/nonebot_plugin_skland-0.5.3-py3-none-any.whl", hash = "sha256:d7af0591553329598668951d5b0f94c0588612d8e7f0d2a02adaf7e1c1c5eba4", size = 23109852, upload-time = "2025-09-10T07:52:15.444Z" },
 ]
 
 [[package]]
