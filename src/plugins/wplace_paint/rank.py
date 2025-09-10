@@ -13,7 +13,7 @@ from .fetch import (
     fetch_region_rank,
     get_pixel_info,
 )
-from .utils import WplacePixelCoords, fix_coords, get_flag_emoji
+from .utils import WplaceAbsCoords, WplacePixelCoords, fix_coords, get_flag_emoji
 
 
 async def find_regions_in_rect(
@@ -30,37 +30,28 @@ async def find_regions_in_rect(
     # 使用一个 dict 来自动处理重复的 region ID
     found_region: dict[int, PixelRegion] = {}
     # 使用一个 dict 来缓存已查询过的坐标，避免重复 API 调用
-    checked_coords: dict[tuple[int, int, int, int], int] = {}
-
-    # 将坐标转换为绝对像素坐标，便于计算
-    c1, c2 = fix_coords(coord1, coord2)
-    x1 = c1.tlx * 1000 + c1.pxx
-    y1 = c1.tly * 1000 + c1.pxy
-    x2 = c2.tlx * 1000 + c2.pxx
-    y2 = c2.tly * 1000 + c2.pxy
+    checked_coords: dict[WplaceAbsCoords, int] = {}
 
     async def get_region_id_at(
-        abs_x: int,
-        abs_y: int,
-        found: dict[int, PixelRegion] = found_region,
+        abs_x: int, abs_y: int, found: dict[int, PixelRegion] = found_region
     ) -> int | None:
         """根据绝对像素坐标获取 region ID，并处理缓存和异常。"""
-        coord_key = (abs_x // 1000, abs_y // 1000, abs_x % 1000, abs_y % 1000)
-        if coord_key in checked_coords:
-            region_id = checked_coords[coord_key]
+        coord = WplaceAbsCoords(abs_x, abs_y)
+        if coord in checked_coords:
+            region_id = checked_coords[coord]
             found[region_id] = found_region[region_id]
             return region_id
 
         try:
-            pixel_info = await get_pixel_info(WplacePixelCoords(*coord_key))
+            pixel_info = await get_pixel_info(coord.to_pixel())
         except RequestFailed:
             # 如果查询失败，则忽略该点
             return None
-        else:
-            region_id = pixel_info.region.id
-            found[region_id] = pixel_info.region
-            checked_coords[coord_key] = region_id
-            return region_id
+
+        region_id = pixel_info.region.id
+        found[region_id] = pixel_info.region
+        checked_coords[coord] = region_id
+        return region_id
 
     async def subdivide(left: int, top: int, right: int, bottom: int) -> None:
         """递归细分函数。"""
@@ -95,7 +86,9 @@ async def find_regions_in_rect(
             # 递归处理四个象限
             await sub((left + right) // 2, (top + bottom) // 2)
 
-    await subdivide(x1, y1, x2, y2)
+    # 将坐标转换为绝对像素坐标，便于计算
+    c1, c2 = fix_coords(coord1, coord2)
+    await subdivide(*c1.to_abs(), *c2.to_abs())
     return found_region
 
 

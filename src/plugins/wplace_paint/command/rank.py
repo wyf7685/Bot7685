@@ -7,7 +7,7 @@ from nonebot_plugin_alconna import Query, UniMessage
 from ..config import ranks, users
 from ..fetch import RankType, RequestFailed
 from ..rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
-from ..utils import parse_coords
+from ..utils import WplacePixelCoords
 from .matcher import TargetHash, finish, matcher
 
 
@@ -25,8 +25,8 @@ async def assign_rank_bind_revoke(key: TargetHash) -> None:
 @matcher.assign("~rank.bind")
 async def assign_rank_bind(key: TargetHash, coord1: str, coord2: str) -> None:
     try:
-        c1 = parse_coords(coord1)
-        c2 = parse_coords(coord2)
+        c1 = WplacePixelCoords.parse(coord1)
+        c2 = WplacePixelCoords.parse(coord2)
     except ValueError as e:
         await finish(f"坐标解析失败: {e}")
 

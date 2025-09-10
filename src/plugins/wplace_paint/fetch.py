@@ -1,4 +1,5 @@
 # ruff: noqa: N815
+import base64
 import functools
 import math
 from collections.abc import Awaitable, Callable
@@ -75,6 +76,10 @@ class FavoriteLocation(BaseModel):
     latitude: float
     longitude: float
 
+    @property
+    def coords(self) -> WplacePixelCoords:
+        return WplacePixelCoords.from_lat_lon(self.latitude, self.longitude)
+
 
 class FetchMeResponse(BaseModel):
     allianceId: int | None = None
@@ -150,6 +155,11 @@ class FetchMeResponse(BaseModel):
             return base_msg
         extra_msg = self.format_target_droplets(target_droplets)
         return f"{base_msg}\n{extra_msg}"
+
+    @functools.cached_property
+    def own_flags(self) -> set[int]:
+        b = base64.b64decode(self.flagsBitmap.encode("ascii"))
+        return {i for i in range(len(b) * 8) if b[-(i // 8) - 1] & (1 << (i % 8))}
 
 
 type FetchFn = Callable[[UserConfig], Awaitable[FetchMeResponse]]

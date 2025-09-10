@@ -20,7 +20,7 @@ from ..template import (
     render_progress,
     render_template_with_color,
 )
-from ..utils import normalize_color_name, parse_coords
+from ..utils import WplacePixelCoords, normalize_color_name
 from .matcher import TargetHash, finish, matcher
 
 
@@ -31,8 +31,8 @@ async def assign_preview(
     background: str | None = None,
 ) -> None:
     try:
-        c1 = parse_coords(coord1)
-        c2 = parse_coords(coord2)
+        c1 = WplacePixelCoords.parse(coord1)
+        c2 = WplacePixelCoords.parse(coord2)
     except ValueError as e:
         await finish(f"坐标解析失败: {e}")
 
@@ -68,7 +68,7 @@ async def assign_template_bind(
     coord: str,
 ) -> None:
     try:
-        coords = parse_coords(coord)
+        coords = WplacePixelCoords.parse(coord)
     except ValueError as e:
         await finish(f"坐标解析失败: {e}")
 

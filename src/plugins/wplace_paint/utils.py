@@ -1,8 +1,9 @@
 import functools
 import math
 import re
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable, Coroutine, Iterable
 from dataclasses import dataclass
+from typing import NamedTuple
 
 import anyio
 from loguru import logger
@@ -10,8 +11,7 @@ from loguru import logger
 from .consts import ALL_COLORS, FLAG_MAPPING
 
 
-@dataclass
-class WplaceAbsCoords:
+class WplaceAbsCoords(NamedTuple):
     x: int
     y: int
 
@@ -19,16 +19,14 @@ class WplaceAbsCoords:
         return WplaceAbsCoords(self.x + dx, self.y + dy)
 
     def to_pixel(self) -> "WplacePixelCoords":
-        return WplacePixelCoords(
-            self.x // 1000,
-            self.y // 1000,
-            self.x % 1000,
-            self.y % 1000,
-        )
+        tlx, pxx = divmod(self.x, 1000)
+        tly, pxy = divmod(self.y, 1000)
+        return WplacePixelCoords(tlx, tly, pxx, pxy)
 
-    @property
-    def tuple(self) -> tuple[int, int]:
-        return self.x, self.y
+
+BLUE_MARBLE_COORDS_PATTERN = re.compile(
+    r".+?Tl X: (\d+), Tl Y: (\d+), Px X: (\d+), Px Y: (\d+).+?"
+)
 
 
 @dataclass
@@ -45,23 +43,38 @@ class WplacePixelCoords:
     def human_repr(self) -> str:
         return f"({self.tlx}, {self.tly}) + ({self.pxx}, {self.pxy})"
 
-    def offset(self, dx: int, dy: int) -> "WplacePixelCoords":
-        return self.to_abs().offset(dx, dy).to_pixel()
-
     def to_abs(self) -> WplaceAbsCoords:
         return WplaceAbsCoords(self.tlx * 1000 + self.pxx, self.tly * 1000 + self.pxy)
 
+    def offset(self, dx: int, dy: int) -> "WplacePixelCoords":
+        return self.to_abs().offset(dx, dy).to_pixel()
+
     def to_share_url(self) -> str:
-        lat, lon = pixel_to_latlon(self).tuple
+        lat, lon = pixel_to_latlon(self)
         return f"https://wplace.live/?lat={lat}&lng={lon}&zoom=20"
+
+    @classmethod
+    def from_lat_lon(cls, lat: float, lon: float) -> "WplacePixelCoords":
+        return latlon_to_pixel(LatLon(lat, lon))
+
+    @classmethod
+    def parse(cls, s: str) -> "WplacePixelCoords":
+        if not (m := BLUE_MARBLE_COORDS_PATTERN.match(s)):
+            raise ValueError(f"Invalid coords: {s}")
+        return cls(int(m[1]), int(m[2]), int(m[3]), int(m[4]))
+
+
+class LatLon(NamedTuple):
+    lat: float
+    lon: float
 
 
 def fix_coords(
     coord1: WplacePixelCoords,
     coord2: WplacePixelCoords,
 ) -> tuple[WplacePixelCoords, WplacePixelCoords]:
-    x1, y1 = coord1.to_abs().tuple
-    x2, y2 = coord2.to_abs().tuple
+    x1, y1 = coord1.to_abs()
+    x2, y2 = coord2.to_abs()
     (x1, x2), (y1, y2) = sorted((x1, x2)), sorted((y1, y2))
     return WplaceAbsCoords(x1, y1).to_pixel(), WplaceAbsCoords(x2, y2).to_pixel()
 
@@ -69,13 +82,13 @@ def fix_coords(
 def get_all_tile_coords(
     coord1: WplacePixelCoords,
     coord2: WplacePixelCoords,
-) -> list[tuple[int, int]]:
+) -> Iterable[tuple[int, int]]:
     coord1, coord2 = fix_coords(coord1, coord2)
-    return [
+    yield from (
         (x, y)
         for x in range(coord1.tlx, coord2.tlx + 1)
         for y in range(coord1.tly, coord2.tly + 1)
-    ]
+    )
 
 
 def get_size(
@@ -83,30 +96,9 @@ def get_size(
     coord2: WplacePixelCoords,
 ) -> tuple[int, int]:
     coord1, coord2 = fix_coords(coord1, coord2)
-    x1, y1 = coord1.to_abs().tuple
-    x2, y2 = coord2.to_abs().tuple
+    x1, y1 = coord1.to_abs()
+    x2, y2 = coord2.to_abs()
     return x2 - x1 + 1, y2 - y1 + 1
-
-
-BLUE_MARBLE_COORDS_PATTERN = re.compile(
-    r".+?Tl X: (\d+), Tl Y: (\d+), Px X: (\d+), Px Y: (\d+).+?"
-)
-
-
-def parse_coords(s: str) -> WplacePixelCoords:
-    if not (m := BLUE_MARBLE_COORDS_PATTERN.match(s)):
-        raise ValueError(f"Invalid coords: {s}")
-    return WplacePixelCoords(int(m[1]), int(m[2]), int(m[3]), int(m[4]))
-
-
-@dataclass
-class LatLon:
-    lat: float
-    lon: float
-
-    @property
-    def tuple(self) -> tuple[float, float]:
-        return self.lat, self.lon
 
 
 # 从多点校准中提取的常量参数
