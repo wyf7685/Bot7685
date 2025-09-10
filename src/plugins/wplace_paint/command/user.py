@@ -10,7 +10,7 @@ from ..config import UserConfig, users
 from ..fetch import RequestFailed, fetch_me
 from ..scheduler import FETCH_INTERVAL_MINS
 from ..utils import normalize_color_name
-from .matcher import finish, matcher, prompt
+from .matcher import TargetHash, finish, matcher, prompt
 
 
 @matcher.assign("~add")
@@ -43,6 +43,7 @@ async def assign_add(
 async def _query_target_cfgs(
     event: Event,
     uni_target: MsgTarget,
+    target_hash: TargetHash,
     target: At | Literal["$group"] | None = None,
 ) -> list[UserConfig]:
     if target == "$group" and uni_target.private:
@@ -52,7 +53,7 @@ async def _query_target_cfgs(
         cfgs = [
             cfg
             for cfg in users.load()
-            if cfg.target.verify(uni_target) or uni_target.id in cfg.bind_groups
+            if cfg.target.verify(uni_target) or target_hash in cfg.bind_groups
         ]
         if not cfgs:
             await finish("群内没有用户绑定账号")
@@ -190,17 +191,22 @@ async def assign_remove(cfg: SelectedUserConfig) -> None:
 async def assign_bind(
     cfg: SelectedUserConfig,
     target: MsgTarget,
+    target_hash: TargetHash,
 ) -> None:
     if target.private:
         await finish("请在群聊中使用绑定功能")
 
-    cfg.bind_groups.add(target.id)
+    cfg.bind_groups.add(target_hash)
     cfg.save()
     await finish(f"{cfg.wp_user_name} #{cfg.wp_user_id} 已绑定到当前群组")
 
 
 @matcher.assign("~find-color")
-async def assign_find_color(target: MsgTarget, color_name: str) -> None:
+async def assign_find_color(
+    target: MsgTarget,
+    target_hash: TargetHash,
+    color_name: str,
+) -> None:
     if target.private:
         await finish("请在群聊中使用查询颜色功能")
 
@@ -216,7 +222,7 @@ async def assign_find_color(target: MsgTarget, color_name: str) -> None:
     result: list[str] = []
     async with anyio.create_task_group() as tg:
         for cfg in users.load():
-            if cfg.target.verify(target) or target.id in cfg.bind_groups:
+            if cfg.target.verify(target) or target_hash in cfg.bind_groups:
                 tg.start_soon(check_user, cfg)
 
     await finish(
