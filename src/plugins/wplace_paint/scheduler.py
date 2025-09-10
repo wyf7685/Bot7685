@@ -1,4 +1,5 @@
 import hashlib
+import random
 from datetime import datetime, timedelta
 from typing import NoReturn
 
@@ -228,7 +229,9 @@ class Fetcher:
     id="wplace_paint_fetcher",
 )
 async def job() -> None:
-    async def wrapper(cfg: UserConfig) -> None:
+    async def wrapper(cfg: UserConfig, delay: float) -> None:
+        await anyio.sleep(delay)
+
         try:
             await Fetcher(cfg).execute()
         except FetchDone:
@@ -238,4 +241,4 @@ async def job() -> None:
 
     async with anyio.create_task_group() as tg:
         for cfg in users.load():
-            tg.start_soon(wrapper, cfg)
+            tg.start_soon(wrapper, cfg, random.uniform(0, 3 * 60))
