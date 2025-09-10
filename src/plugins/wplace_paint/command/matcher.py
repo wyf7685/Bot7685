@@ -109,13 +109,17 @@ alc = Alconna(
                 Field(completion=lambda: "第二个坐标(选点并复制BlueMarble的坐标)"),
             ],
         ),
-        Args[
-            "rank_type",
-            Literal["today", "week", "month", "all"],
-            Field(completion=lambda: "排行榜类型(today/week/month/all)"),
-        ],
-        Option("--all-users|-a"),
-        help_text="查询指定区域的排行榜",
+        Subcommand(
+            "query",
+            Args[
+                "rank_type",
+                Literal["today", "week", "month", "all"],
+                Field(completion=lambda: "排行榜类型(today/week/month/all)"),
+            ],
+            Option("--all-users|-a"),
+            help_text="查询指定区域的排行榜",
+        ),
+        help_text="排行榜功能",
     ),
     Subcommand(
         "template",
@@ -164,6 +168,7 @@ matcher = on_alconna(
 )
 matcher.shortcut("wpq", {"command": "wplace query {*}"})
 matcher.shortcut("wpg", {"command": "wplace query $group"})
+matcher.shortcut("wpr", {"command": "wplace rank query {*}"})
 matcher.shortcut("wpt", {"command": "wplace template progress"})
 
 

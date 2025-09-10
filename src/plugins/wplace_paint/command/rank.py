@@ -57,11 +57,11 @@ RT_MAP: dict[Literal["today", "week", "month", "all"], RankType] = {
 }
 
 
-@matcher.assign("~rank")
-async def assign_rank(
+@matcher.assign("~rank.query")
+async def assign_rank_query(
     key: TargetHash,
     rank_type: Literal["today", "week", "month", "all"],
-    all_users: Query[bool] = Query("~rank.all-users", default=False),
+    all_users: Query[bool] = Query("~rank.query.all-users", default=False),
 ) -> None:
     cfg = ranks.load()
     if key not in cfg or not cfg[key]:
