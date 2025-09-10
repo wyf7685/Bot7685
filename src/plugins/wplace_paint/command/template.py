@@ -21,7 +21,7 @@ from ..template import (
     render_template_with_color,
 )
 from ..utils import WplacePixelCoords, normalize_color_name
-from .matcher import TargetHash, finish, matcher
+from .matcher import TargetHash, finish, matcher, prompt
 
 
 @matcher.assign("~preview")
@@ -61,12 +61,12 @@ async def assign_template_bind_revoke(key: TargetHash) -> None:
 
 
 @matcher.assign("~template.bind")
-async def assign_template_bind(
-    bot: Bot,
-    event: Event,
-    key: TargetHash,
-    coord: str,
-) -> None:
+async def assign_template_bind(bot: Bot, event: Event, key: TargetHash) -> None:
+    coord = await prompt(
+        "请发送模板起始坐标(选点并复制BlueMarble的坐标)\n"
+        "格式如: (Tl X: 123, Tl Y: 456, Px X: 789, Px Y: 012)"
+    )
+
     try:
         coords = WplacePixelCoords.parse(coord)
     except ValueError as e:
@@ -84,6 +84,12 @@ async def assign_template_bind(
     fp.write_bytes(img_bytes)
 
     cfgs = templates.load()
+    if key in cfgs:
+        try:
+            cfgs[key].file.unlink(missing_ok=True)
+        except Exception:
+            logger.opt(exception=True).warning("删除旧模板图片时发生错误")
+
     cfgs[key] = TemplateConfig(coords=coords, image=fp.name)
     templates.save(cfgs)
     await finish(f"模板绑定成功\n{coords.human_repr()}")

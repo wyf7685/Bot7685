@@ -126,11 +126,6 @@ alc = Alconna(
         Subcommand(
             "bind",
             Option("--revoke|-r", help_text="取消当前会话的模板绑定"),
-            Args[
-                "coord#模板起始坐标",
-                str,
-                Field(completion=lambda: "模板起始坐标(选点并复制BlueMarble的坐标)"),
-            ],
         ),
         Subcommand(
             "preview",
