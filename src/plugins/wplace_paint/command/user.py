@@ -75,26 +75,30 @@ async def assign_query(
     target: MsgTarget,
     cfgs: QueryConfigs,
 ) -> None:
-    async def _fetch(config: UserConfig) -> None:
+    async def _fetch(cfg: UserConfig) -> None:
         try:
-            resp = await fetch_me(config)
-            output.append(resp.format_notification(config.target_droplets))
+            resp = await fetch_me(cfg)
+            result = resp.format_notification()
         except RequestFailed as e:
-            output.append(f"查询失败: {e.msg}")
+            result = f"查询失败: {e.msg}"
         except Exception as e:
-            output.append(f"查询时发生意外错误: {e!r}")
+            result = f"查询时发生意外错误: {e!r}"
 
-    output: list[str] = []
+        output[cfg.wp_user_id] = cfg.user_id, result
+
+    output: dict[int, tuple[str, str]] = {}
     async with anyio.create_task_group() as tg:
         for cfg in cfgs:
             tg.start_soon(_fetch, cfg)
 
-    if target.private or len(output) == 1 or target.scope != SupportScope.qq_client:
-        await finish("查询结果:\n\n" + "\n\n".join(output))
+    results = [r for _, (_, r) in sorted(output.items(), key=lambda x: (x[1][0], x[0]))]
+
+    if target.private or len(results) == 1 or target.scope != SupportScope.qq_client:
+        await finish("查询结果:\n\n" + "\n\n".join(results))
 
     nodes = [
-        CustomNode(event.get_user_id(), f"查询结果 | {idx}", part, context=target.id)
-        for idx, part in enumerate(output, start=1)
+        CustomNode(event.get_user_id(), f"查询结果 - {idx}", content, context=target.id)
+        for idx, content in enumerate(results, start=1)
     ]
     await UniMessage.reference(*nodes).finish(reply_to=True)
 
@@ -111,7 +115,7 @@ async def _select_cfg(
     if identifier is not None:
         gen = (
             cfg
-            for cfg in filter(lambda c: c.wp_user_id is not None, user_cfgs)
+            for cfg in filter(lambda c: c.wp_user_id, user_cfgs)
             if str(cfg.wp_user_id) == identifier or cfg.wp_user_name == identifier
         )
         if cfg := next(gen, None):

@@ -58,7 +58,7 @@ class Fetcher:
         raise FetchDone from None
 
     async def check_should_skip(self) -> None:
-        if self.cfg.wp_user_id is None:
+        if not self.cfg.wp_user_id:
             return
 
         cache_key = calc_cache_key(self.cfg.user_id, self.cfg.wp_user_id)
