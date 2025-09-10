@@ -20,8 +20,8 @@ from ..template import (
     render_progress,
     render_template_with_color,
 )
-from ..utils import TargetHash, normalize_color_name, parse_coords
-from .matcher import finish, matcher
+from ..utils import normalize_color_name, parse_coords
+from .matcher import TargetHash, finish, matcher
 
 
 @matcher.assign("~preview")

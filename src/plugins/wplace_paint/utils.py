@@ -1,15 +1,11 @@
 import functools
-import hashlib
 import math
 import re
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Annotated
 
 import anyio
 from loguru import logger
-from nonebot.params import Depends
-from nonebot_plugin_alconna import MsgTarget
 
 from .consts import ALL_COLORS, FLAG_MAPPING
 
@@ -235,14 +231,3 @@ def with_retry[**P, R](
         return wrapper
 
     return decorator
-
-
-def target_hash(target: MsgTarget) -> str:
-    args = (target.id, target.channel, target.private, target.self_id)
-    for k, v in target.extra.items():
-        args += (k, v)
-    key = "".join(map(str, args)).encode("utf-8")
-    return hashlib.sha256(key).hexdigest()
-
-
-TargetHash = Annotated[str, Depends(target_hash)]

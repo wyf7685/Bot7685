@@ -1,11 +1,14 @@
-from typing import Literal, NoReturn
+import hashlib
+from typing import Annotated, Literal, NoReturn
 
+from nonebot.params import Depends
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
     At,
     CommandMeta,
     Field,
+    MsgTarget,
     MultiVar,
     Option,
     Subcommand,
@@ -106,26 +109,12 @@ alc = Alconna(
                 Field(completion=lambda: "第二个坐标(选点并复制BlueMarble的坐标)"),
             ],
         ),
-        Subcommand(
-            "today",
-            Option("--all-users|-a"),
-            help_text="查询指定区域的当日排行榜",
-        ),
-        Subcommand(
-            "week",
-            Option("--all-users|-a"),
-            help_text="查询指定区域的本周排行榜",
-        ),
-        Subcommand(
-            "month",
-            Option("--all-users|-a"),
-            help_text="查询指定区域的本月排行榜",
-        ),
-        Subcommand(
-            "all",
-            Option("--all-users|-a"),
-            help_text="查询指定区域的历史总排行榜",
-        ),
+        Args[
+            "rank_type",
+            Literal["today", "week", "month", "all"],
+            Field(completion=lambda: "排行榜类型(today/week/month/all)"),
+        ],
+        Option("--all-users|-a"),
         help_text="查询指定区域的排行榜",
     ),
     Subcommand(
@@ -190,3 +179,14 @@ async def prompt(msg: str) -> str:
     if text == "取消":
         await finish("操作已取消")
     return text
+
+
+def target_hash(target: MsgTarget) -> str:
+    args = (target.id, target.channel, target.private, target.self_id)
+    for k, v in target.extra.items():
+        args += (k, v)
+    key = "".join(map(str, args)).encode("utf-8")
+    return hashlib.sha256(key).hexdigest()
+
+
+TargetHash = Annotated[str, Depends(target_hash)]

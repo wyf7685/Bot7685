@@ -1,3 +1,5 @@
+from typing import Literal
+
 from nonebot import logger
 from nonebot.exception import MatcherException
 from nonebot_plugin_alconna import Query, UniMessage
@@ -5,8 +7,8 @@ from nonebot_plugin_alconna import Query, UniMessage
 from ..config import ranks, users
 from ..fetch import RankType, RequestFailed
 from ..rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
-from ..utils import TargetHash, parse_coords
-from .matcher import finish, matcher
+from ..utils import parse_coords
+from .matcher import TargetHash, finish, matcher
 
 
 @matcher.assign("~rank.bind.revoke")
@@ -47,23 +49,34 @@ async def assign_rank_bind(key: TargetHash, coord1: str, coord2: str) -> None:
     )
 
 
-async def _handle_rank_query(
+RT_MAP: dict[Literal["today", "week", "month", "all"], RankType] = {
+    "today": "today",
+    "week": "week",
+    "month": "month",
+    "all": "all-time",
+}
+
+
+@matcher.assign("~rank")
+async def assign_rank(
     key: TargetHash,
-    rank_type: RankType,
-    only_known_users: bool = True,
+    rank_type: Literal["today", "week", "month", "all"],
+    all_users: Query[bool] = Query("~rank.all-users", default=False),
 ) -> None:
     cfg = ranks.load()
     if key not in cfg or not cfg[key]:
         await finish("当前会话没有绑定任何 region ID，请先使用 wplace rank bind 绑定")
 
+    rt = RT_MAP[rank_type]
+
     try:
-        rank_data = await get_regions_rank(cfg[key], rank_type)
+        rank_data = await get_regions_rank(cfg[key], rt)
     except RequestFailed as e:
         await finish(f"获取排行榜失败: {e.msg}")
     except Exception as e:
         await finish(f"获取排行榜时发生意外错误: {e!r}")
 
-    if only_known_users:
+    if not all_users.result:
         known_users = {*filter(None, (cfg.wp_user_id for cfg in users.load()))}
         rank_data = [entry for entry in rank_data if entry.user_id in known_users]
 
@@ -71,7 +84,7 @@ async def _handle_rank_query(
         await finish("未获取到任何排行榜数据，可能是 region ID 无效或暂无数据")
 
     try:
-        img = await render_rank(rank_type, rank_data)
+        img = await render_rank(rt, rank_data)
         await finish(UniMessage.image(raw=img))
     except MatcherException:
         raise
@@ -83,20 +96,4 @@ async def _handle_rank_query(
         f"{idx}. {r.name} #{r.user_id} - {r.pixels} 像素"
         for idx, r in enumerate(rank_data, 1)
     )
-    await finish(f"{RANK_TITLE[rank_type]}:\n{msg}")
-
-
-def _rank_query(rank_type: RankType) -> None:
-    path = rank_type.split("-")[0]
-
-    async def assign_rank(
-        key: TargetHash,
-        all_users: Query[bool] = Query(f"~rank.{path}.all-users", default=False),  # noqa: B008
-    ) -> None:
-        await _handle_rank_query(key, rank_type, not all_users.result)
-
-    assign_rank.__name__ += f"_{path}"
-    matcher.assign(f"~rank.{path}")(assign_rank)
-
-
-[_rank_query(rt) for rt in ("today", "week", "month", "all-time")]
+    await finish(f"{RANK_TITLE[rt]}:\n{msg}")
