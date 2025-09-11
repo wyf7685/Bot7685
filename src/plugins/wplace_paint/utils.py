@@ -8,7 +8,7 @@ from typing import NamedTuple
 import anyio
 from loguru import logger
 
-from .consts import ALL_COLORS, FLAG_MAPPING
+from .consts import ALL_COLORS, FLAG_MAP
 
 
 class WplaceAbsCoords(NamedTuple):
@@ -137,7 +137,7 @@ def latlon_to_pixel(latlon: LatLon) -> WplacePixelCoords:
 
 
 def get_flag_emoji(id: int) -> str:
-    return FLAG_MAPPING.get(id, "")
+    return FLAG_MAP.get(id, "")
 
 
 def find_color_name(rgba: tuple[int, int, int, int]) -> str:

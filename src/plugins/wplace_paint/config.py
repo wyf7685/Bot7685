@@ -36,11 +36,19 @@ class UserConfig(BaseModel):
     def save(self) -> None:
         cfgs = users.load()
         for cfg in cfgs[:]:
-            if cfg is self or (
-                cfg.user_id == self.user_id and cfg.wp_user_id == self.wp_user_id
-            ):
+            if cfg is self:
                 cfgs.remove(cfg)
-                break
+            elif cfg.user_id == self.user_id and cfg.wp_user_id == self.wp_user_id:
+                cfgs.remove(cfg)
+                for attr in (
+                    "target_data",
+                    "notify_mins",
+                    "max_overflow_notify",
+                    "target_droplets",
+                    "bind_groups",
+                ):
+                    setattr(self, attr, getattr(cfg, attr))
+
         cfgs.append(self)
         users.save(cfgs)
 
