@@ -236,9 +236,15 @@ def fetch_me_with_cloudscraper(cfg: UserConfig) -> FetchMeResponse:
             proxies=_proxies,
             timeout=20,
         )
+    except Exception as e:
+        raise RequestFailed(f"Request failed: {e!r}") from e
+
+    try:
         resp.raise_for_status()
     except Exception as e:
-        raise RequestFailed("Request failed") from e
+        raise RequestFailed(
+            f"Request failed with status code: {resp.status_code}"
+        ) from e
 
     try:
         return FetchMeResponse.model_validate_json(resp.text)
