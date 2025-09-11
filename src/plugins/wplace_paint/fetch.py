@@ -2,7 +2,7 @@
 import base64
 import functools
 import math
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from typing import Literal
 
@@ -22,7 +22,7 @@ WPLACE_PURCHASE_API_URL = "https://backend.wplace.live/purchase"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/138.0.0.0 Safari/537.36"
+    "Chrome/140.0.0.0 Safari/537.36"
 )
 PW_INIT_SCRIPT = "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
 
@@ -169,40 +169,24 @@ class FetchMeResponse(BaseModel):
         return {"Transparent"} | set(FREE_COLORS) | paid
 
 
-type FetchFn = Callable[[UserConfig], Awaitable[FetchMeResponse]]
-
-
-def _save_user_info(fn: FetchFn) -> FetchFn:
-    @functools.wraps(fn)
-    async def wrapper(cfg: UserConfig) -> FetchMeResponse:
-        resp = await fn(cfg)
-        if resp.id != cfg.wp_user_id or resp.name != cfg.wp_user_name:
-            cfg.wp_user_id = resp.id
-            cfg.wp_user_name = resp.name
-            cfg.save()
-        return resp
-
-    return wrapper
-
-
-@_save_user_info
-async def fetch_me_with_async_playwright(cfg: UserConfig) -> FetchMeResponse:
+async def _fetch_with_playwright[T](
+    url: str,
+    validate: Callable[[str], T],
+    cfg: UserConfig | None = None,
+) -> T:
     browser = await get_browser()
     async with await browser.new_context(
         user_agent=USER_AGENT,
         viewport={"width": 1920, "height": 1080},
         java_script_enabled=True,
     ) as ctx:
-        await ctx.add_cookies(construct_pw_cookies(cfg.token, cfg.cf_clearance))
+        if cfg:
+            await ctx.add_cookies(construct_pw_cookies(cfg.token, cfg.cf_clearance))
         await ctx.add_init_script(PW_INIT_SCRIPT)
 
         async with await ctx.new_page() as page:
             try:
-                resp = await page.goto(
-                    WPLACE_ME_API_URL,
-                    wait_until="networkidle",
-                    timeout=20000,
-                )
+                resp = await page.goto(url, wait_until="networkidle", timeout=20000)
             except PlaywrightTimeoutError as e:
                 raise RequestFailed("Request timed out") from e
             if resp is None:
@@ -211,7 +195,7 @@ async def fetch_me_with_async_playwright(cfg: UserConfig) -> FetchMeResponse:
                 raise RequestFailed(f"Request failed with status code: {resp.status}")
 
             try:
-                return FetchMeResponse.model_validate_json(await resp.text())
+                return validate(await resp.text())
             except Exception as e:
                 raise RequestFailed("Failed to parse JSON response") from e
 
@@ -225,14 +209,25 @@ def _proxy_config() -> dict[str, str] | None:
 _proxies = _proxy_config()
 
 
-@_save_user_info
 @run_sync
-def fetch_me_with_cloudscraper(cfg: UserConfig) -> FetchMeResponse:
+def _fetch_with_cloudscraper[T](
+    url: str,
+    validate: Callable[[str], T],
+    cfg: UserConfig | None = None,
+) -> T:
+    cookies = cfg and construct_requests_cookies(cfg.token, cfg.cf_clearance)
+
     try:
         resp = cloudscraper.create_scraper().get(
-            WPLACE_ME_API_URL,
-            headers={"User-Agent": USER_AGENT},
-            cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
+            url,
+            headers={
+                "User-Agent": USER_AGENT,
+                "Sec-Ch-Ua": '"Chromium";v="140", '
+                '"Not=A?Brand";v="24", "Google Chrome";v="140"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+            },
+            cookies=cookies,
             proxies=_proxies,
             timeout=20,
         )
@@ -247,20 +242,45 @@ def fetch_me_with_cloudscraper(cfg: UserConfig) -> FetchMeResponse:
         ) from e
 
     try:
-        return FetchMeResponse.model_validate_json(resp.text)
+        return validate(resp.text)
     except Exception as e:
         raise RequestFailed("Failed to parse JSON response") from e
 
 
-async def fetch_me(cfg: UserConfig) -> FetchMeResponse:
+async def _fetch_with_auto_fallback[T](
+    url: str,
+    validate: Callable[[str], T],
+    cfg: UserConfig | None = None,
+) -> T:
     try:
-        return await fetch_me_with_cloudscraper(cfg)
+        return await _fetch_with_cloudscraper(url, validate, cfg)
     except RequestFailed as e:
         from nonebot import logger
 
-        logger.warning(f"cloudscraper fetch failed ({e!r}), trying playwright...")
+        logger.warning(f"cloudscraper failed ({e.msg}), trying playwright...")
+        cs_exc = e
 
-    return await fetch_me_with_async_playwright(cfg)
+    try:
+        return await _fetch_with_playwright(url, validate, cfg)
+    except RequestFailed as e:
+        pw_exc = e
+
+    raise RequestFailed(
+        f"Both methods failed: cloudscraper: {cs_exc.msg}; playwright: {pw_exc.msg}"
+    ) from cs_exc
+
+
+async def fetch_me(cfg: UserConfig) -> FetchMeResponse:
+    resp = await _fetch_with_auto_fallback(
+        WPLACE_ME_API_URL,
+        FetchMeResponse.model_validate_json,
+        cfg=cfg,
+    )
+    if resp.id != cfg.wp_user_id or resp.name != cfg.wp_user_name:
+        cfg.wp_user_id = resp.id
+        cfg.wp_user_name = resp.name
+        cfg.save()
+    return resp
 
 
 @run_sync
@@ -311,29 +331,11 @@ class PixelInfo(BaseModel):
     region: PixelRegion
 
 
-@run_sync
-def get_pixel_info(coord: WplacePixelCoords) -> PixelInfo:
+async def get_pixel_info(coord: WplacePixelCoords) -> PixelInfo:
     url = PIXEL_INFO_URL.format(
-        tlx=coord.tlx,
-        tly=coord.tly,
-        pxx=coord.pxx,
-        pxy=coord.pxy,
+        tlx=coord.tlx, tly=coord.tly, pxx=coord.pxx, pxy=coord.pxy
     )
-    try:
-        resp = cloudscraper.create_scraper().get(
-            url,
-            headers={"User-Agent": USER_AGENT},
-            proxies=_proxies,
-            timeout=20,
-        )
-        resp.raise_for_status()
-    except Exception as e:
-        raise RequestFailed("Request failed") from e
-
-    try:
-        return PixelInfo.model_validate_json(resp.text)
-    except Exception as e:
-        raise RequestFailed("Failed to parse JSON response") from e
+    return await _fetch_with_auto_fallback(url, PixelInfo.model_validate_json)
 
 
 class RankUser(BaseModel):
@@ -348,24 +350,11 @@ class RankUser(BaseModel):
 
 type RankType = Literal["today", "week", "month", "all-time"]
 RANK_URL = "https://backend.wplace.live/leaderboard/region/players/{}/{}"
-_rank_resp_ta = TypeAdapter[list[RankUser]](list[RankUser])
+_rank_resp_ta = TypeAdapter(list[RankUser])
 
 
-@run_sync
-def fetch_region_rank(region_id: int, rank_type: RankType) -> list[RankUser]:
-    url = RANK_URL.format(region_id, rank_type)
-    try:
-        resp = cloudscraper.create_scraper().get(
-            url,
-            headers={"User-Agent": USER_AGENT},
-            proxies=_proxies,
-            timeout=20,
-        )
-        resp.raise_for_status()
-    except Exception as e:
-        raise RequestFailed("Request failed") from e
-
-    try:
-        return _rank_resp_ta.validate_json(resp.text)
-    except Exception as e:
-        raise RequestFailed("Failed to parse JSON response") from e
+async def fetch_region_rank(region_id: int, rank_type: RankType) -> list[RankUser]:
+    return await _fetch_with_auto_fallback(
+        RANK_URL.format(region_id, rank_type),
+        _rank_resp_ta.validate_json,
+    )
