@@ -121,14 +121,6 @@ async def fetch_for_user(cfg: UserConfig) -> None:
     async def push_notification() -> NoReturn:
         await _push_msg(resp.format_notification(cfg.target_droplets))
 
-    async def push_credential_expired() -> NoReturn:
-        logger.info(f"{colored} 凭据无效，准备推送")
-        cache.credential_invalid = True
-        await _push_msg(
-            f"用户 {cfg.wp_user_name} #{cfg.wp_user_id}] "
-            "的 wplace 凭据已失效，请重新绑定"
-        )
-
     async def check_overflow() -> NoReturn:
         # 记录溢出开始时间
         if cache.overflow is None:
@@ -182,7 +174,12 @@ async def fetch_for_user(cfg: UserConfig) -> None:
     except RequestFailed as e:
         logger.warning(f"获取 {colored} 的信息失败: {escape_tag(e.msg)}")
         if e.status_code == 500:
-            await push_credential_expired()
+            logger.info(f"{colored} 凭据无效，准备推送")
+            cache.credential_invalid = True
+            await _push_msg(
+                f"用户 {cfg.wp_user_name} #{cfg.wp_user_id}] "
+                "的 wplace 凭据已失效，请重新绑定"
+            )
         finish()
     except Exception:
         logger.opt(exception=True).warning(f"获取 {colored} 的信息时发生意外错误")
@@ -193,13 +190,13 @@ async def fetch_for_user(cfg: UserConfig) -> None:
 
     # 溢出状态
     if remaining <= 0:
-        if cfg.max_overflow_notify:
-            # 执行溢出通知逻辑
-            await check_overflow()
-        else:
+        if not cfg.max_overflow_notify:
             # 如果用户禁用了溢出通知，则直接结束
             logger.debug(f"{colored} 已禁用溢出通知，跳过")
             finish()
+
+        # 执行溢出通知逻辑
+        await check_overflow()
 
     # 正常状态
     if cache.overflow is not None:
