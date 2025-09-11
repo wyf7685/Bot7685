@@ -7,12 +7,11 @@ from nonebot_plugin_htmlrender import get_new_page, template_to_html
 from .avartar import get_wplace_avatar
 from .config import TEMPLATE_DIR
 from .fetch import (
-    PixelRegion,
-    RankType,
     RequestFailed,
     fetch_region_rank,
     get_pixel_info,
 )
+from .schemas import PixelRegion, RankType
 from .utils import WplaceAbsCoords, WplacePixelCoords, fix_coords, get_flag_emoji
 
 

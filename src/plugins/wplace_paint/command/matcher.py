@@ -57,9 +57,9 @@ alc = Alconna(
             Args[
                 "max_overflow_notify",
                 int,
-                Field(completion=lambda: "最大溢出通知次数 (默认3次, 0为禁用)"),
+                Field(completion=lambda: "最大溢出通知次数 (默认2次, 0为禁用)"),
             ],
-            help_text="设置最大溢出通知次数 (默认3次, 0为禁用)",
+            help_text="设置最大溢出通知次数 (默认2次, 0为禁用)",
         ),
         Option(
             "--target-droplets|-t",
