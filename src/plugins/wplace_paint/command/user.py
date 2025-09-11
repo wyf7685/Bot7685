@@ -8,7 +8,7 @@ from nonebot_plugin_alconna import At, CustomNode, MsgTarget, SupportScope, UniM
 
 from ..config import UserConfig, users
 from ..fetch import RequestFailed, fetch_me
-from ..scheduler import FETCH_INTERVAL_MINS
+from ..scheduler import FETCH_INTERVAL_MINS, expire_push_cache
 from ..utils import normalize_color_name
 from .matcher import TargetHash, finish, matcher, prompt
 
@@ -37,6 +37,7 @@ async def assign_add(
         await finish(f"验证时发生意外错误: {e!r}")
 
     cfg.save()
+    await expire_push_cache(cfg)
     await finish(f"添加成功\n{resp.format_notification()}")
 
 

@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
 import cloudscraper
+from nonebot import logger
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_browser
 from playwright._impl._api_structures import SetCookieParam
@@ -50,10 +51,12 @@ def construct_pw_cookies(token: str, cf_clearance: str) -> list[SetCookieParam]:
 
 class RequestFailed(Exception):
     msg: str
+    status_code: int | None = None
 
-    def __init__(self, msg: str) -> None:
+    def __init__(self, msg: str, status_code: int | None = None) -> None:
         super().__init__(msg)
         self.msg = msg
+        self.status_code = status_code
 
 
 async def _fetch_with_playwright[T](
@@ -79,7 +82,10 @@ async def _fetch_with_playwright[T](
             if resp is None:
                 raise RequestFailed("Failed to get response")
             if resp.status != 200:
-                raise RequestFailed(f"Request failed with status code: {resp.status}")
+                raise RequestFailed(
+                    f"Request failed with status code: {resp.status}",
+                    status_code=resp.status,
+                )
 
             try:
                 return validate(await resp.text())
@@ -124,7 +130,8 @@ def _fetch_with_cloudscraper[T](
         resp.raise_for_status()
     except Exception as e:
         raise RequestFailed(
-            f"Request failed with status code: {resp.status_code}"
+            f"Request failed with status code: {resp.status_code}",
+            status_code=resp.status_code,
         ) from e
 
     try:
@@ -141,8 +148,6 @@ async def _fetch_with_auto_fallback[T](
     try:
         return await _fetch_with_cloudscraper(url, validate, cfg)
     except RequestFailed as e:
-        from nonebot import logger
-
         logger.warning(f"cloudscraper failed ({e.msg}), trying playwright...")
         cs_exc = e
 
