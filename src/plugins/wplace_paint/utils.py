@@ -25,7 +25,7 @@ class WplaceAbsCoords(NamedTuple):
 
 
 BLUE_MARBLE_COORDS_PATTERN = re.compile(
-    r".+?Tl X: (\d+), Tl Y: (\d+), Px X: (\d+), Px Y: (\d+).+?"
+    r".*Tl X: (\d+), Tl Y: (\d+), Px X: (\d+), Px Y: (\d+).*"
 )
 
 
