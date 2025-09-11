@@ -37,8 +37,9 @@ class PushState(BaseModel):
     async def load(cls, key: str) -> "PushState":
         return cls.model_validate_json(await push_cache.get(key, "{}"))
 
-    async def save(self, key: str) -> None:
-        await push_cache.set(key, self.model_dump_json(), ttl=timedelta(hours=1))
+    async def save(self, key: str, set_ttl: bool) -> None:
+        ttl_kwd = {"ttl": timedelta(hours=1)} if set_ttl else {}
+        await push_cache.set(key, self.model_dump_json(), **ttl_kwd)
 
 
 async def expire_push_cache(cfg: UserConfig) -> None:
@@ -62,7 +63,7 @@ async def fetch_for_user(cfg: UserConfig) -> None:
     )
 
     if cache.credential_invalid:
-        logger.debug(f"用户 {colored} 凭据已失效，跳过获取")
+        logger.debug(f"{colored} 凭据已失效，跳过获取")
         return
 
     if (
@@ -70,14 +71,14 @@ async def fetch_for_user(cfg: UserConfig) -> None:
         and cache.last_notification is not None
         and datetime.now() - cache.last_notification < LAZY_FETCH_INTERVAL
     ):
-        logger.debug(f"用户 {colored} 已溢出且近期已通知，跳过获取")
+        logger.debug(f"{colored} 已溢出且近期已通知，跳过获取")
         return
 
     def finish() -> NoReturn:
         raise FetchDone from None
 
     async def save_cache() -> None:
-        await cache.save(cache_key)
+        await cache.save(cache_key, set_ttl=not cache.credential_invalid)
 
     async def _push_msg(text: str) -> NoReturn:
         target = cfg.target
@@ -124,8 +125,7 @@ async def fetch_for_user(cfg: UserConfig) -> None:
         logger.info(f"{colored} 凭据无效，准备推送")
         cache.credential_invalid = True
         await _push_msg(
-            f"用户 <c>{cfg.user_id}</> "
-            f"[<y>{cfg.wp_user_name}</> #<c>{cfg.wp_user_id}</>] "
+            f"用户 {cfg.wp_user_name} #{cfg.wp_user_id}] "
             "的 wplace 凭据已失效，请重新绑定"
         )
 

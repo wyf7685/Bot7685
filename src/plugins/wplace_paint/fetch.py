@@ -157,7 +157,8 @@ async def _fetch_with_auto_fallback[T](
         pw_exc = e
 
     raise RequestFailed(
-        f"Both methods failed: cloudscraper: {cs_exc.msg}; playwright: {pw_exc.msg}"
+        f"Both methods failed: cloudscraper: {cs_exc.msg}; playwright: {pw_exc.msg}",
+        status_code=cs_exc.status_code or pw_exc.status_code,
     ) from cs_exc
 
 
