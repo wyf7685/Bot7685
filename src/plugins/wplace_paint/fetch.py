@@ -215,8 +215,6 @@ def _fetch_with_cloudscraper[T](
     validate: Callable[[str], T],
     cfg: UserConfig | None = None,
 ) -> T:
-    cookies = cfg and construct_requests_cookies(cfg.token, cfg.cf_clearance)
-
     try:
         resp = cloudscraper.create_scraper().get(
             url,
@@ -226,8 +224,9 @@ def _fetch_with_cloudscraper[T](
                 '"Not=A?Brand";v="24", "Google Chrome";v="140"',
                 "Sec-Ch-Ua-Mobile": "?0",
                 "Sec-Ch-Ua-Platform": '"Windows"',
+                "Origin": "https://wplace.live",
             },
-            cookies=cookies,
+            cookies=cfg and construct_requests_cookies(cfg.token, cfg.cf_clearance),
             proxies=_proxies,
             timeout=20,
         )
