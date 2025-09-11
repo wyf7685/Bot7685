@@ -78,7 +78,7 @@ async def assign_query(
     async def _fetch(cfg: UserConfig) -> None:
         try:
             resp = await fetch_me(cfg)
-            result = resp.format_notification()
+            result = resp.format_notification(cfg.target_droplets)
         except RequestFailed as e:
             result = f"查询失败: {e.msg}"
         except Exception as e:
