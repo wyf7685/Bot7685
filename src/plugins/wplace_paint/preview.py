@@ -5,6 +5,8 @@ import anyio.to_thread
 import httpx
 from PIL import Image
 
+from src.utils import with_semaphore
+
 from .config import proxy
 from .utils import (
     WplacePixelCoords,
@@ -26,7 +28,11 @@ async def download_preview(
     coord1, coord2 = fix_coords(coord1, coord2)
     tile_imgs: dict[tuple[int, int], bytes] = {}
 
-    @with_retry(httpx.ConnectError, httpx.TimeoutException, delay=0.5)
+    @with_semaphore(4)
+    @with_retry(
+        *(httpx.ConnectError, httpx.TimeoutException, httpx.HTTPStatusError),
+        delay=1,
+    )
     async def fetch_tile(x: int, y: int) -> None:
         resp = await client.get(TILE_URL.format(x=x, y=y))
         tile_imgs[(x, y)] = resp.raise_for_status().read()
