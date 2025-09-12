@@ -35,6 +35,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=silk /out /opt/silk-decoder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-ENV PATH="$VIRTUAL_ENV/bin"
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 VOLUME [ "/app", "/opt/venv", "/opt/uv-cache" ]
-CMD [ "/bin/bash", "-c", "/entrypoint.sh" ]
+CMD [ "/bin/sh", "-c", "/entrypoint.sh" ]
