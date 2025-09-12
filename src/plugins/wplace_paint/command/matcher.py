@@ -130,6 +130,7 @@ alc = Alconna(
         Subcommand(
             "preview",
             Option("--background|-b", Args["background#背景色RGB", str]),
+            Option("--border-pixels|-p", Args["pixels#边框像素", int]),
             help_text="预览当前会话绑定的模板",
         ),
         Subcommand("progress", help_text="查询模板的绘制进度"),

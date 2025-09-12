@@ -109,9 +109,13 @@ TargetTemplate = Annotated[TemplateConfig, Depends(_target_template_cfg)]
 async def assign_template_preview(
     cfg: TargetTemplate,
     background: str | None = None,
+    pixels: int = 0,
 ) -> None:
+    if pixels < 0:
+        await finish("边框像素不能为负数")
+
     try:
-        img_bytes = await download_template_preview(cfg, background)
+        img_bytes = await download_template_preview(cfg, background, pixels)
     except* httpx.HTTPError as exc_group:
         await finish(
             "获取模板预览失败:\n"

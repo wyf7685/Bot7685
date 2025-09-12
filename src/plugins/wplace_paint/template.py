@@ -63,8 +63,12 @@ def load_template(
 async def download_template_preview(
     cfg: TemplateConfig,
     background: str | None = None,
+    border_pixels: int = 0,
 ) -> bytes:
     _, (coord1, coord2) = load_template(cfg)
+    if border_pixels > 0:
+        coord1 = coord1.offset(-border_pixels, -border_pixels)
+        coord2 = coord2.offset(border_pixels, border_pixels)
     return await download_preview(coord1, coord2, background)
 
 
