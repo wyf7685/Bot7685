@@ -93,9 +93,7 @@ async def fetch_for_user(cfg: UserConfig) -> None:
             finish()
 
         msg = (
-            UniMessage()
-            if cfg.target.private
-            else UniMessage.at(cfg.user_id).text("\n")
+            UniMessage if cfg.target.private else UniMessage.at(cfg.user_id).text("\n")
         ).text(text)
         for attempt in range(MAX_PUSH_ATTEMPT):
             try:
@@ -118,55 +116,6 @@ async def fetch_for_user(cfg: UserConfig) -> None:
         await save_cache()
         finish()
 
-    async def push_notification() -> NoReturn:
-        await _push_msg(resp.format_notification(cfg.target_droplets))
-
-    async def check_overflow() -> NoReturn:
-        # 记录溢出开始时间
-        if cache.overflow is None:
-            cache.overflow = datetime.now()
-            cache.last_notification = None
-            await save_cache()
-
-        # 首次溢出通知
-        if cache.last_notification is None:
-            cache.overflow_notify_count = 1
-            logger.info(f"{colored} 首次溢出，准备推送")
-            await push_notification()
-
-        # 已达到最大通知次数
-        if cache.overflow_notify_count >= cfg.max_overflow_notify:
-            logger.info(
-                f"{colored} 溢出通知已达最大次数({cfg.max_overflow_notify})，跳过通知"
-            )
-            finish()
-
-        # 溢出通知逻辑
-        last_notif_delta = datetime.now() - cache.last_notification
-        hours_since_overflow = (datetime.now() - cache.overflow).total_seconds() / 3600
-
-        # 根据溢出时长确定通知频率
-        if hours_since_overflow < 0.5:
-            # 溢出半小时内，无需额外通知
-            logger.info(f"{colored} 溢出未满半小时，跳过通知")
-            finish()
-
-        if (
-            # 溢出1小时内，每30分钟通知一次
-            (hours_since_overflow <= 1 and last_notif_delta >= timedelta(minutes=30))
-            # 溢出1-4小时，每小时通知一次
-            or (hours_since_overflow <= 4 and last_notif_delta >= timedelta(hours=1))
-            # 溢出4-12小时，每2小时通知一次
-            or (hours_since_overflow <= 12 and last_notif_delta >= timedelta(hours=2))
-            # 溢出12小时以上，每4小时通知一次
-            or (hours_since_overflow > 12 and last_notif_delta >= timedelta(hours=4))
-        ):
-            cache.overflow_notify_count += 1
-            logger.info(f"{colored} 已溢出 {hours_since_overflow:.1f} 小时，准备推送")
-            await push_notification()
-
-        finish()
-
     # 获取用户信息
     logger.debug(f"正在获取 {colored} 的信息")
     try:
@@ -180,45 +129,90 @@ async def fetch_for_user(cfg: UserConfig) -> None:
                 f"用户 {cfg.wp_user_name} #{cfg.wp_user_id}] "
                 "的 wplace 凭据已失效，请重新绑定"
             )
-        finish()
+        return
     except Exception:
         logger.opt(exception=True).warning(f"获取 {colored} 的信息时发生意外错误")
-        finish()
+        return
+
+    async def push_notification() -> NoReturn:
+        await _push_msg(resp.format_notification(cfg.target_droplets))
 
     # 计算剩余时间
     remaining = resp.charges.remaining_secs()
 
-    # 溢出状态
-    if remaining <= 0:
-        if not cfg.max_overflow_notify:
-            # 如果用户禁用了溢出通知，则直接结束
-            logger.debug(f"{colored} 已禁用溢出通知，跳过")
-            finish()
-
-        # 执行溢出通知逻辑
-        await check_overflow()
-
     # 正常状态
-    if cache.overflow is not None:
+    if remaining > 0:
         # 重置溢出状态
-        cache.overflow = None
-        cache.overflow_notify_count = 0
+        if cache.overflow is not None:
+            cache.overflow = None
+            cache.overflow_notify_count = 0
+            await save_cache()
+
+        # 无需推送
+        if remaining > cfg.notify_mins * 60:
+            cache.last_notification = None
+            logger.debug(f"{colored} 还剩 {remaining:.0f} 秒，跳过通知")
+            return
+
+        # 近期已通知
+        if cache.last_notification is not None:
+            logger.debug(f"{colored} 近期已通知，跳过通知")
+            return
+
+        # 执行推送
+        logger.info(f"{colored} 剩余时间 {remaining:.0f} 秒，准备推送")
+        await push_notification()
+
+    # 溢出状态
+    if not cfg.max_overflow_notify:
+        # 如果用户禁用了溢出通知，则直接结束
+        logger.debug(f"{colored} 已禁用溢出通知，跳过")
+        return
+
+    # 记录溢出开始时间
+    if cache.overflow is None:
+        cache.overflow = datetime.now()
+        cache.last_notification = None
         await save_cache()
 
-    # 无需推送
-    if remaining > cfg.notify_mins * 60:
-        cache.last_notification = None
-        logger.debug(f"{colored} 还剩 {remaining:.0f} 秒，跳过通知")
-        finish()
+    # 首次溢出通知
+    if cache.last_notification is None:
+        cache.overflow_notify_count = 1
+        logger.info(f"{colored} 首次溢出，准备推送")
+        await push_notification()
 
-    # 近期已通知
-    if cache.last_notification is not None:
-        logger.debug(f"{colored} 近期已通知，跳过通知")
-        finish()
+    # 已达到最大通知次数
+    if cache.overflow_notify_count >= cfg.max_overflow_notify:
+        logger.info(
+            f"{colored} 溢出通知已达最大次数({cfg.max_overflow_notify})，跳过通知"
+        )
+        return
 
-    # 执行推送
-    logger.info(f"{colored} 剩余时间 {remaining:.0f} 秒，准备推送")
-    await push_notification()
+    # 溢出通知逻辑
+    last_notif_delta = datetime.now() - cache.last_notification
+    hours_since_overflow = (datetime.now() - cache.overflow).total_seconds() / 3600
+
+    # 根据溢出时长确定通知频率
+    if hours_since_overflow < 0.5:
+        # 溢出半小时内，无需额外通知
+        logger.info(f"{colored} 溢出未满半小时，跳过通知")
+        return
+
+    if (
+        # 溢出1小时内，每30分钟通知一次
+        (hours_since_overflow <= 1 and last_notif_delta >= timedelta(minutes=30))
+        # 溢出1-4小时，每小时通知一次
+        or (hours_since_overflow <= 4 and last_notif_delta >= timedelta(hours=1))
+        # 溢出4-12小时，每2小时通知一次
+        or (hours_since_overflow <= 12 and last_notif_delta >= timedelta(hours=2))
+        # 溢出12小时以上，每4小时通知一次
+        or (hours_since_overflow > 12 and last_notif_delta >= timedelta(hours=4))
+    ):
+        cache.overflow_notify_count += 1
+        logger.info(f"{colored} 已溢出 {hours_since_overflow:.1f} 小时，准备推送")
+        await push_notification()
+
+    return
 
 
 @scheduler.scheduled_job(
