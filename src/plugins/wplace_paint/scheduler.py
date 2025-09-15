@@ -173,7 +173,7 @@ async def fetch_for_user(cfg: UserConfig) -> None:
     if cache.overflow is None:
         cache.overflow = datetime.now()
         cache.last_notification = None
-        await save_cache()
+    await save_cache()
 
     # 首次溢出通知
     if cache.last_notification is None:
