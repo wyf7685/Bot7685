@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Protocol, cast
 
 import anyio.to_thread
+from nonebot import logger
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
 from PIL import Image
@@ -13,7 +14,7 @@ from PIL import Image
 from .config import TEMPLATE_DIR, TemplateConfig
 from .consts import PAID_COLORS
 from .preview import download_preview
-from .utils import WplacePixelCoords, find_color_name, parse_rgb_str
+from .utils import PerfLog, WplacePixelCoords, find_color_name, parse_rgb_str
 
 type RGBA = tuple[int, int, int, int]
 
@@ -96,22 +97,28 @@ async def calc_template_diff(
             color_name = find_color_name(template_pixel)
             if color_name not in diff_pixels:
                 diff_pixels[color_name] = ColorEntry(color_name, template_pixel[:3])
+            entry = diff_pixels[color_name]
 
             # 统计模板像素总数
-            diff_pixels[color_name].total += 1
+            entry.total += 1
 
             # 如果模板像素颜色与实际像素颜色不同
             if template_pixel[:3] != actual_pixels[x, y][:3]:
-                diff_pixels[color_name].count += 1
+                entry.count += 1
                 if include_pixels:
-                    diff_pixels[color_name].pixels.append((x, y))
+                    entry.pixels.append((x, y))
 
         return sorted(
             diff_pixels.values(),
             key=lambda entry: (-entry.total, entry.name),
         )
 
-    return await anyio.to_thread.run_sync(compare)
+    with PerfLog.for_action("calculating template diff") as perf:
+        diff = await anyio.to_thread.run_sync(compare)
+    logger.opt(colors=True).info(
+        f"Calculated template diff in <y>{perf.elapsed:.2f}</>s"
+    )
+    return diff
 
 
 async def render_progress(progress_data: list[ColorEntry]) -> bytes:

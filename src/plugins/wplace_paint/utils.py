@@ -1,9 +1,11 @@
 import functools
 import math
 import re
+import time
+import types
 from collections.abc import Callable, Coroutine, Iterable
 from dataclasses import dataclass
-from typing import NamedTuple
+from typing import NamedTuple, Self
 
 import anyio
 from loguru import logger
@@ -223,3 +225,59 @@ def with_retry[**P, R](
         return wrapper
 
     return decorator
+
+
+class PerfLog:
+    def __init__(self, on_start: str, on_end: str) -> None:
+        self._on_start = on_start
+        self._on_end = on_end
+        self._start: float | None = None
+        self._end: float | None = None
+
+    def __enter__(self) -> Self:
+        self._start = time.perf_counter()
+        logger.debug(self._on_start.format(start=self._start))
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        exc_traceback: types.TracebackType | None,
+    ) -> None:
+        self._end = time.perf_counter()
+        logger.debug(self._on_end.format(end=self._end, elapsed=self.elapsed))
+
+    async def __aenter__(self) -> Self:
+        return self.__enter__()
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        exc_traceback: types.TracebackType | None,
+    ) -> None:
+        return self.__exit__(exc_type, exc_value, exc_traceback)
+
+    @property
+    def start(self) -> float:
+        if self._start is None:
+            raise ValueError("Start time not set yet")
+        return self._start
+
+    @property
+    def end(self) -> float:
+        if self._end is None:
+            raise ValueError("End time not set yet")
+        return self._end
+
+    @property
+    def elapsed(self) -> float:
+        return self.end - self.start
+
+    @classmethod
+    def for_action(cls, action: str) -> Self:
+        return cls(
+            f"Starting {action} at {{start:.2f}}",
+            f"Finished {action} at {{end:.2f}}, elapsed {{elapsed:.2f}}s",
+        )

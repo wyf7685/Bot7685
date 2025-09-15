@@ -3,12 +3,14 @@ import io
 import anyio
 import anyio.to_thread
 import httpx
+from nonebot import logger
 from PIL import Image
 
 from src.utils import with_semaphore
 
 from .config import proxy
 from .utils import (
+    PerfLog,
     WplacePixelCoords,
     fix_coords,
     get_all_tile_coords,
@@ -27,6 +29,10 @@ async def download_preview(
 ) -> bytes:
     coord1, coord2 = fix_coords(coord1, coord2)
     tile_imgs: dict[tuple[int, int], bytes] = {}
+    logger.opt(colors=True).info(
+        f"Downloading preview "
+        f"from <y>{coord1.human_repr()}</> to <y>{coord2.human_repr()}</>"
+    )
 
     @with_semaphore(4)
     @with_retry(
@@ -38,11 +44,15 @@ async def download_preview(
         tile_imgs[(x, y)] = resp.raise_for_status().read()
 
     async with (
+        PerfLog.for_action("downloading tiles") as perf,
         httpx.AsyncClient(proxy=proxy) as client,
         anyio.create_task_group() as tg,
     ):
         for x, y in get_all_tile_coords(coord1, coord2):
             tg.start_soon(fetch_tile, x, y)
+    logger.opt(colors=True).info(
+        f"Downloaded <g>{len(tile_imgs)}</> tiles (<y>{perf.elapsed:.2f}</>s)"
+    )
 
     def create_image() -> bytes:
         bg_color = (0, 0, 0, 0)
@@ -69,4 +79,7 @@ async def download_preview(
             img.save(output, format="PNG")
             return output.getvalue()
 
-    return await anyio.to_thread.run_sync(create_image)
+    with PerfLog.for_action("creating image") as perf:
+        image = await anyio.to_thread.run_sync(create_image)
+    logger.opt(colors=True).info(f"Created image in <y>{perf.elapsed:.2f}</>s")
+    return image
