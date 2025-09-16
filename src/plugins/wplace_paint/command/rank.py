@@ -9,7 +9,7 @@ from ..fetch import RequestFailed
 from ..rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
 from ..schemas import RankType
 from ..utils import WplacePixelCoords
-from .matcher import TargetHash, finish, matcher
+from .matcher import TargetHash, finish, matcher, prompt
 
 
 @matcher.assign("~rank.bind.revoke")
@@ -24,7 +24,16 @@ async def assign_rank_bind_revoke(key: TargetHash) -> None:
 
 
 @matcher.assign("~rank.bind")
-async def assign_rank_bind(key: TargetHash, coord1: str, coord2: str) -> None:
+async def assign_rank_bind(key: TargetHash) -> None:
+    coord1 = await prompt(
+        "请发送对角坐标1(选点并复制BlueMarble的坐标)\n"
+        "格式如: (Tl X: 123, Tl Y: 456, Px X: 789, Px Y: 012)"
+    )
+    coord2 = await prompt(
+        "请发送对角坐标2(选点并复制BlueMarble的坐标)\n"
+        "格式如: (Tl X: 123, Tl Y: 456, Px X: 789, Px Y: 012)"
+    )
+
     try:
         c1 = WplacePixelCoords.parse(coord1)
         c2 = WplacePixelCoords.parse(coord2)

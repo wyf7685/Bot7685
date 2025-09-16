@@ -99,15 +99,6 @@ alc = Alconna(
         Subcommand(
             "bind",
             Option("--revoke|-r", help_text="取消当前会话的区域 ID 绑定"),
-            Args[
-                "coord1#对角坐标1",
-                str,
-                Field(completion=lambda: "第一个坐标(选点并复制BlueMarble的坐标)"),
-            ][
-                "coord2#对角坐标2",
-                str,
-                Field(completion=lambda: "第二个坐标(选点并复制BlueMarble的坐标)"),
-            ],
         ),
         Subcommand(
             "query",
