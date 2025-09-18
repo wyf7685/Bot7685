@@ -7,7 +7,7 @@ from nonebot.params import Depends
 from nonebot_plugin_alconna import At, CustomNode, MsgTarget, SupportScope, UniMessage
 
 from ..config import UserConfig, users
-from ..fetch import RequestFailed, fetch_me
+from ..fetch import RequestFailed, fetch_me, flatten_request_failed_msg
 from ..scheduler import FETCH_INTERVAL_MINS, expire_push_cache
 from ..utils import normalize_color_name
 from .matcher import TargetHash, finish, matcher, prompt
@@ -31,9 +31,9 @@ async def assign_add(
 
     try:
         resp = await fetch_me(cfg)
-    except RequestFailed as e:
-        await finish(f"验证失败: {e.msg}")
-    except Exception as e:
+    except* RequestFailed as e:
+        await finish(f"验证失败:\n{flatten_request_failed_msg(e)}")
+    except* Exception as e:
         await finish(f"验证时发生意外错误: {e!r}")
 
     cfg.save()
@@ -80,10 +80,10 @@ async def assign_query(
         try:
             resp = await fetch_me(cfg)
             result = resp.format_notification(cfg.target_droplets)
-        except RequestFailed as e:
-            result = f"查询失败: {e.msg}"
-        except Exception as e:
-            result = f"查询时发生意外错误: {e!r}"
+        except* RequestFailed as e:
+            result = f"查询失败:\n{flatten_request_failed_msg(e)}"
+        except* Exception as e:
+            result = f"查询时发生意外错误:\n{e!r}"
 
         output[cfg.wp_user_id] = cfg.user_id, result
 

@@ -2,15 +2,17 @@ from collections.abc import Callable
 
 import cloudscraper
 from nonebot import logger
-from nonebot.utils import run_sync
+from nonebot.utils import flatten_exception_group, run_sync
 from nonebot_plugin_htmlrender import get_browser
 from playwright._impl._api_structures import SetCookieParam
 from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from pydantic import TypeAdapter
 
+from src.utils import with_semaphore
+
 from .config import UserConfig
 from .schemas import FetchMeResponse, PixelInfo, RankType, RankUser
-from .utils import WplacePixelCoords
+from .utils import WplacePixelCoords, with_retry
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
 WPLACE_PURCHASE_API_URL = "https://backend.wplace.live/purchase"
@@ -102,6 +104,11 @@ def _proxy_config() -> dict[str, str] | None:
 _proxies = _proxy_config()
 
 
+class ShouldRetry(RequestFailed): ...
+
+
+@with_semaphore(8)
+@with_retry(ShouldRetry, retries=3, delay=1)
 @run_sync
 def _fetch_with_cloudscraper[T](
     url: str,
@@ -129,6 +136,9 @@ def _fetch_with_cloudscraper[T](
     try:
         resp.raise_for_status()
     except Exception as e:
+        if resp.status_code == 429:
+            raise ShouldRetry("Got status code: 429", 429) from e
+
         raise RequestFailed(
             f"Request failed with status code: {resp.status_code}",
             status_code=resp.status_code,
@@ -147,19 +157,20 @@ async def _fetch_with_auto_fallback[T](
 ) -> T:
     try:
         return await _fetch_with_cloudscraper(url, validate, cfg)
-    except RequestFailed as e:
-        logger.warning(f"cloudscraper failed ({e.msg}), trying playwright...")
+    except* RequestFailed as e:
+        logger.warning(f"cloudscraper failed ({e!r}), trying playwright...")
         cs_exc = e
 
     try:
         return await _fetch_with_playwright(url, validate, cfg)
-    except RequestFailed as e:
+    except* RequestFailed as e:
+        logger.warning(f"playwright also failed ({e!r})")
         pw_exc = e
 
-    raise RequestFailed(
-        f"Both methods failed: cloudscraper: {cs_exc.msg}; playwright: {pw_exc.msg}",
-        status_code=cs_exc.status_code or pw_exc.status_code,
-    ) from cs_exc
+    raise ExceptionGroup(
+        "Both cloudscraper and playwright requests failed",
+        [*flatten_exception_group(cs_exc), *flatten_exception_group(pw_exc)],
+    )
 
 
 async def fetch_me(cfg: UserConfig) -> FetchMeResponse:
@@ -217,3 +228,15 @@ async def fetch_region_rank(region_id: int, rank_type: RankType) -> list[RankUse
         RANK_URL.format(region_id, rank_type),
         _rank_resp_ta.validate_json,
     )
+
+
+def extract_first_status_code(*exc_groups: ExceptionGroup[RequestFailed]) -> int | None:
+    for exc_group in exc_groups:
+        for e in flatten_exception_group(exc_group):
+            if e.status_code is not None:
+                return e.status_code
+    return None
+
+
+def flatten_request_failed_msg(exc_group: ExceptionGroup[RequestFailed]) -> str:
+    return "\n".join(e.msg for e in flatten_exception_group(exc_group))

@@ -191,7 +191,7 @@ type AsyncCallable[**P, R] = Callable[P, Coroutine[None, None, R]]
 
 
 def with_retry[**P, R](
-    *exc: type[BaseException],
+    *exc: type[Exception],
     retries: int = 3,
     delay: float = 0,
 ) -> Callable[[AsyncCallable[P, R]], AsyncCallable[P, R]]:
@@ -203,10 +203,11 @@ def with_retry[**P, R](
     else:
         exc_types = tuple(exc)
 
+    caught: list[Exception] = []
+
     def decorator(func: AsyncCallable[P, R]) -> AsyncCallable[P, R]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            last_exc: BaseException | None = None
             for attempt in range(retries):
                 try:
                     return await func(*args, **kwargs)
@@ -215,12 +216,11 @@ def with_retry[**P, R](
                         f"函数 {func.__name__} "
                         f"第 {attempt + 1}/{retries} 次调用失败: {e!r}"
                     )
-                    last_exc = e
+                    caught.append(e)
                     if delay > 0:
                         await anyio.sleep(delay)
 
-            assert isinstance(last_exc, BaseException)
-            raise last_exc
+            raise ExceptionGroup(f"所有 {retries} 次尝试均失败", caught) from caught[0]
 
         return wrapper
 

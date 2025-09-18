@@ -5,7 +5,7 @@ from nonebot.exception import MatcherException
 from nonebot_plugin_alconna import Query, UniMessage
 
 from ..config import ranks, users
-from ..fetch import RequestFailed
+from ..fetch import RequestFailed, flatten_request_failed_msg
 from ..rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
 from ..schemas import RankType
 from ..utils import WplacePixelCoords
@@ -42,9 +42,9 @@ async def assign_rank_bind(key: TargetHash) -> None:
 
     try:
         regions = await find_regions_in_rect(c1, c2)
-    except RequestFailed as e:
-        await finish(f"查询区域内的 region ID 失败: {e.msg}")
-    except Exception as e:
+    except* RequestFailed as e:
+        await finish(f"查询区域内的 region ID 失败:\n{flatten_request_failed_msg(e)}")
+    except* Exception as e:
         logger.exception("查询区域内的 region ID 时发生错误")
         await finish(f"查询区域内的 region ID 时发生意外错误: {e!r}")
 
@@ -82,9 +82,9 @@ async def assign_rank_query(
 
     try:
         rank_data = await get_regions_rank(cfg[key], rt)
-    except RequestFailed as e:
-        await finish(f"获取排行榜失败: {e.msg}")
-    except Exception as e:
+    except* RequestFailed as e:
+        await finish(f"获取排行榜失败:\n{flatten_request_failed_msg(e)}")
+    except* Exception as e:
         logger.exception("获取排行榜时发生错误")
         await finish(f"获取排行榜时发生意外错误: {e!r}")
 

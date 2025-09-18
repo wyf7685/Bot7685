@@ -14,7 +14,12 @@ from pydantic import BaseModel
 from src.plugins.cache import get_cache
 
 from .config import UserConfig, users
-from .fetch import RequestFailed, fetch_me
+from .fetch import (
+    RequestFailed,
+    extract_first_status_code,
+    fetch_me,
+    flatten_request_failed_msg,
+)
 
 FETCH_INTERVAL_MINS = 5
 LAZY_FETCH_INTERVAL = timedelta(minutes=29)
@@ -118,20 +123,23 @@ async def fetch_for_user(cfg: UserConfig) -> None:
 
     # 获取用户信息
     logger.debug(f"正在获取 {colored} 的信息")
+    resp = None
     try:
         resp = await fetch_me(cfg)
-    except RequestFailed as e:
-        logger.warning(f"获取 {colored} 的信息失败: {escape_tag(e.msg)}")
-        if e.status_code == 500:
+    except* RequestFailed as e:
+        logger.warning(
+            f"获取 {colored} 的信息失败:\n{escape_tag(flatten_request_failed_msg(e))}"
+        )
+        if extract_first_status_code(e) == 500:
             logger.info(f"{colored} 凭据无效，准备推送")
             cache.credential_invalid = True
             await _push_msg(
                 f"用户 {cfg.wp_user_name} #{cfg.wp_user_id}] "
                 "的 wplace 凭据已失效，请重新绑定"
             )
-        return
-    except Exception:
+    except* Exception:
         logger.opt(exception=True).warning(f"获取 {colored} 的信息时发生意外错误")
+    if resp is None:
         return
 
     async def push_notification() -> NoReturn:

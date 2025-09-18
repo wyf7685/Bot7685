@@ -2,13 +2,17 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 
 import anyio
+from nonebot import logger
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
+
+from src.utils import with_semaphore
 
 from .avartar import get_wplace_avatar
 from .config import TEMPLATE_DIR
 from .fetch import (
     RequestFailed,
     fetch_region_rank,
+    flatten_request_failed_msg,
     get_pixel_info,
 )
 from .schemas import PixelRegion, RankType
@@ -31,27 +35,44 @@ async def find_regions_in_rect(
     # 使用一个 dict 来缓存已查询过的坐标，避免重复 API 调用
     coords_region_cache: dict[WplaceAbsCoords, PixelRegion] = {}
 
+    @with_semaphore(8)
     async def get_region_id_at(
         abs_x: int, abs_y: int, found: dict[int, PixelRegion] = found_region
     ) -> int | None:
         """根据绝对像素坐标获取 region ID，并处理缓存和异常。"""
         coord = WplaceAbsCoords(abs_x, abs_y)
         if cached_region := coords_region_cache.get(coord):
+            logger.debug(
+                f"像素点 {coord} 的区域信息已缓存，region ID: {cached_region.id}"
+            )
             found[cached_region.id] = cached_region
             return cached_region.id
 
+        logger.debug(f"查询像素点 {coord} 的区域信息...")
         try:
             pixel_info = await get_pixel_info(coord.to_pixel())
-        except RequestFailed:
+        except* RequestFailed as e:
             # 如果查询失败，则忽略该点
-            return None
+            logger.debug(
+                f"查询像素点 {coord} 的区域信息失败: {flatten_request_failed_msg(e)}"
+            )
+        else:
+            region = pixel_info.region
+            found[region.id] = coords_region_cache[coord] = region
+            return region.id
 
-        region = pixel_info.region
-        found[region.id] = coords_region_cache[coord] = region
-        return region.id
-
-    async def subdivide(left: int, top: int, right: int, bottom: int) -> None:
+    async def subdivide(
+        left: int, top: int, right: int, bottom: int, label: str
+    ) -> None:
         """递归细分函数。"""
+        depth = label.count("-") + 1
+        colored = (
+            f"(<c>{left}</>, <c>{top}</>) - "
+            f"(<c>{right}</>, <c>{bottom}</>) "
+            f"[<g>{label}</>]"
+        )
+        logger.opt(colors=True).debug(f"细分区域 {colored}")
+
         # 检查四个角点
         corners: dict[int, PixelRegion] = {}
         async with anyio.create_task_group() as tg:
@@ -59,33 +80,57 @@ async def find_regions_in_rect(
             tg.start_soon(get_region_id_at, right, top, corners)  # 右上
             tg.start_soon(get_region_id_at, left, bottom, corners)  # 左下
             tg.start_soon(get_region_id_at, right, bottom, corners)  # 右下
+        logger.opt(colors=True).debug(
+            f"区域 {colored} 的角点区域: {set(corners.keys())}"
+        )
 
         async def sub(mid_x: int, mid_y: int) -> None:
             async with anyio.create_task_group() as tg:
-                tg.start_soon(subdivide, left, top, mid_x, mid_y)  # 左上
-                tg.start_soon(subdivide, mid_x, top, right, mid_y)  # 右上
-                tg.start_soon(subdivide, left, mid_y, mid_x, bottom)  # 左下
-                tg.start_soon(subdivide, mid_x, mid_y, right, bottom)  # 右下
+                tg.start_soon(subdivide, left, top, mid_x, mid_y, f"{label}-lt")
+                tg.start_soon(subdivide, mid_x, top, right, mid_y, f"{label}-rt")
+                tg.start_soon(subdivide, left, mid_y, mid_x, bottom, f"{label}-lb")
+                tg.start_soon(subdivide, mid_x, mid_y, right, bottom, f"{label}-rb")
 
         # 如果所有角点都相同（或只有一个角点成功返回），并且矩形不是最小单位
         if len(corners) <= 1 and (left < right or top < bottom):
             # 检查中心点以确认区域内部是否一致
             mid_x, mid_y = (left + right) // 2, (top + bottom) // 2
-            center_region = await get_region_id_at(mid_x, mid_y)
+            center_region_id = await get_region_id_at(mid_x, mid_y)
 
             # 如果中心点与角点区域不同，则需要细分
-            if center_region is not None and center_region not in corners:
+            if center_region_id is not None and center_region_id not in corners:
+                logger.opt(colors=True).debug(
+                    f"区域 {colored} 的中心点区域 {center_region_id} "
+                    "与角点区域不同, 继续细分"
+                )
                 # 递归处理四个象限
                 await sub(mid_x, mid_y)
+            return
+
+        # 如果细分深度达到阈值且所有角点区域均已找到，则停止细分
+        if depth >= 3 and all(c in found_region for c in corners):
+            logger.opt(colors=True).debug(
+                f"区域 {colored} 细分深度达到 {depth} 且所有角点区域均已找到, 停止细分"
+            )
+            return
+
+        found_region.update(corners)
 
         # 如果角点不一致，说明已跨越边界，直接细分
-        elif len(corners) > 1:
+        if len(corners) > 1:
+            logger.opt(colors=True).debug(f"区域 {colored} 跨越多个区域, 继续细分")
             # 递归处理四个象限
             await sub((left + right) // 2, (top + bottom) // 2)
 
+        # 否则，区域内的区域一致，无需进一步处理
+        else:
+            logger.opt(colors=True).debug(
+                f"区域 {colored} 内的区域一致: {next(iter(corners))}"
+            )
+
     # 将坐标转换为绝对像素坐标，便于计算
     c1, c2 = fix_coords(coord1, coord2)
-    await subdivide(*c1.to_abs(), *c2.to_abs())
+    await subdivide(*c1.to_abs(), *c2.to_abs(), "root")
     return found_region
 
 

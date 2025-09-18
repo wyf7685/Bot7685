@@ -11,7 +11,7 @@ from nonebot.utils import flatten_exception_group
 from nonebot_plugin_alconna import Image, UniMessage, image_fetch
 
 from ..config import IMAGE_DIR, TemplateConfig, templates
-from ..fetch import RequestFailed
+from ..fetch import RequestFailed, flatten_request_failed_msg
 from ..preview import download_preview
 from ..template import (
     calc_template_diff,
@@ -132,9 +132,9 @@ async def assign_template_preview(
 async def assign_template_progress(cfg: TargetTemplate) -> None:
     try:
         progress_data = await calc_template_diff(cfg)
-    except RequestFailed as e:
-        await finish(f"获取模板进度失败: {e.msg}")
-    except Exception as e:
+    except* RequestFailed as e:
+        await finish(f"获取模板进度失败:\n{flatten_request_failed_msg(e)}")
+    except* Exception as e:
         await finish(f"计算模板进度时发生意外错误: {e!r}")
 
     if not progress_data:
@@ -184,11 +184,11 @@ async def assign_template_color(
     try:
         img_bytes = await render_template_with_color(cfg, fixed_colors, background)
         await finish(UniMessage.image(raw=img_bytes))
-    except RequestFailed as e:
-        await finish(f"获取模板图失败: {e.msg}")
-    except MatcherException:
+    except* RequestFailed as e:
+        await finish(f"获取模板图失败:\n{flatten_request_failed_msg(e)}")
+    except* MatcherException:
         raise
-    except Exception as e:
+    except* Exception as e:
         logger.opt(exception=True).warning("渲染模板图时发生错误")
         await finish(f"渲染模板图时发生意外错误: {e!r}")
 
