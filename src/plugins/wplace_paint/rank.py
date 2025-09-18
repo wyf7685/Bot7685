@@ -29,17 +29,16 @@ async def find_regions_in_rect(
     # 使用一个 dict 来自动处理重复的 region ID
     found_region: dict[int, PixelRegion] = {}
     # 使用一个 dict 来缓存已查询过的坐标，避免重复 API 调用
-    checked_coords: dict[WplaceAbsCoords, int] = {}
+    coords_region_cache: dict[WplaceAbsCoords, PixelRegion] = {}
 
     async def get_region_id_at(
         abs_x: int, abs_y: int, found: dict[int, PixelRegion] = found_region
     ) -> int | None:
         """根据绝对像素坐标获取 region ID，并处理缓存和异常。"""
         coord = WplaceAbsCoords(abs_x, abs_y)
-        if coord in checked_coords:
-            region_id = checked_coords[coord]
-            found[region_id] = found_region[region_id]
-            return region_id
+        if cached_region := coords_region_cache.get(coord):
+            found[cached_region.id] = cached_region
+            return cached_region.id
 
         try:
             pixel_info = await get_pixel_info(coord.to_pixel())
@@ -47,10 +46,9 @@ async def find_regions_in_rect(
             # 如果查询失败，则忽略该点
             return None
 
-        region_id = pixel_info.region.id
-        found[region_id] = pixel_info.region
-        checked_coords[coord] = region_id
-        return region_id
+        region = pixel_info.region
+        found[region.id] = coords_region_cache[coord] = region
+        return region.id
 
     async def subdivide(left: int, top: int, right: int, bottom: int) -> None:
         """递归细分函数。"""

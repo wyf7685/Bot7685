@@ -45,6 +45,7 @@ async def assign_rank_bind(key: TargetHash) -> None:
     except RequestFailed as e:
         await finish(f"查询区域内的 region ID 失败: {e.msg}")
     except Exception as e:
+        logger.exception("查询区域内的 region ID 时发生错误")
         await finish(f"查询区域内的 region ID 时发生意外错误: {e!r}")
 
     if not regions:
@@ -84,6 +85,7 @@ async def assign_rank_query(
     except RequestFailed as e:
         await finish(f"获取排行榜失败: {e.msg}")
     except Exception as e:
+        logger.exception("获取排行榜时发生错误")
         await finish(f"获取排行榜时发生意外错误: {e!r}")
 
     if not all_users.result:
@@ -99,7 +101,7 @@ async def assign_rank_query(
     except MatcherException:
         raise
     except Exception:
-        logger.opt(exception=True).warning("渲染排行榜时发生错误")
+        logger.exception("渲染排行榜时发生错误")
 
     # fallback
     msg = "\n".join(
