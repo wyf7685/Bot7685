@@ -138,7 +138,9 @@ async def fetch_for_user(cfg: UserConfig) -> None:
                 "的 wplace 凭据已失效，请重新绑定"
             )
     except* Exception:
-        logger.opt(exception=True).warning(f"获取 {colored} 的信息时发生意外错误")
+        logger.opt(colors=True, exception=True).warning(
+            f"获取 {colored} 的信息时发生意外错误"
+        )
     if resp is None:
         return
 
