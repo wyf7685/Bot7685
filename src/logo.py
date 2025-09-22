@@ -55,14 +55,14 @@ st2 = (141, 209, 71)
 ed2 = (71, 203, 209)
 
 
-def render() -> Generator[str]:
+def render(mode: ColorMode) -> Generator[str]:
     split = int(WIDTH * 0.7)
-    part1 = apply_gradient_2d([line[:split] for line in LOGO_LINES], st1, ed1, "rich")
-    part2 = apply_gradient_2d([line[split:] for line in LOGO_LINES], st2, ed2, "rich")
+    part1 = apply_gradient_2d([line[:split] for line in LOGO_LINES], st1, ed1, mode)
+    part2 = apply_gradient_2d([line[split:] for line in LOGO_LINES], st2, ed2, mode)
     yield from (a + b for a, b in zip(part1, part2, strict=True))
 
 
-def print_logo(log: Callable[[str], object]) -> None:
+def print_logo(log: Callable[[str], object], mode: ColorMode = "rich") -> None:
     log("━" * WIDTH)
-    [log(line) for line in render()]
+    [log(line) for line in render(mode)]
     log("━" * WIDTH)
