@@ -12,9 +12,6 @@ from .config import proxy
 from .utils import (
     PerfLog,
     WplacePixelCoords,
-    fix_coords,
-    get_all_tile_coords,
-    get_size,
     parse_rgb_str,
     with_retry,
 )
@@ -27,7 +24,7 @@ async def download_preview(
     coord2: WplacePixelCoords,
     background: str | None = None,
 ) -> bytes:
-    coord1, coord2 = fix_coords(coord1, coord2)
+    coord1, coord2 = coord1.fix_with(coord2)
     tile_imgs: dict[tuple[int, int], bytes] = {}
     logger.opt(colors=True).info(
         f"Downloading preview "
@@ -48,7 +45,7 @@ async def download_preview(
         httpx.AsyncClient(proxy=proxy) as client,
         anyio.create_task_group() as tg,
     ):
-        for x, y in get_all_tile_coords(coord1, coord2):
+        for x, y in coord1.all_tile_coords(coord2):
             tg.start_soon(fetch_tile, x, y)
     logger.opt(colors=True).info(
         f"Downloaded <g>{len(tile_imgs)}</> tiles (<y>{perf.elapsed:.2f}</>s)"
@@ -59,7 +56,7 @@ async def download_preview(
         if background is not None and (bg_rgb := parse_rgb_str(background)):
             bg_color = (*bg_rgb, 255)
 
-        img = Image.new("RGBA", get_size(coord1, coord2), bg_color)
+        img = Image.new("RGBA", coord1.size_with(coord2), bg_color)
         for (tx, ty), tile_bytes in tile_imgs.items():
             tile_img = Image.open(io.BytesIO(tile_bytes)).convert("RGBA")
             src_box = (

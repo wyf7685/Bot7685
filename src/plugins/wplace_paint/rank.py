@@ -16,7 +16,7 @@ from .fetch import (
     get_pixel_info,
 )
 from .schemas import PixelRegion, RankType
-from .utils import WplaceAbsCoords, WplacePixelCoords, fix_coords, get_flag_emoji
+from .utils import WplaceAbsCoords, WplacePixelCoords, get_flag_emoji
 
 
 async def find_regions_in_rect(
@@ -129,7 +129,7 @@ async def find_regions_in_rect(
             )
 
     # 将坐标转换为绝对像素坐标，便于计算
-    c1, c2 = fix_coords(coord1, coord2)
+    c1, c2 = coord1.fix_with(coord2)
     await subdivide(*c1.to_abs(), *c2.to_abs(), "root")
     return found_region
 

@@ -102,6 +102,13 @@ def _proxy_config() -> dict[str, str] | None:
 
 
 _proxies = _proxy_config()
+_scraper_headers = {
+    "User-Agent": USER_AGENT,
+    "Sec-Ch-Ua": '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Origin": "https://wplace.live",
+}
 
 
 class ShouldRetry(RequestFailed): ...
@@ -118,14 +125,7 @@ def _fetch_with_cloudscraper[T](
     try:
         resp = cloudscraper.create_scraper().get(
             url,
-            headers={
-                "User-Agent": USER_AGENT,
-                "Sec-Ch-Ua": '"Chromium";v="140", '
-                '"Not=A?Brand";v="24", "Google Chrome";v="140"',
-                "Sec-Ch-Ua-Mobile": "?0",
-                "Sec-Ch-Ua-Platform": '"Windows"',
-                "Origin": "https://wplace.live",
-            },
+            headers=_scraper_headers,
             cookies=cfg and construct_requests_cookies(cfg.token, cfg.cf_clearance),
             proxies=_proxies,
             timeout=20,
@@ -136,7 +136,7 @@ def _fetch_with_cloudscraper[T](
     try:
         resp.raise_for_status()
     except Exception as e:
-        if resp.status_code == 429:
+        if resp.status_code == 429:  # Too Many Requests
             raise ShouldRetry("Got status code: 429", 429) from e
 
         raise RequestFailed(

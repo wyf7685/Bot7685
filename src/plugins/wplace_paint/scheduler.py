@@ -23,6 +23,7 @@ from .fetch import (
 
 FETCH_INTERVAL_MINS = 5
 LAZY_FETCH_INTERVAL = timedelta(minutes=29)
+PUSH_CACHE_TTL = timedelta(hours=1)
 MAX_PUSH_ATTEMPT = 3
 push_cache = get_cache[str, str]("wplace_paint:push_state")
 logger = logger.opt(colors=True)
@@ -43,8 +44,13 @@ class PushState(BaseModel):
         return cls.model_validate_json(await push_cache.get(key, "{}"))
 
     async def save(self, key: str, set_ttl: bool) -> None:
-        ttl_kwd = {"ttl": timedelta(hours=1)} if set_ttl else {}
-        await push_cache.set(key, self.model_dump_json(), **ttl_kwd)
+        value = self.model_dump_json(
+            exclude_unset=True,
+            exclude_defaults=True,
+            exclude_none=True,
+        )
+        ttl_kwd = {"ttl": PUSH_CACHE_TTL} if set_ttl else {}
+        await push_cache.set(key, value, **ttl_kwd)
 
 
 async def expire_push_cache(cfg: UserConfig) -> None:
@@ -80,6 +86,8 @@ async def fetch_for_user(cfg: UserConfig) -> None:
         return
 
     def finish() -> NoReturn:
+        # 抛出异常跳出当前查询任务
+        # from None 清空异常链
         raise FetchDone from None
 
     async def save_cache() -> None:
@@ -126,11 +134,12 @@ async def fetch_for_user(cfg: UserConfig) -> None:
     resp = None
     try:
         resp = await fetch_me(cfg)
-    except* RequestFailed as e:
+    except* RequestFailed as exc_group:
         logger.warning(
-            f"获取 {colored} 的信息失败:\n{escape_tag(flatten_request_failed_msg(e))}"
+            f"获取 {colored} 的信息失败:\n"
+            f"{escape_tag(flatten_request_failed_msg(exc_group))}"
         )
-        if extract_first_status_code(e) == 500:
+        if extract_first_status_code(exc_group) == 500:
             logger.info(f"{colored} 凭据无效，准备推送")
             cache.credential_invalid = True
             await _push_msg(
