@@ -81,6 +81,9 @@ async def _fetch_with_playwright[T](
                 resp = await page.goto(url, wait_until="networkidle", timeout=20000)
             except PlaywrightTimeoutError as e:
                 raise RequestFailed("Request timed out") from e
+            except Exception as e:
+                raise RequestFailed(f"Request failed: {e!r}") from e
+
             if resp is None:
                 raise RequestFailed("Failed to get response")
             if resp.status != 200:
