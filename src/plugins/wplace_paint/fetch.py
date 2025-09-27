@@ -114,11 +114,11 @@ _scraper_headers = {
 }
 
 
-class ShouldRetry(RequestFailed): ...
+class TooManyRequests(RequestFailed): ...
 
 
 @with_semaphore(8)
-@with_retry(ShouldRetry, retries=3, delay=1)
+@with_retry(TooManyRequests, retries=3, delay=1)
 @run_sync
 def _fetch_with_cloudscraper[T](
     url: str,
@@ -140,7 +140,7 @@ def _fetch_with_cloudscraper[T](
         resp.raise_for_status()
     except Exception as e:
         if resp.status_code == 429:  # Too Many Requests
-            raise ShouldRetry("Got status code: 429", 429) from e
+            raise TooManyRequests("Got status code: 429", 429) from e
 
         raise RequestFailed(
             f"Request failed with status code: {resp.status_code}",
@@ -161,6 +161,10 @@ async def _fetch_with_auto_fallback[T](
     try:
         return await _fetch_with_cloudscraper(url, validate, cfg)
     except* RequestFailed as e:
+        if any(err.status_code in {401, 500} for err in flatten_exception_group(e)):
+            logger.warning("cloudscraper got status code 401/500, not falling back")
+            raise
+
         logger.warning(f"cloudscraper failed ({e!r}), trying playwright...")
         cs_exc = e
 

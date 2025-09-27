@@ -139,7 +139,7 @@ async def fetch_for_user(cfg: UserConfig) -> None:
             f"获取 {colored} 的信息失败:\n"
             f"{escape_tag(flatten_request_failed_msg(exc_group))}"
         )
-        if extract_first_status_code(exc_group) == 500:
+        if extract_first_status_code(exc_group) in {401, 500}:
             logger.info(f"{colored} 凭据无效，准备推送")
             cache.credential_invalid = True
             await _push_msg(
