@@ -1,9 +1,10 @@
 import functools
+import itertools
 import math
 import re
 import time
 import types
-from collections.abc import Callable, Coroutine, Iterable
+from collections.abc import Callable, Coroutine, Iterable, Sequence
 from dataclasses import dataclass
 from typing import NamedTuple, Self
 
@@ -152,16 +153,28 @@ def find_color_name(rgba: tuple[int, int, int, int]) -> str:
     return closest_name
 
 
+_NORMALIZED_COLOR_NAMES: dict[str, str] = {
+    name.lower().replace(" ", "_"): name for name in ALL_COLORS
+}
+
+
 def normalize_color_name(name: str) -> str | None:
     if name == "Transparent":
         return name
 
     name = name.strip().lower().replace(" ", "_")
-    for color_name in ALL_COLORS:
-        if color_name.lower().replace(" ", "_") == name:
-            return color_name
+    return _NORMALIZED_COLOR_NAMES.get(name)
 
-    return None
+
+def parse_color_names(names: Sequence[str]) -> Sequence[str]:
+    result: list[str] = []
+    for idx, length in itertools.product(range(len(names)), range(3)):
+        if idx + length >= len(names):
+            continue
+        name = "_".join(names[idx : idx + length + 1]).lower().strip()
+        if (color_name := _NORMALIZED_COLOR_NAMES.get(name)) is not None:
+            result.append(color_name)
+    return result
 
 
 def parse_rgb_str(s: str) -> tuple[int, int, int] | None:

@@ -20,7 +20,7 @@ from ..template import (
     render_progress,
     render_template_with_color,
 )
-from ..utils import WplacePixelCoords, normalize_color_name
+from ..utils import WplacePixelCoords, normalize_color_name, parse_color_names
 from .matcher import TargetHash, finish, matcher, prompt
 
 
@@ -188,16 +188,17 @@ async def assign_template_color(
     color_name: list[str],
     background: str | None = None,
 ) -> None:
-    fixed_colors: list[str] = []
-    for name in color_name:
-        if fixed_name := normalize_color_name(name):
-            fixed_colors.append(fixed_name)
-        else:
-            await finish(f"无效的颜色名称: {name}")
+    fixed_colors = parse_color_names(color_name)
+    if not fixed_colors:
+        await finish(f"无效的颜色名称:\n{' '.join(color_name)}")
 
     try:
         img_bytes = await render_template_with_color(cfg, fixed_colors, background)
-        await finish(UniMessage.image(raw=img_bytes))
+        await finish(
+            UniMessage.text(
+                "渲染模板图:\n" + "\n".join(f"- {name}" for name in fixed_colors)
+            ).image(raw=img_bytes)
+        )
     except* RequestFailed as e:
         await finish(f"获取模板图失败:\n{flatten_request_failed_msg(e)}")
     except* MatcherException:
