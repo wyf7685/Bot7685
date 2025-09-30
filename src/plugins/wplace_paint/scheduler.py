@@ -143,8 +143,8 @@ async def fetch_for_user(cfg: UserConfig) -> None:
             logger.info(f"{colored} 凭据无效，准备推送")
             cache.credential_invalid = True
             await _push_msg(
-                f"用户 {cfg.wp_user_name} #{cfg.wp_user_id}] "
-                "的 wplace 凭据已失效，请重新绑定"
+                f"用户 {cfg.wp_user_name} #{cfg.wp_user_id} 的 wplace 凭据已失效\n"
+                "请使用 wplace bind 命令重新绑定"
             )
     except* Exception:
         logger.opt(colors=True, exception=True).warning(

@@ -13,8 +13,8 @@ from ..utils import normalize_color_name
 from .matcher import TargetHash, finish, matcher, prompt
 
 
-@matcher.assign("~add")
-async def assign_add(
+@matcher.assign("~bind")
+async def assign_bind(
     bot: Bot,
     event: Event,
     target: MsgTarget,
@@ -154,6 +154,20 @@ async def assign_config_notify_mins(
     await finish(f"将在距离像素回满小于 {notify_mins} 分钟时推送通知")
 
 
+@matcher.assign("~config.bind-target")
+async def assign_config_bind_target(
+    cfg: SelectedUserConfig,
+    target: MsgTarget,
+    target_hash: TargetHash,
+) -> None:
+    if target.private:
+        await finish("请在群聊中使用绑定功能")
+
+    cfg.bind_groups.add(target_hash)
+    cfg.save()
+    await finish(f"{cfg.wp_user_name} #{cfg.wp_user_id} 已绑定到当前群组")
+
+
 @matcher.assign("~config.set-target")
 async def assign_config_set_target(
     cfg: SelectedUserConfig,
@@ -201,20 +215,6 @@ async def assign_config_target_droplets(
 async def assign_remove(cfg: SelectedUserConfig) -> None:
     users.remove(lambda c: c is cfg)
     await finish(f"移除成功: {cfg.wp_user_name} #{cfg.wp_user_id}")
-
-
-@matcher.assign("~bind")
-async def assign_bind(
-    cfg: SelectedUserConfig,
-    target: MsgTarget,
-    target_hash: TargetHash,
-) -> None:
-    if target.private:
-        await finish("请在群聊中使用绑定功能")
-
-    cfg.bind_groups.add(target_hash)
-    cfg.save()
-    await finish(f"{cfg.wp_user_name} #{cfg.wp_user_id} 已绑定到当前群组")
 
 
 @matcher.assign("~find-color")

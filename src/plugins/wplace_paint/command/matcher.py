@@ -21,7 +21,7 @@ from ..scheduler import FETCH_INTERVAL_MINS
 alc = Alconna(
     "wplace",
     Subcommand(
-        "add",
+        "bind",
         Args[
             "token",
             str,
@@ -31,7 +31,7 @@ alc = Alconna(
             str,
             Field(completion=lambda: "wplace Cookies 中的 cf_clearance"),
         ],
-        alias={"a"},
+        alias={"add"},
         help_text="添加一个 WPlace 账号",
     ),
     Subcommand(
@@ -47,6 +47,10 @@ alc = Alconna(
             "--notify-mins|-n",
             Args["notify_mins", int, Field(completion=lambda: "提前通知分钟数")],
             help_text=f"提前多少分钟通知 (默认10,最小{FETCH_INTERVAL_MINS})",
+        ),
+        Option(
+            "--bind-target",
+            help_text="将账号绑定到当前群组(使其对$group可见)",
         ),
         Option(
             "--set-target",
@@ -74,11 +78,6 @@ alc = Alconna(
         Args["identifier?#账号标识,ID或用户名", str],
         alias={"rm"},
         help_text="移除已绑定的账号",
-    ),
-    Subcommand(
-        "bind",
-        Args["identifier?#账号标识,ID或用户名", str],
-        help_text="将账号绑定到当前群组(使其对$group可见)",
     ),
     Subcommand(
         "preview",

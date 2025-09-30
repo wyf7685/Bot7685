@@ -90,15 +90,15 @@ class FetchMeResponse(BaseModel):
         )
 
     def format_notification(self, target_droplets: int | None = None) -> str:
-        r = int(self.charges.remaining_secs())
-        recover_time = datetime.now() + timedelta(seconds=r)
         flag = f" {get_flag_emoji(self.equippedFlag)}" if self.equippedFlag else ""
+        remaining = timedelta(seconds=int(self.charges.remaining_secs()))
+        recover_time = datetime.now() + remaining
         base_msg = (
             f"{self.name} #{self.id}{flag} 💧{self.droplets}\n"
             f"Lv. {int(self.level)} (升级还需 {self.next_level_pixels()} 像素)\n"
             f"当前像素: {int(self.charges.count)}/{self.charges.max}\n"
-            f"恢复耗时: {r // 3600}:{r // 60 % 60:02}:{r % 60:02}\n"
-            f"预计回满: {recover_time:%Y-%m-%d %H:%M:%S}"
+            f"恢复耗时: {remaining}\n"
+            f"预计回满: {recover_time.replace(microsecond=0).isoformat(' ')}"
         )
 
         if target_droplets is None or target_droplets <= self.droplets:
@@ -107,15 +107,17 @@ class FetchMeResponse(BaseModel):
         return f"{base_msg}\n{extra_msg}"
 
     @functools.cached_property
-    def own_flags(self) -> set[int]:
+    def own_flags(self) -> frozenset[int]:
         b = base64.b64decode(self.flagsBitmap.encode("ascii"))
-        return {i for i in range(len(b) * 8) if b[-(i // 8) - 1] & (1 << (i % 8))}
+        return frozenset(
+            i for i in range(len(b) * 8) if b[-(i // 8) - 1] & (1 << (i % 8))
+        )
 
     @functools.cached_property
-    def own_colors(self) -> set[str]:
+    def own_colors(self) -> frozenset[str]:
         bitmap = self.extraColorsBitmap
         paid = {color for idx, color in enumerate(PAID_COLORS) if bitmap & (1 << idx)}
-        return {"Transparent"} | set(FREE_COLORS) | paid
+        return frozenset({"Transparent"} | set(FREE_COLORS) | paid)
 
 
 class PixelPaintedBy(BaseModel):
