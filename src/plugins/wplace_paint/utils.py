@@ -1,5 +1,4 @@
 import functools
-import itertools
 import math
 import re
 import time
@@ -168,12 +167,18 @@ def normalize_color_name(name: str) -> str | None:
 
 def parse_color_names(names: Sequence[str]) -> Sequence[str]:
     result: list[str] = []
-    for idx, length in itertools.product(range(len(names)), range(3)):
-        if idx + length >= len(names):
-            continue
-        name = "_".join(names[idx : idx + length + 1]).lower().strip()
-        if (color_name := _NORMALIZED_COLOR_NAMES.get(name)) is not None:
-            result.append(color_name)
+    idx = 0
+    while idx < len(names):
+        for length in range(2, -1, -1):
+            if idx + length >= len(names):
+                continue
+            name = "_".join(names[idx : idx + length + 1]).lower().strip()
+            if (color_name := _NORMALIZED_COLOR_NAMES.get(name)) is not None:
+                result.append(color_name)
+                idx += length + 1
+                break
+        else:
+            idx += 1
     return result
 
 
