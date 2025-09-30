@@ -78,9 +78,9 @@ async def calc_template_diff(
     *,
     include_pixels: bool = False,
 ) -> list[ColorEntry]:
-    template_img, (coord1, coord2) = load_template(cfg)
+    template_img, coords = load_template(cfg)
     width, height = template_img.size
-    actual_img_bytes = await download_preview(coord1, coord2)
+    actual_img_bytes = await download_preview(*coords)
     actual_img = Image.open(io.BytesIO(actual_img_bytes))
 
     def compare() -> list[ColorEntry]:

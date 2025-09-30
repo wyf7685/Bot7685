@@ -15,13 +15,14 @@ from .schemas import FetchMeResponse, PixelInfo, RankType, RankUser
 from .utils import WplacePixelCoords, with_retry
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
-WPLACE_PURCHASE_API_URL = "https://backend.wplace.live/purchase"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/140.0.0.0 Safari/537.36"
 )
 PW_INIT_SCRIPT = "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
+
+type ValidateFunc[T] = Callable[[str | bytes], T]
 
 
 def construct_requests_cookies(token: str, cf_clearance: str) -> dict[str, str]:
@@ -61,9 +62,21 @@ class RequestFailed(Exception):
         self.status_code = status_code
 
 
+def extract_first_status_code(*exc_groups: ExceptionGroup[RequestFailed]) -> int | None:
+    for exc_group in exc_groups:
+        for e in flatten_exception_group(exc_group):
+            if e.status_code is not None:
+                return e.status_code
+    return None
+
+
+def flatten_request_failed_msg(exc_group: ExceptionGroup[RequestFailed]) -> str:
+    return "\n".join(e.msg for e in flatten_exception_group(exc_group))
+
+
 async def _fetch_with_playwright[T](
     url: str,
-    validate: Callable[[str], T],
+    validate: ValidateFunc[T],
     cfg: UserConfig | None = None,
 ) -> T:
     browser = await get_browser()
@@ -122,7 +135,7 @@ class TooManyRequests(RequestFailed): ...
 @run_sync
 def _fetch_with_cloudscraper[T](
     url: str,
-    validate: Callable[[str], T],
+    validate: ValidateFunc[T],
     cfg: UserConfig | None = None,
 ) -> T:
     try:
@@ -148,35 +161,35 @@ def _fetch_with_cloudscraper[T](
         ) from e
 
     try:
-        return validate(resp.text)
+        return validate(resp.content)
     except Exception as e:
         raise RequestFailed("Failed to parse JSON response") from e
 
 
 async def _fetch_with_auto_fallback[T](
     url: str,
-    validate: Callable[[str], T],
+    validate: ValidateFunc[T],
     cfg: UserConfig | None = None,
 ) -> T:
     try:
         return await _fetch_with_cloudscraper(url, validate, cfg)
-    except* RequestFailed as e:
-        if any(err.status_code in {401, 500} for err in flatten_exception_group(e)):
+    except* RequestFailed as exc_group:
+        if any(e.status_code in {401, 500} for e in flatten_exception_group(exc_group)):
             logger.warning("cloudscraper got status code 401/500, not falling back")
             raise
 
-        logger.warning(f"cloudscraper failed ({e!r}), trying playwright...")
-        cs_exc = e
+        logger.warning(f"cloudscraper failed ({exc_group!r}), trying playwright...")
+        cs_exc = exc_group
 
     try:
         return await _fetch_with_playwright(url, validate, cfg)
-    except* RequestFailed as e:
-        logger.warning(f"playwright also failed ({e!r})")
-        pw_exc = e
+    except RequestFailed as exc:
+        logger.warning(f"playwright also failed ({exc!r})")
+        pw_exc = exc
 
     raise ExceptionGroup(
         "Both cloudscraper and playwright requests failed",
-        [*flatten_exception_group(cs_exc), *flatten_exception_group(pw_exc)],
+        [*flatten_exception_group(cs_exc), pw_exc],
     )
 
 
@@ -193,37 +206,14 @@ async def fetch_me(cfg: UserConfig) -> FetchMeResponse:
     return resp
 
 
-@run_sync
-def purchase(cfg: UserConfig, item_id: int, amount: int) -> None:
-    try:
-        resp = cloudscraper.create_scraper().post(
-            WPLACE_PURCHASE_API_URL,
-            headers={"User-Agent": USER_AGENT},
-            cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
-            proxies=_proxies,
-            json={"product": {"id": item_id, "amount": amount}},
-            timeout=20,
-        )
-        resp.raise_for_status()
-    except Exception as e:
-        raise RequestFailed("Request failed") from e
-
-    try:
-        data = resp.json()
-    except Exception as e:
-        raise RequestFailed("Failed to parse JSON response") from e
-    if not data["success"]:
-        raise RequestFailed("Purchase failed: Unknown error")
-
-
-PIXEL_INFO_URL = "https://backend.wplace.live/s0/pixel/{tlx}/{tly}?x={pxx}&y={pxy}"
+PIXEL_INFO_URL = "https://backend.wplace.live/s0/pixel/{coord.tlx}/{coord.tly}?x={coord.pxx}&y={coord.pxy}"
 
 
 async def get_pixel_info(coord: WplacePixelCoords) -> PixelInfo:
-    url = PIXEL_INFO_URL.format(
-        tlx=coord.tlx, tly=coord.tly, pxx=coord.pxx, pxy=coord.pxy
+    return await _fetch_with_auto_fallback(
+        PIXEL_INFO_URL.format(coord=coord),
+        PixelInfo.model_validate_json,
     )
-    return await _fetch_with_auto_fallback(url, PixelInfo.model_validate_json)
 
 
 RANK_URL = "https://backend.wplace.live/leaderboard/region/players/{}/{}"
@@ -235,15 +225,3 @@ async def fetch_region_rank(region_id: int, rank_type: RankType) -> list[RankUse
         RANK_URL.format(region_id, rank_type),
         _rank_resp_ta.validate_json,
     )
-
-
-def extract_first_status_code(*exc_groups: ExceptionGroup[RequestFailed]) -> int | None:
-    for exc_group in exc_groups:
-        for e in flatten_exception_group(exc_group):
-            if e.status_code is not None:
-                return e.status_code
-    return None
-
-
-def flatten_request_failed_msg(exc_group: ExceptionGroup[RequestFailed]) -> str:
-    return "\n".join(e.msg for e in flatten_exception_group(exc_group))
