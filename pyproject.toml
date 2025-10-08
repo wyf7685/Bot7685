@@ -171,5 +171,4 @@ ignore = [
   "**/build",
   "**/scripts",
 ]
-reportShadowedImports = false
 disableBytesTypePromotions = true
