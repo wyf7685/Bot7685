@@ -1,5 +1,9 @@
+from typing import TYPE_CHECKING
+
 from .alc import root_matcher
-from .depends import HandlerFromKey
+
+if TYPE_CHECKING:
+    from .depends import HandlerFromKey
 
 matcher_energy = root_matcher.dispatch("energy")
 

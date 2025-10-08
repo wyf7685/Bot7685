@@ -42,8 +42,8 @@ def setup_logger(logging_override: LogLevelMap | None = None) -> None:
     )
 
 
-def _timer[**P, R](info: str, /) -> "Callable[[Callable[P, R]], Callable[P, R]]":
-    def decorator(func: "Callable[P, R]") -> "Callable[P, R]":
+def _timer[**P, R](info: str, /) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start = time.time()
@@ -57,7 +57,7 @@ def _timer[**P, R](info: str, /) -> "Callable[[Callable[P, R]], Callable[P, R]]"
     return decorator
 
 
-def load_adapter(module_name: str) -> type["Adapter"] | None:
+def load_adapter(module_name: str) -> type[Adapter] | None:
     try:
         return resolve_dot_notation(module_name, "Adapter", "nonebot.adapters.")
     except (ImportError, AttributeError):

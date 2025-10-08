@@ -1,8 +1,7 @@
 import contextlib
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import anyio
-from nonebot.adapters import Bot, Event
 from nonebot.params import Depends
 from nonebot_plugin_alconna import At, CustomNode, MsgTarget, SupportScope, UniMessage
 
@@ -11,6 +10,9 @@ from ..fetch import RequestFailed, fetch_me, flatten_request_failed_msg
 from ..scheduler import FETCH_INTERVAL_MINS, expire_push_cache
 from ..utils import normalize_color_name
 from .matcher import TargetHash, finish, matcher, prompt
+
+if TYPE_CHECKING:
+    from nonebot.adapters import Bot, Event
 
 
 @matcher.assign("~bind")

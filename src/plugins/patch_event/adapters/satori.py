@@ -1,20 +1,22 @@
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from nonebot.adapters.satori import MessageSegment
-from nonebot.adapters.satori.event import (
-    Event,
-    PrivateMessageCreatedEvent,
-    PrivateMessageDeletedEvent,
-    PublicMessageCreatedEvent,
-    PublicMessageDeletedEvent,
-    ReactionAddedEvent,
-    ReactionRemovedEvent,
-)
-from nonebot.adapters.satori.models import Channel, Guild, Member, User
 from nonebot.utils import escape_tag
 
 from ..highlight import Highlight
 from ..patcher import patcher
+
+if TYPE_CHECKING:
+    from nonebot.adapters.satori.event import (
+        Event,
+        PrivateMessageCreatedEvent,
+        PrivateMessageDeletedEvent,
+        PublicMessageCreatedEvent,
+        PublicMessageDeletedEvent,
+        ReactionAddedEvent,
+        ReactionRemovedEvent,
+    )
+    from nonebot.adapters.satori.models import Channel, Guild, Member, User
 
 
 class H(Highlight[MessageSegment]):

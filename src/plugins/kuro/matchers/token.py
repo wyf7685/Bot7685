@@ -1,4 +1,4 @@
-from types import EllipsisType
+from typing import TYPE_CHECKING
 
 from nonebot.exception import MatcherException
 from nonebot_plugin_alconna import Query
@@ -7,7 +7,16 @@ from nonebot_plugin_waiter import prompt
 
 from ..kuro_api import KuroApi, KuroApiException
 from .alc import root_matcher
-from .depends import IsSuperUser, KuroTokenFromKey, KuroTokenFromKeyRequired, TokenDAO
+
+if TYPE_CHECKING:
+    from types import EllipsisType
+
+    from .depends import (
+        IsSuperUser,
+        KuroTokenFromKey,
+        KuroTokenFromKeyRequired,
+        TokenDAO,
+    )
 
 matcher_token = root_matcher.dispatch("token")
 

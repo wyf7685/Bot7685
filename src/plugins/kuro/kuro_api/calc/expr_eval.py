@@ -1,8 +1,10 @@
 import contextlib
 import functools
 import operator
-from collections.abc import Callable, Container, Iterable
-from typing import Any, TypedDict, cast
+from typing import TYPE_CHECKING, Any, TypedDict, cast
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Container, Iterable
 
 type _Value = str | float | list[_Value]
 
@@ -56,7 +58,7 @@ class _ExpressionDict(TypedDict):
     key: str
     op: str
     value: str
-    sub: list["_ExpressionDict"]
+    sub: list[_ExpressionDict]
 
 
 class ExpressionEvaluator:

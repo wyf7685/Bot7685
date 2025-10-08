@@ -1,10 +1,12 @@
-from collections.abc import Awaitable, Callable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import anyio
 import nonebot
 from nonebot.plugin import PluginMetadata
 from nonebot.utils import is_coroutine_callable, run_sync
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 __plugin_meta__ = PluginMetadata(
     name="GlobalTaskGroup",

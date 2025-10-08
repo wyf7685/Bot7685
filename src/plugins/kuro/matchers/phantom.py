@@ -1,10 +1,14 @@
+from typing import TYPE_CHECKING
+
 from nonebot_plugin_alconna import UniMessage
 
 from ..kuro_api import GameId, KuroApiException
 from ..kuro_api.calc import WuwaCalc
-from ..kuro_api.calc.calc import RolePhantomCalcResult
 from .alc import root_matcher
-from .depends import ApiFromKey, KuroUserName
+
+if TYPE_CHECKING:
+    from ..kuro_api.calc.calc import RolePhantomCalcResult
+    from .depends import ApiFromKey, KuroUserName
 
 matcher_phantom = root_matcher.dispatch("phantom")
 

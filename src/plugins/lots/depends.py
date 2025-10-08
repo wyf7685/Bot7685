@@ -1,9 +1,11 @@
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
-from nonebot.adapters import Event
 from nonebot.params import Depends
-from nonebot_plugin_alconna import AlcMatches
 from nonebot_plugin_alconna.uniseg import At
+
+if TYPE_CHECKING:
+    from nonebot.adapters import Event
+    from nonebot_plugin_alconna import AlcMatches
 
 
 def _lots_target() -> str:

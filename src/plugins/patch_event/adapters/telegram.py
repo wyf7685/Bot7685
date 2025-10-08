@@ -1,16 +1,19 @@
-from nonebot.adapters.telegram.event import (
-    Event,
-    ForumTopicEditedMessageEvent,
-    ForumTopicMessageEvent,
-    GroupEditedMessageEvent,
-    GroupMessageEvent,
-    PrivateEditedMessageEvent,
-    PrivateMessageEvent,
-)
-from nonebot.adapters.telegram.model import Chat, User
+from typing import TYPE_CHECKING
 
 from ..highlight import Highlight
 from ..patcher import patcher
+
+if TYPE_CHECKING:
+    from nonebot.adapters.telegram.event import (
+        Event,
+        ForumTopicEditedMessageEvent,
+        ForumTopicMessageEvent,
+        GroupEditedMessageEvent,
+        GroupMessageEvent,
+        PrivateEditedMessageEvent,
+        PrivateMessageEvent,
+    )
+    from nonebot.adapters.telegram.model import Chat, User
 
 
 class H(Highlight):

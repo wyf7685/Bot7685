@@ -3,22 +3,25 @@
 import asyncio
 import functools
 import inspect
-from collections.abc import Awaitable, Callable
-from typing import Annotated, cast
+from typing import TYPE_CHECKING, Annotated, cast
 
 from nonebot import logger
-from nonebot.adapters import Bot, Event
 from nonebot.internal.matcher import current_matcher
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER
-from nonebot.typing import T_State
 from nonebot_plugin_alconna.uniseg import UniMessage
-from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_uninfo.orm import get_user_persist_id
 
 from ..database.kuro_token import KuroToken, KuroTokenDAO
 from ..handler import KuroHandler
 from ..kuro_api import KuroApi, KuroApiException
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from nonebot.adapters import Bot, Event
+    from nonebot.typing import T_State
+    from nonebot_plugin_uninfo import Uninfo
 
 
 def _get_current_state() -> T_State | None:

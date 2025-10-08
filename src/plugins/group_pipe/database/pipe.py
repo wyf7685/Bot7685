@@ -1,11 +1,13 @@
 import hashlib
-from collections.abc import Iterable
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_orm import Model, get_session
 from sqlalchemy import JSON, Integer, delete, select
 from sqlalchemy.orm import Mapped, mapped_column
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 type TargetDict = dict[str, object]
 
@@ -17,7 +19,7 @@ class PipeTuple(NamedTuple):
     @classmethod
     def from_scalars(
         cls, pipes: Iterable[tuple[TargetDict, TargetDict]]
-    ) -> list["PipeTuple"]:
+    ) -> list[PipeTuple]:
         return [
             cls(Target.load(listen), Target.load(target)) for listen, target in pipes
         ]

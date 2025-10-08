@@ -1,18 +1,22 @@
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import cloudscraper
 from nonebot import logger
 from nonebot.utils import flatten_exception_group, run_sync
 from nonebot_plugin_htmlrender import get_browser
-from playwright._impl._api_structures import SetCookieParam
 from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from pydantic import TypeAdapter
 
 from src.utils import with_semaphore
 
-from .config import UserConfig
 from .schemas import FetchMeResponse, PixelInfo, RankType, RankUser
 from .utils import WplacePixelCoords, with_retry
+
+if TYPE_CHECKING:
+    from playwright._impl._api_structures import SetCookieParam
+
+    from .config import UserConfig
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
 USER_AGENT = (

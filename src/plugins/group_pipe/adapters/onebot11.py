@@ -1,13 +1,11 @@
 import contextlib
 import json
-from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 from weakref import WeakKeyDictionary
 
 import nonebot
 import yarl
-from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.onebot.v11 import (
     ActionFailed,
     Adapter,
@@ -28,6 +26,11 @@ from ..database import set_cache_value
 from ..utils import async_client, check_url_ok, guess_url_type, solve_url_302
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from nonebot.adapters import Event as BaseEvent
 
 bot_platform_cache: WeakKeyDictionary[Bot, str] = WeakKeyDictionary()
 

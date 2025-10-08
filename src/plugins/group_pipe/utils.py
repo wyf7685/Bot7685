@@ -2,8 +2,7 @@ import contextlib
 import copy
 import pathlib
 import shutil
-from collections.abc import AsyncGenerator, AsyncIterable
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 import anyio
 import httpx
@@ -13,6 +12,9 @@ from nonebot_plugin_alconna.uniseg import Segment, UniMessage
 from nonebot_plugin_alconna.uniseg.segment import Media
 from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_localstore import get_plugin_cache_dir
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, AsyncIterable
 
 
 class _GlobalAsyncClient:

@@ -19,7 +19,7 @@ class MessageConverter[
     TB: Bot = Bot,
     TM: Message = Message,
 ](AbstractMessageConverter[TB, TM], adapter=None):
-    logger: ClassVar["loguru.Logger"] = nonebot.logger.opt(colors=True)
+    logger: ClassVar[loguru.Logger] = nonebot.logger.opt(colors=True)
 
     def get_cos_key(self, key: str) -> str:
         type_ = self.src_bot.type.lower().replace(" ", "_")

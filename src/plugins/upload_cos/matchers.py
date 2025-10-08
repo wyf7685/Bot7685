@@ -1,8 +1,8 @@
 import contextlib
 import hashlib
+from typing import TYPE_CHECKING
 
 from nonebot import on_startswith
-from nonebot.adapters import Event
 from nonebot.log import logger
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import Alconna, Args, Match, on_alconna
@@ -12,6 +12,9 @@ from nonebot_plugin_alconna.uniseg.utils import fleep
 from .cos_ops import presign, put_file
 from .database import update_key, update_permission
 from .depends import ALLOW_UPLOAD, EventImageRaw
+
+if TYPE_CHECKING:
+    from nonebot.adapters import Event
 
 upload_cos = on_startswith("cos上传", permission=ALLOW_UPLOAD)
 update_perm = on_alconna(

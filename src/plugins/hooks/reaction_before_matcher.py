@@ -1,11 +1,15 @@
 import contextlib
 
 from nonebot import get_driver, require
-from nonebot.adapters.onebot.v11 import Bot, MessageEvent
 from nonebot.message import run_postprocessor, run_preprocessor
 
 require("nonebot_plugin_alconna")
+from typing import TYPE_CHECKING
+
 from nonebot_plugin_alconna import message_reaction
+
+if TYPE_CHECKING:
+    from nonebot.adapters.onebot.v11 import Bot, MessageEvent
 
 driver = get_driver()
 

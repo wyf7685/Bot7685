@@ -8,9 +8,13 @@ from nonebot.plugin import PluginMetadata
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_uninfo")
 require("nonebot_plugin_waiter")
+from typing import TYPE_CHECKING
+
 import nonebot_plugin_waiter as waiter
 from nonebot_plugin_alconna.uniseg import Receipt, Reply, Target, UniMessage, UniMsg
-from nonebot_plugin_uninfo import Uninfo
+
+if TYPE_CHECKING:
+    from nonebot_plugin_uninfo import Uninfo
 
 __plugin_meta__ = PluginMetadata(
     name="friend_add",

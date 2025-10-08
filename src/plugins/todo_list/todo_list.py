@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import anyio
 from nonebot.compat import type_validate_json
@@ -8,10 +8,12 @@ from nonebot.params import Depends
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_localstore import get_plugin_data_dir
-from nonebot_plugin_user import User
 from pydantic import BaseModel, Field
 
 from src.plugins.cache import cache_with
+
+if TYPE_CHECKING:
+    from nonebot_plugin_user import User
 
 render_markdown = cache_with(
     str,

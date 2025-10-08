@@ -6,10 +6,13 @@
 
 """
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 from alembic import op
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 revision: str = "0c96e0e74726"
 down_revision: str | Sequence[str] | None = "7c9dbbd5d73d"

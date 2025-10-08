@@ -1,14 +1,16 @@
 import functools
-from collections.abc import Awaitable
 from typing import TYPE_CHECKING
 
 from aiocache import BaseCache, RedisCache, SimpleMemoryCache
 from aiocache.serializers import PickleSerializer
-from common import Callable
 from nonebot import get_driver, get_plugin_config
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable
+
+    from common import Callable
+
     from .cache import Cache
 
 
@@ -69,7 +71,7 @@ class CacheWrapper:
 
 
 class get_cache[KT, VT]:  # noqa: N801
-    def __new__(cls, namespace: str, *, pickle: bool = False) -> "Cache[KT, VT]":
+    def __new__(cls, namespace: str, *, pickle: bool = False) -> Cache[KT, VT]:
         return CacheWrapper(namespace, pickle=pickle)  # pyright:ignore[reportReturnType]
 
 

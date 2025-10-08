@@ -1,9 +1,8 @@
 from copy import deepcopy
 from io import BytesIO
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import anyio
-from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.telegram import Adapter, Bot, Message, MessageSegment
 from nonebot.adapters.telegram.event import ForumTopicMessageEvent, MessageEvent
 from nonebot.adapters.telegram.model import InputFile
@@ -16,6 +15,9 @@ from ..adapter import converts
 from ..utils import download_url, guess_url_type, webm_to_gif
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
+
+if TYPE_CHECKING:
+    from nonebot.adapters import Event as BaseEvent
 
 TG_MSGID_MARK = "$telegram$"
 

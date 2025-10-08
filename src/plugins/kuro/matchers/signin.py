@@ -1,6 +1,10 @@
+from typing import TYPE_CHECKING
+
 from ..kuro_api import GameId
 from .alc import root_matcher
-from .depends import HandlerFromKey
+
+if TYPE_CHECKING:
+    from .depends import HandlerFromKey
 
 matcher_signin = root_matcher.dispatch("signin")
 

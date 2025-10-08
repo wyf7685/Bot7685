@@ -1,12 +1,11 @@
 import contextlib
 import functools
 from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable
-from typing import Annotated, NoReturn
+from typing import TYPE_CHECKING, Annotated, NoReturn
 
 import anyio
 import jmcomic
 from nonebot import logger, require
-from nonebot.adapters import telegram
 from nonebot.adapters.onebot import v11
 from nonebot.adapters.onebot.v11 import Message as V11Msg
 from nonebot.adapters.onebot.v11 import MessageSegment as V11Seg
@@ -26,6 +25,9 @@ from src.plugins.trusted import TrustedUser
 
 from .option import download_image, fetch_album_images, get_album_detail
 from .utils import Task, abatched, format_exc, format_exc_msg, queued
+
+if TYPE_CHECKING:
+    from nonebot.adapters import telegram
 
 __plugin_meta__ = PluginMetadata(
     name="jmcomic",

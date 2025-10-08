@@ -1,10 +1,9 @@
 import random
 import uuid
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import httpx
 from nonebot import logger
-from nonebot.adapters import Bot, Event
 from nonebot.exception import MatcherException
 from nonebot.params import Depends
 from nonebot.utils import flatten_exception_group
@@ -22,6 +21,9 @@ from ..template import (
 )
 from ..utils import WplacePixelCoords, normalize_color_name, parse_color_names
 from .matcher import TargetHash, finish, matcher, prompt
+
+if TYPE_CHECKING:
+    from nonebot.adapters import Bot, Event
 
 
 @matcher.assign("~preview")

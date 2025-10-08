@@ -1,5 +1,5 @@
-from collections.abc import AsyncGenerator
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import nonebot
 from nonebot.utils import escape_tag
@@ -9,6 +9,9 @@ from sqlalchemy import FLOAT, TEXT, delete, insert, select, update
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .cos_ops import delete_file
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 
 class CosUploadFile(Model):

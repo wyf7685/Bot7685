@@ -1,9 +1,11 @@
 # ruff: noqa: N815
 
-from typing import final
+from typing import TYPE_CHECKING, final
 
 from ...common import Request, RequestInfo, ResponseData
-from .list import Role
+
+if TYPE_CHECKING:
+    from .list import Role
 
 
 class RoleDefault(ResponseData):

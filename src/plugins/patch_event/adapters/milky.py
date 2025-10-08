@@ -1,7 +1,10 @@
-from nonebot.adapters.milky import Event
+from typing import TYPE_CHECKING
 
 from ..highlight import Highlight
 from ..patcher import patcher
+
+if TYPE_CHECKING:
+    from nonebot.adapters.milky import Event
 
 
 class H(Highlight): ...

@@ -1,8 +1,6 @@
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from nonebot import logger, on_message, require
-from nonebot.adapters import Bot, discord
-from nonebot.adapters.onebot import v11
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER
 from pydantic import BaseModel
@@ -27,6 +25,10 @@ from src.plugins.group_pipe.adapters.discord import MessageConverter
 from src.utils import ConfigModelFile
 
 from .render import render_schedule
+
+if TYPE_CHECKING:
+    from nonebot.adapters import Bot, discord
+    from nonebot.adapters.onebot import v11
 
 
 class Config(BaseModel):

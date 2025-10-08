@@ -2,15 +2,17 @@ import functools
 import math
 import re
 import time
-import types
 from collections.abc import Callable, Coroutine, Iterable, Sequence
 from dataclasses import dataclass
-from typing import NamedTuple, Self
+from typing import TYPE_CHECKING, NamedTuple, Self
 
 import anyio
 from loguru import logger
 
 from .consts import ALL_COLORS, FLAG_MAP
+
+if TYPE_CHECKING:
+    import types
 
 # 从多点校准中提取的常量参数
 SCALE_X = 325949.3234522017
@@ -25,10 +27,10 @@ class WplaceAbsCoords(NamedTuple):
     x: int
     y: int
 
-    def offset(self, dx: int, dy: int) -> "WplaceAbsCoords":
+    def offset(self, dx: int, dy: int) -> WplaceAbsCoords:
         return WplaceAbsCoords(self.x + dx, self.y + dy)
 
-    def to_pixel(self) -> "WplacePixelCoords":
+    def to_pixel(self) -> WplacePixelCoords:
         tlx, pxx = divmod(self.x, WPLACE_TILE_SIZE)
         tly, pxy = divmod(self.y, WPLACE_TILE_SIZE)
         return WplacePixelCoords(tlx, tly, pxx, pxy)
@@ -38,7 +40,7 @@ class LatLon(NamedTuple):
     lat: float
     lon: float
 
-    def to_pixel(self) -> "WplacePixelCoords":
+    def to_pixel(self) -> WplacePixelCoords:
         return WplacePixelCoords.from_lat_lon(self.lat, self.lon)
 
 
@@ -66,7 +68,7 @@ class WplacePixelCoords:
             self.tly * WPLACE_TILE_SIZE + self.pxy,
         )
 
-    def offset(self, dx: int, dy: int) -> "WplacePixelCoords":
+    def offset(self, dx: int, dy: int) -> WplacePixelCoords:
         return self.to_abs().offset(dx, dy).to_pixel()
 
     def to_lat_lon(self) -> LatLon:
@@ -87,7 +89,7 @@ class WplacePixelCoords:
         return f"https://wplace.live/?lat={lat}&lng={lon}&zoom=20"
 
     @classmethod
-    def from_lat_lon(cls, lat: float, lon: float) -> "WplacePixelCoords":
+    def from_lat_lon(cls, lat: float, lon: float) -> WplacePixelCoords:
         # 计算墨卡托坐标
         merc_x = math.radians(lon)
         merc_y = math.log(math.tan(math.pi / 4 + math.radians(lat) / 2))
@@ -105,13 +107,13 @@ class WplacePixelCoords:
         return cls(int(m[1]), int(m[2]), int(m[3]), int(m[4]))
 
     def fix_with(
-        self, other: "WplacePixelCoords"
-    ) -> tuple["WplacePixelCoords", "WplacePixelCoords"]:
+        self, other: WplacePixelCoords
+    ) -> tuple[WplacePixelCoords, WplacePixelCoords]:
         (x1, y1), (x2, y2) = self.to_abs(), other.to_abs()
         (x1, x2), (y1, y2) = sorted((x1, x2)), sorted((y1, y2))
         return WplaceAbsCoords(x1, y1).to_pixel(), WplaceAbsCoords(x2, y2).to_pixel()
 
-    def all_tile_coords(self, other: "WplacePixelCoords") -> Iterable[tuple[int, int]]:
+    def all_tile_coords(self, other: WplacePixelCoords) -> Iterable[tuple[int, int]]:
         coord1, coord2 = self.fix_with(other)
         yield from (
             (x, y)
@@ -119,7 +121,7 @@ class WplacePixelCoords:
             for y in range(coord1.tly, coord2.tly + 1)
         )
 
-    def size_with(self, other: "WplacePixelCoords") -> tuple[int, int]:
+    def size_with(self, other: WplacePixelCoords) -> tuple[int, int]:
         coord1, coord2 = self.fix_with(other)
         (x1, y1), (x2, y2) = coord1.to_abs(), coord2.to_abs()
         return x2 - x1 + 1, y2 - y1 + 1

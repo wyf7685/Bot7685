@@ -1,15 +1,18 @@
 import functools
-from collections.abc import (
-    AsyncGenerator,
-    AsyncIterable,
-    Awaitable,
-    Callable,
-    Generator,
-)
-from types import EllipsisType
+from typing import TYPE_CHECKING
 
 import anyio
 import jmcomic
+
+if TYPE_CHECKING:
+    from collections.abc import (
+        AsyncGenerator,
+        AsyncIterable,
+        Awaitable,
+        Callable,
+        Generator,
+    )
+    from types import EllipsisType
 
 
 async def abatched[T](ait: AsyncIterable[T], n: int) -> AsyncGenerator[tuple[T, ...]]:

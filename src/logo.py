@@ -1,5 +1,7 @@
-from collections.abc import Callable, Generator, Sequence
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Generator, Sequence
 
 type Color = tuple[int, int, int]
 type ColorMode = Literal["rich", "ansi"]

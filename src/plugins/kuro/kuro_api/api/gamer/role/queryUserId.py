@@ -1,9 +1,11 @@
 # ruff: noqa: N815
 
-from typing import final
+from typing import TYPE_CHECKING, final
 
-from ....const import GameId
 from ...common import RequestInfo, WebRequest
+
+if TYPE_CHECKING:
+    from ....const import GameId
 
 
 @final

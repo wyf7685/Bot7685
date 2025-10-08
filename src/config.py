@@ -1,12 +1,14 @@
-from collections.abc import Callable
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from nonebot.compat import type_validate_python
 from nonebot.utils import deep_update
 from pydantic import BaseModel
 
 from .utils import logger_wrapper
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 type LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 type LogLevelMap = dict[str, LogLevel]
@@ -86,5 +88,5 @@ class BootstrapConfig(BaseModel):
     logging_override: LogLevelMap | None = None
 
     @classmethod
-    def from_config(cls, config: dict[str, object]) -> "BootstrapConfig":
+    def from_config(cls, config: dict[str, object]) -> BootstrapConfig:
         return type_validate_python(cls, config.pop("bootstrap", {}))
