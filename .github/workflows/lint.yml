@@ -40,8 +40,6 @@ jobs:
 
       - name: Setup Python
         uses: ./.github/actions/setup-python
-        with:
-          python-version: "3.13"
 
       - name: Run BasedPyright
         run: uvx basedpyright .
