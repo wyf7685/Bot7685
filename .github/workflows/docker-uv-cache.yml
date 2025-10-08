@@ -1,4 +1,4 @@
-name: Docker Bot7685
+name: Docker UV Cache
 
 on:
   push:
@@ -18,6 +18,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Init Submodules
+        run: git submodule update --init --recursive
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
