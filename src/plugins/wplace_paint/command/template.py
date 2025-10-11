@@ -9,6 +9,7 @@ from nonebot.exception import MatcherException
 from nonebot.params import Depends
 from nonebot.utils import flatten_exception_group
 from nonebot_plugin_alconna import File, Image, UniMessage, image_fetch
+from nonebot_plugin_waiter import waiter
 
 from src.plugins.group_pipe import get_converter
 
@@ -63,23 +64,45 @@ async def assign_template_bind_revoke(key: TargetHash) -> None:
 
 
 async def extract_image(bot: Bot, event: Event) -> bytes | None:
-    message = await get_converter(bot)(bot).convert(event.get_message())
-    if message.include(Image):
-        image = message[Image, 0]
-        return await image_fetch(event, bot, {}, image)
-    if message.include(File):
-        file = message[File, 0]
-        if file.raw is not None:
-            return file.raw_bytes
-        if file.url is not None:
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(file.url)
-                return resp.raise_for_status().content
+    async def download_from_url(url: str) -> bytes:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(url)
+            return resp.raise_for_status().content
+
+    converter = get_converter(bot)
+    msg = await converter.get_message(event)
+    if msg is None:
+        return None
+    unimsg = await converter(bot).convert(msg)
+    if segs := unimsg.include(Image, File):
+        seg: Image | File = segs[0]
+        if seg.raw is not None:
+            return seg.raw_bytes
+        if seg.url is not None:
+            return await download_from_url(seg.url)
+        if isinstance(seg, Image):
+            return await image_fetch(event, bot, {}, seg)
     return None
 
 
+async def prompt_image() -> bytes:
+    await matcher.send("请发送模板图片\n(回复其他内容以取消操作)")
+
+    @waiter(["message"], matcher, keep_session=True)
+    async def wait(bot: Bot, event: Event) -> tuple[Bot, Event]:
+        return bot, event
+
+    res = await wait.wait(timeout=120)
+    if res is None:
+        await finish("操作已取消")
+    img_bytes = await extract_image(*res)
+    if img_bytes is None:
+        await finish("获取图片数据失败")
+    return img_bytes
+
+
 @matcher.assign("~template.bind")
-async def assign_template_bind(bot: Bot, event: Event, key: TargetHash) -> None:
+async def assign_template_bind(key: TargetHash) -> None:
     coord = await prompt(
         "请发送模板起始坐标(选点并复制BlueMarble的坐标)\n"
         "格式如: (Tl X: 123, Tl Y: 456, Px X: 789, Px Y: 012)"
@@ -90,13 +113,7 @@ async def assign_template_bind(bot: Bot, event: Event, key: TargetHash) -> None:
     except ValueError as e:
         await finish(f"坐标解析失败: {e}")
 
-    response = await matcher.prompt("请发送模板图片\n(回复其他内容以取消操作)")
-    if response is None or not response.include(Image, File):
-        await finish("操作已取消")
-    img_bytes = await extract_image(bot, event)
-    if img_bytes is None:
-        await finish("获取图片数据失败")
-
+    img_bytes = await prompt_image()
     fp = IMAGE_DIR / f"{uuid.uuid4()}.png"
     fp.write_bytes(img_bytes)
 
