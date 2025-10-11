@@ -1,5 +1,7 @@
-from typing import TYPE_CHECKING, ClassVar, cast, override
+from collections.abc import Iterable
+from typing import ClassVar, cast, override
 
+import loguru
 import nonebot
 from nonebot.adapters import Bot, Message, MessageSegment
 from nonebot_plugin_alconna import uniseg as u
@@ -8,18 +10,13 @@ from ..adapter import MessageConverter as AbstractMessageConverter
 from ..adapter import MessageSender as AbstractMessageSender
 from ..database import get_reply_id, set_msg_dst_id
 
-if TYPE_CHECKING:
-    from collections.abc import Iterable
-
-    import loguru
-
 
 class MessageConverter[
     TMS: MessageSegment = MessageSegment,
     TB: Bot = Bot,
     TM: Message = Message,
 ](AbstractMessageConverter[TB, TM], adapter=None):
-    logger: ClassVar["loguru.Logger"] = nonebot.logger.opt(colors=True)
+    logger: ClassVar[loguru.Logger] = nonebot.logger.opt(colors=True)
 
     def get_cos_key(self, key: str) -> str:
         type_ = self.src_bot.type.lower().replace(" ", "_")

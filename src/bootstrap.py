@@ -1,19 +1,15 @@
 import functools
 import logging
 import time
-from typing import TYPE_CHECKING
+from collections.abc import Callable
 
 import nonebot
+from nonebot.adapters import Adapter
 from nonebot.utils import resolve_dot_notation
 
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
 from .utils import find_and_link_external, logger_wrapper
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from nonebot.adapters import Adapter
 
 log = logger_wrapper("Bootstrap")
 
@@ -42,8 +38,8 @@ def setup_logger(logging_override: LogLevelMap | None = None) -> None:
     )
 
 
-def _timer[**P, R](info: str, /) -> "Callable[[Callable[P, R]], Callable[P, R]]":
-    def decorator(func: "Callable[P, R]") -> "Callable[P, R]":
+def _timer[**P, R](info: str, /) -> Callable[[Callable[P, R]], Callable[P, R]]:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             start = time.time()
@@ -57,7 +53,7 @@ def _timer[**P, R](info: str, /) -> "Callable[[Callable[P, R]], Callable[P, R]]"
     return decorator
 
 
-def load_adapter(module_name: str) -> type["Adapter"] | None:
+def load_adapter(module_name: str) -> type[Adapter] | None:
     try:
         return resolve_dot_notation(module_name, "Adapter", "nonebot.adapters.")
     except (ImportError, AttributeError):

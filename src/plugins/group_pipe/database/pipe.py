@@ -17,7 +17,7 @@ class PipeTuple(NamedTuple):
     @classmethod
     def from_scalars(
         cls, pipes: Iterable[tuple[TargetDict, TargetDict]]
-    ) -> list["PipeTuple"]:
+    ) -> list[PipeTuple]:
         return [
             cls(Target.load(listen), Target.load(target)) for listen, target in pipes
         ]

@@ -40,7 +40,7 @@ class PushState(BaseModel):
     credential_invalid: bool = False
 
     @classmethod
-    async def load(cls, key: str) -> "PushState":
+    async def load(cls, key: str) -> PushState:
         return cls.model_validate_json(await push_cache.get(key, "{}"))
 
     async def save(self, key: str, set_ttl: bool) -> None:

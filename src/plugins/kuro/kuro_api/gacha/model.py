@@ -145,7 +145,7 @@ class WWGF(BaseModel):
         for key in sorted(items.keys()):
             self.list.extend(items[key])
 
-    def merge(self, other: "WWGF") -> WWGFMergeStatistics:
+    def merge(self, other: WWGF) -> WWGFMergeStatistics:
         items = self.list[:]
         seen = {item.id for item in items}
         stats = WWGFMergeStatistics(old=len(seen))

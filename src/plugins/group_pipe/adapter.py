@@ -22,8 +22,8 @@ type BoundConverterCall[TMS: MessageSegment] = Callable[
 ]
 
 
-CONVERTERS: dict[str | None, type["MessageConverter[Bot, _M]"]] = {}
-SENDERS: dict[str | None, type["MessageSender[Bot]"]] = {}
+CONVERTERS: dict[str | None, type[MessageConverter[Bot, _M]]] = {}
+SENDERS: dict[str | None, type[MessageSender[Bot]]] = {}
 
 
 class MessageConverter[TB: Bot, TM: Message](abc.ABC):

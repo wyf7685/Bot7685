@@ -77,7 +77,7 @@ members = ["external/*"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py313"
+target-version = "py314"
 
 [tool.ruff.format]
 line-ending = "lf"
@@ -151,6 +151,9 @@ ignore = [
   "B911",   # batched-without-explicit-strict
   "PGH004", # blanket-noqa
   "PLC",
+  "TC001",  # typing-only-first-party-import
+  "TC002",  # typing-only-third-party-import
+  "TC003",  # typing-only-standard-library-import
 ]
 
 [tool.ruff.lint.flake8-builtins]
@@ -171,7 +174,7 @@ extra-standard-library = ["typing_extensions"]
 keep-runtime-typing = true
 
 [tool.pyright]
-pythonVersion = "3.13"
+pythonVersion = "3.14"
 pythonPlatform = "All"
 typeCheckingMode = "standard"
 ignore = [
