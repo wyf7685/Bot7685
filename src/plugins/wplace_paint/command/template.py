@@ -9,6 +9,8 @@ from nonebot.params import Depends
 from nonebot.utils import flatten_exception_group
 from nonebot_plugin_alconna import File, Image, UniMessage, image_fetch
 
+from src.plugins.group_pipe import get_converter
+
 from ..config import IMAGE_DIR, TemplateConfig, templates
 from ..fetch import RequestFailed, flatten_request_failed_msg
 from ..preview import download_preview
@@ -62,7 +64,8 @@ async def assign_template_bind_revoke(key: TargetHash) -> None:
     await finish("已取消当前会话的模板绑定")
 
 
-async def extract_image(bot: Bot, event: Event, message: UniMessage) -> bytes | None:
+async def extract_image(bot: Bot, event: Event) -> bytes | None:
+    message = await get_converter(bot)(bot).convert(event.get_message())
     if message.include(Image):
         image = message[Image, 0]
         return await image_fetch(event, bot, {}, image)
@@ -92,7 +95,7 @@ async def assign_template_bind(bot: Bot, event: Event, key: TargetHash) -> None:
     response = await matcher.prompt("请发送模板图片\n(回复其他内容以取消操作)")
     if response is None or not response.include(Image, File):
         await finish("操作已取消")
-    img_bytes = await extract_image(bot, event, response)
+    img_bytes = await extract_image(bot, event)
     if img_bytes is None:
         await finish("获取图片数据失败")
 
