@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, NoReturn
+from typing import NoReturn
 
 from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
@@ -23,9 +23,7 @@ from nonebot_plugin_waiter.unimsg import prompt, suggest
 
 require("src.plugins.cache")
 
-
-if TYPE_CHECKING:
-    from .todo_list import SelectedTodo, UserTodo
+from .todo_list import SelectedTodo, UserTodo
 
 __plugin_meta__ = PluginMetadata(
     name="todo_list",

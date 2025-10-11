@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from nonebot import logger
 from nonebot.exception import MatcherException
@@ -7,11 +7,9 @@ from nonebot_plugin_alconna import Query, UniMessage
 from ..config import ranks, users
 from ..fetch import RequestFailed, flatten_request_failed_msg
 from ..rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
+from ..schemas import RankType
 from ..utils import WplacePixelCoords
 from .matcher import TargetHash, finish, matcher, prompt
-
-if TYPE_CHECKING:
-    from ..schemas import RankType
 
 
 @matcher.assign("~rank.bind.revoke")

@@ -1,7 +1,7 @@
 import dataclasses
 import datetime
 from collections import Counter
-from typing import TYPE_CHECKING
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -22,9 +22,6 @@ from .model import (
     WWGFInfo,
     WWGFItem,
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def parse_gacha_url(url: str) -> GachaParams:

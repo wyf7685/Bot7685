@@ -1,17 +1,14 @@
 import contextlib
 import datetime
-from typing import TYPE_CHECKING, Literal
+from collections.abc import Callable
+from typing import Literal
 
 import nonebot
 import tzlocal
 from nonebot_plugin_alconna.uniseg import Target, UniMessage
 
 from .kuro_api import GameId, KuroApi, KuroApiException
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from .kuro_api.api.gamer.role.list import WuwaRole
+from .kuro_api.api.gamer.role.list import WuwaRole
 
 logger = nonebot.logger.opt(colors=True)
 TZ = tzlocal.get_localzone()

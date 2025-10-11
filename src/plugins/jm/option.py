@@ -1,6 +1,6 @@
 import io
 import math
-from typing import TYPE_CHECKING
+from collections.abc import Iterable
 
 import anyio
 import httpx
@@ -11,9 +11,6 @@ from nonebot.utils import escape_tag, run_sync
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
 from src.plugins.cache import cache_with
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
 
 logger = logger.opt(colors=True)
 

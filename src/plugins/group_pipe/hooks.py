@@ -1,7 +1,6 @@
-from typing import TYPE_CHECKING
-
 import anyio
 from nonebot import logger
+from nonebot.adapters import Bot, Event, Message
 from nonebot.message import event_preprocessor
 from nonebot_plugin_alconna import Target, UniMessage, get_target
 from nonebot_plugin_uninfo import get_session
@@ -9,9 +8,6 @@ from nonebot_plugin_uninfo import get_session
 from .adapter import get_converter, get_sender
 from .database import display_pipe, get_pipes
 from .utils import repr_unimsg
-
-if TYPE_CHECKING:
-    from nonebot.adapters import Bot, Event, Message
 
 
 async def send_pipe_msg(

@@ -1,5 +1,5 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import anyio
 from nonebot import logger
@@ -15,12 +15,8 @@ from .fetch import (
     flatten_request_failed_msg,
     get_pixel_info,
 )
+from .schemas import PixelRegion, RankType
 from .utils import WplaceAbsCoords, WplacePixelCoords, get_flag_emoji
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
-
-    from .schemas import PixelRegion, RankType
 
 
 async def find_regions_in_rect(

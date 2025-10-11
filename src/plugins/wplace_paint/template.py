@@ -1,8 +1,9 @@
 import io
 import itertools
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import Protocol, cast
 
 import anyio.to_thread
 from nonebot import logger
@@ -14,9 +15,6 @@ from .config import TEMPLATE_DIR, TemplateConfig
 from .consts import PAID_COLORS
 from .preview import download_preview
 from .utils import PerfLog, WplacePixelCoords, find_color_name, parse_rgb_str
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
 
 type RGBA = tuple[int, int, int, int]
 

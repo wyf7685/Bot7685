@@ -1,12 +1,10 @@
 # ruff: noqa: N815
 
-from typing import TYPE_CHECKING, final
+from typing import final
 from warnings import deprecated
 
+from ...const import GameId
 from ..common import Request, RequestInfo
-
-if TYPE_CHECKING:
-    from ...const import GameId
 
 
 @final

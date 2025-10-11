@@ -1,19 +1,17 @@
 import json
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from nonebot import on_startswith, require
+from nonebot.adapters.onebot.v11 import MessageEvent
 from nonebot.params import EventPlainText
 from nonebot.plugin import PluginMetadata
 
 require("nonebot_plugin_alconna")
+from nonebot.typing import T_State
 from nonebot_plugin_alconna import UniMessage
 
 require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
-
-if TYPE_CHECKING:
-    from nonebot.adapters.onebot.v11 import MessageEvent
-    from nonebot.typing import T_State
 
 __plugin_meta__ = PluginMetadata(
     name="bv_convert",

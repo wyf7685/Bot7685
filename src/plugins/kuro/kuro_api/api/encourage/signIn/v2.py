@@ -1,11 +1,9 @@
 # ruff: noqa: N815
 
-from typing import TYPE_CHECKING, final, override
+from typing import final, override
 
+from ....const import GameId
 from ...common import RequestInfo, Response, ResponseData, WebRequest
-
-if TYPE_CHECKING:
-    from ....const import GameId
 
 
 class GoodsData(ResponseData):

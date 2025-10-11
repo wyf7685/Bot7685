@@ -1,15 +1,13 @@
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from nonebot.adapters import Bot, Event, Message
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER
+from nonebot.typing import T_State
 from nonebot_plugin_alconna.uniseg import Image, Reply, UniMessage, UniMsg, image_fetch
 
 from .database import user_has_perm
-
-if TYPE_CHECKING:
-    from nonebot.typing import T_State
 
 
 def _event_image() -> Image:

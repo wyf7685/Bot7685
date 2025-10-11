@@ -1,5 +1,6 @@
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Self, TypedDict, final
+from typing import Self, TypedDict, final
 
 import anyio
 import anyio.to_thread
@@ -8,9 +9,6 @@ from nonebot_plugin_localstore import get_plugin_cache_file
 from qcloud_cos import CosConfig, CosS3Client
 
 from .config import config
-
-if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
 
 ROOT = Path("qbot/upload")
 DEFAULT_CHUNK_SIZE = 4 * 1024 * 1024  # 4MB

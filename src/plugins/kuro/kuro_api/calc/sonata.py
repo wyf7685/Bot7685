@@ -6,7 +6,7 @@ from ..const import DATA_PATH
 
 SONATA_PATH = DATA_PATH / "sonata"
 SONATA_NAMES = {path.name.removesuffix(".json") for path in SONATA_PATH.glob("*.json")}
-SONATA_CACHE: dict[str, WavesSonata] = {}
+SONATA_CACHE: dict[str, "WavesSonata"] = {}
 
 
 class WavesSonataSetDesc(BaseModel):

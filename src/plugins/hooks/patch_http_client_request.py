@@ -1,11 +1,9 @@
 import contextlib
-from typing import TYPE_CHECKING, Protocol, override
+from typing import Protocol, override
 
 import nonebot
+from nonebot.drivers import Request, Response
 from pydantic import BaseModel
-
-if TYPE_CHECKING:
-    from nonebot.drivers import Request, Response
 
 
 class Config(BaseModel):

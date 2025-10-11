@@ -1,5 +1,4 @@
-from typing import TYPE_CHECKING
-
+from nonebot.adapters import Bot
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import (
     Alconna,
@@ -12,9 +11,6 @@ from nonebot_plugin_alconna import (
 )
 
 from .trust_data import TrustData, set_trusted
-
-if TYPE_CHECKING:
-    from nonebot.adapters import Bot
 
 alc = Alconna(
     "trust",

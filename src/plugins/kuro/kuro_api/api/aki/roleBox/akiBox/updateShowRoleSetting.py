@@ -1,12 +1,10 @@
 # ruff: noqa: N815
 
-from typing import TYPE_CHECKING, final, override
+from collections.abc import Sequence
+from typing import final, override
 
 from .....const import GameId, WuwaGameId
 from ....common import RequestInfo, WebRequest
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
 
 
 @final

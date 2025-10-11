@@ -1,14 +1,12 @@
 # ruff: noqa: N815
 
 from enum import Enum
-from typing import TYPE_CHECKING, final
+from typing import final
 
 from pydantic import Field
 
+from ....const import GameId
 from ...common import RequestInfo, ResponseData, WebRequest
-
-if TYPE_CHECKING:
-    from ....const import GameId
 
 
 class GoodsType(int, Enum):

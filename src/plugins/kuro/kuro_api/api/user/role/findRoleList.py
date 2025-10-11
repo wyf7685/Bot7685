@@ -1,11 +1,9 @@
 # ruff: noqa: N815
 
-from typing import TYPE_CHECKING, final, override
+from typing import final, override
 
+from ....const import GameId
 from ...common import CommonRequestHeaders, Request, RequestInfo, ResponseData
-
-if TYPE_CHECKING:
-    from ....const import GameId
 
 
 class FindRoleListRequestHeaders(CommonRequestHeaders):

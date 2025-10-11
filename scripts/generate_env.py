@@ -5,14 +5,12 @@
 import contextlib
 import json
 import uuid
+from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from msgspec import toml as msgtoml
 from msgspec import yaml as msgyaml
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
 
 root = Path(__file__).resolve().parent.parent
 env_file = root / ".env"

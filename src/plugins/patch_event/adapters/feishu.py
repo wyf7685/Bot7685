@@ -1,21 +1,15 @@
 import datetime as dt
 import functools
-from typing import TYPE_CHECKING, LiteralString, override
+from typing import LiteralString, override
 
 import nonebot
 from nonebot.adapters.feishu import Adapter, NoticeEvent
+from nonebot.adapters.feishu.event import Event, GroupMessageEvent, PrivateMessageEvent
+from nonebot.adapters.feishu.models import UserId
 from pydantic import BaseModel
 
 from ..highlight import Highlight
 from ..patcher import patcher
-
-if TYPE_CHECKING:
-    from nonebot.adapters.feishu.event import (
-        Event,
-        GroupMessageEvent,
-        PrivateMessageEvent,
-    )
-    from nonebot.adapters.feishu.models import UserId
 
 
 class H(Highlight): ...

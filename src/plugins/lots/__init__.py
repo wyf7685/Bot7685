@@ -4,16 +4,12 @@ from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
 require("nonebot_plugin_alconna")
-from typing import TYPE_CHECKING
-
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import At, message_reaction
 
+from .depends import LotsTarget
 from .lots_data import get_lots_msg
-
-if TYPE_CHECKING:
-    from .depends import LotsTarget
 
 __plugin_meta__ = PluginMetadata(
     name="lots",

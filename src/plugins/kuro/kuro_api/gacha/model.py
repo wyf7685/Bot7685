@@ -3,14 +3,12 @@ import dataclasses
 import datetime
 import functools
 from enum import Enum
-from typing import TYPE_CHECKING, Literal
+from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel
 
 from ..const import APP_NAME, VERSION
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 class CardPoolType(int, Enum):
@@ -147,7 +145,7 @@ class WWGF(BaseModel):
         for key in sorted(items.keys()):
             self.list.extend(items[key])
 
-    def merge(self, other: WWGF) -> WWGFMergeStatistics:
+    def merge(self, other: "WWGF") -> WWGFMergeStatistics:
         items = self.list[:]
         seen = {item.id for item in items}
         stats = WWGFMergeStatistics(old=len(seen))

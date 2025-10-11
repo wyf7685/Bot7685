@@ -1,5 +1,5 @@
 import contextlib
-from typing import TYPE_CHECKING, Literal, override
+from typing import Literal, override
 
 import anyio
 import nonebot
@@ -26,6 +26,7 @@ from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
 require("nonebot_plugin_apscheduler")
+from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
@@ -34,9 +35,6 @@ from src.plugins.gtg import call_later, call_soon
 
 from ..highlight import Highlight
 from ..patcher import patcher
-
-if TYPE_CHECKING:
-    from apscheduler.job import Job as SchedulerJob
 
 
 class GroupInfo(BaseModel):

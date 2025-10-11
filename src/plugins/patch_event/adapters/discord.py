@@ -1,26 +1,24 @@
-from typing import TYPE_CHECKING, ClassVar, Protocol
+from typing import ClassVar, Protocol
 
 from nonebot.adapters.discord import Event, Message
 from nonebot.adapters.discord.api import UNSET, Channel, SnowflakeType, User
+from nonebot.adapters.discord.event import (
+    DirectMessageCreateEvent,
+    DirectMessageDeleteEvent,
+    DirectMessageUpdateEvent,
+    GuildCreateEvent,
+    GuildMessageCreateEvent,
+    GuildMessageDeleteEvent,
+    GuildMessageUpdateEvent,
+)
 from nonebot.compat import model_dump
 from nonebot.message import event_preprocessor
 
 from ..highlight import Highlight
 from ..patcher import patcher
 
-if TYPE_CHECKING:
-    from nonebot.adapters.discord.event import (
-        DirectMessageCreateEvent,
-        DirectMessageDeleteEvent,
-        DirectMessageUpdateEvent,
-        GuildCreateEvent,
-        GuildMessageCreateEvent,
-        GuildMessageDeleteEvent,
-        GuildMessageUpdateEvent,
-    )
-
 guild_name_cache: dict[SnowflakeType, str] = {}
-guild_channel_cache: dict[SnowflakeType, list[Channel]] = {}
+guild_channel_cache: dict[SnowflakeType, list["Channel"]] = {}
 
 
 def find_guild_name(guild: SnowflakeType) -> str | None:

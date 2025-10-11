@@ -1,9 +1,10 @@
 import datetime as dt
 import re
 from copy import deepcopy
-from typing import TYPE_CHECKING, assert_never, override
+from typing import assert_never, override
 
 import humanize
+from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.discord import Adapter, Bot, MessageEvent
 from nonebot.adapters.discord.api.model import UNSET, MessageGet
 from nonebot.adapters.discord.api.types import TimeStampStyle
@@ -28,9 +29,6 @@ from ..adapter import converts
 from ..utils import guess_url_type
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
-
-if TYPE_CHECKING:
-    from nonebot.adapters import Event as BaseEvent
 
 UTC8 = dt.timezone(dt.timedelta(hours=8))
 LINK_PATTERN = re.compile(r"\[(?P<name>.+?)\]\(<(?P<url>.+?)>\)")

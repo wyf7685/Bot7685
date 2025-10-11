@@ -3,7 +3,7 @@ name = "Bot7685"
 version = "0.1.0"
 description = "Bot7685 by wyf7685"
 readme = "README.md"
-requires-python = ">=3.14,<4.0"
+requires-python = ">=3.13,<4.0"
 dependencies = [
   # nonebot2
   "nonebot2[fastapi,httpx,websockets,aiohttp]>=2.4.3",
@@ -77,7 +77,7 @@ members = ["external/*"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py314"
+target-version = "py313"
 
 [tool.ruff.format]
 line-ending = "lf"
@@ -171,7 +171,7 @@ extra-standard-library = ["typing_extensions"]
 keep-runtime-typing = true
 
 [tool.pyright]
-pythonVersion = "3.14"
+pythonVersion = "3.13"
 pythonPlatform = "All"
 typeCheckingMode = "standard"
 ignore = [

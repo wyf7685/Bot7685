@@ -1,7 +1,7 @@
 import json
-from typing import TYPE_CHECKING
 
 from nonebot import logger
+from nonebot.adapters import Bot
 from nonebot.adapters.onebot import v11
 from nonebot_plugin_alconna import (
     Alconna,
@@ -20,11 +20,7 @@ from ..adapter import get_sender
 from ..adapters.onebot11 import MessageConverter
 from ..database import get_cache_value
 from ..utils import guess_url_type
-
-if TYPE_CHECKING:
-    from nonebot.adapters import Bot
-
-    from .depends import MsgTarget
+from .depends import MsgTarget
 
 
 async def url_to_image(url: str) -> Image | None:

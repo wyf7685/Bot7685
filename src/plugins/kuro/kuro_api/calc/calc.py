@@ -1,13 +1,10 @@
 import dataclasses
 import functools
 import operator
-from typing import TYPE_CHECKING
 
+from ..api.models import Phantom, RoleDetail
 from .phantom import PhantomCalc, PhantomCalcResult
 from .sonata import WavesSonata, get_sonata_detail
-
-if TYPE_CHECKING:
-    from ..api.models import Phantom, RoleDetail
 
 type _CalcContext = dict[str, object]
 

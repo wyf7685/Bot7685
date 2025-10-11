@@ -3,18 +3,15 @@
 import dataclasses
 import functools
 from collections import defaultdict
-from typing import TYPE_CHECKING, Literal, NamedTuple, Self, cast
+from pathlib import Path
+from typing import Literal, NamedTuple, Self, cast
 
 from msgspec import json as msgjson
 from pydantic import BaseModel
 
+from ..api.models import Phantom, PhantomAttribute
 from ..const import DATA_PATH
 from .expr_eval import find_first_matching_expression
-
-if TYPE_CHECKING:
-    from pathlib import Path
-
-    from ..api.models import Phantom, PhantomAttribute
 
 CALC_MAP_PATH = DATA_PATH / "calc_map"
 FIX_MAX_SCORE = 50

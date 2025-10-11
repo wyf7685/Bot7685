@@ -1,16 +1,13 @@
-from typing import TYPE_CHECKING, final
+from collections.abc import Sequence
+from typing import final
 
+from nonebot_plugin_alconna.uniseg import Target
 from nonebot_plugin_orm import Model, get_scoped_session, get_session
+from nonebot_plugin_uninfo.model import BasicInfo
 from nonebot_plugin_uninfo.orm import UserModel, get_user_model
 from nonebot_plugin_uninfo.target import to_target
 from sqlalchemy import JSON, ForeignKey, Integer, String, or_, select
 from sqlalchemy.orm import Mapped, mapped_column
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from nonebot_plugin_alconna.uniseg import Target
-    from nonebot_plugin_uninfo.model import BasicInfo
 
 
 class KuroToken(Model):

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from nonebot import get_plugin_config
 from nonebot_plugin_alconna import Target
@@ -8,8 +8,7 @@ from pydantic import BaseModel, Field
 
 from src.utils import ConfigFile, ConfigListFile
 
-if TYPE_CHECKING:
-    from .utils import WplacePixelCoords
+from .utils import WplacePixelCoords
 
 DATA_DIR = get_plugin_data_dir()
 IMAGE_DIR = DATA_DIR / "images"

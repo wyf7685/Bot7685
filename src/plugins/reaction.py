@@ -2,18 +2,14 @@ import contextlib
 
 import anyio
 from nonebot import get_plugin_config, on_message, require
+from nonebot.adapters import Bot, Event
 from nonebot.exception import ActionFailed
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
+from nonebot.typing import T_State
 from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
-from typing import TYPE_CHECKING
-
 from nonebot_plugin_alconna import MsgTarget, message_reaction
-
-if TYPE_CHECKING:
-    from nonebot.adapters import Bot, Event
-    from nonebot.typing import T_State
 
 __plugin_meta__ = PluginMetadata(
     name="reaction",

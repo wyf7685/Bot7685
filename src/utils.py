@@ -8,17 +8,15 @@ import tempfile
 import threading
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 import anyio
 import nonebot
 from msgspec import json as msgjson
 from msgspec import toml as msgtoml
+from nonebot.typing import T_State
 from nonebot.utils import escape_tag
 from pydantic import BaseModel, TypeAdapter
-
-if TYPE_CHECKING:
-    from nonebot.typing import T_State
 
 
 def logger_wrapper(logger_name: str, /):  # noqa: ANN201
@@ -78,8 +76,8 @@ class ConfigModelFile[T: BaseModel](ConfigFile[T]):
     @staticmethod
     def from_model[M: BaseModel](
         file: Path, /
-    ) -> Callable[[type[M]], ConfigModelFile[M]]:
-        def decorator(model: type[M]) -> ConfigModelFile[M]:
+    ) -> Callable[[type[M]], "ConfigModelFile[M]"]:
+        def decorator(model: type[M]) -> "ConfigModelFile[M]":
             return ConfigModelFile[M](file, model)
 
         return decorator

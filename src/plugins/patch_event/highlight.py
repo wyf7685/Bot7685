@@ -1,15 +1,13 @@
 import datetime
 import functools
+from collections.abc import Callable, Iterable
 from enum import Enum
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import Any, ClassVar
 
 from nonebot.adapters import Message, MessageSegment
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
 from tarina import LRU
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
 
 DATETIME_FIELDS = [
     "year",

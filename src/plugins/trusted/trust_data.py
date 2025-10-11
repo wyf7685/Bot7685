@@ -1,15 +1,13 @@
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
+from nonebot.adapters import Bot
 from nonebot.internal.matcher import current_bot
 from nonebot.permission import SUPERUSER, Permission
 from nonebot_plugin_localstore import get_plugin_data_file
+from nonebot_plugin_uninfo import Uninfo
 from pydantic import BaseModel
 
 from src.utils import ConfigModelFile
-
-if TYPE_CHECKING:
-    from nonebot.adapters import Bot
-    from nonebot_plugin_uninfo import Uninfo
 
 
 @ConfigModelFile.from_model(get_plugin_data_file("trusted.json"))

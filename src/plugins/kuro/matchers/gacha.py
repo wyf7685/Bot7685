@@ -1,16 +1,13 @@
 import base64
-from typing import TYPE_CHECKING
 
 from nonebot.adapters.onebot import v11
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_localstore import get_plugin_data_dir
 
 from ..kuro_api import KuroApiException, WuwaGachaApi
+from ..kuro_api.gacha import WWGF
 from .alc import root_matcher
 from .depends import KuroTokenFromKey, convert_dependent
-
-if TYPE_CHECKING:
-    from ..kuro_api.gacha import WWGF
 
 matcher = root_matcher.dispatch("gacha")
 GACHA_DATA_DIR = get_plugin_data_dir() / "gacha"

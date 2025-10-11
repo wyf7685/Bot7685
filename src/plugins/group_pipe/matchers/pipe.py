@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any
+from collections.abc import Sequence
+from typing import Any
 
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import (
@@ -22,11 +23,7 @@ from ..database import (
     get_linked_pipes,
     get_pipes,
 )
-
-if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from .depends import MsgTarget
+from .depends import MsgTarget
 
 alc = Alconna(
     "pipe",

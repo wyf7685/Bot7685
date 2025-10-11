@@ -1,9 +1,10 @@
 import json
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 import anyio
 from nonebot import on_type, require
+from nonebot.adapters.onebot.v11 import Bot
 from nonebot.adapters.onebot.v11.event import GroupBanNoticeEvent, GroupMessageEvent
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
@@ -22,9 +23,6 @@ require("src.plugins.cache")
 require("src.plugins.trusted")
 from src.plugins.cache import get_cache
 from src.plugins.trusted import TrustedUser
-
-if TYPE_CHECKING:
-    from nonebot.adapters.onebot.v11 import Bot
 
 ban_time_cache = get_cache[str, datetime]("no_shit.ban_time", pickle=True)
 
