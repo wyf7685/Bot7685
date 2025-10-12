@@ -98,15 +98,20 @@ async def handle_forward(
     event: discord.MessageCreateEvent,
     dst: Annotated[tuple[Target, Bot], Depends(_dst)],
 ) -> None:
-    msg = await MessageConverter(src_bot).convert(event.get_message())
+    msg = await MessageConverter.get_message(event)
     if not msg:
+        logger.warning("消息提取结果为空，跳过转发")
+        return
+
+    unimsg = await MessageConverter(src_bot).convert(msg)
+    if not unimsg:
         logger.warning("消息转换结果为空，跳过转发")
         return
 
-    schedule_img = msg[Image, -1]
-    msg.remove(schedule_img)
-    rendered = await render_schedule(msg.split("\n"))
-    msg = UniMessage.image(raw=rendered) + schedule_img
+    schedule_img = unimsg[Image, -1]
+    unimsg.remove(schedule_img)
+    rendered = await render_schedule(unimsg.split("\n"))
+    unimsg = UniMessage.image(raw=rendered) + schedule_img
 
     target, dst_bot = dst
-    await get_sender(dst_bot).send(dst_bot, target, msg)
+    await get_sender(dst_bot).send(dst_bot, target, unimsg)
