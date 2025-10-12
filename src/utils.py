@@ -253,6 +253,17 @@ def ParamOrPrompt(  # noqa: N802
     return Depends(dependency)
 
 
+def ignore_exc[**P](
+    func: Callable[P, Awaitable[object]],
+) -> Callable[P, Awaitable[None]]:
+    @functools.wraps(func)
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
+        with contextlib.suppress(Exception):
+            await func(*args, **kwargs)
+
+    return wrapper
+
+
 def _setup() -> None:
     with contextlib.suppress(ImportError):
         import humanize

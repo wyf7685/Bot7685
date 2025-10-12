@@ -10,14 +10,14 @@ from nonebot_plugin_alconna import message_reaction
 driver = get_driver()
 
 
-async def wrapper(bot: Bot, event: MessageEvent, emoji: str) -> None:
+async def safe_reaction(bot: Bot, event: MessageEvent, emoji: str) -> None:
     with contextlib.suppress(Exception):
-        await message_reaction(emoji, None, event, bot)
+        await message_reaction(emoji=emoji, event=event, bot=bot)
 
 
 @run_preprocessor
 async def reaction_before_matcher(bot: Bot, event: MessageEvent) -> None:
-    driver.task_group.start_soon(wrapper, bot, event, "60")  # coffee
+    driver.task_group.start_soon(safe_reaction, bot, event, "60")  # coffee
 
 
 @run_postprocessor
@@ -26,5 +26,5 @@ async def reaction_after_matcher(
     event: MessageEvent,
     exception: Exception | None,
 ) -> None:
-    emoji = "144" if exception is None else "10060"  # 🎉 : ❌
-    driver.task_group.start_soon(wrapper, bot, event, emoji)
+    emoji = "144" if exception is None else "10060"  # 🎉/❌
+    driver.task_group.start_soon(safe_reaction, bot, event, emoji)

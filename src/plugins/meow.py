@@ -1,12 +1,22 @@
+from typing import override
+
 from nonebot import require
-from nonebot.adapters import Bot as BaseBot
-from nonebot.adapters.onebot.v11 import Bot, Message
+from nonebot.adapters import Bot, Event, Message
 from nonebot.plugin import PluginMetadata
 from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
-from nonebot_plugin_alconna import Alconna, Args, CommandMeta, Subcommand, on_alconna
+from nonebot_plugin_alconna import (
+    Alconna,
+    Args,
+    CommandMeta,
+    Subcommand,
+    Text,
+    UniMessage,
+    on_alconna,
+)
+from nonebot_plugin_alconna.extension import Extension, add_global_extension
 from nonebot_plugin_localstore import get_plugin_config_file
 
 from src.utils import ConfigModelFile
@@ -67,24 +77,35 @@ async def handle_save_config() -> None:
     config.save()
 
 
-SEND_MSG_API = "send_msg", "send_group_msg", "send_private_msg"
+class MeowExtension(Extension):
+    @property
+    @override
+    def priority(self) -> int:
+        return 21
+
+    @property
+    @override
+    def id(self) -> str:
+        return "bot7685:meow"
+
+    @override
+    async def send_wrapper(
+        self,
+        bot: Bot,
+        event: Event,
+        send: str | Message | UniMessage,
+    ) -> str | Message | UniMessage:
+        if not config.load().enabled:
+            return send
+        word = config.load().word
+        if isinstance(send, str):
+            return send + word
+        if isinstance(send, Message):
+            send = UniMessage.of(send)
+        send = send.copy()
+        if isinstance(send[-1], Text):
+            send = send.text(word)
+        return send
 
 
-@BaseBot.on_calling_api
-async def _(bot: BaseBot, api: str, data: dict[str, object]) -> None:
-    if not config.load().enabled:
-        return
-
-    if not (
-        isinstance(bot, Bot)
-        and api in SEND_MSG_API
-        and (message := data.get("message"))
-        and isinstance(message, list)
-    ):
-        return
-
-    if isinstance(message, Message):
-        if (seg := message[-1]).type == "text":
-            seg.data["text"] += config.load().word
-    elif isinstance(seg := message[-1], dict) and seg.get("type") == "text":
-        seg["data"]["text"] += config.load().word
+add_global_extension(MeowExtension())

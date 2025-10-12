@@ -1,4 +1,3 @@
-import contextlib
 import functools
 from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable
 from typing import Annotated, NoReturn
@@ -14,6 +13,8 @@ from nonebot.exception import ActionFailed, MatcherException
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER, User
 from nonebot.plugin import PluginMetadata
+
+from src.utils import ignore_exc
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
@@ -170,10 +171,10 @@ async def handle_lagrange(
             if msg is not None and msg.strip() in words:
                 await UniMessage(f"中止 {album_id} 的下载任务").finish(reply_to=True)
 
+    @ignore_exc
     async def recall() -> None:
         if receipt.recallable:
-            with contextlib.suppress(ActionFailed):
-                await receipt.recall()
+            await receipt.recall()
 
     async def send_forward() -> None:
         try:
