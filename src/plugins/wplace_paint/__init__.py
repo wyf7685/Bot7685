@@ -7,6 +7,7 @@ require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_waiter")
 require("src.plugins.cache")
+require("src.plugins.group_pipe")
 from . import command as command
 from . import scheduler as scheduler
 

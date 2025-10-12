@@ -76,8 +76,8 @@ class ConfigModelFile[T: BaseModel](ConfigFile[T]):
     @staticmethod
     def from_model[M: BaseModel](
         file: Path, /
-    ) -> Callable[[type[M]], "ConfigModelFile[M]"]:
-        def decorator(model: type[M]) -> "ConfigModelFile[M]":
+    ) -> Callable[[type[M]], ConfigModelFile[M]]:
+        def decorator(model: type[M]) -> ConfigModelFile[M]:
             return ConfigModelFile[M](file, model)
 
         return decorator

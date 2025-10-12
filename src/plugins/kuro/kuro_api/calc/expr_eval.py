@@ -56,7 +56,7 @@ class _ExpressionDict(TypedDict):
     key: str
     op: str
     value: str
-    sub: list["_ExpressionDict"]
+    sub: list[_ExpressionDict]
 
 
 class ExpressionEvaluator:

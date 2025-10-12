@@ -8,7 +8,7 @@ RUN chmod +x /data/converter.sh && \
     mv /data/converter.sh /out && \
     mv /data/silk/decoder /out/silk
 
-FROM python:3.13-slim-bookworm AS app
+FROM python:3.14-slim-bookworm AS app
 
 WORKDIR /app
 

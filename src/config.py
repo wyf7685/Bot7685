@@ -86,5 +86,5 @@ class BootstrapConfig(BaseModel):
     logging_override: LogLevelMap | None = None
 
     @classmethod
-    def from_config(cls, config: dict[str, object]) -> "BootstrapConfig":
+    def from_config(cls, config: dict[str, object]) -> BootstrapConfig:
         return type_validate_python(cls, config.pop("bootstrap", {}))

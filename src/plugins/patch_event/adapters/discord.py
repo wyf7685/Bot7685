@@ -18,7 +18,7 @@ from ..highlight import Highlight
 from ..patcher import patcher
 
 guild_name_cache: dict[SnowflakeType, str] = {}
-guild_channel_cache: dict[SnowflakeType, list["Channel"]] = {}
+guild_channel_cache: dict[SnowflakeType, list[Channel]] = {}
 
 
 def find_guild_name(guild: SnowflakeType) -> str | None:

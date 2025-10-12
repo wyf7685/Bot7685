@@ -9,7 +9,7 @@ from nonebot import get_driver, get_plugin_config
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from .cache import Cache
+    from .cache import Cache  # ./cache.pyi
 
 
 class RedisConfig(BaseModel):
@@ -69,7 +69,7 @@ class CacheWrapper:
 
 
 class get_cache[KT, VT]:  # noqa: N801
-    def __new__(cls, namespace: str, *, pickle: bool = False) -> "Cache[KT, VT]":
+    def __new__(cls, namespace: str, *, pickle: bool = False) -> Cache[KT, VT]:
         return CacheWrapper(namespace, pickle=pickle)  # pyright:ignore[reportReturnType]
 
 

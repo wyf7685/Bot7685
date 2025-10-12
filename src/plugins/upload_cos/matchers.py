@@ -1,8 +1,6 @@
-import contextlib
 import hashlib
 
 from nonebot import on_startswith
-from nonebot.adapters import Event
 from nonebot.log import logger
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import Alconna, Args, Match, on_alconna
@@ -22,7 +20,7 @@ logger = logger.opt(colors=True)
 
 
 @upload_cos.handle()
-async def _(event: Event, raw: EventImageRaw) -> None:
+async def _(raw: EventImageRaw) -> None:
     digest = hashlib.md5(raw).hexdigest()  # noqa: S324
     key = f"{digest[:2]}/{digest}.{fleep.get(raw).extensions[0]}"
     try:
@@ -35,11 +33,6 @@ async def _(event: Event, raw: EventImageRaw) -> None:
     url = await presign(key, expired)
     logger.success(f"预签名URL: <y>{url}</y>")
     await UniMessage(url).send(reply_to=True)
-
-    with contextlib.suppress(ImportError):
-        from nonebot_plugin_exe_code.context import Context
-
-        Context.get_context(event).set_value("url", url)
 
 
 @update_perm.handle()
