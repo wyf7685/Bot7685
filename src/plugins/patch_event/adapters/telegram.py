@@ -1,5 +1,4 @@
 from nonebot.adapters.telegram.event import (
-    Event,
     ForumTopicEditedMessageEvent,
     ForumTopicMessageEvent,
     GroupEditedMessageEvent,
@@ -22,11 +21,6 @@ class H(Highlight):
     def user(cls, user: User) -> str:
         name = user.first_name + (f" {user.last_name}" if user.last_name else "")
         return cls.name(user.id, name)
-
-
-@patcher
-def patch_event(self: Event) -> str:
-    return f"[{H.event_type(self.get_event_name())}]: {H.apply(self)}"
 
 
 @patcher

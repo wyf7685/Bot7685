@@ -2,7 +2,6 @@ from typing import override
 
 from nonebot.adapters.satori import MessageSegment
 from nonebot.adapters.satori.event import (
-    Event,
     PrivateMessageCreatedEvent,
     PrivateMessageDeletedEvent,
     PublicMessageCreatedEvent,
@@ -35,11 +34,6 @@ class H(Highlight[MessageSegment]):
     @classmethod
     def scene(cls, scene: Channel | Guild) -> str:
         return cls.name(scene.id, scene.name)
-
-
-@patcher
-def patch_event(self: Event) -> str:
-    return f"[{H.event_type(self.get_event_name())}]: {H.apply(self)}"
 
 
 @patcher

@@ -4,7 +4,7 @@ from typing import LiteralString, override
 
 import nonebot
 from nonebot.adapters.feishu import Adapter, NoticeEvent
-from nonebot.adapters.feishu.event import Event, GroupMessageEvent, PrivateMessageEvent
+from nonebot.adapters.feishu.event import GroupMessageEvent, PrivateMessageEvent
 from nonebot.adapters.feishu.models import UserId
 from pydantic import BaseModel
 
@@ -13,11 +13,6 @@ from ..patcher import patcher
 
 
 class H(Highlight): ...
-
-
-@patcher
-def patch_event(self: Event) -> str:
-    return f"[{H.event_type(self.get_event_name())}]: {H.apply(self)}"
 
 
 @patcher

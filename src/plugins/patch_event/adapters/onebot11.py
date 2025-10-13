@@ -168,11 +168,6 @@ class H(Highlight[MessageSegment, Message]):
 
 
 @patcher
-def patch_event(self: Event) -> str:
-    return f"[{H.event_type(self.get_event_name())}]: {H.apply(self)}"
-
-
-@patcher
 def patch_private_message_event(self: PrivateMessageEvent) -> str:
     return (
         f"[{H.event_type(self.get_event_name())}]: "

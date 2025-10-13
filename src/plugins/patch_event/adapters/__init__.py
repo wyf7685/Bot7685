@@ -13,8 +13,13 @@ ADAPTERS = {
 }
 
 
-[
-    importlib.import_module(f"{__package__}.{module}")
-    for adapter in nonebot.get_adapters()
-    if (module := ADAPTERS.get(adapter))
-]
+def __init() -> None:
+    logger = nonebot.logger.opt(colors=True)
+    for adapter in nonebot.get_adapters():
+        if module := ADAPTERS.get(adapter):
+            logger.info(f"Patch event for adapter <g>{adapter}</>")
+            importlib.import_module(f"{__package__}.{module}")
+
+
+__init()
+del __init

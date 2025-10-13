@@ -5,6 +5,8 @@ from typing import Protocol, cast
 import nonebot
 from nonebot.adapters import Event
 
+from .highlight import Highlight
+
 type PatcherCall[T: Event] = Callable[[T], str]
 
 
@@ -42,6 +44,11 @@ def patcher[T: Event](call: PatcherCall[T]) -> PatcherHandle[T]:
     handle.restore = restore
     _PATCHERS.add(handle)
     return handle
+
+
+@patcher
+def patch_base_event(self: Event) -> str:
+    return f"[{Highlight.event_type(self.get_event_name())}]: {Highlight.apply(self)}"
 
 
 @nonebot.get_driver().on_startup
