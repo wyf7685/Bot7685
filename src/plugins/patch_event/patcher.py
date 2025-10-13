@@ -1,3 +1,4 @@
+import functools
 import inspect
 from collections.abc import Callable
 from typing import Protocol, cast
@@ -22,20 +23,23 @@ logger = nonebot.logger.opt(colors=True)
 _PATCHERS: set[PatcherHandle] = set()
 
 
+def copy_signature[C: Callable](_: C, fn: Callable[..., object], /) -> C:
+    return cast("C", fn)
+
+
 def patcher[T: Event](call: PatcherCall[T]) -> PatcherHandle[T]:
     cls: type[T] = inspect.get_annotations(call)["self"]
     assert issubclass(cls, Event)
     original = cls.get_log_string
-    bases = cls.__bases__
-    patched = (type("Patcher", bases, {"get_log_string": call}),)
+    wrapper = copy_signature(original, functools.update_wrapper(call, original))
     module_name = cls.__module__.replace("nonebot.adapters.", "~")
 
     def patch() -> None:
-        cls.__bases__ = patched
+        cls.get_log_string = wrapper
         logger.debug(f"Patch <m>{module_name}</m>.<g>{cls.__name__}</g>")
 
     def restore() -> None:
-        cls.__bases__ = bases
+        cls.get_log_string = original
         logger.debug(f"Restore <m>{module_name}</m>.<g>{cls.__name__}</g>")
 
     handle = cast("PatcherHandle[T]", call)
