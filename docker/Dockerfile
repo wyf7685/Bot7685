@@ -27,7 +27,8 @@ ENV TZ=Asia/Shanghai \
     MAX_WORKERS=1 \
     VIRTUAL_ENV=/opt/venv \
     UV_LINK_MODE=copy \
-    UV_CACHE_DIR=/opt/uv-cache
+    UV_CACHE_DIR=/opt/uv-cache \
+    UV_PYTHON_INSTALL_DIR=/opt/python
 
 COPY docker/fonts/*.ttf /usr/share/fonts/
 COPY docker/assets/* /
@@ -35,7 +36,7 @@ RUN fc-cache -f -v && chmod +x /entrypoint.sh
 
 COPY --from=silk /out /opt/silk-decoder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-RUN uv python install 3.14 --install-dir /opt/python --no-cache
+RUN uv python install 3.14 --no-cache
 
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 VOLUME [ "/app", "/opt/venv", "/opt/uv-cache" ]
