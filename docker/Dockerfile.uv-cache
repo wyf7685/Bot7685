@@ -1,14 +1,17 @@
 FROM buildpack-deps:bookworm AS builder
 
 WORKDIR /tmp
+ENV UV_CACHE_DIR=/opt/uv-cache \
+    UV_PYTHON_INSTALL_DIR=/opt/python
+
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
-RUN uv python install 3.14 --install-dir /opt/python --no-cache
+RUN uv python install 3.14 --no-cache
 
 COPY pyproject.toml uv.lock ./
 COPY external/ ./external/
-RUN uv sync --no-dev --locked --cache-dir /opt/uv-cache && rm -rf .venv/
+RUN uv sync --no-dev --locked && rm -rf .venv/
 
-RUN echo $(date +%s) > /opt/uv-cache/.timestamp
+RUN echo $(date +%s) > $UV_CACHE_DIR/.timestamp
 
 FROM alpine
 
