@@ -17,7 +17,7 @@ def _event_image() -> Image:
         if msg.has(Reply):
             reply_msg = msg[Reply, 0].msg
             if isinstance(reply_msg, Message):
-                return await event_image(await UniMessage.generate(message=reply_msg))
+                return await event_image(await UniMessage.of(reply_msg).attach_reply())
         return Matcher.skip()
 
     return Depends(event_image)
