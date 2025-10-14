@@ -1,0 +1,26 @@
+FROM buildpack-deps:bookworm AS silk
+
+ADD https://github.com/kn007/silk-v3-decoder.git /data
+
+RUN chmod +x /data/converter.sh && \
+    /data/converter.sh && \
+    mkdir -p /out/silk && \
+    mv /data/converter.sh /out && \
+    mv /data/silk/decoder /out/silk
+
+FROM debian:bookworm-slim AS base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    nano \
+    ffmpeg \
+    fontconfig \
+    locales \
+    fonts-noto && \
+    echo "zh_CN.UTF-8 UTF-8" > /etc/locale.gen && \
+    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
+    locale-gen && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=silk /out /opt/silk-decoder
