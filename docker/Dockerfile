@@ -8,7 +8,13 @@ RUN chmod +x /data/converter.sh && \
     mv /data/converter.sh /out && \
     mv /data/silk/decoder /out/silk
 
-FROM python:3.14-slim-bookworm AS app
+FROM debian:bookworm-slim AS base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates curl nano ffmpeg fontconfig locales locales-all fonts-noto && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM base AS app
 
 WORKDIR /app
 
@@ -25,15 +31,11 @@ ENV TZ=Asia/Shanghai \
 
 COPY docker/fonts/*.ttf /usr/share/fonts/
 COPY docker/assets/* /
-
-RUN apt-get update && apt-get install -y --no-install-recommends \ 
-        nano ffmpeg fontconfig locales locales-all fonts-noto && \
-    fc-cache -f -v && \
-    rm -rf /var/lib/apt/lists/* && \
-    chmod +x /entrypoint.sh
+RUN fc-cache -f -v && chmod +x /entrypoint.sh
 
 COPY --from=silk /out /opt/silk-decoder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+RUN uv python install 3.14 --install-dir /opt/python --no-cache
 
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 VOLUME [ "/app", "/opt/venv", "/opt/uv-cache" ]

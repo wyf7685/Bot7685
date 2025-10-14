@@ -1,31 +1,24 @@
-FROM python:3.14-slim-bookworm AS pkgs
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential curl git gcc libffi-dev libssl-dev cargo \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV UV_CACHE_DIR=/opt/uv-cache
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-FROM pkgs AS builder
+FROM buildpack-deps:bookworm AS builder
 
 WORKDIR /tmp
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
+RUN uv python install 3.14 --install-dir /opt/python --no-cache
+
 COPY pyproject.toml uv.lock ./
 COPY external/ ./external/
-RUN uv sync --no-dev --locked && rm -rf .venv/
+RUN uv sync --no-dev --locked --cache-dir /opt/uv-cache && rm -rf .venv/
+
 RUN echo $(date +%s) > /opt/uv-cache/.timestamp
 
 FROM alpine
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /
 COPY --from=builder /opt/uv-cache /data
 
 COPY <<EOF /entrypoint.sh
 #!/bin/sh
-if [ ! -f /uv-cache/.timestamp ] || \
-    [ "$(cat /data/.timestamp)" != "$(cat /uv-cache/.timestamp)" ]; then
-     rm -rf /uv-cache/*
-     cp -r /data/. /uv-cache/
+if [ ! -f /uv-cache/.timestamp ] || [ "$(cat /data/.timestamp)" != "$(cat /uv-cache/.timestamp)" ]; then
+    rm -rf /uv-cache/*
+    cp -r /data/. /uv-cache/
 fi
 EOF
 RUN chmod +x /entrypoint.sh
