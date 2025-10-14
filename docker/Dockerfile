@@ -1,29 +1,4 @@
-FROM buildpack-deps:bookworm AS silk
-
-ADD https://github.com/kn007/silk-v3-decoder.git /data
-
-RUN chmod +x /data/converter.sh && \
-    /data/converter.sh && \
-    mkdir -p /out/silk && \
-    mv /data/converter.sh /out && \
-    mv /data/silk/decoder /out/silk
-
-FROM debian:bookworm-slim AS base
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    nano \
-    ffmpeg \
-    fontconfig \
-    locales \
-    fonts-noto && \
-    echo "zh_CN.UTF-8 UTF-8" > /etc/locale.gen && \
-    echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
-    locale-gen && \
-    rm -rf /var/lib/apt/lists/*
-
-FROM base AS app
+FROM wyf7685/bot7685:base AS app
 
 WORKDIR /app
 
@@ -37,10 +12,8 @@ ENV TZ=Asia/Shanghai \
     UV_PYTHON_INSTALL_DIR=/opt/python \
     PATH="/opt/venv/bin:$PATH"
 
-COPY docker/assets/entrypoint.sh /entrypoint.sh
+COPY docker/assets/* /
 RUN chmod +x /entrypoint.sh
-
-COPY --from=silk /out /opt/silk-decoder
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 RUN uv python install 3.14 --no-cache
