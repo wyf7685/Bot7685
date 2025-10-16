@@ -42,4 +42,4 @@ jobs:
         uses: ./.github/actions/setup-python
 
       - name: Run BasedPyright
-        run: uvx basedpyright .
+        run: uv run basedpyright .
