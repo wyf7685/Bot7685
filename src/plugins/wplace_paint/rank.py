@@ -138,7 +138,7 @@ async def find_regions_in_rect(
 class RankData:
     user_id: int
     name: str
-    picture: str | None
+    picture: str | None  # user defined avatar, in base64
     flag: int
     pixels: int = 0
 
