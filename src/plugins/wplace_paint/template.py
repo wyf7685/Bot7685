@@ -1,18 +1,21 @@
 import io
 import itertools
+from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, cast
 
+import anyio
 import anyio.to_thread
 from nonebot import logger
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
 from PIL import Image
 
-from .config import TEMPLATE_DIR, TemplateConfig
-from .consts import PAID_COLORS
+from .config import TEMPLATE_DIR, TemplateConfig, UserConfig
+from .consts import COLORS_ID, PAID_COLORS
+from .fetch import fetch_me, post_paint_pixels
 from .preview import download_preview
 from .utils import PerfLog, WplacePixelCoords, find_color_name, parse_rgb_str
 
@@ -190,3 +193,31 @@ async def get_color_location(cfg: TemplateConfig, color: str) -> list[tuple[int,
         if entry.name == color:
             return entry.pixels
     return []
+
+
+async def post_paint(user: UserConfig, tp: TemplateConfig, pawtect_token: str) -> int:
+    count = (await fetch_me(user)).charges.count
+    if count < 1:
+        return 0
+    count = int(count)
+
+    diff = await calc_template_diff(tp, include_pixels=True)
+    grouped = defaultdict[tuple[int, int], list[tuple[tuple[int, int], int]]](list)
+    for entry in diff:
+        color_id = COLORS_ID[entry.name]
+        for x, y in entry.pixels:
+            coord = tp.coords.offset(x, y)
+            grouped[(coord.tlx, coord.tly)].append(((coord.pxx, coord.pxy), color_id))
+
+    if not sum(len(pixels) for pixels in grouped.values()):
+        return 0
+
+    painted = 0
+    for tile, tile_pixels in grouped.items():
+        pixels = tile_pixels[: min(len(tile_pixels), count - painted)]
+        painted += await post_paint_pixels(user, pawtect_token, tile, pixels)
+        if painted >= count:
+            break
+        await anyio.sleep(3)
+
+    return painted

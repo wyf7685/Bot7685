@@ -15,12 +15,12 @@ from src.plugins.group_pipe import get_converter
 
 from ..config import IMAGE_DIR, TemplateConfig, templates
 from ..fetch import RequestFailed, flatten_request_failed_msg
-from ..paint import post_paint
 from ..preview import download_preview
 from ..template import (
     calc_template_diff,
     download_template_preview,
     get_color_location,
+    post_paint,
     render_progress,
     render_template_with_color,
 )

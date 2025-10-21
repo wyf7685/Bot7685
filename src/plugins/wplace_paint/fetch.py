@@ -245,17 +245,22 @@ def post_paint_pixels(
         "x-pawtect-variant": "koala",
         "referrer": "https://wplace.live/",
     }
-    payload = {"colors": [], "coords": []}
+    colors, coords = [], []
     for pixel, color_id in pixels:
-        payload["colors"].append(color_id)
-        payload["coords"].extend(pixel)
+        colors.append(color_id)
+        coords.extend(pixel)
+    payload = {
+        "colors": colors,
+        "coords": coords,
+        "fp": hashlib.sha256(str(cfg.wp_user_id).encode()).hexdigest()[:32],
+    }
 
     try:
         resp = cloudscraper.create_scraper().post(
             url,
             headers=headers,
             cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
-            json=payload | {"fp": hashlib.sha256(cfg.token.encode()).hexdigest()[:32]},
+            json=payload,
             proxies=_proxies,
             timeout=20,
         )
