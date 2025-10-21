@@ -15,6 +15,7 @@ from src.plugins.group_pipe import get_converter
 
 from ..config import IMAGE_DIR, TemplateConfig, templates
 from ..fetch import RequestFailed, flatten_request_failed_msg
+from ..paint import post_paint
 from ..preview import download_preview
 from ..template import (
     calc_template_diff,
@@ -25,6 +26,7 @@ from ..template import (
 )
 from ..utils import WplacePixelCoords, normalize_color_name, parse_color_names
 from .matcher import TargetHash, finish, matcher, prompt
+from .user import SelectedUserConfig
 
 
 @matcher.assign("~preview")
@@ -260,3 +262,21 @@ async def assign_template_locate(
         f"以下是前 {len(urls)} 个像素的位置:\n\n"
     ) + "\n".join(urls)
     await finish(msg)
+
+
+@matcher.assign("~template.paint")
+async def assign_template_paint(
+    tp: TargetTemplate,
+    user: SelectedUserConfig,
+) -> None:
+    pawtect_token = await prompt("请发送 Pawtect Token")
+
+    try:
+        painted_count = await post_paint(user, tp, pawtect_token)
+    except* RequestFailed as e:
+        await finish(f"绘制模板失败:\n{flatten_request_failed_msg(e)}")
+    except* Exception as e:
+        logger.opt(exception=True).warning("绘制模板时发生错误")
+        await finish(f"绘制模板时发生意外错误: {e!r}")
+
+    await finish(f"成功绘制 {painted_count} 个像素到模板")

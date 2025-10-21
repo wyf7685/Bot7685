@@ -1,3 +1,4 @@
+import hashlib
 from collections.abc import Callable
 
 import cloudscraper
@@ -225,3 +226,42 @@ async def fetch_region_rank(region_id: int, rank_type: RankType) -> list[RankUse
         RANK_URL.format(region_id, rank_type),
         _rank_resp_ta.validate_json,
     )
+
+
+PAINT_URL = "https://backend.wplace.live/s0/pixel/{}/{}"
+
+
+@with_semaphore(1)
+@run_sync
+def post_paint_pixels(
+    cfg: UserConfig,
+    pawtect_token: str,
+    tile: tuple[int, int],
+    pixels: list[tuple[tuple[int, int], int]],
+) -> int:
+    url = PAINT_URL.format(*tile)
+    headers = {
+        "x-pawtect-token": pawtect_token,
+        "x-pawtect-variant": "koala",
+        "referrer": "https://wplace.live/",
+    }
+    payload = {"colors": [], "coords": []}
+    for pixel, color_id in pixels:
+        payload["colors"].append(color_id)
+        payload["coords"].extend(pixel)
+
+    try:
+        resp = cloudscraper.create_scraper().post(
+            url,
+            headers=headers,
+            cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
+            json=payload | {"fp": hashlib.sha256(cfg.token.encode()).hexdigest()[:32]},
+            proxies=_proxies,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        raise RequestFailed(f"Paint request failed: {e!r}") from e
+
+    return data["painted"]

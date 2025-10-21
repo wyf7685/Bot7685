@@ -321,6 +321,7 @@ COLORS_MAP = [
     {"name": "Stone", "rgb": (148, 140, 107)},
     {"name": "Light Stone", "rgb": (205, 197, 158)},
 ]
+COLORS_ID: dict[str, int] = {entry["name"]: idx for idx, entry in enumerate(COLORS_MAP)}
 
 ALL_COLORS: dict[str, tuple[int, int, int]] = {
     color["name"]: color["rgb"] for color in COLORS_MAP
