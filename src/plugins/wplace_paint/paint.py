@@ -19,7 +19,7 @@ async def post_paint(
         (tp.coords.offset(x, y), COLORS_ID[entry.name])
         for entry in diff
         for x, y in entry.pixels
-    ][:count]
+    ][: int(count)]
 
     if not pixels:
         return 0
