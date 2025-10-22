@@ -1,5 +1,6 @@
 import hashlib
 from collections.abc import Callable
+from typing import Any
 
 import cloudscraper
 from nonebot import logger
@@ -12,6 +13,7 @@ from pydantic import TypeAdapter
 from src.utils import with_semaphore
 
 from .config import UserConfig
+from .pawtect import get_pawtect_token
 from .schemas import FetchMeResponse, PixelInfo, RankType, RankUser
 from .utils import WplacePixelCoords, with_retry
 
@@ -233,26 +235,17 @@ PAINT_URL = "https://backend.wplace.live/s0/pixel/{}/{}"
 
 @with_semaphore(1)
 @run_sync
-def post_paint_pixels(
+def _post_paint_pixels(
     cfg: UserConfig,
-    pawtect_token: str,
     tile: tuple[int, int],
-    pixels: list[tuple[tuple[int, int], int]],
+    pawtect_token: str,
+    payload: dict[str, Any],
 ) -> int:
     url = PAINT_URL.format(*tile)
     headers = {
         "x-pawtect-token": pawtect_token,
         "x-pawtect-variant": "koala",
         "referrer": "https://wplace.live/",
-    }
-    colors, coords = [], []
-    for pixel, color_id in pixels:
-        colors.append(color_id)
-        coords.extend(pixel)
-    payload = {
-        "colors": colors,
-        "coords": coords,
-        "fp": hashlib.sha256(str(cfg.wp_user_id).encode()).hexdigest()[:32],
     }
 
     try:
@@ -270,3 +263,25 @@ def post_paint_pixels(
         raise RequestFailed(f"Paint request failed: {e!r}") from e
 
     return data["painted"]
+
+
+async def post_paint_pixels(
+    cfg: UserConfig,
+    pawtect_token: str | None,
+    tile: tuple[int, int],
+    pixels: list[tuple[tuple[int, int], int]],
+) -> int:
+    colors, coords = [], []
+    for pixel, color_id in pixels:
+        colors.append(color_id)
+        coords.extend(pixel)
+    payload = {
+        "colors": colors,
+        "coords": coords,
+        "fp": hashlib.sha256(str(cfg.wp_user_id).encode()).hexdigest()[:32],
+    }
+    if pawtect_token is None:
+        pawtect_token = await get_pawtect_token(cfg.wp_user_id, payload)
+    if pawtect_token is None:
+        raise RequestFailed("Failed to obtain Pawtect token")
+    return await _post_paint_pixels(cfg, tile, pawtect_token, payload)

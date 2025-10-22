@@ -198,7 +198,9 @@ async def get_color_location(cfg: TemplateConfig, color: str) -> list[tuple[int,
 
 
 async def post_paint(
-    user: UserConfig, tp: TemplateConfig, pawtect_token: str
+    user: UserConfig,
+    tp: TemplateConfig,
+    pawtect_token: str | None,
 ) -> tuple[int, dict[str, int]]:
     user_info = await fetch_me(user)
     count = user_info.charges.count

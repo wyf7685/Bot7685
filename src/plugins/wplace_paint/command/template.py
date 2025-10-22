@@ -268,9 +268,8 @@ async def assign_template_locate(
 async def assign_template_paint(
     tp: TargetTemplate,
     user: SelectedUserConfig,
+    pawtect_token: str | None = None,
 ) -> None:
-    pawtect_token = await prompt("请发送 Pawtect Token")
-
     try:
         painted, count_map = await post_paint(user, tp, pawtect_token)
     except* RequestFailed as e:
