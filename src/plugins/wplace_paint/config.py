@@ -28,6 +28,7 @@ class UserConfig(BaseModel):
     target_droplets: int | None = None
     bind_groups: set[str] = Field(default_factory=set)
     adapter: str | None = None
+    auto_paint_target_hash: str | None = None
 
     @property
     def target(self) -> Target:

@@ -9,7 +9,8 @@ from ..fetch import RequestFailed, flatten_request_failed_msg
 from ..rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
 from ..schemas import RankType
 from ..utils import WplacePixelCoords
-from .matcher import TargetHash, finish, matcher, prompt
+from .depends import TargetHash
+from .matcher import finish, matcher, prompt
 
 
 @matcher.assign("~rank.bind.revoke")

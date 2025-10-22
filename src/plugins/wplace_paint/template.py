@@ -239,3 +239,19 @@ async def post_paint(
         COLORS_MAP[color_id]["name"]: count
         for color_id, count in painted_colors.items()
     }
+
+
+def format_post_paint_result(
+    painted: int,
+    color_map: dict[str, int],
+) -> str:
+    if painted == 0:
+        return "未绘制任何像素，可能是模板已完成或账户无可用像素"
+
+    lines = [f"成功绘制 {painted} 个像素，颜色分布如下:"]
+    for color_name, count in sorted(
+        color_map.items(),
+        key=lambda item: (-item[1], item[0]),
+    ):
+        lines.append(f"- {color_name}: {count} 像素")
+    return "\n".join(lines)

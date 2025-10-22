@@ -1,14 +1,11 @@
-import hashlib
-from typing import Annotated, Literal, NoReturn
+from typing import Literal, NoReturn
 
-from nonebot.params import Depends
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
     At,
     CommandMeta,
     Field,
-    MsgTarget,
     MultiVar,
     Option,
     Subcommand,
@@ -70,6 +67,7 @@ alc = Alconna(
             Args["target_droplets?#目标droplets值", int],
             help_text="设置目标droplets值,查询时显示达成时间(不附带参数则取消设置)",
         ),
+        Option("--auto-paint", help_text="切换自动绘制,在达到通知阈值时消耗像素绘制"),
         alias={"c"},
         help_text="修改已绑定账号的配置",
     ),
@@ -181,14 +179,3 @@ async def prompt(msg: str) -> str:
     if text == "取消":
         await finish("操作已取消")
     return text
-
-
-def target_hash(target: MsgTarget) -> str:
-    args = (target.id, target.channel, target.private, target.self_id)
-    for k, v in target.extra.items():
-        args += (k, v)
-    key = "".join(map(str, args)).encode("utf-8")
-    return hashlib.sha256(key).hexdigest()
-
-
-TargetHash = Annotated[str, Depends(target_hash)]

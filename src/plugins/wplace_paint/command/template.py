@@ -1,12 +1,10 @@
 import random
 import uuid
-from typing import Annotated
 
 import httpx
 from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.exception import MatcherException
-from nonebot.params import Depends
 from nonebot.utils import flatten_exception_group
 from nonebot_plugin_alconna import File, Image, UniMessage, image_fetch
 from nonebot_plugin_waiter import waiter
@@ -19,13 +17,15 @@ from ..preview import download_preview
 from ..template import (
     calc_template_diff,
     download_template_preview,
+    format_post_paint_result,
     get_color_location,
     post_paint,
     render_progress,
     render_template_with_color,
 )
 from ..utils import WplacePixelCoords, normalize_color_name, parse_color_names
-from .matcher import TargetHash, finish, matcher, prompt
+from .depends import TargetHash, TargetTemplate
+from .matcher import finish, matcher, prompt
 from .user import SelectedUserConfig
 
 
@@ -129,16 +129,6 @@ async def assign_template_bind(key: TargetHash) -> None:
     cfgs[key] = TemplateConfig(coords=coords, image=fp.name)
     templates.save(cfgs)
     await finish(f"模板绑定成功\n{coords.human_repr()}")
-
-
-async def _target_template_cfg(key: TargetHash) -> TemplateConfig:
-    cfgs = templates.load()
-    if key not in cfgs:
-        await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
-    return cfgs[key]
-
-
-TargetTemplate = Annotated[TemplateConfig, Depends(_target_template_cfg)]
 
 
 @matcher.assign("~template.preview")
@@ -271,14 +261,11 @@ async def assign_template_paint(
     pawtect_token: str | None = None,
 ) -> None:
     try:
-        painted, count_map = await post_paint(user, tp, pawtect_token)
+        painted, color_map = await post_paint(user, tp, pawtect_token)
     except* RequestFailed as e:
         await finish(f"绘制模板失败:\n{flatten_request_failed_msg(e)}")
     except* Exception as e:
         logger.opt(exception=True).warning("绘制模板时发生错误")
         await finish(f"绘制模板时发生意外错误: {e!r}")
 
-    await finish(
-        f"成功绘制 {painted} 个像素到模板:\n"
-        + "\n".join(f"- {color}: {count}" for color, count in count_map.items())
-    )
+    await finish(format_post_paint_result(painted, color_map))

@@ -1,16 +1,15 @@
 import contextlib
-from typing import Annotated, Literal
 
 import anyio
 from nonebot.adapters import Bot, Event
-from nonebot.params import Depends
-from nonebot_plugin_alconna import At, CustomNode, MsgTarget, SupportScope, UniMessage
+from nonebot_plugin_alconna import CustomNode, MsgTarget, SupportScope, UniMessage
 
 from ..config import UserConfig, users
 from ..fetch import RequestFailed, fetch_me, flatten_request_failed_msg
 from ..scheduler import FETCH_INTERVAL_MINS, expire_push_cache
 from ..utils import normalize_color_name
-from .matcher import TargetHash, finish, matcher, prompt
+from .depends import QueryConfigs, SelectedUserConfig, TargetHash, TargetTemplate
+from .matcher import finish, matcher
 
 
 @matcher.assign("~bind")
@@ -39,35 +38,6 @@ async def assign_bind(
     cfg.save()
     await expire_push_cache(cfg)
     await finish(f"添加成功\n{resp.format_notification()}")
-
-
-async def _query_target_cfgs(
-    event: Event,
-    uni_target: MsgTarget,
-    target_hash: TargetHash,
-    target: At | Literal["$group"] | None = None,
-) -> list[UserConfig]:
-    if target == "$group" and uni_target.private:
-        await finish("请在群聊中使用 $group 参数")
-
-    if target == "$group":
-        cfgs = [
-            cfg
-            for cfg in users.load()
-            if cfg.target.verify(uni_target) or target_hash in cfg.bind_groups
-        ]
-        if not cfgs:
-            await finish("群内没有用户绑定账号")
-        return cfgs
-
-    user_id = event.get_user_id() if target is None else target.target
-    cfgs = [cfg for cfg in users.load() if cfg.user_id == user_id]
-    if not cfgs:
-        await finish("用户没有绑定任何账号")
-    return cfgs
-
-
-QueryConfigs = Annotated[list[UserConfig], Depends(_query_target_cfgs)]
 
 
 @matcher.assign("~query")
@@ -102,46 +72,6 @@ async def assign_query(
         for idx, content in enumerate(results, start=1)
     ]
     await UniMessage.reference(*nodes).finish(reply_to=True)
-
-
-async def _select_cfg(
-    event: Event,
-    identifier: str | None = None,
-) -> UserConfig:
-    user_id = event.get_user_id()
-    user_cfgs = [cfg for cfg in users.load() if cfg.user_id == user_id]
-    if not user_cfgs:
-        await finish("你还没有绑定任何账号")
-
-    if identifier is not None:
-        gen = (
-            cfg
-            for cfg in filter(lambda c: c.wp_user_id, user_cfgs)
-            if str(cfg.wp_user_id) == identifier or cfg.wp_user_name == identifier
-        )
-        if cfg := next(gen, None):
-            return cfg
-        await finish("未找到对应的绑定账号")
-
-    if len(user_cfgs) == 1:
-        return user_cfgs[0]
-
-    formatted_cfgs = "".join(
-        f"{i}. {cfg.wp_user_name} #{cfg.wp_user_id}\n"
-        for i, cfg in enumerate(user_cfgs, start=1)
-    )
-    msg = "你绑定了多个账号，请回复要操作的账号序号:\n" + formatted_cfgs
-
-    while True:
-        text = await prompt(msg)
-        if text.isdigit():
-            idx = int(text)
-            if 1 <= idx <= len(user_cfgs):
-                return user_cfgs[idx - 1]
-        msg = "无效的序号，请重新输入:\n" + formatted_cfgs
-
-
-SelectedUserConfig = Annotated[UserConfig, Depends(_select_cfg)]
 
 
 @matcher.assign("~config.notify-mins")
@@ -209,6 +139,22 @@ async def assign_config_target_droplets(
         if target_droplets is None
         else f"已设置目标 droplets 值为 {target_droplets}💧"
     )
+
+
+@matcher.assign("~config.auto-paint")
+async def assign_config_auto_paint(
+    cfg: SelectedUserConfig,
+    _: TargetTemplate,
+    target_hash: TargetHash,
+) -> None:
+    if cfg.auto_paint_target_hash == target_hash:
+        cfg.auto_paint_target_hash = None
+        msg = "已禁用自动绘制功能"
+    else:
+        cfg.auto_paint_target_hash = target_hash
+        msg = "已启用自动绘制功能并绑定到当前会话模板"
+    cfg.save()
+    await finish(msg)
 
 
 @matcher.assign("~remove")
