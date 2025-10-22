@@ -200,7 +200,8 @@ async def get_color_location(cfg: TemplateConfig, color: str) -> list[tuple[int,
 async def post_paint(
     user: UserConfig, tp: TemplateConfig, pawtect_token: str
 ) -> tuple[int, dict[str, int]]:
-    count = (await fetch_me(user)).charges.count
+    user_info = await fetch_me(user)
+    count = user_info.charges.count
     if count < 1:
         return 0, {}
     count = int(count)
@@ -208,6 +209,8 @@ async def post_paint(
     diff = await calc_template_diff(tp, include_pixels=True)
     grouped = defaultdict[tuple[int, int], list[tuple[tuple[int, int], int]]](list)
     for entry in diff:
+        if entry.name not in user_info.own_colors:
+            continue
         color_id = COLORS_ID[entry.name]
         for x, y in entry.pixels:
             coord = tp.coords.offset(x, y)
