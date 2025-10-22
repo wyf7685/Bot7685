@@ -1,6 +1,6 @@
 import io
 import itertools
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -14,7 +14,7 @@ from nonebot_plugin_htmlrender import get_new_page, template_to_html
 from PIL import Image
 
 from .config import TEMPLATE_DIR, TemplateConfig, UserConfig
-from .consts import COLORS_ID, PAID_COLORS
+from .consts import COLORS_ID, COLORS_MAP, PAID_COLORS
 from .fetch import fetch_me, post_paint_pixels
 from .preview import download_preview
 from .utils import PerfLog, WplacePixelCoords, find_color_name, parse_rgb_str
@@ -25,6 +25,9 @@ type RGBA = tuple[int, int, int, int]
 class PixelAccess[TPixel](Protocol):
     def __getitem__(self, xy: tuple[int, int]) -> TPixel: ...
     def __setitem__(self, xy: tuple[int, int], color: TPixel) -> None: ...
+
+
+logger = logger.opt(colors=True)
 
 
 @dataclass
@@ -118,9 +121,8 @@ async def calc_template_diff(
 
     with PerfLog.for_action("calculating template diff") as perf:
         diff = await anyio.to_thread.run_sync(compare)
-    logger.opt(colors=True).info(
-        f"Calculated template diff in <y>{perf.elapsed:.2f}</>s"
-    )
+    logger.info(f"Calculated template diff in <y>{perf.elapsed:.2f}</>s")
+    logger.info(f"Template diff count: <y>{sum(e.count for e in diff)}</> pixels")
     return diff
 
 
@@ -195,10 +197,12 @@ async def get_color_location(cfg: TemplateConfig, color: str) -> list[tuple[int,
     return []
 
 
-async def post_paint(user: UserConfig, tp: TemplateConfig, pawtect_token: str) -> int:
+async def post_paint(
+    user: UserConfig, tp: TemplateConfig, pawtect_token: str
+) -> tuple[int, dict[str, int]]:
     count = (await fetch_me(user)).charges.count
     if count < 1:
-        return 0
+        return 0, {}
     count = int(count)
 
     diff = await calc_template_diff(tp, include_pixels=True)
@@ -210,14 +214,23 @@ async def post_paint(user: UserConfig, tp: TemplateConfig, pawtect_token: str) -
             grouped[(coord.tlx, coord.tly)].append(((coord.pxx, coord.pxy), color_id))
 
     if not sum(len(pixels) for pixels in grouped.values()):
-        return 0
+        return 0, {}
 
     painted = 0
+    painted_colors: dict[int, int] = {}
     for tile, tile_pixels in grouped.items():
+        await anyio.sleep(3)
         pixels = tile_pixels[: min(len(tile_pixels), count - painted)]
-        painted += await post_paint_pixels(user, pawtect_token, tile, pixels)
+        logger.info(f"Painting <y>{len(pixels)}</> pixels at tile <c>{tile}</>")
+        api_painted = await post_paint_pixels(user, pawtect_token, tile, pixels)
+        logger.info(f"Painted <y>{api_painted}</> pixels at tile <c>{tile}</>")
+        painted += api_painted
+        painted_colors |= Counter(color_id for _, color_id in pixels[:api_painted])
         if painted >= count:
             break
-        await anyio.sleep(3)
 
-    return painted
+    logger.info(f"Total painted pixels: <y>{painted}</>")
+    return painted, {
+        COLORS_MAP[color_id]["name"]: count
+        for color_id, count in painted_colors.items()
+    }

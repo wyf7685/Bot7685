@@ -272,11 +272,14 @@ async def assign_template_paint(
     pawtect_token = await prompt("请发送 Pawtect Token")
 
     try:
-        painted_count = await post_paint(user, tp, pawtect_token)
+        painted, count_map = await post_paint(user, tp, pawtect_token)
     except* RequestFailed as e:
         await finish(f"绘制模板失败:\n{flatten_request_failed_msg(e)}")
     except* Exception as e:
         logger.opt(exception=True).warning("绘制模板时发生错误")
         await finish(f"绘制模板时发生意外错误: {e!r}")
 
-    await finish(f"成功绘制 {painted_count} 个像素到模板")
+    await finish(
+        f"成功绘制 {painted} 个像素到模板:\n"
+        + "\n".join(f"- {color}: {count}" for color, count in count_map.items())
+    )
