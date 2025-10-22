@@ -17,7 +17,7 @@ dependencies = [
   "nonebot-adapter-telegram>=0.1.0b20",
   # plugins
   "nonebot-plugin-akinator>=1.0.3",
-  "nonebot-plugin-alconna>=0.59.0,<0.60.0",
+  "nonebot-plugin-alconna>=0.60.1",
   "nonebot-plugin-apscheduler>=0.5.0",
   "nonebot-plugin-chatrecorder>=0.7.0",
   "nonebot-plugin-htmlrender==0.6.7",
@@ -43,7 +43,8 @@ dependencies = [
   "msgspec[toml,yaml]>=0.19.0",
   "paramiko>=4.0.0",
   "mcstatus>=12.0.5",
-  "playwright==1.55.0",         # pinned for docker image
+  "pillow>=10.0.0",
+  "playwright==1.55.0", # pinned for docker image
   "pydantic>=2.11.7",
   "tarina>=0.6.8",
   # plugins

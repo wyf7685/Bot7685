@@ -4,6 +4,7 @@ from typing import Any
 from nonebot import get_plugin_config
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_localstore import get_plugin_data_dir
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from src.utils import ConfigFile, ConfigListFile
@@ -67,6 +68,11 @@ class TemplateConfig(BaseModel):
     @property
     def file(self) -> Path:
         return IMAGE_DIR / self.image
+
+    def load(self) -> tuple[Image.Image, tuple[WplacePixelCoords, WplacePixelCoords]]:
+        im = Image.open(self.file)
+        w, h = im.size
+        return im, (self.coords, self.coords.offset(w - 1, h - 1))
 
 
 # group target id -> TemplateConfig

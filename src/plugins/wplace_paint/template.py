@@ -17,7 +17,7 @@ from .config import TEMPLATE_DIR, TemplateConfig, UserConfig
 from .consts import COLORS_ID, COLORS_MAP, PAID_COLORS
 from .fetch import fetch_me, post_paint_pixels
 from .preview import download_preview
-from .utils import PerfLog, WplacePixelCoords, find_color_name, parse_rgb_str
+from .utils import PerfLog, find_color_name, parse_rgb_str
 
 type RGBA = tuple[int, int, int, int]
 
@@ -51,6 +51,10 @@ class ColorEntry:
         return f"#{r:02X}{g:02X}{b:02X}"
 
     @property
+    def id(self) -> int:
+        return COLORS_ID[self.name]
+
+    @property
     def drawn(self) -> int:
         return self.total - self.count
 
@@ -59,20 +63,12 @@ class ColorEntry:
         return (self.drawn / self.total * 100) if self.total > 0 else 0
 
 
-def load_template(
-    cfg: TemplateConfig,
-) -> tuple[Image.Image, tuple[WplacePixelCoords, WplacePixelCoords]]:
-    im = Image.open(cfg.file)
-    w, h = im.size
-    return im, (cfg.coords, cfg.coords.offset(w - 1, h - 1))
-
-
 async def download_template_preview(
     cfg: TemplateConfig,
     background: str | None = None,
     border_pixels: int = 0,
 ) -> bytes:
-    _, (coord1, coord2) = load_template(cfg)
+    _, (coord1, coord2) = cfg.load()
     if border_pixels > 0:
         coord1 = coord1.offset(-border_pixels, -border_pixels)
         coord2 = coord2.offset(border_pixels, border_pixels)
@@ -84,7 +80,7 @@ async def calc_template_diff(
     *,
     include_pixels: bool = False,
 ) -> list[ColorEntry]:
-    template_img, coords = load_template(cfg)
+    template_img, coords = cfg.load()
     width, height = template_img.size
     actual_img_bytes = await download_preview(*coords)
     actual_img = Image.open(io.BytesIO(actual_img_bytes))
@@ -213,10 +209,9 @@ async def post_paint(
     for entry in diff:
         if entry.name not in user_info.own_colors:
             continue
-        color_id = COLORS_ID[entry.name]
         for x, y in entry.pixels:
             coord = tp.coords.offset(x, y)
-            grouped[(coord.tlx, coord.tly)].append(((coord.pxx, coord.pxy), color_id))
+            grouped[(coord.tlx, coord.tly)].append(((coord.pxx, coord.pxy), entry.id))
 
     if not sum(len(pixels) for pixels in grouped.values()):
         return 0, {}
@@ -241,10 +236,7 @@ async def post_paint(
     }
 
 
-def format_post_paint_result(
-    painted: int,
-    color_map: dict[str, int],
-) -> str:
+def format_post_paint_result(painted: int, color_map: dict[str, int]) -> str:
     if painted == 0:
         return "未绘制任何像素，可能是模板已完成或账户无可用像素"
 
