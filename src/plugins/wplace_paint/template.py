@@ -104,8 +104,12 @@ async def calc_template_diff(
             # 统计模板像素总数
             entry.total += 1
 
-            # 如果模板像素颜色与实际像素颜色不同
-            if template_pixel[:3] != actual_pixels[x, y][:3]:
+            if (
+                # 如果模板像素颜色与实际像素颜色不同
+                template_pixel[:3] != actual_pixels[x, y][:3]
+                # 或者实际像素是透明的
+                or actual_pixels[x, y][3] == 0
+            ):
                 entry.count += 1
                 if include_pixels:
                     entry.pixels.append((x, y))
