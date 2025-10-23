@@ -152,7 +152,7 @@ async def assign_config_auto_paint(
         msg = "已禁用自动绘制功能"
     else:
         cfg.auto_paint_target_hash = target_hash
-        msg = "已启用自动绘制功能并绑定到当前会话模板"
+        msg = "已启用自动绘制功能，将使用当前会话模板进行绘制"
     cfg.save()
     await finish(msg)
 

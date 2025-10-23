@@ -165,6 +165,7 @@ matcher.shortcut("wpq", {"command": "wplace query {*}"})
 matcher.shortcut("wpg", {"command": "wplace query $group"})
 matcher.shortcut("wpr", {"command": "wplace rank query {*}"})
 matcher.shortcut("wpt", {"command": "wplace template progress"})
+matcher.shortcut("wpp", {"command": "wplace template paint {*}"})
 
 
 async def finish(msg: str | UniMessage) -> NoReturn:
