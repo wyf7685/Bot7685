@@ -3,6 +3,7 @@ import base64
 import functools
 import math
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel
@@ -153,3 +154,8 @@ class RankUser(BaseModel):
 
 
 type RankType = Literal["today", "week", "month", "all-time"]
+
+
+class PurchaseItem(int, Enum):
+    MAX_CHARGE_5 = 70
+    CHARGE_30 = 80

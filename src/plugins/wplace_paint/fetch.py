@@ -14,7 +14,7 @@ from src.utils import with_semaphore
 
 from .config import UserConfig
 from .pawtect import get_pawtect_token
-from .schemas import FetchMeResponse, PixelInfo, RankType, RankUser
+from .schemas import FetchMeResponse, PixelInfo, PurchaseItem, RankType, RankUser
 from .utils import PerfLog, WplacePixelCoords, with_retry
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
@@ -207,6 +207,32 @@ async def fetch_me(cfg: UserConfig) -> FetchMeResponse:
         cfg.wp_user_name = resp.name
         cfg.save()
     return resp
+
+
+WPLACE_PURCHASE_API_URL = "https://backend.wplace.live/purchase"
+
+
+@run_sync
+def purchase(cfg: UserConfig, item: PurchaseItem, amount: int) -> None:
+    try:
+        resp = cloudscraper.create_scraper().post(
+            WPLACE_PURCHASE_API_URL,
+            headers={"User-Agent": USER_AGENT},
+            cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
+            proxies=_proxies,
+            json={"product": {"id": item.value, "amount": amount}},
+            timeout=20,
+        )
+        resp.raise_for_status()
+    except Exception as e:
+        raise RequestFailed(f"Request failed: {e!r}") from e
+
+    try:
+        data = resp.json()
+    except Exception as e:
+        raise RequestFailed("Failed to parse JSON response") from e
+    if not data["success"]:
+        raise RequestFailed("Purchase failed: Unknown error")
 
 
 PIXEL_INFO_URL = "https://backend.wplace.live/s0/pixel/{coord.tlx}/{coord.tly}?x={coord.pxx}&y={coord.pxy}"
