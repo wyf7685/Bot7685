@@ -92,7 +92,7 @@ class FetchMeResponse(BaseModel):
 
     def format_notification(self, target_droplets: int | None = None) -> str:
         flag = f" {get_flag_emoji(self.equippedFlag)}" if self.equippedFlag else ""
-        remaining = timedelta(seconds=int(self.charges.remaining_secs()))
+        remaining = timedelta(seconds=max(0, int(self.charges.remaining_secs())))
         recover_time = datetime.now() + remaining
         base_msg = (
             f"{self.name} #{self.id}{flag} 💧{self.droplets}\n"
@@ -159,3 +159,21 @@ type RankType = Literal["today", "week", "month", "all-time"]
 class PurchaseItem(int, Enum):
     MAX_CHARGE_5 = 70
     CHARGE_30 = 80
+
+    @property
+    def price(self) -> int:
+        return PURCHASE_ITEM_PRICES[self]
+
+    @property
+    def item_name(self) -> str:
+        return PURCHASE_ITEM_NAMES[self]
+
+
+PURCHASE_ITEM_PRICES: dict[PurchaseItem, int] = {
+    PurchaseItem.MAX_CHARGE_5: 500,
+    PurchaseItem.CHARGE_30: 500,
+}
+PURCHASE_ITEM_NAMES: dict[PurchaseItem, str] = {
+    PurchaseItem.MAX_CHARGE_5: "像素上限 x5",
+    PurchaseItem.CHARGE_30: "像素余额 x30",
+}

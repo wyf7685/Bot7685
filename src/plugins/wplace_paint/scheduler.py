@@ -19,7 +19,9 @@ from .fetch import (
     extract_first_status_code,
     fetch_me,
     flatten_request_failed_msg,
+    purchase,
 )
+from .schemas import FetchMeResponse, PurchaseItem
 from .template import format_post_paint_result, post_paint
 
 FETCH_INTERVAL_MINS = 5
@@ -130,29 +132,58 @@ async def fetch_for_user(cfg: UserConfig) -> None:
         await save_cache()
         finish()
 
-    # 获取用户信息
-    logger.debug(f"正在获取 {colored} 的信息")
-    resp = None
-    try:
-        resp = await fetch_me(cfg)
-    except* RequestFailed as exc_group:
-        logger.warning(
-            f"获取 {colored} 的信息失败:\n"
-            f"{escape_tag(flatten_request_failed_msg(exc_group))}"
-        )
-        if extract_first_status_code(exc_group) in {401, 500}:
-            logger.info(f"{colored} 凭据无效，准备推送")
-            cache.credential_invalid = True
-            await _push_msg(
-                f"用户 {cfg.wp_user_name} #{cfg.wp_user_id} 的 wplace 凭据已失效\n"
-                "请使用 wplace bind 命令重新绑定"
+    async def fetch_user_info() -> FetchMeResponse:
+        logger.debug(f"正在获取 {colored} 的信息")
+        try:
+            return await fetch_me(cfg)
+        except* RequestFailed as exc_group:
+            logger.warning(
+                f"获取 {colored} 的信息失败:\n"
+                f"{escape_tag(flatten_request_failed_msg(exc_group))}"
             )
-    except* Exception:
-        logger.opt(colors=True, exception=True).warning(
-            f"获取 {colored} 的信息时发生意外错误"
-        )
-    if resp is None:
-        return
+            if extract_first_status_code(exc_group) in {401, 500}:
+                logger.info(f"{colored} 凭据无效，准备推送")
+                cache.credential_invalid = True
+                await _push_msg(
+                    f"用户 {cfg.wp_user_name} #{cfg.wp_user_id} 的 wplace 凭据已失效\n"
+                    "请使用 wplace bind 命令重新绑定"
+                )
+        except* Exception:
+            logger.opt(colors=True, exception=True).warning(
+                f"获取 {colored} 的信息时发生意外错误"
+            )
+        finish()
+
+    async def apply_purchase(
+        resp: FetchMeResponse, item: PurchaseItem
+    ) -> FetchMeResponse:
+        amount = resp.droplets // item.price
+        try:
+            await purchase(cfg, item, amount)
+        except* RequestFailed as exc_group:
+            logger.warning(
+                f"为 {colored} 自动购买物品失败:\n"
+                f"{escape_tag(flatten_request_failed_msg(exc_group))}"
+            )
+        except* Exception:
+            logger.opt(colors=True, exception=True).warning(
+                f"为 {colored} 自动购买物品时发生意外错误"
+            )
+        else:
+            logger.info(
+                f"已为 {colored} 自动购买物品 "
+                f"<g>{escape_tag(repr(item))}</> x <y>{amount}</>"
+            )
+            resp = await fetch_user_info()
+
+        return resp
+
+    # 获取用户信息
+    resp = await fetch_user_info()
+
+    # 尝试自动购买物品
+    if cfg.auto_purchase is not None and resp.droplets > cfg.auto_purchase.price:
+        resp = await apply_purchase(resp, cfg.auto_purchase)
 
     async def push_notification() -> NoReturn:
         msg = resp.format_notification(cfg.target_droplets)

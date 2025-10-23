@@ -68,6 +68,11 @@ alc = Alconna(
             help_text="设置目标droplets值,查询时显示达成时间(不附带参数则取消设置)",
         ),
         Option("--auto-paint", help_text="切换自动绘制,在达到通知阈值时消耗像素绘制"),
+        Option(
+            "--auto-purchase",
+            Args["item_id?#物品ID", int | Literal["list"]],
+            help_text="设置自动购买物品",
+        ),
         alias={"c"},
         help_text="修改已绑定账号的配置",
     ),

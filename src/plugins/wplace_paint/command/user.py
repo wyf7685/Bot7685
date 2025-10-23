@@ -1,4 +1,5 @@
 import contextlib
+from typing import Literal
 
 import anyio
 from nonebot.adapters import Bot, Event
@@ -7,6 +8,7 @@ from nonebot_plugin_alconna import CustomNode, MsgTarget, SupportScope, UniMessa
 from ..config import UserConfig, users
 from ..fetch import RequestFailed, fetch_me, flatten_request_failed_msg
 from ..scheduler import FETCH_INTERVAL_MINS, expire_push_cache
+from ..schemas import PurchaseItem
 from ..utils import normalize_color_name
 from .depends import QueryConfigs, SelectedUserConfig, TargetHash, TargetTemplate
 from .matcher import finish, matcher
@@ -153,6 +155,38 @@ async def assign_config_auto_paint(
     else:
         cfg.auto_paint_target_hash = target_hash
         msg = "已启用自动绘制功能，将使用当前会话模板进行绘制"
+    cfg.save()
+    await finish(msg)
+
+
+@matcher.assign("~config.auto-purchase")
+async def assign_config_auto_purchase(
+    cfg: SelectedUserConfig,
+    item_id: int | Literal["list"] | None = None,
+) -> None:
+    if item_id == "list":
+        await finish(
+            "可自动购买的物品列表:\n"
+            + "\n".join(
+                f"{item.value} - {item.item_name}: {item.price}"
+                for item in PurchaseItem
+            )
+            + "\n\n使用命令时请提供物品ID,或使用 'list' 查看此列表"
+        )
+
+    if item_id is None:
+        cfg.auto_purchase = None
+        msg = "已取消自动购买物品设置"
+    else:
+        try:
+            cfg.auto_purchase = PurchaseItem(item_id)
+        except ValueError:
+            await finish(f"无效的物品ID: {item_id}")
+        msg = (
+            "已设置自动购买物品为 "
+            f"{cfg.auto_purchase.item_name} (ID: {cfg.auto_purchase.value})"
+        )
+
     cfg.save()
     await finish(msg)
 

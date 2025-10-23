@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from src.utils import ConfigFile, ConfigListFile
 
+from .schemas import PurchaseItem
 from .utils import WplacePixelCoords
 
 DATA_DIR = get_plugin_data_dir()
@@ -30,6 +31,7 @@ class UserConfig(BaseModel):
     bind_groups: set[str] = Field(default_factory=set)
     adapter: str | None = None
     auto_paint_target_hash: str | None = None
+    auto_purchase: PurchaseItem | None = None
 
     @property
     def target(self) -> Target:
@@ -48,6 +50,9 @@ class UserConfig(BaseModel):
                     "max_overflow_notify",
                     "target_droplets",
                     "bind_groups",
+                    "adapter",
+                    "auto_paint_target_hash",
+                    "auto_purchase",
                 ):
                     setattr(self, attr, getattr(cfg, attr))
 
