@@ -200,7 +200,6 @@ async def get_color_location(cfg: TemplateConfig, color: str) -> list[tuple[int,
 async def post_paint(
     user: UserConfig,
     tp: TemplateConfig,
-    pawtect_token: str | None,
 ) -> tuple[int, dict[str, int]]:
     user_info = await fetch_me(user)
     count = user_info.charges.count
@@ -226,7 +225,7 @@ async def post_paint(
         await anyio.sleep(3)
         pixels = tile_pixels[: min(len(tile_pixels), count - painted)]
         logger.info(f"Painting <y>{len(pixels)}</> pixels at tile <c>{tile}</>")
-        api_painted = await post_paint_pixels(user, pawtect_token, tile, pixels)
+        api_painted = await post_paint_pixels(user, tile, pixels)
         logger.info(f"Painted <y>{api_painted}</> pixels at tile <c>{tile}</>")
         painted += api_painted
         painted_colors |= Counter(color_id for _, color_id in pixels[:api_painted])

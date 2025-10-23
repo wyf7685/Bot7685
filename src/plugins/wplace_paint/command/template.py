@@ -258,10 +258,9 @@ async def assign_template_locate(
 async def assign_template_paint(
     tp: TargetTemplate,
     user: SelectedUserConfig,
-    pawtect_token: str | None = None,
 ) -> None:
     try:
-        painted, color_map = await post_paint(user, tp, pawtect_token)
+        painted, color_map = await post_paint(user, tp)
     except* RequestFailed as e:
         await finish(f"绘制模板失败:\n{flatten_request_failed_msg(e)}")
     except* Exception as e:

@@ -13,9 +13,9 @@ from pydantic import TypeAdapter
 from src.utils import with_semaphore
 
 from .config import UserConfig
-from .pawtect import get_pawtect_token
+from .pawtect import pawtect_sign
 from .schemas import FetchMeResponse, PixelInfo, PurchaseItem, RankType, RankUser
-from .utils import PerfLog, WplacePixelCoords, with_retry
+from .utils import WplacePixelCoords, with_retry
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
 USER_AGENT = (
@@ -293,7 +293,6 @@ def _post_paint_pixels(
 
 async def post_paint_pixels(
     cfg: UserConfig,
-    pawtect_token: str | None,
     tile: tuple[int, int],
     pixels: list[tuple[tuple[int, int], int]],
 ) -> int:
@@ -306,12 +305,5 @@ async def post_paint_pixels(
         "coords": coords,
         "fp": hashlib.sha256(str(cfg.wp_user_id).encode()).hexdigest()[:32],
     }
-    if pawtect_token is None:
-        with PerfLog.for_action("generating Pawtect token") as perf:
-            pawtect_token = await get_pawtect_token(cfg.wp_user_id, payload)
-            if pawtect_token is None:
-                raise RequestFailed("Failed to obtain Pawtect token")
-        logger.opt(colors=True).info(
-            f"Pawtect token generated in <y>{perf.elapsed:.2f}</>s"
-        )
+    pawtect_token = pawtect_sign(payload)
     return await _post_paint_pixels(cfg, tile, pawtect_token, payload)

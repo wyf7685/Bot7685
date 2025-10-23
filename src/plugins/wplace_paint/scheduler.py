@@ -163,7 +163,7 @@ async def fetch_for_user(cfg: UserConfig) -> None:
         ):
             logger.info(f"{colored} 启用自动绘制模板,准备绘制")
             try:
-                result = await post_paint(cfg, tp, None)
+                result = await post_paint(cfg, tp)
             except* RequestFailed as exc_group:
                 exc_msg = flatten_request_failed_msg(exc_group)
                 logger.warning(f"为 {colored} 自动绘制模板失败:\n{escape_tag(exc_msg)}")

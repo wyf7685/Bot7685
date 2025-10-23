@@ -136,7 +136,6 @@ alc = Alconna(
         ),
         Subcommand(
             "paint",
-            Option("--pawtect-token|-t", Args["pawtect_token#Pawtect Token", str]),
             Args["identifier?#账号标识,ID或用户名", str],
             help_text="使用指定账号的剩余像素绘制模板",
         ),

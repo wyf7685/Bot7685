@@ -1,37 +1,24 @@
+import base64
+import hashlib
 import json
+import os
+import struct
 from typing import Any
 
-import anyio
-from nonebot import logger
-from nonebot_plugin_htmlrender import get_new_page
+from Crypto.Cipher import ChaCha20_Poly1305
 
-from .config import TEMPLATE_DIR
+# ref: https://github.com/munew/wplace.live-pawtect-reverse/blob/d56700f/src/lib.rs
+KEY = bytes([19, 55] * 16)
+HOST = b"backend.wplace.live"
+_PLAIN_HEAD = bytes([105, 19, 131, 172, 0])
+_PLAIN_TAIL = bytes([0, 0]) + struct.pack("<I", 1) + struct.pack("<I", len(HOST)) + HOST
 
-PAWTECT_HTML = TEMPLATE_DIR / "pawtect" / "index.html"
 
-
-async def get_pawtect_token(user_id: int, request_body: dict[str, Any]) -> str | None:
-    if not PAWTECT_HTML.exists():
-        return None
-
-    html = (
-        PAWTECT_HTML.read_text(encoding="utf-8")
-        .replace("{{user_id}}", str(user_id))
-        .replace("{{request_body}}", json.dumps(request_body, separators=(",", ":")))
-    )
-
-    async with get_new_page() as page:
-        await page.set_content(html)
-        await anyio.sleep(1)
-        with anyio.move_on_after(10):
-            while not (element := await page.query_selector("#pawtect-result")):  # noqa: ASYNC110
-                await anyio.sleep(0.1)
-            data: dict[str, str] = json.loads(await element.text_content() or "{}")
-            if token := data.get("token"):
-                return token
-            if error := data.get("error"):
-                logger.warning(f"Pawtect error: {error}")
-            else:
-                logger.warning("Pawtect returned no token and no error message.")
-
-    return None
+def pawtect_sign(payload: dict[str, Any]) -> str:
+    body = json.dumps(payload).encode("utf-8")
+    plaintext = b"".join([_PLAIN_HEAD, hashlib.sha256(body).digest(), _PLAIN_TAIL])
+    cipher = ChaCha20_Poly1305.new(key=KEY, nonce=os.urandom(24))
+    ciphertext, tag = cipher.encrypt_and_digest(plaintext)
+    encrypted = base64.b64encode(ciphertext + tag).decode()
+    nonce = base64.b64encode(cipher.nonce).decode()
+    return f"{encrypted}.{nonce}"
