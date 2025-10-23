@@ -220,7 +220,7 @@ async def post_paint(
         return 0, {}
 
     painted = 0
-    painted_colors: dict[int, int] = {}
+    painted_colors = Counter[int]()
     for tile, tile_pixels in grouped.items():
         await anyio.sleep(3)
         pixels = tile_pixels[: min(len(tile_pixels), count - painted)]
@@ -228,7 +228,7 @@ async def post_paint(
         api_painted = await post_paint_pixels(user, tile, pixels)
         logger.info(f"Painted <y>{api_painted}</> pixels at tile <c>{tile}</>")
         painted += api_painted
-        painted_colors |= Counter(color_id for _, color_id in pixels[:api_painted])
+        painted_colors.update(Counter(id for _, id in pixels[:api_painted]))
         if painted >= count:
             break
 
