@@ -133,8 +133,11 @@ _scraper_headers = {
 class TooManyRequests(RequestFailed): ...
 
 
+class InvalidCredentials(RequestFailed): ...
+
+
 @with_semaphore(8)
-@with_retry(TooManyRequests, retries=3, delay=1)
+@with_retry(TooManyRequests, InvalidCredentials, retries=3, delay=1)
 @run_sync
 def _fetch_with_cloudscraper[T](
     url: str,
@@ -157,6 +160,11 @@ def _fetch_with_cloudscraper[T](
     except Exception as e:
         if resp.status_code == 429:  # Too Many Requests
             raise TooManyRequests("Got status code: 429", 429) from e
+        if resp.status_code in {401, 500}:
+            raise InvalidCredentials(
+                f"Request failed with status code: {resp.status_code}",
+                status_code=resp.status_code,
+            ) from e
 
         raise RequestFailed(
             f"Request failed with status code: {resp.status_code}",
