@@ -144,3 +144,8 @@ logs/
 .vscode/
 # .env*  # replaced with config/**.yaml
 shortcut.db*
+
+
+# Added by cargo
+
+/target

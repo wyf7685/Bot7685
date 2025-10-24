@@ -44,9 +44,10 @@ dependencies = [
   "paramiko>=4.0.0",
   "mcstatus>=12.0.5",
   "pillow>=10.0.0",
-  "playwright==1.55.0", # pinned for docker image
+  "playwright==1.55.0",         # pinned for docker image
   "pydantic>=2.11.7",
   "tarina>=0.6.8",
+  "wplace-template-compare",
   # plugins
   "nonebot-plugin-exe-code",
   "nonebot-plugin-talk-stats",
@@ -68,10 +69,11 @@ dev = [
 ]
 
 [tool.uv.sources]
-nonebot-plugin-exe-code = { workspace = true }
-nonebot-plugin-talk-stats = { workspace = true }
-nonebot-plugin-werewolf = { workspace = true }
-nonebot-plugin-zssm = { workspace = true }
+nonebot-plugin-exe-code = { workspace = true, editable = false }
+nonebot-plugin-talk-stats = { workspace = true, editable = false }
+nonebot-plugin-werewolf = { workspace = true, editable = false }
+nonebot-plugin-zssm = { workspace = true, editable = false }
+wplace-template-compare = { workspace = true, editable = false }
 
 [tool.uv.workspace]
 members = ["external/*"]

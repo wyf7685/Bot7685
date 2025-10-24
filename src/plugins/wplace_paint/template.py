@@ -2,19 +2,18 @@ import io
 import itertools
 from collections import Counter, defaultdict
 from collections.abc import Iterable
-from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, cast
 
 import anyio
-import anyio.to_thread
 from nonebot import logger
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
 from PIL import Image
+from wplace_template_compare import ColorEntry, compare
 
 from .config import TEMPLATE_DIR, TemplateConfig, UserConfig
-from .consts import COLORS_ID, COLORS_MAP, PAID_COLORS
+from .consts import COLORS_MAP
 from .fetch import fetch_me, post_paint_pixels
 from .preview import download_preview
 from .utils import PerfLog, find_color_name, parse_rgb_str
@@ -28,39 +27,6 @@ class PixelAccess[TPixel](Protocol):
 
 
 logger = logger.opt(colors=True)
-
-
-@dataclass
-class ColorEntry:
-    name: str
-    rgb: tuple[int, int, int]
-    count: int = 0
-    total: int = 0
-    pixels: list[tuple[int, int]] = field(default_factory=list)
-
-    @property
-    def is_paid(self) -> bool:
-        return self.name in PAID_COLORS
-
-    @property
-    def rgb_str(self) -> str:
-        if self.name == "Transparent":
-            return "transparent"
-
-        r, g, b = self.rgb
-        return f"#{r:02X}{g:02X}{b:02X}"
-
-    @property
-    def id(self) -> int:
-        return COLORS_ID[self.name]
-
-    @property
-    def drawn(self) -> int:
-        return self.total - self.count
-
-    @property
-    def progress(self) -> float:
-        return (self.drawn / self.total * 100) if self.total > 0 else 0
 
 
 async def download_template_preview(
@@ -81,48 +47,16 @@ async def calc_template_diff(
     include_pixels: bool = False,
 ) -> list[ColorEntry]:
     template_img, coords = cfg.load()
-    width, height = template_img.size
-    actual_img_bytes = await download_preview(*coords)
-    actual_img = Image.open(io.BytesIO(actual_img_bytes))
-
-    def compare() -> list[ColorEntry]:
-        template_pixels = cast("PixelAccess[RGBA]", template_img.convert("RGBA").load())
-        actual_pixels = cast("PixelAccess[RGBA]", actual_img.convert("RGBA").load())
-
-        diff_pixels: dict[str, ColorEntry] = {}
-        for x, y in itertools.product(range(width), range(height)):
-            template_pixel = template_pixels[x, y]
-            # 跳过模板中的透明像素
-            if template_pixel[3] == 0:
-                continue
-
-            color_name = find_color_name(template_pixel)
-            if color_name not in diff_pixels:
-                diff_pixels[color_name] = ColorEntry(color_name, template_pixel[:3])
-            entry = diff_pixels[color_name]
-
-            # 统计模板像素总数
-            entry.total += 1
-
-            if (
-                # 如果模板像素颜色与实际像素颜色不同
-                template_pixel[:3] != actual_pixels[x, y][:3]
-                # 或者实际像素是透明的
-                or actual_pixels[x, y][3] == 0
-            ):
-                entry.count += 1
-                if include_pixels:
-                    entry.pixels.append((x, y))
-
-        return sorted(
-            diff_pixels.values(),
-            key=lambda entry: (-entry.total, entry.name),
-        )
+    with io.BytesIO() as buffer:
+        template_img.save(buffer, format="PNG")
+        template_bytes = buffer.getvalue()
+    actual_bytes = await download_preview(*coords)
 
     with PerfLog.for_action("calculating template diff") as perf:
-        diff = await anyio.to_thread.run_sync(compare)
-    logger.info(f"Calculated template diff in <y>{perf.elapsed:.2f}</>s")
+        diff = await compare(template_bytes, actual_bytes, include_pixels)
+    logger.info(f"Calculated template diff in <y>{perf.elapsed:.3f}</>s")
     logger.info(f"Template diff count: <y>{sum(e.count for e in diff)}</> pixels")
+
     return diff
 
 
