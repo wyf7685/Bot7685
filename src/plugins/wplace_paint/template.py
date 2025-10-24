@@ -1,5 +1,6 @@
 import io
 import itertools
+import random
 from collections import Counter, defaultdict
 from collections.abc import Iterable
 from datetime import datetime
@@ -124,8 +125,8 @@ def render_template_with_color(
 
 
 async def get_color_location(cfg: TemplateConfig, color: str) -> list[tuple[int, int]]:
-    progress_data = await calc_template_diff(cfg, include_pixels=True)
-    for entry in progress_data:
+    diff = await calc_template_diff(cfg, include_pixels=True)
+    for entry in diff:
         if entry.name == color:
             return entry.pixels
     return []
@@ -143,33 +144,31 @@ async def post_paint(
 
     diff = await calc_template_diff(tp, include_pixels=True)
     grouped = defaultdict[tuple[int, int], list[tuple[tuple[int, int], int]]](list)
-    for entry in diff:
-        if entry.name not in user_info.own_colors:
-            continue
-        for x, y in entry.pixels:
+    grouped_count = 0
+    for entry in filter(lambda e: e.name in user_info.own_colors, diff):
+        remaining = min(count - grouped_count, entry.count)
+        if remaining <= 0:
+            break
+        for x, y in entry.pixels[:remaining]:
             coord = tp.coords.offset(x, y)
             grouped[(coord.tlx, coord.tly)].append(((coord.pxx, coord.pxy), entry.id))
+        grouped_count += remaining
 
-    if not sum(len(pixels) for pixels in grouped.values()):
+    if not sum(map(len, grouped.values())):
         return 0, {}
 
-    painted = 0
-    painted_colors = Counter[int]()
-    for tile, tile_pixels in grouped.items():
-        await anyio.sleep(3)
-        pixels = tile_pixels[: min(len(tile_pixels), count - painted)]
+    color_counter = Counter[int]()
+    for tile, pixels in grouped.items():
+        await anyio.sleep(random.uniform(0.5, 2))
         logger.info(f"Painting <y>{len(pixels)}</> pixels at tile <c>{tile}</>")
         api_painted = await post_paint_pixels(user, tile, pixels)
         logger.info(f"Painted <y>{api_painted}</> pixels at tile <c>{tile}</>")
-        painted += api_painted
-        painted_colors.update(Counter(id for _, id in pixels[:api_painted]))
-        if painted >= count:
-            break
+        color_counter.update(Counter(id for _, id in pixels[:api_painted]))
 
+    painted = sum(color_counter.values())
     logger.info(f"Total painted pixels: <y>{painted}</>")
     return painted, {
-        COLORS_MAP[color_id]["name"]: count
-        for color_id, count in painted_colors.items()
+        COLORS_MAP[color_id]["name"]: count for color_id, count in color_counter.items()
     }
 
 
