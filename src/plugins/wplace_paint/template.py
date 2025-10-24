@@ -6,11 +6,11 @@ from datetime import datetime
 from typing import Protocol, cast
 
 import anyio
+from bot7685_ext.wplace import ColorEntry, compare
 from nonebot import logger
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
 from PIL import Image
-from wplace_template_compare import ColorEntry, compare
 
 from .config import TEMPLATE_DIR, TemplateConfig, UserConfig
 from .consts import COLORS_MAP
