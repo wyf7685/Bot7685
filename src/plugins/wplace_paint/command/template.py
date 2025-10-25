@@ -20,6 +20,7 @@ from ..template import (
     get_color_location,
     post_paint,
     render_progress,
+    render_template_overlay,
     render_template_with_color,
 )
 from ..utils import WplacePixelCoords, normalize_color_name, parse_color_names
@@ -121,6 +122,25 @@ async def assign_template_bind(key: TargetHash) -> None:
     templates.load()[key] = TemplateConfig(coords=coords, key=key)
     templates.save()
     await finish(f"模板绑定成功\n{coords.human_repr()}")
+
+
+@matcher.assign("~template.preview.overlay")
+async def assign_template_preview_overlay(
+    cfg: TargetTemplate,
+    overlay_alpha: int | None = None,
+) -> None:
+    try:
+        img_bytes = await render_template_overlay(cfg, overlay_alpha)
+    except* httpx.HTTPError as exc_group:
+        await finish(
+            "获取模板预览失败:\n"
+            + "\n".join(f"- {e!r}" for e in flatten_exception_group(exc_group))
+        )
+    except* Exception as exc_group:
+        logger.opt(exception=True).warning("渲染模板预览时发生错误")
+        await finish(f"渲染模板预览时发生意外错误: {exc_group!r}")
+
+    await finish(UniMessage.image(raw=img_bytes))
 
 
 @matcher.assign("~template.preview")

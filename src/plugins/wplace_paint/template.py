@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Protocol, cast
 
 import anyio
-from bot7685_ext.wplace import ColorEntry, compare
+from bot7685_ext.wplace import ColorEntry, compare, overlay
 from nonebot import logger
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
@@ -207,3 +207,24 @@ def format_post_paint_result(painted: int, color_map: dict[str, int]) -> str:
         )
     )
     return "\n".join(lines)
+
+
+async def render_template_overlay(
+    cfg: TemplateConfig,
+    overlay_alpha: int | None = None,
+) -> bytes:
+    template_img, _ = cfg.load()
+    with io.BytesIO() as buffer:
+        template_img.save(buffer, format="PNG")
+        template_bytes = buffer.getvalue()
+    actual_bytes = await download_template_preview(cfg)
+
+    with PerfLog.for_action("rendering template overlay") as perf:
+        overlaid_bytes = await overlay(
+            template_bytes,
+            actual_bytes,
+            overlay_alpha if overlay_alpha is not None else 96,
+        )
+    logger.info(f"Rendered template overlay in <y>{perf.elapsed:.3f}</>s")
+
+    return overlaid_bytes
