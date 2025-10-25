@@ -58,7 +58,7 @@ async def calc_template_diff(
     with PerfLog.for_action("calculating template diff") as perf:
         diff = await compare(template_bytes, actual_bytes, include_pixels)
     logger.info(f"Calculated template diff in <y>{perf.elapsed:.3f}</>s")
-    logger.info(f"Template diff count: <g>{sum(e.count for e in diff)}</> pixels")
+    logger.info(f"Template diff count: <y>{sum(e.count for e in diff)}</> pixels")
 
     return diff
 
@@ -160,7 +160,7 @@ async def post_paint(
     user_info = await fetch_me(user)
     if user_info.charges.count < 1:
         return 0, {}
-    logger.info(f"User has <g>{user_info.charges.count}</> available pixels")
+    logger.info(f"User has <y>{user_info.charges.count:.2f}</> available pixels")
 
     diff = await calc_template_diff(tp, include_pixels=True)
     grouped = _group_paint_pixels(
@@ -179,7 +179,7 @@ async def post_paint(
         pixels: list[tuple[tuple[int, int], int]],
     ) -> None:
         await post_paint_pixels(user, tile, pixels)
-        logger.info(f"Painted <g>{len(pixels)}</> pixels at tile <c>{tile}</>")
+        logger.info(f"Painted <y>{len(pixels)}</> pixels at tile <c>{tile}</>")
         color_counter.update(Counter(id for _, id in pixels))
 
     color_counter = Counter[int]()
