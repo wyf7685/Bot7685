@@ -101,6 +101,7 @@ alc = Alconna(
         Subcommand(
             "bind",
             Option("--revoke|-r", help_text="取消当前会话的区域 ID 绑定"),
+            Option("--template|-t", help_text="根据当前会话的模板绑定区域 ID"),
         ),
         Subcommand(
             "query",
