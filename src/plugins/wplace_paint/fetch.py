@@ -1,6 +1,5 @@
 import hashlib
 from collections.abc import Callable
-from typing import Any
 
 import cloudscraper
 from nonebot import logger
@@ -268,12 +267,22 @@ PAINT_URL = "https://backend.wplace.live/s0/pixel/{}/{}"
 
 
 @run_sync
-def _post_paint_pixels(
+def post_paint_pixels(
     cfg: UserConfig,
     tile: tuple[int, int],
-    pawtect_token: str,
-    payload: dict[str, Any],
+    pixels: list[tuple[tuple[int, int], int]],
 ) -> int:
+    colors, coords = [], []
+    for pixel, color_id in pixels:
+        colors.append(color_id)
+        coords.extend(pixel)
+    payload = {
+        "colors": colors,
+        "coords": coords,
+        "fp": hashlib.sha256(str(cfg.wp_user_id).encode()).hexdigest()[:32],
+    }
+    pawtect_token = pawtect_sign(payload)
+
     url = PAINT_URL.format(*tile)
     headers = {
         "x-pawtect-token": pawtect_token,
@@ -296,21 +305,3 @@ def _post_paint_pixels(
         raise RequestFailed(f"Paint request failed: {e!r}") from e
 
     return data["painted"]
-
-
-async def post_paint_pixels(
-    cfg: UserConfig,
-    tile: tuple[int, int],
-    pixels: list[tuple[tuple[int, int], int]],
-) -> int:
-    colors, coords = [], []
-    for pixel, color_id in pixels:
-        colors.append(color_id)
-        coords.extend(pixel)
-    payload = {
-        "colors": colors,
-        "coords": coords,
-        "fp": hashlib.sha256(str(cfg.wp_user_id).encode()).hexdigest()[:32],
-    }
-    pawtect_token = pawtect_sign(payload)
-    return await _post_paint_pixels(cfg, tile, pawtect_token, payload)
