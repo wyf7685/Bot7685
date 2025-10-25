@@ -7,7 +7,8 @@ from datetime import datetime
 from typing import Protocol, cast
 
 import anyio
-from bot7685_ext.wplace import ColorEntry, compare, overlay
+import bot7685_ext
+from bot7685_ext.wplace import ColorEntry
 from nonebot import logger
 from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
@@ -56,7 +57,9 @@ async def calc_template_diff(
     actual_bytes = await download_preview(*coords)
 
     with PerfLog.for_action("calculating template diff") as perf:
-        diff = await compare(template_bytes, actual_bytes, include_pixels)
+        diff = await bot7685_ext.wplace.compare(
+            template_bytes, actual_bytes, include_pixels
+        )
     logger.info(f"Calculated template diff in <y>{perf.elapsed:.3f}</>s")
     logger.info(f"Template diff count: <y>{sum(e.count for e in diff)}</> pixels")
 
@@ -213,14 +216,14 @@ async def render_template_overlay(
     cfg: TemplateConfig,
     overlay_alpha: int | None = None,
 ) -> bytes:
-    template_img, _ = cfg.load()
+    template_img, (coord1, coord2) = cfg.load()
     with io.BytesIO() as buffer:
         template_img.save(buffer, format="PNG")
         template_bytes = buffer.getvalue()
-    actual_bytes = await download_template_preview(cfg)
+    actual_bytes = await download_preview(coord1, coord2)
 
     with PerfLog.for_action("rendering template overlay") as perf:
-        overlaid_bytes = await overlay(
+        overlaid_bytes = await bot7685_ext.wplace.overlay(
             template_bytes,
             actual_bytes,
             overlay_alpha if overlay_alpha is not None else 96,
