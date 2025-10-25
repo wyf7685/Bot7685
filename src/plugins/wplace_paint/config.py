@@ -62,17 +62,17 @@ class UserConfig(BaseModel):
 
 users = ConfigListFile(DATA_DIR / "users.json", UserConfig)
 
-RankConfig = dict[str, set[int]]  # group target id -> set of region id
-ranks = ConfigFile[RankConfig](DATA_DIR / "rank.json", RankConfig, dict)
+# group target id -> set of region id
+ranks = ConfigFile(DATA_DIR / "rank.json", dict[str, set[int]], dict)
 
 
 class TemplateConfig(BaseModel):
+    key: str
     coords: WplacePixelCoords
-    image: str  # image file in IMAGE_DIR
 
     @property
     def file(self) -> Path:
-        return IMAGE_DIR / self.image
+        return IMAGE_DIR / f"{self.key}.png"
 
     def load(self) -> tuple[Image.Image, tuple[WplacePixelCoords, WplacePixelCoords]]:
         im = Image.open(self.file)
@@ -80,7 +80,7 @@ class TemplateConfig(BaseModel):
         return im, (self.coords, self.coords.offset(w - 1, h - 1))
 
 
-# group target id -> TemplateConfig
+# group target hash -> TemplateConfig
 templates = ConfigFile(DATA_DIR / "templates.json", dict[str, TemplateConfig], dict)
 
 

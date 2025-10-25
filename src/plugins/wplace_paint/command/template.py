@@ -1,5 +1,4 @@
 import random
-import uuid
 
 import httpx
 from nonebot import logger
@@ -116,18 +115,11 @@ async def assign_template_bind(key: TargetHash) -> None:
         await finish(f"坐标解析失败: {e}")
 
     img_bytes = await prompt_image()
-    fp = IMAGE_DIR / f"{uuid.uuid4()}.png"
+    fp = IMAGE_DIR / f"{key}.png"
     fp.write_bytes(img_bytes)
 
-    cfgs = templates.load()
-    if key in cfgs:
-        try:
-            cfgs[key].file.unlink(missing_ok=True)
-        except Exception:
-            logger.opt(exception=True).warning("删除旧模板图片时发生错误")
-
-    cfgs[key] = TemplateConfig(coords=coords, image=fp.name)
-    templates.save(cfgs)
+    templates.load()[key] = TemplateConfig(coords=coords, key=key)
+    templates.save()
     await finish(f"模板绑定成功\n{coords.human_repr()}")
 
 

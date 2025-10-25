@@ -42,7 +42,7 @@ async def _query_target_cfgs(
     user_id = event.get_user_id() if target is None else target.target
     cfgs = [cfg for cfg in users.load() if cfg.user_id == user_id]
     if not cfgs:
-        await finish("用户没有绑定任何账号")
+        await finish("用户没有绑定任何账号，请先使用 wplace bind 绑定")
     return cfgs
 
 
@@ -62,7 +62,7 @@ async def _select_cfg(
         gen = (
             cfg
             for cfg in filter(lambda c: c.wp_user_id, user_cfgs)
-            if str(cfg.wp_user_id) == identifier or cfg.wp_user_name == identifier
+            if str(cfg.wp_user_id) == identifier or identifier in cfg.wp_user_name
         )
         if cfg := next(gen, None):
             return cfg
@@ -79,10 +79,8 @@ async def _select_cfg(
 
     while True:
         text = await prompt(msg)
-        if text.isdigit():
-            idx = int(text)
-            if 1 <= idx <= len(user_cfgs):
-                return user_cfgs[idx - 1]
+        if text.isdigit() and 1 <= (idx := int(text)) <= len(user_cfgs):
+            return user_cfgs[idx - 1]
         msg = "无效的序号，请重新输入:\n" + formatted_cfgs
 
 

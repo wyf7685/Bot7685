@@ -267,7 +267,6 @@ async def fetch_region_rank(region_id: int, rank_type: RankType) -> list[RankUse
 PAINT_URL = "https://backend.wplace.live/s0/pixel/{}/{}"
 
 
-@with_semaphore(1)
 @run_sync
 def _post_paint_pixels(
     cfg: UserConfig,

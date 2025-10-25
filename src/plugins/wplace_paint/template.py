@@ -13,11 +13,13 @@ from nonebot.utils import run_sync
 from nonebot_plugin_htmlrender import get_new_page, template_to_html
 from PIL import Image
 
+from src.utils import with_semaphore
+
 from .config import TEMPLATE_DIR, TemplateConfig, UserConfig
 from .consts import COLORS_MAP
 from .fetch import fetch_me, post_paint_pixels
 from .preview import download_preview
-from .utils import PerfLog, find_color_name, parse_rgb_str
+from .utils import PerfLog, WplacePixelCoords, find_color_name, parse_rgb_str
 
 type RGBA = tuple[int, int, int, int]
 
@@ -132,6 +134,25 @@ async def get_color_location(cfg: TemplateConfig, color: str) -> list[tuple[int,
     return []
 
 
+def _group_paint_pixels(
+    count: int,
+    coords: WplacePixelCoords,
+    entries: Iterable[ColorEntry],
+) -> dict[tuple[int, int], list[tuple[tuple[int, int], int]]]:
+    grouped = defaultdict[tuple[int, int], list[tuple[tuple[int, int], int]]](list)
+    grouped_count = 0
+    for entry in entries:
+        remaining = min(count - grouped_count, entry.count)
+        if remaining <= 0:
+            break
+        for x, y in entry.pixels[:remaining]:
+            c = coords.offset(x, y)
+            grouped[(c.tlx, c.tly)].append(((c.pxx, c.pxy), entry.id))
+        grouped_count += remaining
+    return grouped
+
+
+@with_semaphore(1)
 async def post_paint(
     user: UserConfig,
     tp: TemplateConfig,
@@ -143,27 +164,25 @@ async def post_paint(
     count = int(count)
 
     diff = await calc_template_diff(tp, include_pixels=True)
-    grouped = defaultdict[tuple[int, int], list[tuple[tuple[int, int], int]]](list)
-    grouped_count = 0
-    for entry in filter(lambda e: e.name in user_info.own_colors, diff):
-        remaining = min(count - grouped_count, entry.count)
-        if remaining <= 0:
-            break
-        for x, y in entry.pixels[:remaining]:
-            coord = tp.coords.offset(x, y)
-            grouped[(coord.tlx, coord.tly)].append(((coord.pxx, coord.pxy), entry.id))
-        grouped_count += remaining
-
+    filtered_entries = filter(lambda e: e.name in user_info.own_colors, diff)
+    grouped = _group_paint_pixels(count, tp.coords, filtered_entries)
     if not sum(map(len, grouped.values())):
         return 0, {}
 
+    await anyio.sleep(random.uniform(0.5, 2))
+
+    async def _paint_tile(
+        tile: tuple[int, int],
+        pixels: list[tuple[tuple[int, int], int]],
+    ) -> None:
+        await post_paint_pixels(user, tile, pixels)
+        logger.info(f"Painted <y>{len(pixels)}</> pixels at tile <c>{tile}</>")
+        color_counter.update(Counter(id for _, id in pixels))
+
     color_counter = Counter[int]()
-    for tile, pixels in grouped.items():
-        await anyio.sleep(random.uniform(0.5, 2))
-        logger.info(f"Painting <y>{len(pixels)}</> pixels at tile <c>{tile}</>")
-        api_painted = await post_paint_pixels(user, tile, pixels)
-        logger.info(f"Painted <y>{api_painted}</> pixels at tile <c>{tile}</>")
-        color_counter.update(Counter(id for _, id in pixels[:api_painted]))
+    async with anyio.create_task_group() as tg:
+        for tile, pixels in grouped.items():
+            tg.start_soon(_paint_tile, tile, pixels)
 
     painted = sum(color_counter.values())
     logger.info(f"Total painted pixels: <y>{painted}</>")
@@ -177,9 +196,11 @@ def format_post_paint_result(painted: int, color_map: dict[str, int]) -> str:
         return "未绘制任何像素，可能是模板已完成或账户无可用像素"
 
     lines = [f"成功绘制 {painted} 个像素，颜色分布如下:"]
-    for color_name, count in sorted(
-        color_map.items(),
-        key=lambda item: (-item[1], item[0]),
-    ):
-        lines.append(f"- {color_name}: {count} 像素")
+    lines.extend(
+        f"- {color_name}: {count} 像素"
+        for color_name, count in sorted(
+            color_map.items(),
+            key=lambda item: (-item[1], item[0]),
+        )
+    )
     return "\n".join(lines)
