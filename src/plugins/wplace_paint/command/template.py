@@ -129,6 +129,9 @@ async def assign_template_preview_overlay(
     cfg: TargetTemplate,
     overlay_alpha: int | None = None,
 ) -> None:
+    if overlay_alpha is not None and not (0 <= overlay_alpha <= 255):
+        await finish("透明度必须在 0-255 之间")
+
     try:
         img_bytes = await render_template_overlay(cfg, overlay_alpha)
     except* httpx.HTTPError as exc_group:
