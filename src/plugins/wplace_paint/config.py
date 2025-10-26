@@ -44,16 +44,13 @@ class UserConfig(BaseModel):
                 cfgs.remove(cfg)
             elif cfg.user_id == self.user_id and cfg.wp_user_id == self.wp_user_id:
                 cfgs.remove(cfg)
-                for attr in (
-                    "target_data",
-                    "notify_mins",
-                    "max_overflow_notify",
-                    "target_droplets",
-                    "bind_groups",
-                    "adapter",
-                    "auto_paint_target_hash",
-                    "auto_purchase",
-                ):
+                for attr in set(type(self).model_fields) - {
+                    "token",
+                    "cf_clearance",
+                    "user_id",
+                    "wp_user_id",
+                    "wp_user_name",
+                }:
                     setattr(self, attr, getattr(cfg, attr))
 
         cfgs.append(self)

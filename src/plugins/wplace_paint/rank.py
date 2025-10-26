@@ -23,13 +23,7 @@ async def find_regions_in_rect(
     coord1: WplacePixelCoords,
     coord2: WplacePixelCoords,
 ) -> dict[int, PixelRegion]:
-    """
-    通过递归细分算法查找给定矩形区域内的所有 region ID。
-
-    :param coord1: 矩形的一个角点坐标。
-    :param coord2: 矩形的对角坐标。
-    :return: 一个包含所有不重复 region ID 的集合。
-    """
+    """通过递归细分算法查找给定矩形区域内的所有 region ID。"""
     # 使用一个 dict 来自动处理重复的 region ID
     found_region: dict[int, PixelRegion] = {}
     # 使用一个 dict 来缓存已查询过的坐标，避免重复 API 调用

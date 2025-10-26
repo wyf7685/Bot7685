@@ -161,9 +161,9 @@ async def post_paint(
     tp: TemplateConfig,
 ) -> tuple[int, dict[str, int]]:
     user_info = await fetch_me(user)
+    logger.info(f"User has <y>{user_info.charges.count:.2f}</> available pixels")
     if user_info.charges.count < 1:
         return 0, {}
-    logger.info(f"User has <y>{user_info.charges.count:.2f}</> available pixels")
 
     diff = await calc_template_diff(tp, include_pixels=True)
     grouped = _group_paint_pixels(
@@ -171,9 +171,9 @@ async def post_paint(
         tp.coords,
         filter(lambda e: e.name in user_info.own_colors and e.count, diff),
     )
+    logger.info(f"Grouped pixels into <y>{len(grouped)}</> tiles for painting")
     if not sum(map(len, grouped.values())):
         return 0, {}
-    logger.info(f"Grouped pixels into <y>{len(grouped)}</> tiles for painting")
 
     await anyio.sleep(random.uniform(0.5, 2))
 

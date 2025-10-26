@@ -120,7 +120,7 @@ def _proxy_config() -> dict[str, str] | None:
 
 
 _proxies = _proxy_config()
-_scraper_headers = {
+_SCRAPER_HEADERS = {
     "User-Agent": USER_AGENT,
     "Sec-Ch-Ua": '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"',
     "Sec-Ch-Ua-Mobile": "?0",
@@ -146,7 +146,7 @@ def _fetch_with_cloudscraper[T](
     try:
         resp = cloudscraper.create_scraper().get(
             url,
-            headers=_scraper_headers,
+            headers=_SCRAPER_HEADERS,
             cookies=cfg and construct_requests_cookies(cfg.token, cfg.cf_clearance),
             proxies=_proxies,
             timeout=20,
@@ -224,7 +224,7 @@ def purchase(cfg: UserConfig, item: PurchaseItem, amount: int) -> None:
     try:
         resp = cloudscraper.create_scraper().post(
             WPLACE_PURCHASE_API_URL,
-            headers={"User-Agent": USER_AGENT},
+            headers=_SCRAPER_HEADERS,
             cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
             proxies=_proxies,
             json={"product": {"id": item.value, "amount": amount}},
@@ -285,6 +285,7 @@ def post_paint_pixels(
 
     url = PAINT_URL.format(*tile)
     headers = {
+        **_SCRAPER_HEADERS,
         "x-pawtect-token": pawtect_token,
         "x-pawtect-variant": "koala",
         "referrer": "https://wplace.live/",
