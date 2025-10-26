@@ -1,12 +1,10 @@
 import io
 import itertools
-import random
-from collections import Counter, defaultdict
+from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Protocol, cast
 
-import anyio
 import bot7685_ext
 from bot7685_ext.wplace import ColorEntry
 from nonebot import logger
@@ -17,8 +15,6 @@ from PIL import Image
 from src.utils import with_semaphore
 
 from .config import TEMPLATE_DIR, TemplateConfig, UserConfig
-from .consts import COLORS_MAP
-from .fetch import fetch_me, post_paint_pixels
 from .preview import download_preview
 from .utils import PerfLog, WplacePixelCoords, find_color_name, parse_rgb_str
 
@@ -160,41 +156,44 @@ async def post_paint(
     user: UserConfig,
     tp: TemplateConfig,
 ) -> tuple[int, dict[str, int]]:
-    user_info = await fetch_me(user)
-    logger.info(f"User has <y>{user_info.charges.count:.2f}</> available pixels")
-    if user_info.charges.count < 1:
-        return 0, {}
+    raise NotImplementedError
 
-    diff = await calc_template_diff(tp, include_pixels=True)
-    grouped = _group_paint_pixels(
-        int(user_info.charges.count),
-        tp.coords,
-        filter(lambda e: e.name in user_info.own_colors and e.count, diff),
-    )
-    logger.info(f"Grouped pixels into <y>{len(grouped)}</> tiles for painting")
-    if not sum(map(len, grouped.values())):
-        return 0, {}
+    # user_info = await fetch_me(user)
+    # logger.info(f"User has <y>{user_info.charges.count:.2f}</> available pixels")
+    # if user_info.charges.count < 1:
+    #     return 0, {}
 
-    await anyio.sleep(random.uniform(0.5, 2))
+    # diff = await calc_template_diff(tp, include_pixels=True)
+    # grouped = _group_paint_pixels(
+    #     int(user_info.charges.count),
+    #     tp.coords,
+    #     filter(lambda e: e.name in user_info.own_colors and e.count, diff),
+    # )
+    # logger.info(f"Grouped pixels into <y>{len(grouped)}</> tiles for painting")
+    # if not sum(map(len, grouped.values())):
+    #     return 0, {}
 
-    async def _paint_tile(
-        tile: tuple[int, int],
-        pixels: list[tuple[tuple[int, int], int]],
-    ) -> None:
-        await post_paint_pixels(user, tile, pixels)
-        logger.info(f"Painted <y>{len(pixels)}</> pixels at tile <c>{tile}</>")
-        color_counter.update(Counter(id for _, id in pixels))
+    # await anyio.sleep(random.uniform(0.5, 2))
 
-    color_counter = Counter[int]()
-    async with anyio.create_task_group() as tg:
-        for tile, pixels in grouped.items():
-            tg.start_soon(_paint_tile, tile, pixels)
+    # async def _paint_tile(
+    #     tile: tuple[int, int],
+    #     pixels: list[tuple[tuple[int, int], int]],
+    # ) -> None:
+    #     await post_paint_pixels(user, tile, pixels)
+    #     logger.info(f"Painted <y>{len(pixels)}</> pixels at tile <c>{tile}</>")
+    #     color_counter.update(Counter(id for _, id in pixels))
 
-    painted = sum(color_counter.values())
-    logger.info(f"Total painted pixels: <y>{painted}</>")
-    return painted, {
-        COLORS_MAP[color_id]["name"]: count for color_id, count in color_counter.items()
-    }
+    # color_counter = Counter[int]()
+    # async with anyio.create_task_group() as tg:
+    #     for tile, pixels in grouped.items():
+    #         tg.start_soon(_paint_tile, tile, pixels)
+
+    # painted = sum(color_counter.values())
+    # logger.info(f"Total painted pixels: <y>{painted}</>")
+    # return painted, {
+    #     COLORS_MAP[color_id]["name"]: count
+    #     for color_id, count in color_counter.items()
+    # }
 
 
 def format_post_paint_result(painted: int, color_map: dict[str, int]) -> str:
