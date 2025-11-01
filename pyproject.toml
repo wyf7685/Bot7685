@@ -53,7 +53,7 @@ dependencies = [
   "nonebot-plugin-werewolf",
   "nonebot-plugin-zssm",
   # Bot7685 Extensions
-  "bot7685-ext==0.1.2",
+  "bot7685-ext==0.1.4",
 ]
 
 [dependency-groups]

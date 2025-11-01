@@ -8,9 +8,10 @@ from dataclasses import dataclass
 from typing import NamedTuple, Self
 
 import anyio
+from bot7685_ext.wplace.consts import ALL_COLORS
 from loguru import logger
 
-from .consts import ALL_COLORS, FLAG_MAP
+from .consts import FLAG_MAP
 
 # 从多点校准中提取的常量参数
 SCALE_X = 325949.3234522017

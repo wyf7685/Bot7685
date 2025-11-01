@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Literal
 
+from bot7685_ext.wplace.consts import FREE_COLORS, PAID_COLORS
 from pydantic import BaseModel
 
-from .consts import FREE_COLORS, PAID_COLORS
 from .utils import WplacePixelCoords, get_flag_emoji
 
 

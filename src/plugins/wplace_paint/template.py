@@ -5,7 +5,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from typing import Protocol, cast
 
-import bot7685_ext
+import bot7685_ext.wplace
 from bot7685_ext.wplace import ColorEntry
 from nonebot import logger
 from nonebot.utils import run_sync
