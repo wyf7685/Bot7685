@@ -32,6 +32,7 @@ async def _bind_regions(
     try:
         regions = await find_regions_in_rect(coord1, coord2)
     except* RequestFailed as e:
+        logger.exception("查询区域内的 region ID 失败")
         await finish(f"查询区域内的 region ID 失败:\n{flatten_request_failed_msg(e)}")
     except* Exception as e:
         logger.exception("查询区域内的 region ID 时发生错误")
@@ -98,6 +99,7 @@ async def assign_rank_query(
     try:
         rank_data = await get_regions_rank(cfg[key], rt)
     except* RequestFailed as e:
+        logger.exception("获取排行榜失败")
         await finish(f"获取排行榜失败:\n{flatten_request_failed_msg(e)}")
     except* Exception as e:
         logger.exception("获取排行榜时发生错误")

@@ -58,7 +58,7 @@ async def assign_template_bind_revoke(key: TargetHash) -> None:
     try:
         cfgs[key].file.unlink(missing_ok=True)
     except Exception:
-        logger.opt(exception=True).warning("删除模板图片时发生错误")
+        logger.exception("删除模板图片时发生错误")
 
     del cfgs[key]
     templates.save(cfgs)
@@ -140,7 +140,7 @@ async def assign_template_preview_overlay(
             + "\n".join(f"- {e!r}" for e in flatten_exception_group(exc_group))
         )
     except* Exception as exc_group:
-        logger.opt(exception=True).warning("渲染模板预览时发生错误")
+        logger.exception("渲染模板预览时发生错误")
         await finish(f"渲染模板预览时发生意外错误: {exc_group!r}")
 
     await finish(UniMessage.image(raw=img_bytes))
@@ -163,7 +163,7 @@ async def assign_template_preview(
             + "\n".join(f"- {e!r}" for e in flatten_exception_group(exc_group))
         )
     except* Exception as exc_group:
-        logger.opt(exception=True).warning("获取模板预览时发生错误")
+        logger.exception("获取模板预览时发生错误")
         await finish(f"获取模板预览时发生意外错误: {exc_group!r}")
 
     await finish(UniMessage.image(raw=img_bytes))
@@ -174,8 +174,10 @@ async def assign_template_progress(cfg: TargetTemplate) -> None:
     try:
         progress_data = await calc_template_diff(cfg)
     except* RequestFailed as e:
+        logger.exception("获取模板进度时发生错误")
         await finish(f"获取模板进度失败:\n{flatten_request_failed_msg(e)}")
     except* Exception as e:
+        logger.exception("计算模板进度时发生意外错误")
         await finish(f"计算模板进度时发生意外错误: {e!r}")
 
     if not progress_data:
@@ -187,7 +189,7 @@ async def assign_template_progress(cfg: TargetTemplate) -> None:
     except MatcherException:
         raise
     except Exception:
-        logger.opt(exception=True).warning("渲染模板进度时发生错误")
+        logger.exception("渲染模板进度时发生错误")
 
     # fallback
     drawn_pixels = sum(entry.drawn for entry in progress_data)
@@ -227,11 +229,12 @@ async def assign_template_color(
             ).image(raw=img_bytes)
         )
     except* RequestFailed as e:
+        logger.exception("获取模板图时发生错误")
         await finish(f"获取模板图失败:\n{flatten_request_failed_msg(e)}")
     except* MatcherException:
         raise
     except* Exception as e:
-        logger.opt(exception=True).warning("渲染模板图时发生错误")
+        logger.exception("渲染模板图时发生错误")
         await finish(f"渲染模板图时发生意外错误: {e!r}")
 
 
@@ -249,7 +252,7 @@ async def assign_template_locate(
     except RequestFailed as e:
         await finish(f"获取模板图失败: {e.msg}")
     except Exception as e:
-        logger.opt(exception=True).warning("查询模板颜色位置时发生错误")
+        logger.exception("查询模板颜色位置时发生错误")
         await finish(f"查询模板颜色位置时发生意外错误: {e!r}")
 
     if not locations:
@@ -279,7 +282,7 @@ async def assign_template_paint(
     except* RequestFailed as e:
         await finish(f"绘制模板失败:\n{flatten_request_failed_msg(e)}")
     except* Exception as e:
-        logger.opt(exception=True).warning("绘制模板时发生错误")
+        logger.exception("绘制模板时发生错误")
         await finish(f"绘制模板时发生意外错误: {e!r}")
 
     await finish(format_post_paint_result(painted, color_map))

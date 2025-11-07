@@ -2,6 +2,7 @@ import contextlib
 from typing import Literal
 
 import anyio
+from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import CustomNode, MsgTarget, SupportScope, UniMessage
 
@@ -33,8 +34,10 @@ async def assign_bind(
     try:
         resp = await fetch_me(cfg)
     except* RequestFailed as e:
+        logger.exception("验证 WPlace 账号时发生错误")
         await finish(f"验证失败:\n{flatten_request_failed_msg(e)}")
     except* Exception as e:
+        logger.exception("验证 WPlace 账号时发生意外错误")
         await finish(f"验证时发生意外错误: {e!r}")
 
     cfg.save()
@@ -53,8 +56,14 @@ async def assign_query(
             resp = await fetch_me(cfg)
             result = resp.format_notification(cfg.target_droplets)
         except* RequestFailed as e:
+            logger.exception(
+                f"查询 WPlace 账号 {cfg.wp_user_name} #{cfg.wp_user_id} 时发生错误"
+            )
             result = f"查询失败:\n{flatten_request_failed_msg(e)}"
         except* Exception as e:
+            logger.exception(
+                f"查询 WPlace 账号 {cfg.wp_user_name} #{cfg.wp_user_id} 时发生意外错误"
+            )
             result = f"查询时发生意外错误:\n{e!r}"
 
         output[cfg.wp_user_id] = cfg.user_id, result
