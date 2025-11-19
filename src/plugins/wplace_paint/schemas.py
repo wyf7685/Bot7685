@@ -35,7 +35,6 @@ class FavoriteLocation(BaseModel):
 class FetchMeResponse(BaseModel):
     allianceId: int | None = None
     allianceRole: str | None = None
-    banned: bool
     charges: Charges
     country: str
     discord: str | None = None
