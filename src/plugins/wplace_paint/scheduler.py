@@ -13,7 +13,7 @@ from pydantic import BaseModel
 
 from src.plugins.cache import get_cache
 
-from .config import UserConfig, templates, users
+from .config import UserConfig, users
 from .fetch import (
     RequestFailed,
     extract_first_status_code,
@@ -22,7 +22,6 @@ from .fetch import (
     purchase,
 )
 from .schemas import FetchMeResponse, PurchaseItem
-from .template import format_post_paint_result, post_paint
 
 FETCH_INTERVAL_MINS = 5
 LAZY_FETCH_INTERVAL = timedelta(minutes=29)
@@ -187,26 +186,6 @@ async def fetch_for_user(cfg: UserConfig) -> None:
 
     async def push_notification() -> NoReturn:
         msg = resp.format_notification(cfg.target_droplets)
-
-        # 启用自动绘制
-        if cfg.auto_paint_target_hash is not None and (
-            tp := templates.load().get(cfg.auto_paint_target_hash)
-        ):
-            logger.info(f"{colored} 启用自动绘制模板,准备绘制")
-            try:
-                result = await post_paint(cfg, tp)
-            except* RequestFailed as exc_group:
-                exc_msg = flatten_request_failed_msg(exc_group)
-                logger.warning(f"为 {colored} 自动绘制模板失败:\n{escape_tag(exc_msg)}")
-                msg += f"\n\n自动绘制失败:\n{exc_msg}"
-            except* Exception as e:
-                logger.opt(colors=True, exception=True).warning(
-                    f"为 {colored} 自动绘制模板时发生错误"
-                )
-                msg += f"\n\n自动绘制时发生意外错误\n{e!r}"
-            else:
-                msg += f"\n\n自动绘制结果:\n{format_post_paint_result(*result)}"
-
         await _push_msg(msg)
 
     # 计算剩余时间

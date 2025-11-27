@@ -141,11 +141,6 @@ alc = Alconna(
             Option("-n", Args["max_count?#最大数量", int]),
             help_text="查询模板中指定颜色的像素位置",
         ),
-        Subcommand(
-            "paint",
-            Args["identifier?#账号标识,ID或用户名", str],
-            help_text="使用指定账号的剩余像素绘制模板",
-        ),
         alias={"tp"},
         help_text="模板相关功能",
     ),
@@ -171,7 +166,6 @@ matcher.shortcut("wpq", {"command": "wplace query {*}"})
 matcher.shortcut("wpg", {"command": "wplace query $group"})
 matcher.shortcut("wpr", {"command": "wplace rank query {*}"})
 matcher.shortcut("wpt", {"command": "wplace template progress"})
-matcher.shortcut("wpp", {"command": "wplace template paint {*}"})
 
 
 async def finish(msg: str | UniMessage) -> NoReturn:

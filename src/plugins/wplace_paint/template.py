@@ -1,11 +1,13 @@
 import io
 import itertools
-from collections import defaultdict
 from collections.abc import Iterable
 from datetime import datetime
 from typing import Protocol, cast
 
+import anyio
+import anyio.to_thread
 import bot7685_ext.wplace
+import httpx
 from bot7685_ext.wplace import ColorEntry
 from nonebot import logger
 from nonebot.utils import run_sync
@@ -14,9 +16,14 @@ from PIL import Image
 
 from src.utils import with_semaphore
 
-from .config import TEMPLATE_DIR, TemplateConfig, UserConfig
-from .preview import download_preview
-from .utils import PerfLog, WplacePixelCoords, find_color_name, parse_rgb_str
+from .config import TEMPLATE_DIR, TemplateConfig, proxy
+from .utils import (
+    PerfLog,
+    WplacePixelCoords,
+    find_color_name,
+    parse_rgb_str,
+    with_retry,
+)
 
 type RGBA = tuple[int, int, int, int]
 
@@ -27,6 +34,70 @@ class PixelAccess[TPixel](Protocol):
 
 
 logger = logger.opt(colors=True)
+
+
+@PerfLog.for_method()
+async def download_preview(
+    coord1: WplacePixelCoords,
+    coord2: WplacePixelCoords,
+    background: str | None = None,
+) -> bytes:
+    coord1, coord2 = coord1.fix_with(coord2)
+    tile_imgs: dict[tuple[int, int], bytes] = {}
+    logger.info(
+        f"Downloading preview from <y>{coord1.human_repr()}</> "
+        f"to <y>{coord2.human_repr()}</>"
+    )
+
+    @with_semaphore(4)
+    @with_retry(
+        *(httpx.ConnectError, httpx.TimeoutException, httpx.HTTPStatusError),
+        delay=1,
+    )
+    async def fetch_tile(x: int, y: int) -> None:
+        resp = await client.get(
+            f"https://backend.wplace.live/files/s0/tiles/{x}/{y}.png"
+        )
+        tile_imgs[(x, y)] = resp.raise_for_status().read()
+
+    async with (
+        PerfLog.for_action("downloading tiles") as perf,
+        httpx.AsyncClient(proxy=proxy) as client,
+        anyio.create_task_group() as tg,
+    ):
+        for x, y in coord1.all_tile_coords(coord2):
+            tg.start_soon(fetch_tile, x, y)
+    logger.info(f"Downloaded <g>{len(tile_imgs)}</> tiles (<y>{perf.elapsed:.2f}</>s)")
+
+    def create_image() -> bytes:
+        bg_color = (0, 0, 0, 0)
+        if background is not None and (bg_rgb := parse_rgb_str(background)):
+            bg_color = (*bg_rgb, 255)
+
+        img = Image.new("RGBA", coord1.size_with(coord2), bg_color)
+        for (tx, ty), tile_bytes in tile_imgs.items():
+            tile_img = Image.open(io.BytesIO(tile_bytes)).convert("RGBA")
+            src_box = (
+                0 if tx != coord1.tlx else coord1.pxx,
+                0 if ty != coord1.tly else coord1.pxy,
+                1000 if tx != coord2.tlx else coord2.pxx + 1,
+                1000 if ty != coord2.tly else coord2.pxy + 1,
+            )
+            paste_pos = (
+                (tx - coord1.tlx) * 1000 - (0 if tx == coord1.tlx else coord1.pxx),
+                (ty - coord1.tly) * 1000 - (0 if ty == coord1.tly else coord1.pxy),
+            )
+            src = tile_img.crop(src_box)
+            img.paste(src, paste_pos, src.getchannel("A"))
+
+        with io.BytesIO() as output:
+            img.save(output, format="PNG")
+            return output.getvalue()
+
+    with PerfLog.for_action("creating image") as perf:
+        image = await anyio.to_thread.run_sync(create_image)
+    logger.info(f"Created image in <y>{perf.elapsed:.2f}</>s")
+    return image
 
 
 async def download_template_preview(
@@ -41,6 +112,7 @@ async def download_template_preview(
     return await download_preview(coord1, coord2, background)
 
 
+@PerfLog.for_method()
 async def calc_template_diff(
     cfg: TemplateConfig,
     *,
@@ -62,6 +134,7 @@ async def calc_template_diff(
     return diff
 
 
+@PerfLog.for_method()
 async def render_progress(progress_data: list[ColorEntry]) -> bytes:
     total_pixels = sum(e.total for e in progress_data)
     remaining_pixels = sum(e.count for e in progress_data)
@@ -131,69 +204,6 @@ async def get_color_location(cfg: TemplateConfig, color: str) -> list[tuple[int,
         if entry.name == color:
             return entry.pixels
     return []
-
-
-def _group_paint_pixels(
-    count: int,
-    coords: WplacePixelCoords,
-    entries: Iterable[ColorEntry],
-) -> dict[tuple[int, int], list[tuple[tuple[int, int], int]]]:
-    grouped = defaultdict[tuple[int, int], list[tuple[tuple[int, int], int]]](list)
-    grouped_count = 0
-    for entry in entries:
-        remaining = min(count - grouped_count, entry.count)
-        if remaining <= 0:
-            break
-        for x, y in entry.pixels[:remaining]:
-            c = coords.offset(x, y)
-            grouped[(c.tlx, c.tly)].append(((c.pxx, c.pxy), entry.id))
-        grouped_count += remaining
-    return grouped
-
-
-@with_semaphore(1)
-async def post_paint(
-    user: UserConfig,
-    tp: TemplateConfig,
-) -> tuple[int, dict[str, int]]:
-    raise NotImplementedError
-
-    # user_info = await fetch_me(user)
-    # logger.info(f"User has <y>{user_info.charges.count:.2f}</> available pixels")
-    # if user_info.charges.count < 1:
-    #     return 0, {}
-
-    # diff = await calc_template_diff(tp, include_pixels=True)
-    # grouped = _group_paint_pixels(
-    #     int(user_info.charges.count),
-    #     tp.coords,
-    #     filter(lambda e: e.name in user_info.own_colors and e.count, diff),
-    # )
-    # logger.info(f"Grouped pixels into <y>{len(grouped)}</> tiles for painting")
-    # if not sum(map(len, grouped.values())):
-    #     return 0, {}
-
-    # await anyio.sleep(random.uniform(0.5, 2))
-
-    # async def _paint_tile(
-    #     tile: tuple[int, int],
-    #     pixels: list[tuple[tuple[int, int], int]],
-    # ) -> None:
-    #     await post_paint_pixels(user, tile, pixels)
-    #     logger.info(f"Painted <y>{len(pixels)}</> pixels at tile <c>{tile}</>")
-    #     color_counter.update(Counter(id for _, id in pixels))
-
-    # color_counter = Counter[int]()
-    # async with anyio.create_task_group() as tg:
-    #     for tile, pixels in grouped.items():
-    #         tg.start_soon(_paint_tile, tile, pixels)
-
-    # painted = sum(color_counter.values())
-    # logger.info(f"Total painted pixels: <y>{painted}</>")
-    # return painted, {
-    #     COLORS_MAP[color_id]["name"]: count
-    #     for color_id, count in color_counter.items()
-    # }
 
 
 def format_post_paint_result(painted: int, color_map: dict[str, int]) -> str:

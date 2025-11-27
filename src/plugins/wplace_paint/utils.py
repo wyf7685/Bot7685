@@ -1,17 +1,24 @@
+import base64
+import datetime as dt
 import functools
+import inspect
 import math
 import re
 import time
 import types
 from collections.abc import Callable, Coroutine, Iterable, Sequence
 from dataclasses import dataclass
-from typing import NamedTuple, Self
+from typing import NamedTuple, Self, cast
 
 import anyio
 from bot7685_ext.wplace.consts import ALL_COLORS
 from loguru import logger
+from nonebot.utils import escape_tag
+from pydantic import BaseModel
 
 from .consts import FLAG_MAP
+
+UTC8 = dt.timezone(dt.timedelta(hours=8))
 
 # 从多点校准中提取的常量参数
 SCALE_X = 325949.3234522017
@@ -244,7 +251,7 @@ class PerfLog:
 
     def __enter__(self) -> Self:
         self._start = time.perf_counter()
-        logger.debug(self._on_start.format(start=self._start))
+        logger.opt(colors=True).debug(self._on_start.format(start=self._start))
         return self
 
     def __exit__(
@@ -254,7 +261,9 @@ class PerfLog:
         exc_traceback: types.TracebackType | None,
     ) -> None:
         self._end = time.perf_counter()
-        logger.debug(self._on_end.format(end=self._end, elapsed=self.elapsed))
+        logger.opt(colors=True).debug(
+            self._on_end.format(end=self._end, elapsed=self.elapsed)
+        )
 
     async def __aenter__(self) -> Self:
         return self.__enter__()
@@ -286,6 +295,68 @@ class PerfLog:
     @classmethod
     def for_action(cls, action: str) -> Self:
         return cls(
-            f"Starting {action} at {{start:.2f}}",
-            f"Finished {action} at {{end:.2f}}, elapsed {{elapsed:.2f}}s",
+            f"Starting <i><c>{action}</></> at <c>{{start:.2f}}</>",
+            f"Finished <i><c>{action}</></> at <c>{{end:.2f}}</>, "
+            f"elapsed <c>{{elapsed:.2f}}</>s",
         )
+
+    @classmethod
+    def for_method[**P, R](
+        cls, method_name: str | None = None
+    ) -> Callable[[Callable[P, R]], Callable[P, R]]:
+        def decorator(func: Callable[P, R]) -> Callable[P, R]:
+            name = method_name or escape_tag(func.__name__)
+
+            if inspect.iscoroutinefunction(func):
+
+                async def wrapper_async(*args: P.args, **kwargs: P.kwargs) -> R:
+                    with cls.for_action(f"<y>method</> {name}"):
+                        return await func(*args, **kwargs)
+
+                wrapper = wrapper_async
+            else:
+
+                def wrapper_sync(*args: P.args, **kwargs: P.kwargs) -> R:
+                    with cls.for_action(f"<y>method</> {name}"):
+                        return func(*args, **kwargs)
+
+                wrapper = wrapper_sync
+
+            return cast("Callable[P, R]", functools.update_wrapper(wrapper, func))
+
+        return decorator
+
+
+class _TokenPayload(BaseModel):
+    userId: int  # noqa: N815
+    sessionId: str  # noqa: N815
+    iss: str
+    exp: int
+    iat: int
+
+    @property
+    def expires_at(self) -> dt.datetime:
+        return (
+            dt.datetime.fromtimestamp(self.exp, dt.UTC)
+            .astimezone(UTC8)
+            .replace(tzinfo=None)
+        )
+
+    def is_expired(self, ahead_secs: int = 60) -> bool:
+        return (self.expires_at - dt.datetime.now()).total_seconds() < ahead_secs
+
+
+def parse_token(token: str) -> _TokenPayload | None:
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+
+    payload = parts[1]
+    if rem := len(payload) % 4:
+        payload += "=" * (4 - rem)
+
+    try:
+        data = base64.urlsafe_b64decode(payload).decode()
+        return _TokenPayload.model_validate_json(data)
+    except Exception:
+        return None

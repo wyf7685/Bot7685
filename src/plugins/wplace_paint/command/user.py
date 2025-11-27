@@ -10,7 +10,7 @@ from ..config import UserConfig, users
 from ..fetch import RequestFailed, fetch_me, flatten_request_failed_msg
 from ..scheduler import FETCH_INTERVAL_MINS, expire_push_cache
 from ..schemas import PurchaseItem
-from ..utils import normalize_color_name
+from ..utils import normalize_color_name, parse_token
 from .depends import QueryConfigs, SelectedUserConfig, TargetHash, TargetTemplate
 from .matcher import finish, matcher
 
@@ -23,12 +23,16 @@ async def assign_bind(
     token: str,
     cf_clearance: str,
 ) -> None:
+    if not (payload := parse_token(token)) or payload.is_expired():
+        await finish("无效的 token")
+
     cfg = UserConfig(
         token=token,
         cf_clearance=cf_clearance,
         target_data=target.dump(),
         user_id=event.get_user_id(),
         adapter=bot.type,
+        wp_user_id=payload.userId,
     )
 
     try:

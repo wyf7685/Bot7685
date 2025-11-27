@@ -16,9 +16,10 @@ from .fetch import (
     get_pixel_info,
 )
 from .schemas import PixelRegion, RankType
-from .utils import WplaceAbsCoords, WplacePixelCoords, get_flag_emoji
+from .utils import PerfLog, WplaceAbsCoords, WplacePixelCoords, get_flag_emoji
 
 
+@PerfLog.for_method()
 async def find_regions_in_rect(
     coord1: WplacePixelCoords,
     coord2: WplacePixelCoords,
