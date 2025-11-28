@@ -1,13 +1,13 @@
 name: Docker Lagrange.Milky
 
 on:
-  push:
-    paths:
-      - "docker/Dockerfile.milky"
-      - ".github/workflows/docker-milky.yml"
+  # push:
+  #   paths:
+  #     - "docker/Dockerfile.milky"
+  #     - ".github/workflows/docker-milky.yml"
   workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * 0"
+  # schedule:
+  #   - cron: "0 0 * * 0"
 
 jobs:
   docker:
