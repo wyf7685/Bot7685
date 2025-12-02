@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Annotated, Any
 
 from nonebot import logger, on_message, require
@@ -35,11 +36,11 @@ class Config(BaseModel):
 
     @property
     def recv(self) -> Target | None:
-        return Target.load(self.recv_target) if self.recv_target else None
+        return Target.load(deepcopy(self.recv_target)) if self.recv_target else None
 
     @property
     def send(self) -> Target | None:
-        return Target.load(self.send_target) if self.send_target else None
+        return Target.load(deepcopy(self.send_target)) if self.send_target else None
 
 
 config_file = ConfigModelFile(get_plugin_config_file("config.json"), Config)
