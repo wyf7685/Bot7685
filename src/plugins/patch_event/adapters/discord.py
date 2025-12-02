@@ -2,6 +2,7 @@ from typing import ClassVar, Protocol
 
 from nonebot.adapters.discord import Event, Message
 from nonebot.adapters.discord.api import UNSET, Channel, SnowflakeType, User
+from nonebot.adapters.discord.api.types import Unset
 from nonebot.adapters.discord.event import (
     DirectMessageCreateEvent,
     DirectMessageDeleteEvent,
@@ -51,8 +52,12 @@ class H(Highlight):
     exclude_value: ClassVar[tuple[object, ...]] = (UNSET, None)
 
     @classmethod
-    def user(cls, user: User) -> str:
-        return cls.name(user.id, user.global_name or user.username)
+    def user(cls, user: User | Unset) -> str:
+        return (
+            cls.name(user.id, user.global_name or user.username)
+            if user is not UNSET
+            else "<unknown user>"
+        )
 
     @classmethod
     def channel(cls, event: EventWithChannel) -> str:

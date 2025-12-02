@@ -305,7 +305,7 @@ class PerfLog:
         cls, method_name: str | None = None
     ) -> Callable[[Callable[P, R]], Callable[P, R]]:
         def decorator(func: Callable[P, R]) -> Callable[P, R]:
-            name = method_name or escape_tag(func.__name__)
+            name = method_name or escape_tag(getattr(func, "__name__", "<unknown>"))
 
             if inspect.iscoroutinefunction(func):
 

@@ -162,6 +162,7 @@ async def render_progress(progress_data: list[ColorEntry]) -> bytes:
     html = await template_to_html(
         template_path=str(TEMPLATE_DIR),
         template_name="progress.html.jinja2",
+        filters=None,
         **template_data,
     )
 

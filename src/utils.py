@@ -193,20 +193,20 @@ def find_and_link_external() -> None:
 def with_semaphore[T: Callable](initial_value: int) -> Callable[[T], T]:
     def decorator(func: T) -> T:
         if inspect.iscoroutinefunction(func):
-            sem = anyio.Semaphore(initial_value)
+            async_sem = anyio.Semaphore(initial_value)
 
             @functools.wraps(func)
             async def wrapper_async(*args: Any, **kwargs: Any) -> Any:
-                async with sem:
+                async with async_sem:
                     return await func(*args, **kwargs)
 
             wrapper = wrapper_async
         else:
-            sem = threading.Semaphore(initial_value)
+            sync_sem = threading.Semaphore(initial_value)
 
             @functools.wraps(func)
             def wrapper_sync(*args: Any, **kwargs: Any) -> Any:
-                with sem:
+                with sync_sem:
                     return func(*args, **kwargs)
 
             wrapper = wrapper_sync
