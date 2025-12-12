@@ -1,3 +1,4 @@
+import anyio.to_thread
 from nonebot import logger
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, UniMessage, on_alconna
 from nonebot_plugin_uninfo import Uninfo
@@ -26,9 +27,8 @@ async def _(session: Uninfo, year: int | None = None) -> None:
 
     try:
         analyzer = ChatAnalyzer(analyzer_input)
-        analyzer.analyze()
-        generator = ImageGenerator(analyzer)
-        image_bytes = await generator.generate()
+        await anyio.to_thread.run_sync(analyzer.analyze)
+        image_bytes = await ImageGenerator(analyzer).generate()
     except Exception as e:
         logger.exception("生成年度报告失败")
         await matcher.finish(f"生成年度报告失败: {e}")
