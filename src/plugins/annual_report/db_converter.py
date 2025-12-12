@@ -71,13 +71,8 @@ async def fetch_analyzer_input(
     session: Session,
     year: int | None = None,
 ) -> AnalyzerInput:
-    now = dt.datetime.now()
-    if year is None or year == now.year:
-        time_start = dt.datetime(now.year, 1, 1, tzinfo=UTC8)
-        time_end = dt.datetime.now()
-    else:
-        time_start = dt.datetime(year, 1, 1, tzinfo=UTC8)
-        time_end = dt.datetime(year + 1, 1, 1, tzinfo=UTC8)
+    time_start = dt.datetime(year or dt.datetime.now(UTC8).year, 1, 1, tzinfo=UTC8)
+    time_end = time_start.replace(year=time_start.year + 1)
 
     records = await get_message_records(
         session=session,
