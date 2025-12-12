@@ -35,18 +35,12 @@ def convert_messagerecord_to_analyzer_input(
     for record in records:
         if record.type == "message_sent":
             continue
-
-        sender_uin = user_id_map.get(
-            record.session_persist_id, record.session_persist_id
-        )
-        sender_name = user_name_map.get(record.session_persist_id, str(sender_uin))
+        spid = record.session_persist_id
+        sender_uin = user_id_map.get(spid, spid)
+        sender_name = user_name_map.get(spid, str(sender_uin))
         sender = SenderInfo(uin=sender_uin, name=sender_name)
         content = ContentInfo(text=record.plain_text or "", reply=None)
-        raw = RawMessage(
-            subMsgType=0,  # 不是机器人消息（已过滤）
-            sendMemberName=sender_name,
-            elements=[],
-        )
+        raw = RawMessage(subMsgType=0, sendMemberName=sender_name, elements=[])
 
         unimsg = UniMessage.of(deserialize_message(current_bot.get(), record.message))
         for seg in unimsg[At]:
@@ -87,6 +81,7 @@ async def fetch_analyzer_input(
 
     records = await get_message_records(
         session=session,
+        filter_user=False,
         time_start=time_start,
         time_stop=time_end,
     )
@@ -94,15 +89,15 @@ async def fetch_analyzer_input(
 
     async with get_session() as db_session:
         statement = (
-            select(UserModel)
+            select(SessionModel.id, UserModel)
             .where(SessionModel.id.in_(spids))
             .join(SessionModel, UserModel.id == SessionModel.user_persist_id)
         )
-        users = (await db_session.execute(statement)).scalars().all()
+        users = [row.tuple() for row in await db_session.execute(statement)]
 
-    user_id_map = {user.id: user.user_id for user in users}
+    user_id_map = {sid: user.user_id for sid, user in users}
     user_name_map = {
-        user.id: (u := await user.to_user()).nick or u.name or u.id for user in users
+        sid: (u := await user.to_user()).nick or u.name or u.id for sid, user in users
     }
 
     return convert_messagerecord_to_analyzer_input(
