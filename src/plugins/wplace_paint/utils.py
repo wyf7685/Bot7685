@@ -132,6 +132,9 @@ class WplacePixelCoords:
         (x1, y1), (x2, y2) = coord1.to_abs(), coord2.to_abs()
         return x2 - x1 + 1, y2 - y1 + 1
 
+    def tuple(self) -> tuple[int, int, int, int]:
+        return self.tlx, self.tly, self.pxx, self.pxy
+
 
 def get_flag_emoji(id: int) -> str:
     return FLAG_MAP.get(id, "")
