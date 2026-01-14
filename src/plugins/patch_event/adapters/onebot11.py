@@ -95,6 +95,9 @@ async def update_user_card_cache(bot: Bot) -> None:
     for (user_id, group_id), name in list(user_card_cache.items()):
         if name is not None:
             continue
+        if user_id == 0 or group_id == 0:
+            del user_card_cache[(user_id, group_id)]
+            continue
         if group_id is not None:
             with contextlib.suppress(ActionFailed):
                 data = await bot.get_group_member_info(
