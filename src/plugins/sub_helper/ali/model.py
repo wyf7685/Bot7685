@@ -62,7 +62,7 @@ class Request[B: ResponseBody, H: ResponseHeaders](BaseModel):
         return Response[body, headers].model_validate(response)
 
 
-class InstanceStatus(str, enum.Enum):
+class InstanceStatus(enum.StrEnum):
     PENDING = "Pending"
     RUNNING = "Running"
     STARTING = "Starting"

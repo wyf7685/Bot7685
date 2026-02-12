@@ -449,7 +449,7 @@ class ChatAnalyzer:
             ):
                 self.user_repeat_count[sender_uin] += 1
 
-            prev_clean = clean if clean else prev_clean
+            prev_clean = clean or prev_clean
             prev_sender = sender_uin
 
         # 计算人均字数
