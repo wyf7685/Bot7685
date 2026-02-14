@@ -23,7 +23,7 @@ require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 
 from .option import download_image, fetch_album_images, get_album_detail
-from .utils import Task, abatched, format_exc, format_exc_msg
+from .utils import Task, abatched, format_exc_msg
 
 __plugin_meta__ = PluginMetadata(
     name="jmcomic",
@@ -155,7 +155,7 @@ async def handle_ob11(
     except* Exception as exc_group:
         await handle_exc(exc_group, "下载失败")
     else:
-        await UniMessage(f"完成 {album_id} 的下载任务").finish(reply_to=True)
+        await UniMessage.text(f"完成 {album_id} 的下载任务").finish(reply_to=True)
 
 
 @matcher.assign("album_id")
@@ -179,10 +179,16 @@ async def handle_telegram(_: telegram.Bot, album_id: int) -> None:
     try:
         images = await fetch_album_images(album)
     except jmcomic.JmcomicException as exc:
-        await msg.text(f"\n获取图片信息失败:\n{format_exc(exc)}").finish(reply_to=True)
+        await (
+            msg.text("\n")
+            .text(format_exc_msg("获取图片信息失败", exc))
+            .finish(reply_to=True)
+        )
     except Exception as exc:
-        await msg.text(
-            f"\n获取图片信息失败: 未知错误\n{format_exc(exc)}",
-        ).finish(reply_to=True)
+        await (
+            msg.text("\n")
+            .text(format_exc_msg("获取图片信息失败: 未知错误", exc))
+            .finish(reply_to=True)
+        )
     else:
         await msg.text(f"页数: {len(images)}").finish(reply_to=True)
