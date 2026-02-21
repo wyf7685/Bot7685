@@ -78,9 +78,9 @@ class H(Highlight[MessageSegment, Message]):
                 )
             case ModelBase(message_scene=scene, peer_id=peer_id, sender_id=sender_id):
                 return (
-                    f"{cls.apply(sender_id)} in {cls.apply(peer_id)}"
+                    f"{cls.id(sender_id)} in {cls.id(peer_id)}"
                     if scene == "group"
-                    else cls.apply(sender_id)
+                    else cls.id(sender_id)
                 )
             case _:
                 return cls.id(data.sender_id)
