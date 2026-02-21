@@ -158,8 +158,7 @@ def patch_group_message_reaction_event(self: GroupMessageReactionEvent) -> str:
     return (
         f"[{H.event_type(self.get_event_name())}]: "
         f"Reaction <y>{(self.data.face_id)}</y> "
-        f"{'added' if self.data.is_add else 'removed'} "
-        f"from {H.id(self.data.message_seq)} "
-        f"by {H.id(self.data.user_id)} "
-        f"@[Group:{H.id(self.data.group_id)}]"
+        f"{'added to' if self.data.is_add else 'removed from'} "
+        f"{H.id(self.data.message_seq)} "
+        f"by {H.id(self.data.user_id)}@[Group:{H.id(self.data.group_id)}]"
     )
