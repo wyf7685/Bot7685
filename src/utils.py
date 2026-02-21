@@ -6,9 +6,9 @@ import shutil
 import sys
 import tempfile
 import threading
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Annotated, Any, cast
+from typing import Any, cast
 
 import anyio
 import anyio.abc
@@ -237,14 +237,6 @@ def ParamOrPrompt(  # noqa: N802
         return arg
 
     return Depends(dependency)
-
-
-async def _event_task_group() -> AsyncGenerator[anyio.abc.TaskGroup]:
-    async with anyio.create_task_group() as tg:
-        yield tg
-
-
-EventTaskGroup = Annotated[anyio.abc.TaskGroup, Depends(_event_task_group)]
 
 
 def ignore_exc[**P](
