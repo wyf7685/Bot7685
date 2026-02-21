@@ -8,7 +8,7 @@ from nonebot.adapters.milky.event import (
     MessageEvent,
     MessageRecallEvent,
 )
-from nonebot.adapters.milky.message import MessageSegment
+from nonebot.adapters.milky.message import Message, MessageSegment
 from nonebot.adapters.milky.model.base import ModelBase
 from nonebot.adapters.milky.model.common import Friend, Group, Member
 from nonebot.adapters.milky.model.message import IncomingMessage
@@ -23,7 +23,7 @@ class ModelWithScene(Protocol):
     peer_id: int
 
 
-class H(Highlight[MessageSegment]):
+class H(Highlight[MessageSegment, Message]):
     @classmethod
     @override
     def segment(cls, segment: MessageSegment) -> str:
@@ -32,6 +32,11 @@ class H(Highlight[MessageSegment]):
 
         shown_data = {k: v for k, v in segment.data.items() if not k.startswith("_")}
         return f"[{cls.style.le(segment.type)}: {cls.apply(shown_data)}]"
+
+    @classmethod
+    @override
+    def message(cls, message: Message) -> str:
+        return "".join(map(cls.segment, message))
 
     @classmethod
     def friend(cls, friend: Friend) -> str:
