@@ -6,14 +6,16 @@ import shutil
 import sys
 import tempfile
 import threading
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from pathlib import Path
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
 import anyio
+import anyio.abc
 import nonebot
 from msgspec import json as msgjson
 from msgspec import toml as msgtoml
+from nonebot.params import Depends
 from nonebot.typing import T_State
 from nonebot.utils import escape_tag
 from pydantic import BaseModel, TypeAdapter
@@ -92,21 +94,6 @@ class ConfigListFile[T: BaseModel](ConfigFile[list[T]]):
 
     def remove(self, pred: Callable[[T], bool]) -> None:
         self.save([item for item in self.load() if not pred(item)])
-
-
-async def orm_upgrade() -> None:
-    from argparse import Namespace
-
-    from nonebot_plugin_orm import _init_orm, migrate
-    from nonebot_plugin_orm.utils import StreamToLogger
-    from sqlalchemy.util import greenlet_spawn
-
-    _init_orm()
-
-    cmd_opts = Namespace()
-    with migrate.AlembicConfig(stdout=StreamToLogger(), cmd_opts=cmd_opts) as config:
-        cmd_opts.cmd = (migrate.upgrade, [], [])
-        await greenlet_spawn(migrate.upgrade, config)
 
 
 def find_and_link_external() -> None:
@@ -221,7 +208,6 @@ def ParamOrPrompt(  # noqa: N802
     prompt: str | Callable[[], Awaitable[str]],
 ) -> Any:
     from nonebot import require
-    from nonebot.params import Depends
 
     require("nonebot_plugin_alconna")
     from nonebot_plugin_alconna import AlconnaMatcher, Arparma, UniMessage
@@ -251,6 +237,14 @@ def ParamOrPrompt(  # noqa: N802
         return arg
 
     return Depends(dependency)
+
+
+async def _event_task_group() -> AsyncGenerator[anyio.abc.TaskGroup]:
+    async with anyio.create_task_group() as tg:
+        yield tg
+
+
+EventTaskGroup = Annotated[anyio.abc.TaskGroup, Depends(_event_task_group)]
 
 
 def ignore_exc[**P](

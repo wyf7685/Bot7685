@@ -2124,14 +2124,14 @@ wheels = [
 
 [[package]]
 name = "nonebot-adapter-milky"
-version = "1.0.0"
+version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/03/be/16e3925297188ffe8e1d441cc695c3bdaa9e235ee39b758567df6fa7b8d2/nonebot_adapter_milky-1.0.0.tar.gz", hash = "sha256:72a9552c7ef86e84e459b99df4bfbbddcdc23da8fad6e0105e48222d7c645172", size = 25265, upload-time = "2025-10-14T02:50:50.748Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/10/80352714273a310c573fe3aa53f83a5eca1f0d6d74f2a79462f43fe442f1/nonebot_adapter_milky-1.1.0.tar.gz", hash = "sha256:40e735816f099a0b7ab74343a015ec5e825f0f44cfddfb613bfa36e2d7fc20d6", size = 25960, upload-time = "2026-02-14T01:52:06.659Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/08/78/9b7547ff3d1fcc83e3106b9dbcba7f1259b8453d15fd860ce638e93f93b5/nonebot_adapter_milky-1.0.0-py3-none-any.whl", hash = "sha256:57cb4f833e38af694b97289fbaefd6eeb9c2049675da88536c1eb75de30c64f1", size = 27082, upload-time = "2025-10-14T02:50:49.951Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/b0/b248f4489f4057393254d37efd1344863572a346a70441fe794fd0a21428/nonebot_adapter_milky-1.1.0-py3-none-any.whl", hash = "sha256:a6a1e1653fe8de523c537d875ed8d99e1d0843e071da9847cdc8096158e40f0a", size = 27625, upload-time = "2026-02-14T01:52:05.375Z" },
 ]
 
 [[package]]

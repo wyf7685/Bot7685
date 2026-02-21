@@ -2,7 +2,7 @@ from copy import deepcopy
 from typing import Annotated, Any
 
 from nonebot import logger, on_message, require
-from nonebot.adapters import Bot, discord
+from nonebot.adapters import Bot, discord, milky
 from nonebot.adapters.onebot import v11
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER
@@ -64,7 +64,7 @@ async def assign_recv(target: MsgTarget, _: discord.Bot) -> None:
 
 
 @setup_cmd.assign("~send")
-async def assign_send(target: MsgTarget, _: v11.Bot) -> None:
+async def assign_send(target: MsgTarget, _: v11.Bot | milky.Bot) -> None:
     config = config_file.load()
     config.send_target = target.dump()
     config_file.save(config)
