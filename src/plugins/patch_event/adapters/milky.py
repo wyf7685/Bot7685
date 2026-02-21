@@ -4,6 +4,7 @@ from nonebot.adapters.milky.event import (
     Event,
     FriendMessageEvent,
     FriendNudgeEvent,
+    GroupMessageReactionEvent,
     GroupNudgeEvent,
     MessageEvent,
     MessageRecallEvent,
@@ -149,4 +150,16 @@ def patch_group_nudge_event(self: GroupNudgeEvent) -> str:
         f"[Group:{H.id(self.data.group_id)}]: "
         f"{H.id(self.data.sender_id)} {action} "
         f"{H.id(self.data.receiver_id)} {suffix}"
+    )
+
+
+@patcher
+def patch_group_message_reaction_event(self: GroupMessageReactionEvent) -> str:
+    return (
+        f"[{H.event_type(self.get_event_name())}]: "
+        f"Reaction <y>{(self.data.face_id)}</y> "
+        f"{'added' if self.data.is_add else 'removed'} "
+        f"from {H.id(self.data.message_seq)} "
+        f"by {H.id(self.data.user_id)} "
+        f"@[Group:{H.id(self.data.group_id)}]"
     )
