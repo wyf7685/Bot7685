@@ -5,8 +5,8 @@ from typing import NoReturn
 import anyio
 import jmcomic
 from nonebot import logger, require
-from nonebot.adapters import telegram
-from nonebot.adapters.onebot import v11
+from nonebot.adapters import milky, telegram
+from nonebot.adapters.onebot import v11 as ob11
 from nonebot.exception import ActionFailed, MatcherException
 from nonebot.permission import SUPERUSER, User
 from nonebot.plugin import PluginMetadata
@@ -28,7 +28,9 @@ from .utils import Task, abatched, format_exc_msg
 __plugin_meta__ = PluginMetadata(
     name="jmcomic",
     description="jmcomic",
-    usage="/jm <id:int>",
+    usage="/jm <album_id: int>",
+    supported_adapters={"~onebot.v11", "~milky", "~telegram"},
+    type="application",
 )
 
 
@@ -104,8 +106,8 @@ async def send_album_forward(
 
 
 @matcher.assign("album_id")
-async def handle_ob11(
-    event: v11.MessageEvent,
+async def handle_ob11_milky(
+    event: ob11.MessageEvent | milky.MessageEvent,
     album_id: int,
 ) -> None:
     receipt = await UniMessage(f"开始 {album_id} 的下载任务...").send(reply_to=True)
@@ -121,7 +123,7 @@ async def handle_ob11(
         permission = SUPERUSER | User.from_event(event, perm=matcher.permission)
 
         @waiter([event.get_type()], permission=permission)
-        def wait(e: v11.MessageEvent) -> str:
+        def wait(e: ob11.MessageEvent | milky.MessageEvent) -> str:
             return e.get_message().extract_plain_text()
 
         words = {"terminate", "stop", "cancel", "中止", "停止", "取消"}

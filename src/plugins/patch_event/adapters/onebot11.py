@@ -214,7 +214,7 @@ def patch_group_recall_notice_event(self: GroupRecallNoticeEvent) -> str:
 
 @patcher
 def patch_notify_event(self: NotifyEvent) -> str:
-    if self.sub_type == "input_status":
+    if self.sub_type == "input_status":  # napcat
         raise NoLogException
     return patch_notify_event.original(self)
 

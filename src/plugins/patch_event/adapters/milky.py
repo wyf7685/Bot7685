@@ -5,7 +5,9 @@ from nonebot.adapters.milky.event import (
     FriendMessageEvent,
     FriendNudgeEvent,
     GroupMessageReactionEvent,
+    GroupMuteEvent,
     GroupNudgeEvent,
+    GroupWholeMuteEvent,
     MessageEvent,
     MessageRecallEvent,
 )
@@ -40,6 +42,10 @@ class H(Highlight[MessageSegment, Message]):
         return "".join(map(cls.segment, message))
 
     @classmethod
+    def type(cls, event: Event, /) -> str:
+        return cls.event_type(event.get_event_name())
+
+    @classmethod
     def friend(cls, friend: Friend) -> str:
         return cls.name(friend.user_id, friend.nickname)
 
@@ -56,47 +62,73 @@ class H(Highlight[MessageSegment, Message]):
         return f"{cls.member(member)}@[Group:{cls.group(group)}]"
 
     @classmethod
+    def group_member_id(cls, group_id: int, user_id: int) -> str:
+        return f"{cls.id(user_id)}@[Group:{cls.id(group_id)}]"
+
+    @classmethod
     def source(cls, data: ModelWithScene) -> str:
         match cast("ModelBase", data):
-            case IncomingMessage(message_scene="friend", friend=friend):
-                return cls.friend(friend) if friend else cls.id(data.sender_id)
+            # https://milky.ntqqrev.org/struct/IncomingMessage#type-friend
+            case IncomingMessage(
+                message_scene="friend",
+                friend=friend,
+                sender_id=sender_id,
+            ):
+                return cls.friend(friend) if friend else cls.id(sender_id)
+            # https://milky.ntqqrev.org/struct/IncomingMessage#type-group
             case IncomingMessage(
                 message_scene="group",
                 group=group,
                 group_member=member,
+                peer_id=peer_id,
+                sender_id=sender_id,
             ):
                 return (
                     cls.group_member(group, member)
                     if group and member
-                    else f"{cls.id(data.sender_id)}@[Group:{cls.id(data.peer_id)}]"
+                    else cls.group_member_id(peer_id, sender_id)
                 )
-            case IncomingMessage(message_scene="temp", group=group):
+            # https://milky.ntqqrev.org/struct/IncomingMessage#type-temp
+            case IncomingMessage(
+                message_scene="temp",
+                group=group,
+                sender_id=sender_id,
+            ):
                 return (
-                    f"{cls.id(data.sender_id)}@[Temp:{cls.group(group)}]"
+                    f"{cls.id(sender_id)}@[Temp:{cls.group(group)}]"
                     if group
-                    else cls.id(data.sender_id)
+                    else cls.id(sender_id)
                 )
-            case ModelBase(message_scene=scene, peer_id=peer_id, sender_id=sender_id):
+            # Common ModelBase with message_scene
+            case ModelBase(
+                message_scene=scene,
+                peer_id=peer_id,
+                sender_id=sender_id,
+            ):
                 return (
                     f"{cls.id(sender_id)} in {cls.id(peer_id)}"
                     if scene == "group"
                     else cls.id(sender_id)
                 )
+            # Fallback
             case _:
                 return cls.id(data.sender_id)
 
 
 @patcher
 def patch_event(self: Event) -> str:
-    return f"[{H.event_type(self.get_event_name())}]: {H.apply(self)}"
+    return (
+        f"[{H.type(self)}]: {H.apply(self)}"
+        if type(self).get_event_description is Event.get_event_description
+        else f"[{H.type(self)}]: {self.get_event_description()}"
+    )
 
 
 @patcher
 def patch_message_event(self: MessageEvent) -> str:
     return (
-        f"[{H.event_type(self.get_event_name())}]: "
-        f"Message {H.id(self.message_id)} "
-        f"from {H.source(self.data)}: "
+        f"[{H.type(self)}]: "
+        f"Message {H.id(self.message_id)} from {H.source(self.data)}: "
         f"{H.apply(self.get_message())}"
     )
 
@@ -104,9 +136,8 @@ def patch_message_event(self: MessageEvent) -> str:
 @patcher
 def patch_friend_message_event(self: FriendMessageEvent) -> str:
     return (
-        f"[{H.event_type(self.get_event_name())}]: "
-        f"Message {H.id(self.message_id)} "
-        f"from {H.source(self.data)}: "
+        f"[{H.type(self)}]: "
+        f"Message {H.id(self.message_id)} from {H.source(self.data)}: "
         f"{H.apply(self.get_message())}"
     )
 
@@ -114,10 +145,15 @@ def patch_friend_message_event(self: FriendMessageEvent) -> str:
 @patcher
 def patch_message_recall_event(self: MessageRecallEvent) -> str:
     return (
-        f"[{H.event_type(self.get_event_name())}]: "
-        f"Message seq={H.id(self.data.message_seq)} "
+        f"[{H.type(self)}]: "
+        f"Message {H.id(self.data.message_seq)} "
         f"from {H.source(self.data)} "
-        f"deleted"
+        f"deleted by {H.id(self.data.operator_id)}"
+        f"{
+            f' suffix={H.style.le(self.data.display_suffix)}'
+            if self.data.display_suffix
+            else ''
+        }"
     )
 
 
@@ -131,10 +167,7 @@ def patch_friend_nudge_event(self: FriendNudgeEvent) -> str:
         else self.data.display_action
     )
     suffix = self.data.display_suffix
-    return (
-        f"[{H.event_type(self.get_event_name())}]: "
-        f"{H.id(send)} {action} {H.id(recv)} {suffix}"
-    )
+    return f"[{H.type(self)}]: {H.id(send)} {action} {H.id(recv)} {suffix}"
 
 
 @patcher
@@ -146,7 +179,7 @@ def patch_group_nudge_event(self: GroupNudgeEvent) -> str:
     )
     suffix = self.data.display_suffix
     return (
-        f"[{H.event_type(self.get_event_name())}]: "
+        f"[{H.type(self)}]: "
         f"[Group:{H.id(self.data.group_id)}]: "
         f"{H.id(self.data.sender_id)} {action} "
         f"{H.id(self.data.receiver_id)} {suffix}"
@@ -156,9 +189,34 @@ def patch_group_nudge_event(self: GroupNudgeEvent) -> str:
 @patcher
 def patch_group_message_reaction_event(self: GroupMessageReactionEvent) -> str:
     return (
-        f"[{H.event_type(self.get_event_name())}]: "
-        f"Reaction <y>{(self.data.face_id)}</y> "
+        f"[{H.type(self)}]: "
+        f"Reaction {H.style.y(self.data.face_id)} "
         f"{'added to' if self.data.is_add else 'removed from'} "
         f"{H.id(self.data.message_seq)} "
-        f"by {H.id(self.data.user_id)}@[Group:{H.id(self.data.group_id)}]"
+        f"by {H.group_member_id(self.data.group_id, self.data.user_id)}]"
+    )
+
+
+@patcher
+def patch_group_mute_event(self: GroupMuteEvent) -> str:
+    return (
+        f"[{H.type(self)}]: "
+        f"{H.group_member_id(self.data.group_id, self.data.user_id)} "
+        f"{'muted' if self.data.duration > 0 else 'unmuted'} "
+        f"by {H.id(self.data.operator_id)}"
+        f"{
+            f' for {H.style.y(self.data.duration)} seconds'
+            if self.data.duration > 0
+            else ''
+        }"
+    )
+
+
+@patcher
+def patch_group_whole_mute_event(self: GroupWholeMuteEvent) -> str:
+    return (
+        f"[{H.type(self)}]: "
+        f"Group:{H.id(self.data.group_id)} "
+        f"{'muted' if self.data.is_mute else 'unmuted'} "
+        f"by {H.id(self.data.operator_id)}"
     )
