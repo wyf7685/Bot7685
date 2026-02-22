@@ -8,11 +8,11 @@ from ..config import TemplateConfig, templates
 from .matcher import finish
 
 
-async def scene_id(session: Uninfo) -> int:
+async def _scene_id(session: Uninfo) -> int:
     return await get_scene_persist_id(session.basic, session.scene)
 
 
-SceneID = Annotated[int, Depends(scene_id)]
+SceneID = Annotated[int, Depends(_scene_id)]
 
 
 async def _scene_template_cfg(sid: SceneID) -> TemplateConfig:

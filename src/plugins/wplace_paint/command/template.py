@@ -239,7 +239,7 @@ async def assign_template_color(
 async def assign_template_locate(
     cfg: SceneTemplate,
     color_name: str,
-    max_count: int = 5,
+    max_count: int,
 ) -> None:
     if not (fixed_name := normalize_color_name(color_name)):
         await finish(f"无效的颜色名称: {color_name}")

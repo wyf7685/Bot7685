@@ -13,7 +13,6 @@ from src.utils import with_semaphore
 from .schemas import PixelInfo, RankType, RankUser
 from .utils import WplacePixelCoords, with_retry
 
-WPLACE_ME_API_URL = "https://backend.wplace.live/me"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -59,14 +58,6 @@ class RequestFailed(Exception):
         super().__init__(msg)
         self.msg = msg
         self.status_code = status_code
-
-
-def extract_first_status_code(*exc_groups: ExceptionGroup[RequestFailed]) -> int | None:
-    for exc_group in exc_groups:
-        for e in flatten_exception_group(exc_group):
-            if e.status_code is not None:
-                return e.status_code
-    return None
 
 
 def flatten_request_failed_msg(exc_group: ExceptionGroup[RequestFailed]) -> str:

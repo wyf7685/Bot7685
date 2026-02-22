@@ -69,7 +69,7 @@ alc = Alconna(
         Subcommand(
             "locate",
             Args["color_name", str, Field(completion=lambda: "颜色名称")],
-            Option("-n", Args["max_count?#最大数量", int]),
+            Option("-n", Args["max_count#最大数量", int, Field(default=5)]),
             help_text="查询模板中指定颜色的像素位置",
         ),
         alias={"tp"},
