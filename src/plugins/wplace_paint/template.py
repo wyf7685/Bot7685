@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Protocol, cast
 
 import anyio
-import anyio.to_thread
 import bot7685_ext.wplace
 import httpx
 from bot7685_ext.wplace import ColorEntry, compose_tiles

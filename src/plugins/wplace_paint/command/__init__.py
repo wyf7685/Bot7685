@@ -1,3 +1,3 @@
-from . import rank as rank
-from . import template as template
-from . import user as user
+from . import rank, template
+
+__all__ = ["rank", "template"]

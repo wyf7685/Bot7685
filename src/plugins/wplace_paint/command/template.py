@@ -22,7 +22,7 @@ from ..template import (
     render_template_with_color,
 )
 from ..utils import WplacePixelCoords, normalize_color_name, parse_color_names
-from .depends import TargetHash, TargetTemplate
+from .depends import SceneID, SceneTemplate
 from .matcher import finish, matcher, prompt
 
 
@@ -47,17 +47,17 @@ async def assign_preview(
 
 
 @matcher.assign("~template.bind.revoke")
-async def assign_template_bind_revoke(key: TargetHash) -> None:
+async def assign_template_bind_revoke(sid: SceneID) -> None:
     cfgs = templates.load()
-    if key not in cfgs:
+    if sid not in cfgs:
         await finish("当前会话没有绑定模板")
 
     try:
-        cfgs[key].file.unlink(missing_ok=True)
+        cfgs[sid].file.unlink(missing_ok=True)
     except Exception:
         logger.exception("删除模板图片时发生错误")
 
-    del cfgs[key]
+    del cfgs[sid]
     templates.save(cfgs)
     await finish("已取消当前会话的模板绑定")
 
@@ -101,7 +101,7 @@ async def prompt_image() -> bytes:
 
 
 @matcher.assign("~template.bind")
-async def assign_template_bind(key: TargetHash) -> None:
+async def assign_template_bind(sid: SceneID) -> None:
     coord = await prompt(
         "请发送模板起始坐标(选点并复制BlueMarble的坐标)\n"
         "格式如: (Tl X: 123, Tl Y: 456, Px X: 789, Px Y: 012)"
@@ -113,17 +113,17 @@ async def assign_template_bind(key: TargetHash) -> None:
         await finish(f"坐标解析失败: {e}")
 
     img_bytes = await prompt_image()
-    fp = IMAGE_DIR / f"{key}.png"
+    fp = IMAGE_DIR / f"{sid}.png"
     fp.write_bytes(img_bytes)
 
-    templates.load()[key] = TemplateConfig(coords=coords, key=key)
+    templates.load()[sid] = TemplateConfig(scene_id=sid, coords=coords)
     templates.save()
     await finish(f"模板绑定成功\n{coords.human_repr()}")
 
 
 @matcher.assign("~template.preview.overlay")
 async def assign_template_preview_overlay(
-    cfg: TargetTemplate,
+    cfg: SceneTemplate,
     overlay_alpha: int | None = None,
 ) -> None:
     if overlay_alpha is not None and not (0 <= overlay_alpha <= 255):
@@ -145,7 +145,7 @@ async def assign_template_preview_overlay(
 
 @matcher.assign("~template.preview")
 async def assign_template_preview(
-    cfg: TargetTemplate,
+    cfg: SceneTemplate,
     background: str | None = None,
     pixels: int = 0,
 ) -> None:
@@ -167,7 +167,7 @@ async def assign_template_preview(
 
 
 @matcher.assign("~template.progress")
-async def assign_template_progress(cfg: TargetTemplate) -> None:
+async def assign_template_progress(cfg: SceneTemplate) -> None:
     try:
         progress_data = await calc_template_diff(cfg)
     except* RequestFailed as e:
@@ -210,7 +210,7 @@ async def assign_template_progress(cfg: TargetTemplate) -> None:
 
 @matcher.assign("~template.color")
 async def assign_template_color(
-    cfg: TargetTemplate,
+    cfg: SceneTemplate,
     color_name: list[str],
     background: str | None = None,
 ) -> None:
@@ -237,9 +237,9 @@ async def assign_template_color(
 
 @matcher.assign("~template.locate")
 async def assign_template_locate(
-    cfg: TargetTemplate,
+    cfg: SceneTemplate,
     color_name: str,
-    max_count: int = 5,
+    max_count: int,
 ) -> None:
     if not (fixed_name := normalize_color_name(color_name)):
         await finish(f"无效的颜色名称: {color_name}")

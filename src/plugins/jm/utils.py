@@ -5,6 +5,7 @@ from collections.abc import (
     Awaitable,
     Callable,
     Generator,
+    Sequence,
 )
 from types import EllipsisType
 
@@ -12,7 +13,7 @@ import anyio
 import jmcomic
 
 
-async def abatched[T](ait: AsyncIterable[T], n: int) -> AsyncGenerator[tuple[T, ...]]:
+async def abatched[T](ait: AsyncIterable[T], n: int) -> AsyncGenerator[Sequence[T]]:
     batch: list[T] = []
     async for item in aiter(ait):
         batch.append(item)

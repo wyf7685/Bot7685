@@ -125,7 +125,7 @@ async def assign_list(target: MsgTarget) -> None:
 
     msg = "当前会话的定时任务:\n\n"
     for idx, config in enumerate(configs, 1):
-        msg += f"{idx}. {config.hour}:{config.minute}\n"
+        msg += f"{idx}. {config.hour:02}:{config.minute:02}\n"
     await UniMessage.text(msg).finish()
 
 

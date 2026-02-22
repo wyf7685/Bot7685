@@ -13,6 +13,6 @@ if __name__ == "__main__":
     else:
         import asyncio
 
-        from src.utils import orm_upgrade
+        from src.orm import orm_upgrade
 
         asyncio.run(orm_upgrade())

@@ -6,6 +6,7 @@ from typing import Protocol, cast
 import nonebot
 from nonebot.adapters import Event
 
+from .config import plugin_config
 from .highlight import Highlight
 
 type PatcherCall[T: Event] = Callable[[T], str]
@@ -23,15 +24,27 @@ logger = nonebot.logger.opt(colors=True)
 _PATCHERS: set[PatcherHandle] = set()
 
 
-def copy_signature[C: Callable](_: C, fn: Callable[..., object], /) -> C:
-    return cast("C", fn)
+def copy_signature[C: Callable](source: C, target: Callable[..., object], /) -> C:
+    return cast("C", functools.update_wrapper(target, source))
+
+
+def apply_debug_wrapper[T: Event](call: PatcherCall[T]) -> PatcherCall[T]:
+    if not plugin_config.patch_event_debug:
+        return call
+
+    @functools.wraps(call)
+    def wrapper(self: T) -> str:
+        logger.debug(Highlight.apply(self))
+        return call(self)
+
+    return wrapper
 
 
 def patcher[T: Event](call: PatcherCall[T]) -> PatcherHandle[T]:
     cls: type[T] = inspect.get_annotations(call)["self"]
     assert issubclass(cls, Event)
     original = cls.get_log_string
-    wrapper = copy_signature(original, functools.update_wrapper(call, original))
+    wrapper = copy_signature(original, apply_debug_wrapper(call))
     module_name = cls.__module__.replace("nonebot.adapters.", "~")
 
     def patch() -> None:
