@@ -1,4 +1,3 @@
-import hashlib
 from collections.abc import Callable
 
 import cloudscraper
@@ -12,7 +11,6 @@ from pydantic import TypeAdapter
 from src.utils import with_semaphore
 
 from .config import UserConfig
-from .pawtect import pawtect_sign
 from .schemas import FetchMeResponse, PixelInfo, PurchaseItem, RankType, RankUser
 from .utils import WplacePixelCoords, with_retry
 
@@ -261,48 +259,3 @@ async def fetch_region_rank(region_id: int, rank_type: RankType) -> list[RankUse
         RANK_URL.format(region_id, rank_type),
         _rank_resp_ta.validate_json,
     )
-
-
-PAINT_URL = "https://backend.wplace.live/s0/pixel/{}/{}"
-
-
-@run_sync
-def post_paint_pixels(
-    cfg: UserConfig,
-    tile: tuple[int, int],
-    pixels: list[tuple[tuple[int, int], int]],
-) -> int:
-    colors, coords = [], []
-    for pixel, color_id in pixels:
-        colors.append(color_id)
-        coords.extend(pixel)
-    payload = {
-        "colors": colors,
-        "coords": coords,
-        "fp": hashlib.sha256(str(cfg.wp_user_id).encode()).hexdigest()[:32],
-    }
-    pawtect_token = pawtect_sign(payload)
-
-    url = PAINT_URL.format(*tile)
-    headers = {
-        **_SCRAPER_HEADERS,
-        "x-pawtect-token": pawtect_token,
-        "x-pawtect-variant": "koala",
-        "referrer": "https://wplace.live/",
-    }
-
-    try:
-        resp = cloudscraper.create_scraper().post(
-            url,
-            headers=headers,
-            cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
-            json=payload,
-            proxies=_proxies,
-            timeout=20,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception as e:
-        raise RequestFailed(f"Paint request failed: {e!r}") from e
-
-    return data["painted"]

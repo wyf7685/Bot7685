@@ -5,21 +5,22 @@ import anyio
 from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import CustomNode, MsgTarget, SupportScope, UniMessage
+from nonebot_plugin_user import User
 
 from ..config import UserConfig, users
 from ..fetch import RequestFailed, fetch_me, flatten_request_failed_msg
 from ..scheduler import FETCH_INTERVAL_MINS, expire_push_cache
 from ..schemas import PurchaseItem
 from ..utils import normalize_color_name, parse_token
-from .depends import QueryConfigs, SelectedUserConfig, TargetHash, TargetTemplate
+from .depends import QueryConfigs, SceneID, SelectedUserConfig
 from .matcher import finish, matcher
 
 
 @matcher.assign("~bind")
 async def assign_bind(
     bot: Bot,
-    event: Event,
     target: MsgTarget,
+    user: User,
     token: str,
     cf_clearance: str,
 ) -> None:
@@ -30,7 +31,7 @@ async def assign_bind(
         token=token,
         cf_clearance=cf_clearance,
         target_data=target.dump(),
-        user_id=event.get_user_id(),
+        user_id=user.id,
         adapter=bot.type,
         wp_user_id=payload.userId,
     )
@@ -72,7 +73,7 @@ async def assign_query(
 
         output[cfg.wp_user_id] = cfg.user_id, result
 
-    output: dict[int, tuple[str, str]] = {}
+    output: dict[int, tuple[int, str]] = {}
     async with anyio.create_task_group() as tg:
         for cfg in cfgs:
             tg.start_soon(_fetch, cfg)
@@ -103,12 +104,12 @@ async def assign_config_notify_mins(
 async def assign_config_bind_target(
     cfg: SelectedUserConfig,
     target: MsgTarget,
-    target_hash: TargetHash,
+    sid: SceneID,
 ) -> None:
     if target.private:
         await finish("请在群聊中使用绑定功能")
 
-    cfg.bind_groups.add(target_hash)
+    cfg.bind_groups.add(sid)
     cfg.save()
     await finish(f"{cfg.wp_user_name} #{cfg.wp_user_id} 已绑定到当前群组")
 
@@ -156,22 +157,6 @@ async def assign_config_target_droplets(
     )
 
 
-@matcher.assign("~config.auto-paint")
-async def assign_config_auto_paint(
-    cfg: SelectedUserConfig,
-    _: TargetTemplate,
-    target_hash: TargetHash,
-) -> None:
-    if cfg.auto_paint_target_hash == target_hash:
-        cfg.auto_paint_target_hash = None
-        msg = "已禁用自动绘制功能"
-    else:
-        cfg.auto_paint_target_hash = target_hash
-        msg = "已启用自动绘制功能，将使用当前会话模板进行绘制"
-    cfg.save()
-    await finish(msg)
-
-
 @matcher.assign("~config.auto-purchase")
 async def assign_config_auto_purchase(
     cfg: SelectedUserConfig,
@@ -213,7 +198,7 @@ async def assign_remove(cfg: SelectedUserConfig) -> None:
 @matcher.assign("~find-color")
 async def assign_find_color(
     target: MsgTarget,
-    target_hash: TargetHash,
+    sid: SceneID,
     color_name: str,
 ) -> None:
     if target.private:
@@ -231,7 +216,7 @@ async def assign_find_color(
     result: list[str] = []
     async with anyio.create_task_group() as tg:
         for cfg in users.load():
-            if cfg.target.verify(target) or target_hash in cfg.bind_groups:
+            if cfg.target.verify(target) or sid in cfg.bind_groups:
                 tg.start_soon(check_user, cfg)
 
     await finish(

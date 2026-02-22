@@ -1,29 +1,26 @@
-import hashlib
 from typing import Annotated, Literal
 
 from nonebot.adapters import Event
 from nonebot.params import Depends
 from nonebot_plugin_alconna import At, MsgTarget
+from nonebot_plugin_uninfo import Uninfo
+from nonebot_plugin_uninfo.orm import get_scene_persist_id
 
 from ..config import TemplateConfig, UserConfig, templates, users
 from .matcher import finish, prompt
 
 
-def target_hash(target: MsgTarget) -> str:
-    args = (target.id, target.channel, target.private, target.self_id)
-    for k, v in target.extra.items():
-        args += (k, v)
-    key = "".join(map(str, args)).encode("utf-8")
-    return hashlib.sha256(key).hexdigest()
+async def scene_id(session: Uninfo) -> int:
+    return await get_scene_persist_id(session.basic, session.scene)
 
 
-TargetHash = Annotated[str, Depends(target_hash)]
+SceneID = Annotated[int, Depends(scene_id)]
 
 
 async def _query_target_cfgs(
     event: Event,
     uni_target: MsgTarget,
-    target_hash: TargetHash,
+    sid: SceneID,
     target: At | Literal["$group"] | None = None,
 ) -> list[UserConfig]:
     if target == "$group" and uni_target.private:
@@ -33,7 +30,7 @@ async def _query_target_cfgs(
         cfgs = [
             cfg
             for cfg in users.load()
-            if cfg.target.verify(uni_target) or target_hash in cfg.bind_groups
+            if cfg.target.verify(uni_target) or sid in cfg.bind_groups
         ]
         if not cfgs:
             await finish("群内没有用户绑定账号")
@@ -87,11 +84,11 @@ async def _select_cfg(
 SelectedUserConfig = Annotated[UserConfig, Depends(_select_cfg)]
 
 
-async def _target_template_cfg(key: TargetHash) -> TemplateConfig:
+async def _target_template_cfg(sid: SceneID) -> TemplateConfig:
     cfgs = templates.load()
-    if key not in cfgs:
+    if sid not in cfgs:
         await finish("当前会话没有绑定模板，请先使用 wplace template bind 绑定")
-    return cfgs[key]
+    return cfgs[sid]
 
 
 TargetTemplate = Annotated[TemplateConfig, Depends(_target_template_cfg)]

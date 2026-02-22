@@ -9,6 +9,7 @@ from nonebot import logger
 from nonebot.utils import escape_tag
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_user import get_user_platform_ids
 from pydantic import BaseModel
 
 from src.plugins.cache import get_cache
@@ -107,9 +108,14 @@ async def fetch_for_user(cfg: UserConfig) -> None:
             logger.warning(f"{colored} 绑定的适配器不匹配，跳过通知")
             finish()
 
-        msg = (
-            UniMessage if cfg.target.private else UniMessage.at(cfg.user_id).text("\n")
-        ).text(text)
+        msg = UniMessage()
+        if (
+            not cfg.target.private
+            and cfg.target.scope
+            and (ids := await get_user_platform_ids(cfg.target.scope, cfg.user_id))
+        ):
+            msg.at(ids[0]).text("\n")
+        msg.text(text)
         for attempt in range(MAX_PUSH_ATTEMPT):
             try:
                 await msg.send(target=target, bot=bot)
