@@ -14,3 +14,7 @@
 	path = external/nonebot-plugin-zssm
 	url = https://github.com/wyf7685/nonebot-plugin-zssm.git
         branch = master
+[submodule "external/nonebot-plugin-chatrecorder"]
+	path = external/nonebot-plugin-chatrecorder
+	url = https://github.com/wyf7685/nonebot-plugin-chatrecorder.git
+        branch = main

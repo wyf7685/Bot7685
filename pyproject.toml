@@ -19,7 +19,7 @@ dependencies = [
   "nonebot-plugin-akinator>=1.0.3",
   "nonebot-plugin-alconna>=0.60.4",
   "nonebot-plugin-apscheduler>=0.5.0",
-  "nonebot-plugin-chatrecorder>=0.7.0",
+  "nonebot-plugin-chatrecorder",
   "nonebot-plugin-htmlrender==0.6.7",
   "nonebot-plugin-localstore>=0.7.4",
   "nonebot-plugin-orm[asyncpg]>=0.8.3",
@@ -76,6 +76,7 @@ nonebot-plugin-exe-code = { workspace = true, editable = false }
 nonebot-plugin-talk-stats = { workspace = true, editable = false }
 nonebot-plugin-werewolf = { workspace = true, editable = false }
 nonebot-plugin-zssm = { workspace = true, editable = false }
+nonebot-plugin-chatrecorder = { workspace = true, editable = false }
 
 [tool.uv.workspace]
 members = ["external/*"]
@@ -187,5 +188,6 @@ ignore = [
   "data",       # nbp-orm migration scripts
   "**/build",
   "**/scripts",
+  "external/nonebot-plugin-chatrecorder"  # too many adapters
 ]
 disableBytesTypePromotions = true

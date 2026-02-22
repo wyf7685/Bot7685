@@ -9,6 +9,7 @@ resolution-markers = [
 [manifest]
 members = [
     "bot7685",
+    "nonebot-plugin-chatrecorder",
     "nonebot-plugin-exe-code",
     "nonebot-plugin-talk-stats",
     "nonebot-plugin-werewolf",
@@ -133,6 +134,18 @@ speedups = [
     { name = "backports-zstd", marker = "python_full_version < '3.14' and platform_python_implementation == 'CPython'" },
     { name = "brotli", marker = "platform_python_implementation == 'CPython'" },
     { name = "brotlicffi", marker = "platform_python_implementation != 'CPython'" },
+]
+
+[[package]]
+name = "aiomysql"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pymysql" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/67/76/2c5b55e4406a1957ffdfd933a94c2517455291c97d2b81cec6813754791a/aiomysql-0.2.0.tar.gz", hash = "sha256:558b9c26d580d08b8c5fd1be23c5231ce3aeff2dadad989540fee740253deb67", size = 114706, upload-time = "2023-06-11T19:57:53.608Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/42/87/c982ee8b333c85b8ae16306387d703a1fcdfc81a2f3f15a24820ab1a512d/aiomysql-0.2.0-py3-none-any.whl", hash = "sha256:b7c26da0daf23a5ec5e0b133c03d20657276e4eae9b73e040b72787f6f6ade0a", size = 44215, upload-time = "2023-06-11T19:57:51.09Z" },
 ]
 
 [[package]]
@@ -622,7 +635,7 @@ requires-dist = [
     { name = "nonebot-plugin-akinator", specifier = ">=1.0.3" },
     { name = "nonebot-plugin-alconna", specifier = ">=0.60.4" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
-    { name = "nonebot-plugin-chatrecorder", specifier = ">=0.7.0" },
+    { name = "nonebot-plugin-chatrecorder", directory = "external/nonebot-plugin-chatrecorder" },
     { name = "nonebot-plugin-exe-code", directory = "external/nonebot-plugin-exe-code" },
     { name = "nonebot-plugin-htmlrender", specifier = "==0.6.7" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
@@ -2109,6 +2122,18 @@ wheels = [
 ]
 
 [[package]]
+name = "nonebot-adapter-dodo"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "nonebot2" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/29/10/5f4a04e0e0cd35d52b4ebe5a5583d6407245a5f26ff5a767cc9f3ad0db6d/nonebot_adapter_dodo-0.2.1.tar.gz", hash = "sha256:ad37ae0cbd807afcb83eacb37f5d50593d437ce077ba720541a53551eaeac675", size = 18947, upload-time = "2024-03-25T02:23:33.916Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/2e/3c58d87711498cf104cb076ef478cd68504e33425b0bd2d9f126db11befe/nonebot_adapter_dodo-0.2.1-py3-none-any.whl", hash = "sha256:c388991bf1fc642a8328147d09d1445fc427ec915af873af031315be3ebb9eb7", size = 20858, upload-time = "2024-03-25T02:23:32.324Z" },
+]
+
+[[package]]
 name = "nonebot-adapter-feishu"
 version = "2.6.2"
 source = { registry = "https://pypi.org/simple" }
@@ -2120,6 +2145,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/11/67/e27d60edd50260a46e27a8170851203a74f8aed05fa84b1cffcc2ce619ab/nonebot_adapter_feishu-2.6.2.tar.gz", hash = "sha256:1223ba0720bd1e0c1f85d5c1216fdbc91711196e351d1b870bcffeeeac41436d", size = 19151, upload-time = "2024-06-28T02:59:02.885Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/25/0f/0aa5eb7538118b408181a88f2ed75e2a2b91eb98c0c522b5494b7cd128ff/nonebot_adapter_feishu-2.6.2-py3-none-any.whl", hash = "sha256:1f68dbfe353c0c7a29798cffaf72e174ef62e8b903c723c6a661d033237febcd", size = 21650, upload-time = "2024-06-28T02:59:00.929Z" },
+]
+
+[[package]]
+name = "nonebot-adapter-kaiheila"
+version = "0.3.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "nonebot2" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/63/11/56d412ea071c784f8c5242f5df4020334d31125ba1b9c58e28318f9fc5ec/nonebot_adapter_kaiheila-0.3.4.tar.gz", hash = "sha256:1fea823e5bc2bb5dc8e56a4c10a8f6698dac6e4f77d4526768275fa0925340f2", size = 28220, upload-time = "2024-04-29T12:27:15.675Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/92/a6/5ae597cf228faf445a3021eeeeb1a2d2daf994405ef33a9e8c0691cb919e/nonebot_adapter_kaiheila-0.3.4-py3-none-any.whl", hash = "sha256:a4cc0e43bd24e015b8312f1753705116274d5b7e9a68be266384dd413ca4f510", size = 32692, upload-time = "2024-04-29T12:27:14.068Z" },
 ]
 
 [[package]]
@@ -2274,16 +2312,127 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-chatrecorder"
 version = "0.7.0"
-source = { registry = "https://pypi.org/simple" }
+source = { directory = "external/nonebot-plugin-chatrecorder" }
 dependencies = [
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm" },
     { name = "nonebot-plugin-uninfo" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d0/6d/77fd9f23c20a84118cc26223c309c895ae808099f672f3cf2cbcff89ef29/nonebot_plugin_chatrecorder-0.7.0.tar.gz", hash = "sha256:5b63a92733307c4cd739bb1bb6d2af949811ff6882ce49e73d42735cfd6e820d", size = 17224, upload-time = "2024-12-19T11:00:47.223Z" }
+
+[package.dev-dependencies]
+adapters = [
+    { name = "nonebot-adapter-console" },
+    { name = "nonebot-adapter-discord" },
+    { name = "nonebot-adapter-dodo" },
+    { name = "nonebot-adapter-feishu" },
+    { name = "nonebot-adapter-kaiheila" },
+    { name = "nonebot-adapter-milky" },
+    { name = "nonebot-adapter-onebot" },
+    { name = "nonebot-adapter-qq" },
+    { name = "nonebot-adapter-satori" },
+    { name = "nonebot-adapter-telegram" },
+]
+dev = [
+    { name = "aiomysql" },
+    { name = "asyncpg" },
+    { name = "nonebot-adapter-console" },
+    { name = "nonebot-adapter-discord" },
+    { name = "nonebot-adapter-dodo" },
+    { name = "nonebot-adapter-feishu" },
+    { name = "nonebot-adapter-kaiheila" },
+    { name = "nonebot-adapter-milky" },
+    { name = "nonebot-adapter-onebot" },
+    { name = "nonebot-adapter-qq" },
+    { name = "nonebot-adapter-satori" },
+    { name = "nonebot-adapter-telegram" },
+    { name = "nonebot-plugin-datastore" },
+    { name = "nonebot-plugin-orm", extra = ["default"] },
+    { name = "nonebot-session-to-uninfo" },
+    { name = "nonebot2", extra = ["fastapi"] },
+    { name = "nonebug" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-xdist" },
+]
+test = [
+    { name = "aiomysql" },
+    { name = "asyncpg" },
+    { name = "nonebug" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "pytest-xdist" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nonebot-plugin-localstore", specifier = ">=0.6.0,<1.0.0" },
+    { name = "nonebot-plugin-orm", specifier = ">=0.7.7,<1.0.0" },
+    { name = "nonebot-plugin-uninfo", specifier = ">=0.9.0,<1.0.0" },
+    { name = "nonebot2", specifier = ">=2.4.0,<3.0.0" },
+]
+
+[package.metadata.requires-dev]
+adapters = [
+    { name = "nonebot-adapter-console", specifier = ">=0.9.0,<0.10.0" },
+    { name = "nonebot-adapter-discord", specifier = ">=0.1.8,<0.2.0" },
+    { name = "nonebot-adapter-dodo", specifier = ">=0.2.1,<0.3.0" },
+    { name = "nonebot-adapter-feishu", specifier = ">=2.6.2,<3.0.0" },
+    { name = "nonebot-adapter-kaiheila", specifier = ">=0.3.4,<0.4.0" },
+    { name = "nonebot-adapter-milky", specifier = ">=1.1.0,<2.0.0" },
+    { name = "nonebot-adapter-onebot", specifier = ">=2.4.6,<3.0.0" },
+    { name = "nonebot-adapter-qq", specifier = ">=1.6.2,<2.0.0" },
+    { name = "nonebot-adapter-satori", specifier = ">=0.13.4,<0.14.0" },
+    { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20,<0.2.0" },
+]
+dev = [
+    { name = "aiomysql", specifier = ">=0.2.0,<0.3.0" },
+    { name = "asyncpg", specifier = ">=0.31.0,<0.32.0" },
+    { name = "nonebot-adapter-console", specifier = ">=0.9.0,<0.10.0" },
+    { name = "nonebot-adapter-discord", specifier = ">=0.1.8,<0.2.0" },
+    { name = "nonebot-adapter-dodo", specifier = ">=0.2.1,<0.3.0" },
+    { name = "nonebot-adapter-feishu", specifier = ">=2.6.2,<3.0.0" },
+    { name = "nonebot-adapter-kaiheila", specifier = ">=0.3.4,<0.4.0" },
+    { name = "nonebot-adapter-milky", specifier = ">=1.1.0,<2.0.0" },
+    { name = "nonebot-adapter-onebot", specifier = ">=2.4.6,<3.0.0" },
+    { name = "nonebot-adapter-qq", specifier = ">=1.6.2,<2.0.0" },
+    { name = "nonebot-adapter-satori", specifier = ">=0.13.4,<0.14.0" },
+    { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20,<0.2.0" },
+    { name = "nonebot-plugin-datastore", specifier = ">=1.0.0,<2.0.0" },
+    { name = "nonebot-plugin-orm", extras = ["default"], specifier = ">=0.7.7,<1.0.0" },
+    { name = "nonebot-session-to-uninfo", specifier = ">=0.0.2,<0.1.0" },
+    { name = "nonebot2", extras = ["fastapi"], specifier = ">=2.4.0,<3.0.0" },
+    { name = "nonebug", specifier = ">=0.4.3,<0.5.0" },
+    { name = "pytest", specifier = ">=8.0.0,<9.0.0" },
+    { name = "pytest-asyncio", specifier = ">=1.0.0,<2.0.0" },
+    { name = "pytest-cov", specifier = ">=6.0.0,<7.0.0" },
+    { name = "pytest-xdist", specifier = ">=3.0.2,<4.0.0" },
+]
+test = [
+    { name = "aiomysql", specifier = ">=0.2.0,<0.3.0" },
+    { name = "asyncpg", specifier = ">=0.31.0,<0.32.0" },
+    { name = "nonebug", specifier = ">=0.4.3,<0.5.0" },
+    { name = "pytest", specifier = ">=8.0.0,<9.0.0" },
+    { name = "pytest-asyncio", specifier = ">=1.0.0,<2.0.0" },
+    { name = "pytest-cov", specifier = ">=6.0.0,<7.0.0" },
+    { name = "pytest-xdist", specifier = ">=3.0.2,<4.0.0" },
+]
+
+[[package]]
+name = "nonebot-plugin-datastore"
+version = "1.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "alembic" },
+    { name = "nonebot-plugin-localstore" },
+    { name = "nonebot2", extra = ["httpx"] },
+    { name = "sqlalchemy", extra = ["aiosqlite"] },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5c/21/e0d2d1a3b11962183bc86fc3a48d5f8b41b91761a488f01a5d8d4467d331/nonebot_plugin_datastore-1.3.1.tar.gz", hash = "sha256:099c65ee2edc6c4216f6b9b7dd67aac86d1d050bc9a2195c835eab709be9d1a8", size = 19498, upload-time = "2025-08-13T15:03:19.459Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fb/49/f6529eec6b57d4e0eefc289ae2d2fa7237645effd66ed2767f152ebca6ab/nonebot_plugin_chatrecorder-0.7.0-py3-none-any.whl", hash = "sha256:56cfb306cc85c602c8c97e7f1a63328d075ac8fd2349ddefcb501600f416d544", size = 28422, upload-time = "2024-12-19T11:00:45.094Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/3a/3742894d5c774ec9fcc786ef629a058e21760d22c0c7acdc9a7820b57e57/nonebot_plugin_datastore-1.3.1-py3-none-any.whl", hash = "sha256:3f6fa91e9fac8edd143b7213371307c40598faa3c2a5f20fbda1f3b686a4fa95", size = 26791, upload-time = "2025-08-13T15:03:18.244Z" },
 ]
 
 [[package]]
@@ -2552,7 +2701,7 @@ scheduler = [
 [package.metadata]
 requires-dist = [
     { name = "nonebot-plugin-alconna", specifier = ">=0.57.6" },
-    { name = "nonebot-plugin-chatrecorder", specifier = ">=0.7.0" },
+    { name = "nonebot-plugin-chatrecorder", directory = "external/nonebot-plugin-chatrecorder" },
     { name = "nonebot-plugin-htmlrender", specifier = ">=0.6.5" },
     { name = "nonebot-plugin-orm", specifier = ">=0.7.7" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.7.0" },
@@ -2745,6 +2894,20 @@ dev = [
     { name = "nonebot2", extras = ["fastapi"], specifier = ">=2.4.1" },
     { name = "pre-commit", specifier = "~=4.1" },
     { name = "ruff", specifier = "~=0.12" },
+]
+
+[[package]]
+name = "nonebot-session-to-uninfo"
+version = "0.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "alembic" },
+    { name = "sqlalchemy" },
+    { name = "strenum" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/09/04/4ebea55a53c507195c1cf923d31897ef7ab8b7b49532406b2419f61342f9/nonebot_session_to_uninfo-0.0.2.tar.gz", hash = "sha256:10d3540fa85293cdd669065cb3898f07af625e2a640a2ab2fa0360a444eef3ab", size = 4624, upload-time = "2024-12-11T04:02:04.63Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2e/ea/f9e31d29facf907f96aad32ac184b879a6a80d3f4f43437c735a425e26b1/nonebot_session_to_uninfo-0.0.2-py3-none-any.whl", hash = "sha256:6639f252f371ee50f414904011757f480916a771f2cea8dcf5bc24792b168330", size = 5111, upload-time = "2024-12-11T04:02:02.154Z" },
 ]
 
 [[package]]
@@ -3294,6 +3457,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2b/29/690202b38b93cf77b73a29c25a63a2b6f3fcb36b1f75006e50b8dee7c108/pymupdf-1.27.1-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:4f1837554134fb45d390a44de8844b2ca9b6c901c82ccc90b340e3b7f3b126ca", size = 25167965, upload-time = "2026-02-11T22:36:35.478Z" },
     { url = "https://files.pythonhosted.org/packages/8a/81/f937e6aa606fd263c3a45d0ff0f0bbdbf3fb779933091fc0f6179513cc93/pymupdf-1.27.1-cp310-abi3-win32.whl", hash = "sha256:fa33b512d82c6c4852edadf57f22d5f27d16243bb33dac0fbe4eb0f281c5b17e", size = 18006253, upload-time = "2026-02-12T13:48:07.129Z" },
     { url = "https://files.pythonhosted.org/packages/3e/99/fe4a7752990bf65277718fffbead4478de9afd1c7288d7a6d643f79a6fa7/pymupdf-1.27.1-cp310-abi3-win_amd64.whl", hash = "sha256:4b6268dff3a9d713034eba5c2ffce0da37c62443578941ac5df433adcde57b2f", size = 19236703, upload-time = "2026-02-11T15:04:19.607Z" },
+]
+
+[[package]]
+name = "pymysql"
+version = "1.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f5/ae/1fe3fcd9f959efa0ebe200b8de88b5a5ce3e767e38c7ac32fb179f16a388/pymysql-1.1.2.tar.gz", hash = "sha256:4961d3e165614ae65014e361811a724e2044ad3ea3739de9903ae7c21f539f03", size = 48258, upload-time = "2025-08-24T12:55:55.146Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/4c/ad33b92b9864cbde84f259d5df035a6447f91891f5be77788e2a3892bce3/pymysql-1.1.2-py3-none-any.whl", hash = "sha256:e6b1d89711dd51f8f74b1631fe08f039e7d76cf67a42a323d3178f0f25762ed9", size = 45300, upload-time = "2025-08-24T12:55:53.394Z" },
 ]
 
 [[package]]
