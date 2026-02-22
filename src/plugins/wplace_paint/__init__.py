@@ -11,7 +11,6 @@ require("nonebot_plugin_waiter")
 require("src.plugins.cache")
 require("src.plugins.group_pipe")
 from . import command as command
-from . import scheduler as scheduler
 
 __plugin_meta__ = PluginMetadata(
     name="WPlace Paint",

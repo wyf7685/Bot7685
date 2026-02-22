@@ -3,7 +3,6 @@ from typing import Literal, NoReturn
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
-    At,
     CommandMeta,
     Field,
     MultiVar,
@@ -13,75 +12,8 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 
-from ..scheduler import FETCH_INTERVAL_MINS
-
 alc = Alconna(
     "wplace",
-    Subcommand(
-        "bind",
-        Args[
-            "token",
-            str,
-            Field(completion=lambda: "wplace Cookies 中的 j (token)"),
-        ][
-            "cf_clearance",
-            str,
-            Field(completion=lambda: "wplace Cookies 中的 cf_clearance"),
-        ],
-        alias={"add"},
-        help_text="添加一个 WPlace 账号",
-    ),
-    Subcommand(
-        "query",
-        Args["target?#查询目标", At | Literal["$group"]],
-        alias={"q"},
-        help_text="查询目标用户当前绑定的所有账号信息",
-    ),
-    Subcommand(
-        "config",
-        Args["identifier?#账号标识,ID或用户名", str],
-        Option(
-            "--notify-mins|-n",
-            Args["notify_mins", int, Field(completion=lambda: "提前通知分钟数")],
-            help_text=f"提前多少分钟通知 (默认10,最小{FETCH_INTERVAL_MINS})",
-        ),
-        Option(
-            "--bind-target",
-            help_text="将账号绑定到当前群组(使其对$group可见)",
-        ),
-        Option(
-            "--set-target",
-            help_text="设置当前会话为推送目标",
-        ),
-        Option(
-            "--max-overflow-notify|-m",
-            Args[
-                "max_overflow_notify",
-                int,
-                Field(completion=lambda: "最大溢出通知次数 (默认2次, 0为禁用)"),
-            ],
-            help_text="设置最大溢出通知次数 (默认2次, 0为禁用)",
-        ),
-        Option(
-            "--target-droplets|-t",
-            Args["target_droplets?#目标droplets值", int],
-            help_text="设置目标droplets值,查询时显示达成时间(不附带参数则取消设置)",
-        ),
-        Option("--auto-paint", help_text="切换自动绘制,在达到通知阈值时消耗像素绘制"),
-        Option(
-            "--auto-purchase",
-            Args["item_id?#物品ID", int | Literal["list"]],
-            help_text="设置自动购买物品",
-        ),
-        alias={"c"},
-        help_text="修改已绑定账号的配置",
-    ),
-    Subcommand(
-        "remove",
-        Args["identifier?#账号标识,ID或用户名", str],
-        alias={"rm"},
-        help_text="移除已绑定的账号",
-    ),
     Subcommand(
         "preview",
         Args[
@@ -110,7 +42,6 @@ alc = Alconna(
                 Literal["today", "week", "month", "all"],
                 Field(completion=lambda: "排行榜类型(today/week/month/all)"),
             ],
-            Option("--all-users|-a"),
             help_text="查询指定区域的排行榜",
         ),
         help_text="排行榜功能",
@@ -144,14 +75,9 @@ alc = Alconna(
         alias={"tp"},
         help_text="模板相关功能",
     ),
-    Subcommand(
-        "find-color",
-        Args["color_name", str, Field(completion=lambda: "颜色名称")],
-        help_text="查询当前群组中拥有指定颜色的用户",
-    ),
     meta=CommandMeta(
-        description="WPlace 查询",
-        usage="wplace <add|query|config|remove> [参数...]",
+        description="WPlace 辅助",
+        usage="wplace <template|rank|preview> [params...]",
         author="wyf7685",
     ),
 )
@@ -162,8 +88,6 @@ matcher = on_alconna(
     skip_for_unmatch=False,
     use_cmd_start=True,
 )
-matcher.shortcut("wpq", {"command": "wplace query {*}"})
-matcher.shortcut("wpg", {"command": "wplace query $group"})
 matcher.shortcut("wpr", {"command": "wplace rank query {*}"})
 matcher.shortcut("wpt", {"command": "wplace template progress"})
 

@@ -10,8 +10,7 @@ from pydantic import TypeAdapter
 
 from src.utils import with_semaphore
 
-from .config import UserConfig
-from .schemas import FetchMeResponse, PixelInfo, PurchaseItem, RankType, RankUser
+from .schemas import PixelInfo, RankType, RankUser
 from .utils import WplacePixelCoords, with_retry
 
 WPLACE_ME_API_URL = "https://backend.wplace.live/me"
@@ -74,19 +73,13 @@ def flatten_request_failed_msg(exc_group: ExceptionGroup[RequestFailed]) -> str:
     return "\n".join(e.msg for e in flatten_exception_group(exc_group))
 
 
-async def _fetch_with_playwright[T](
-    url: str,
-    validate: ValidateFunc[T],
-    cfg: UserConfig | None = None,
-) -> T:
+async def _fetch_with_playwright[T](url: str, validate: ValidateFunc[T]) -> T:
     browser = await get_browser()
     async with await browser.new_context(
         user_agent=USER_AGENT,
         viewport={"width": 1920, "height": 1080},
         java_script_enabled=True,
     ) as ctx:
-        if cfg:
-            await ctx.add_cookies(construct_pw_cookies(cfg.token, cfg.cf_clearance))
         await ctx.add_init_script(PW_INIT_SCRIPT)
 
         async with await ctx.new_page() as page:
@@ -136,16 +129,11 @@ class InvalidCredentials(RequestFailed): ...
 @with_semaphore(8)
 @with_retry(TooManyRequests, InvalidCredentials, retries=3, delay=1)
 @run_sync
-def _fetch_with_cloudscraper[T](
-    url: str,
-    validate: ValidateFunc[T],
-    cfg: UserConfig | None = None,
-) -> T:
+def _fetch_with_cloudscraper[T](url: str, validate: ValidateFunc[T]) -> T:
     try:
         resp = cloudscraper.create_scraper().get(
             url,
             headers=_SCRAPER_HEADERS,
-            cookies=cfg and construct_requests_cookies(cfg.token, cfg.cf_clearance),
             proxies=_proxies,
             timeout=20,
         )
@@ -174,13 +162,9 @@ def _fetch_with_cloudscraper[T](
         raise RequestFailed("Failed to parse JSON response") from e
 
 
-async def _fetch_with_auto_fallback[T](
-    url: str,
-    validate: ValidateFunc[T],
-    cfg: UserConfig | None = None,
-) -> T:
+async def _fetch_with_auto_fallback[T](url: str, validate: ValidateFunc[T]) -> T:
     try:
-        return await _fetch_with_cloudscraper(url, validate, cfg)
+        return await _fetch_with_cloudscraper(url, validate)
     except* RequestFailed as exc_group:
         if any(e.status_code in {401, 500} for e in flatten_exception_group(exc_group)):
             logger.warning("cloudscraper got status code 401/500, not falling back")
@@ -190,7 +174,7 @@ async def _fetch_with_auto_fallback[T](
         cs_exc = exc_group
 
     try:
-        return await _fetch_with_playwright(url, validate, cfg)
+        return await _fetch_with_playwright(url, validate)
     except RequestFailed as exc:
         logger.warning(f"playwright also failed ({exc!r})")
         pw_exc = exc
@@ -199,45 +183,6 @@ async def _fetch_with_auto_fallback[T](
         "Both cloudscraper and playwright requests failed",
         [*flatten_exception_group(cs_exc), pw_exc],
     )
-
-
-async def fetch_me(cfg: UserConfig) -> FetchMeResponse:
-    resp = await _fetch_with_auto_fallback(
-        WPLACE_ME_API_URL,
-        FetchMeResponse.model_validate_json,
-        cfg=cfg,
-    )
-    if resp.id != cfg.wp_user_id or resp.name != cfg.wp_user_name:
-        cfg.wp_user_id = resp.id
-        cfg.wp_user_name = resp.name
-        cfg.save()
-    return resp
-
-
-WPLACE_PURCHASE_API_URL = "https://backend.wplace.live/purchase"
-
-
-@run_sync
-def purchase(cfg: UserConfig, item: PurchaseItem, amount: int) -> None:
-    try:
-        resp = cloudscraper.create_scraper().post(
-            WPLACE_PURCHASE_API_URL,
-            headers=_SCRAPER_HEADERS,
-            cookies=construct_requests_cookies(cfg.token, cfg.cf_clearance),
-            proxies=_proxies,
-            json={"product": {"id": item.value, "amount": amount}},
-            timeout=20,
-        )
-        resp.raise_for_status()
-    except Exception as e:
-        raise RequestFailed(f"Request failed: {e!r}") from e
-
-    try:
-        data = resp.json()
-    except Exception as e:
-        raise RequestFailed("Failed to parse JSON response") from e
-    if not data["success"]:
-        raise RequestFailed("Purchase failed: Unknown error")
 
 
 PIXEL_INFO_URL = "https://backend.wplace.live/s0/pixel/{coord.tlx}/{coord.tly}?x={coord.pxx}&y={coord.pxy}"

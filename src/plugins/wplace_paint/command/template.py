@@ -22,7 +22,7 @@ from ..template import (
     render_template_with_color,
 )
 from ..utils import WplacePixelCoords, normalize_color_name, parse_color_names
-from .depends import SceneID, TargetTemplate
+from .depends import SceneID, SceneTemplate
 from .matcher import finish, matcher, prompt
 
 
@@ -123,7 +123,7 @@ async def assign_template_bind(sid: SceneID) -> None:
 
 @matcher.assign("~template.preview.overlay")
 async def assign_template_preview_overlay(
-    cfg: TargetTemplate,
+    cfg: SceneTemplate,
     overlay_alpha: int | None = None,
 ) -> None:
     if overlay_alpha is not None and not (0 <= overlay_alpha <= 255):
@@ -145,7 +145,7 @@ async def assign_template_preview_overlay(
 
 @matcher.assign("~template.preview")
 async def assign_template_preview(
-    cfg: TargetTemplate,
+    cfg: SceneTemplate,
     background: str | None = None,
     pixels: int = 0,
 ) -> None:
@@ -167,7 +167,7 @@ async def assign_template_preview(
 
 
 @matcher.assign("~template.progress")
-async def assign_template_progress(cfg: TargetTemplate) -> None:
+async def assign_template_progress(cfg: SceneTemplate) -> None:
     try:
         progress_data = await calc_template_diff(cfg)
     except* RequestFailed as e:
@@ -210,7 +210,7 @@ async def assign_template_progress(cfg: TargetTemplate) -> None:
 
 @matcher.assign("~template.color")
 async def assign_template_color(
-    cfg: TargetTemplate,
+    cfg: SceneTemplate,
     color_name: list[str],
     background: str | None = None,
 ) -> None:
@@ -237,7 +237,7 @@ async def assign_template_color(
 
 @matcher.assign("~template.locate")
 async def assign_template_locate(
-    cfg: TargetTemplate,
+    cfg: SceneTemplate,
     color_name: str,
     max_count: int = 5,
 ) -> None:

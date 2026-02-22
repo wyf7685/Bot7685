@@ -1,4 +1,3 @@
-import base64
 import datetime as dt
 import functools
 import inspect
@@ -14,7 +13,6 @@ import anyio
 from bot7685_ext.wplace.consts import ALL_COLORS
 from loguru import logger
 from nonebot.utils import escape_tag
-from pydantic import BaseModel
 
 from .consts import FLAG_MAP
 
@@ -328,38 +326,3 @@ class PerfLog:
             return cast("Callable[P, R]", functools.update_wrapper(wrapper, func))
 
         return decorator
-
-
-class _TokenPayload(BaseModel):
-    userId: int  # noqa: N815
-    sessionId: str  # noqa: N815
-    iss: str
-    exp: int
-    iat: int
-
-    @property
-    def expires_at(self) -> dt.datetime:
-        return (
-            dt.datetime.fromtimestamp(self.exp, dt.UTC)
-            .astimezone(UTC8)
-            .replace(tzinfo=None)
-        )
-
-    def is_expired(self, ahead_secs: int = 60) -> bool:
-        return (self.expires_at - dt.datetime.now()).total_seconds() < ahead_secs
-
-
-def parse_token(token: str) -> _TokenPayload | None:
-    parts = token.split(".")
-    if len(parts) != 3:
-        return None
-
-    payload = parts[1]
-    if rem := len(payload) % 4:
-        payload += "=" * (4 - rem)
-
-    try:
-        data = base64.urlsafe_b64decode(payload).decode()
-        return _TokenPayload.model_validate_json(data)
-    except Exception:
-        return None

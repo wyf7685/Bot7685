@@ -2,14 +2,14 @@ from typing import Literal, NoReturn
 
 from nonebot import logger
 from nonebot.exception import MatcherException
-from nonebot_plugin_alconna import Query, UniMessage
+from nonebot_plugin_alconna import UniMessage
 
-from ..config import ranks, users
+from ..config import ranks
 from ..fetch import RequestFailed, flatten_request_failed_msg
 from ..rank import RANK_TITLE, find_regions_in_rect, get_regions_rank, render_rank
 from ..schemas import RankType
 from ..utils import WplacePixelCoords
-from .depends import SceneID, TargetTemplate
+from .depends import SceneID, SceneTemplate
 from .matcher import finish, matcher, prompt
 
 
@@ -51,7 +51,7 @@ async def _bind_regions(
 
 
 @matcher.assign("~rank.bind.template")
-async def assign_rank_bind_template(sid: SceneID, template: TargetTemplate) -> None:
+async def assign_rank_bind_template(sid: SceneID, template: SceneTemplate) -> None:
     _, (coord1, coord2) = template.load()
     await _bind_regions(sid, coord1, coord2)
 
@@ -88,7 +88,6 @@ RT_MAP: dict[Literal["today", "week", "month", "all"], RankType] = {
 async def assign_rank_query(
     sid: SceneID,
     rank_type: Literal["today", "week", "month", "all"],
-    all_users: Query[bool] = Query("~rank.query.all-users", default=False),
 ) -> None:
     cfg = ranks.load()
     if sid not in cfg or not cfg[sid]:
@@ -104,10 +103,6 @@ async def assign_rank_query(
     except* Exception as e:
         logger.exception("获取排行榜时发生错误")
         await finish(f"获取排行榜时发生意外错误: {e!r}")
-
-    if not all_users.result:
-        known_users = {*filter(None, (cfg.wp_user_id for cfg in users.load()))}
-        rank_data = [entry for entry in rank_data if entry.user_id in known_users]
 
     if not rank_data:
         await finish("未获取到任何排行榜数据，可能是 region ID 无效或暂无数据")
