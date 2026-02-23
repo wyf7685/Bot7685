@@ -34,16 +34,12 @@ class H(Highlight[MessageSegment, Message]):
             return segment.data["text"]
 
         shown_data = {k: v for k, v in segment.data.items() if not k.startswith("_")}
-        return f"[{cls.style.le(segment.type)}: {cls.apply(shown_data)}]"
+        return f"[{cls.style.le_u(segment.type)}: {cls.apply(shown_data)}]"
 
     @classmethod
     @override
     def message(cls, message: Message) -> str:
         return "".join(map(cls.segment, message))
-
-    @classmethod
-    def type(cls, event: Event, /) -> str:
-        return cls.event_type(event.get_event_name())
 
     @classmethod
     def friend(cls, friend: Friend) -> str:
@@ -118,16 +114,16 @@ class H(Highlight[MessageSegment, Message]):
 @patcher
 def patch_event(self: Event) -> str:
     return (
-        f"[{H.type(self)}]: {H.apply(self)}"
+        f"[{H.event_type(self)}]: {H.apply(self)}"
         if type(self).get_event_description is Event.get_event_description
-        else f"[{H.type(self)}]: {self.get_event_description()}"
+        else f"[{H.event_type(self)}]: {self.get_event_description()}"
     )
 
 
 @patcher
 def patch_message_event(self: MessageEvent) -> str:
     return (
-        f"[{H.type(self)}]: "
+        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.message_id)} from {H.source(self.data)}: "
         f"{H.apply(self.get_message())}"
     )
@@ -136,7 +132,7 @@ def patch_message_event(self: MessageEvent) -> str:
 @patcher
 def patch_friend_message_event(self: FriendMessageEvent) -> str:
     return (
-        f"[{H.type(self)}]: "
+        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.message_id)} from {H.source(self.data)}: "
         f"{H.apply(self.get_message())}"
     )
@@ -145,7 +141,7 @@ def patch_friend_message_event(self: FriendMessageEvent) -> str:
 @patcher
 def patch_message_recall_event(self: MessageRecallEvent) -> str:
     return (
-        f"[{H.type(self)}]: "
+        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.data.message_seq)} "
         f"from {H.source(self.data)} "
         f"deleted by {H.id(self.data.operator_id)}"
@@ -167,7 +163,7 @@ def patch_friend_nudge_event(self: FriendNudgeEvent) -> str:
         else self.data.display_action
     )
     suffix = self.data.display_suffix
-    return f"[{H.type(self)}]: {H.id(send)} {action} {H.id(recv)} {suffix}"
+    return f"[{H.event_type(self)}]: {H.id(send)} {action} {H.id(recv)} {suffix}"
 
 
 @patcher
@@ -179,7 +175,7 @@ def patch_group_nudge_event(self: GroupNudgeEvent) -> str:
     )
     suffix = self.data.display_suffix
     return (
-        f"[{H.type(self)}]: "
+        f"[{H.event_type(self)}]: "
         f"[Group:{H.id(self.data.group_id)}]: "
         f"{H.id(self.data.sender_id)} {action} "
         f"{H.id(self.data.receiver_id)} {suffix}"
@@ -189,7 +185,7 @@ def patch_group_nudge_event(self: GroupNudgeEvent) -> str:
 @patcher
 def patch_group_message_reaction_event(self: GroupMessageReactionEvent) -> str:
     return (
-        f"[{H.type(self)}]: "
+        f"[{H.event_type(self)}]: "
         f"Reaction {H.style.y(self.data.face_id)} "
         f"{'added to' if self.data.is_add else 'removed from'} "
         f"{H.id(self.data.message_seq)} "
@@ -200,7 +196,7 @@ def patch_group_message_reaction_event(self: GroupMessageReactionEvent) -> str:
 @patcher
 def patch_group_mute_event(self: GroupMuteEvent) -> str:
     return (
-        f"[{H.type(self)}]: "
+        f"[{H.event_type(self)}]: "
         f"{H.group_member_id(self.data.group_id, self.data.user_id)} "
         f"{'muted' if self.data.duration > 0 else 'unmuted'} "
         f"by {H.id(self.data.operator_id)}"
@@ -215,7 +211,7 @@ def patch_group_mute_event(self: GroupMuteEvent) -> str:
 @patcher
 def patch_group_whole_mute_event(self: GroupWholeMuteEvent) -> str:
     return (
-        f"[{H.type(self)}]: "
+        f"[{H.event_type(self)}]: "
         f"Group:{H.id(self.data.group_id)} "
         f"{'muted' if self.data.is_mute else 'unmuted'} "
         f"by {H.id(self.data.operator_id)}"

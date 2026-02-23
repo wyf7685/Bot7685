@@ -18,7 +18,7 @@ class H(Highlight): ...
 @patcher
 def patch_private_message_event(self: PrivateMessageEvent) -> str:
     return (
-        f"[{H.event_type(self.get_event_name())}]: "
+        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.message_id)} from "
         f"{H.id(self.get_user_id())}"
         f"@[{H.style.y(self.event.message.chat_type)}:"
@@ -30,7 +30,7 @@ def patch_private_message_event(self: PrivateMessageEvent) -> str:
 @patcher
 def patch_group_message_event(self: GroupMessageEvent) -> str:
     return (
-        f"[{H.event_type(self.get_event_name())}]: "
+        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.message_id)} "
         f"from {H.id(self.get_user_id())}"
         f"@[{H.style.y(self.event.message.chat_type)}:"
@@ -73,7 +73,7 @@ class P2PChatEnteredEvent(NoticeEvent):
     @override
     def get_log_string(self) -> str:
         return (
-            f"[{H.event_type(self.get_event_name())}]: "
+            f"[{H.event_type(self)}]: "
             f"{H.id(self.get_user_id())}"
             f"@[{H.style.y('p2p')}:{H.id(self.event.chat_id)}] entered chat, "
             f"last message: {H.id(self.event.last_message_id)} "

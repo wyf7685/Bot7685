@@ -1,10 +1,10 @@
 import datetime
 import functools
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from enum import Enum
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Protocol
 
-from nonebot.adapters import Message, MessageSegment
+from nonebot.adapters import Event, Message, MessageSegment
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
 from tarina import LRU
@@ -20,15 +20,20 @@ DATETIME_FIELDS = [
 ]
 
 
+class _StyleCall(Protocol):
+    def __call__(self, obj: object, /, *, escape: bool = False) -> str: ...
+
+
 class _Style:
-    def __getattr__(self, tag: str) -> Callable[[object], str]:
+    def __getattr__(self, tag: str) -> _StyleCall:
         tags = tag.split("_")
         prefix = "".join(f"<{tag}>" for tag in reversed(tags))
         suffix = "</>" * len(tags)
         lru: LRU[str, str] = LRU(64)
 
-        def fn(obj: object) -> str:
-            if (text := str(obj)) not in lru:
+        def fn(obj: object, /, *, escape: bool = False) -> str:
+            text = escape_tag(str(obj)) if escape else str(obj)
+            if text not in lru:
                 lru[text] = f"{prefix}{text}{suffix}"
             return lru[text]
 
@@ -39,7 +44,7 @@ class _Style:
 style = _Style()
 
 
-class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
+class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Event]:
     style: ClassVar[_Style] = style
     exclude_value: ClassVar[tuple[object, ...]] = ()
 
@@ -170,22 +175,20 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS]]:
 
     @classmethod
     def id(cls, id: str | int, /) -> str:
-        if isinstance(id, str):
-            id = escape_tag(id)
-        return style.c(id)
+        return style.c(id, escape=True)
 
     @classmethod
     def time(cls, datetime: datetime.datetime, /) -> str:
-        return style.y(datetime.strftime("%Y-%m-%d %H:%M:%S"))
+        return style.y(datetime.isoformat(sep=" ", timespec="seconds"))
 
     @classmethod
     def name(cls, id: str | int, name: str | None = None) -> str:
         return (
-            f"{style.y(escape_tag(name))}({cls.id(id)})"
+            f"{style.y(name, escape=True)}({cls.id(id)})"
             if name is not None
             else cls.id(id)
         )
 
     @classmethod
-    def event_type(cls, event_type: str, /) -> str:
-        return ".".join(style.lg(part) for part in event_type.split("."))
+    def event_type(cls, event: TE, /) -> str:
+        return ".".join(style.lg(part) for part in event.get_event_name().split("."))

@@ -65,7 +65,7 @@ def patcher[T: Event](call: PatcherCall[T]) -> PatcherHandle[T]:
 
 @patcher
 def patch_base_event(self: Event) -> str:
-    return f"[{Highlight.event_type(self.get_event_name())}]: {Highlight.apply(self)}"
+    return f"[{Highlight.event_type(self)}]: {Highlight.apply(self)}"
 
 
 @nonebot.get_driver().on_startup
