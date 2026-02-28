@@ -3,7 +3,6 @@ from typing import Literal, override
 
 import anyio
 import nonebot
-from nonebot import get_driver, require
 from nonebot.adapters.onebot.utils import rich_escape, truncate
 from nonebot.adapters.onebot.v11 import Adapter, Bot, Event, Message, MessageSegment
 from nonebot.adapters.onebot.v11.event import (
@@ -25,12 +24,12 @@ from nonebot.compat import model_dump, type_validate_python
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
-require("nonebot_plugin_apscheduler")
+nonebot.require("nonebot_plugin_apscheduler")
 from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
-require("src.plugins.gtg")
+nonebot.require("src.plugins.gtg")
 from src.plugins.gtg import call_later, call_soon
 
 from ..highlight import Highlight
@@ -45,6 +44,7 @@ class GroupInfo(BaseModel):
 
 
 logger = nonebot.logger.opt(colors=True)
+scheduler_job: dict[Bot, tuple[SchedulerJob, ...]] = {}
 group_info_cache: dict[int, GroupInfo] = {}
 user_card_cache: dict[tuple[int, int | None], str | None] = {}
 update_retry_id: dict[str, int] = {}
@@ -111,6 +111,35 @@ async def update_user_card_cache(bot: Bot) -> None:
                 name = data.get("nickname") or str(user_id)
         user_card_cache[(user_id, group_id)] = name
         call_later(5 * 60, reset, user_id, group_id)
+
+
+@nonebot.get_driver().on_bot_connect
+async def on_bot_connect(bot: Bot) -> None:
+    scheduler_job[bot] = (
+        scheduler.add_job(
+            update_group_cache,
+            args=(bot,),
+            trigger=CronTrigger(hour="*", minute="0"),
+        ),
+        scheduler.add_job(
+            update_user_card_cache,
+            args=(bot,),
+            trigger=CronTrigger(second="0/15"),
+        ),
+    )
+
+    async def update() -> None:
+        if bot in scheduler_job:
+            await update_group_cache(bot)
+
+    call_later(5, update)
+
+
+@nonebot.get_driver().on_bot_disconnect
+async def on_bot_disconnect(bot: Bot) -> None:
+    for job in scheduler_job.pop(bot, ()):
+        with contextlib.suppress(Exception):
+            job.remove()
 
 
 class H(Highlight[MessageSegment, Message]):
@@ -313,8 +342,8 @@ def custom_model[E: type[Event]](e: E) -> E:
     return e
 
 
-@get_driver().on_startup
-async def on_startup() -> None:
+@nonebot.get_driver().on_startup
+async def register_custom_models() -> None:
     Adapter.add_custom_model(*CUSTOM_MODELS)
     for e in CUSTOM_MODELS:
         logger.debug(f"Register v11 model: {H.style.g(e.__name__)}")
@@ -429,35 +458,3 @@ class ReactionRemoveNoticeEvent(ReactionNoticeEvent):  # Lagrange
             f"by {H.user(self.operator_id, self.group_id)}"
             f"@{H.group(self.group_id)}"
         )
-
-
-scheduler_job: dict[Bot, tuple[SchedulerJob, ...]] = {}
-
-
-@get_driver().on_bot_connect
-async def on_bot_connect(bot: Bot) -> None:
-    scheduler_job[bot] = (
-        scheduler.add_job(
-            update_group_cache,
-            args=(bot,),
-            trigger=CronTrigger(hour="*", minute="0"),
-        ),
-        scheduler.add_job(
-            update_user_card_cache,
-            args=(bot,),
-            trigger=CronTrigger(second="0/15"),
-        ),
-    )
-
-    async def update() -> None:
-        if bot in scheduler_job:
-            await update_group_cache(bot)
-
-    call_later(5, update)
-
-
-@get_driver().on_bot_disconnect
-async def on_bot_disconnect(bot: Bot) -> None:
-    for job in scheduler_job.pop(bot, []):
-        with contextlib.suppress(Exception):
-            job.remove()
