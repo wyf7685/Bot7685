@@ -191,4 +191,4 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
 
     @classmethod
     def event_type(cls, event: TE, /) -> str:
-        return ".".join(style.lg(part) for part in event.get_event_name().split("."))
+        return ".".join(map(style.lg, event.get_event_name().split(".")))

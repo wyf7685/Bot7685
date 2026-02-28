@@ -153,32 +153,30 @@ def patch_message_recall_event(self: MessageRecallEvent) -> str:
     )
 
 
+def _nudge_action(action: str, img_url: str, /) -> str:
+    return f"{action}[{H.style.i_c(img_url)}]" if img_url else action
+
+
 @patcher
 def patch_friend_nudge_event(self: FriendNudgeEvent) -> str:
-    send = self.self_id if self.data.is_self_send else self.data.user_id
-    recv = self.self_id if self.data.is_self_receive else self.data.user_id
-    action = (
-        f"[{self.data.display_action}:{self.data.display_action_img_url}]"
-        if self.data.display_action_img_url
-        else self.data.display_action
+    return (
+        f"[{H.event_type(self)}]: "
+        f"{H.id(self.self_id if self.data.is_self_send else self.data.user_id)} "
+        f"{_nudge_action(self.data.display_action, self.data.display_action_img_url)} "
+        f"{H.id(self.self_id if self.data.is_self_receive else self.data.user_id)} "
+        f"{self.data.display_suffix}"
     )
-    suffix = self.data.display_suffix
-    return f"[{H.event_type(self)}]: {H.id(send)} {action} {H.id(recv)} {suffix}"
 
 
 @patcher
 def patch_group_nudge_event(self: GroupNudgeEvent) -> str:
-    action = (
-        f"[{self.data.display_action}:{self.data.display_action_img_url}]"
-        if self.data.display_action_img_url
-        else self.data.display_action
-    )
-    suffix = self.data.display_suffix
     return (
         f"[{H.event_type(self)}]: "
         f"[Group:{H.id(self.data.group_id)}]: "
-        f"{H.id(self.data.sender_id)} {action} "
-        f"{H.id(self.data.receiver_id)} {suffix}"
+        f"{H.id(self.data.sender_id)} "
+        f"{_nudge_action(self.data.display_action, self.data.display_action_img_url)} "
+        f"{H.id(self.data.receiver_id)} "
+        f"{self.data.display_suffix}"
     )
 
 
