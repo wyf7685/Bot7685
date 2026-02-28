@@ -38,7 +38,6 @@ class H(Highlight[MessageSegment]):
 @patcher
 def patch_private_message_created_event(self: PrivateMessageCreatedEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.msg_id)} "
         f"from {H.user(self.user)}: "
         f"{H.apply(self.get_message())}"
@@ -47,18 +46,12 @@ def patch_private_message_created_event(self: PrivateMessageCreatedEvent) -> str
 
 @patcher
 def patch_private_message_deleted_event(self: PrivateMessageDeletedEvent) -> str:
-    return (
-        f"[{H.event_type(self)}]: "
-        f"Message {H.id(self.msg_id)} "
-        f"from {H.user(self.user)} "
-        f"deleted"
-    )
+    return f"Message {H.id(self.msg_id)} from {H.user(self.user)} deleted"
 
 
 @patcher
 def patch_public_message_created_event(self: PublicMessageCreatedEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.msg_id)} "
         f"from {H.user(self.user, self.member)}"
         f"@[Group:{H.scene(self.channel)}]: "
@@ -69,7 +62,6 @@ def patch_public_message_created_event(self: PublicMessageCreatedEvent) -> str:
 @patcher
 def patch_public_message_deleted_event(self: PublicMessageDeletedEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.msg_id)} "
         f"from {H.user(self.user, self.member)}"
         f"@[Group:{H.scene(self.channel)}] "
@@ -80,7 +72,6 @@ def patch_public_message_deleted_event(self: PublicMessageDeletedEvent) -> str:
 @patcher
 def patch_reaction_added_event(self: ReactionAddedEvent) -> str:
     return (
-        f"[{self}] "
         f"Reaction added to {H.id(self.msg_id)} "
         f"by {H.user(self.user)}"
         f"@[Group:{H.scene(self.guild)}]"
@@ -90,7 +81,6 @@ def patch_reaction_added_event(self: ReactionAddedEvent) -> str:
 @patcher
 def patch_reaction_removed_event(self: ReactionRemovedEvent) -> str:
     return (
-        f"[{self}] "
         f"Reaction removed from {H.id(self.msg_id)} "
         f"by {H.user(self.user)}"
         f"@[Group:{H.scene(self.guild)}]"

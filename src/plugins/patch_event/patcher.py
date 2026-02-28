@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Protocol, cast
 
 import nonebot
-from nonebot.adapters import Event
+from nonebot.adapters import Event, Message, MessageSegment
 
 from .config import plugin_config
 from .highlight import Highlight
@@ -18,6 +18,13 @@ class PatcherHandle[T: Event](Protocol):
 
     def patch(self) -> None: ...
     def restore(self) -> None: ...
+
+
+class Patcher(Protocol):
+    def __call__[T: Event](self, call: PatcherCall[T]) -> PatcherHandle[T]: ...
+    def bind[TMS: MessageSegment, TM: Message, TE: Event](
+        self, highlight_cls: type[Highlight[TMS, TM, TE]], /
+    ) -> Patcher: ...
 
 
 logger = nonebot.logger.opt(colors=True)
@@ -40,11 +47,19 @@ def apply_debug_wrapper[T: Event](call: PatcherCall[T]) -> PatcherCall[T]:
     return wrapper
 
 
-def patcher[T: Event](call: PatcherCall[T]) -> PatcherHandle[T]:
-    cls: type[T] = inspect.get_annotations(call)["self"]
+def _patcher[TE: Event, TMS: MessageSegment, TM: Message](
+    call: PatcherCall[TE],
+    highlight_cls: type[Highlight[TMS, TM, TE]],
+) -> PatcherHandle[TE]:
+    cls: type[TE] = inspect.get_annotations(call)["self"]
     assert issubclass(cls, Event)
     original = cls.get_log_string
-    wrapper = copy_signature(original, apply_debug_wrapper(call))
+
+    @functools.wraps(call)
+    def call_with_event_type(self: TE) -> str:
+        return f"[{highlight_cls.event_type(self)}]: {call(self)}"
+
+    wrapper = copy_signature(original, apply_debug_wrapper(call_with_event_type))
     module_name = cls.__module__.replace("nonebot.adapters.", "~")
 
     def patch() -> None:
@@ -55,7 +70,7 @@ def patcher[T: Event](call: PatcherCall[T]) -> PatcherHandle[T]:
         cls.get_log_string = original
         logger.debug(f"Restore <m>{module_name}</m>.<g>{cls.__name__}</g>")
 
-    handle = cast("PatcherHandle[T]", call)
+    handle = cast("PatcherHandle[TE]", call)
     handle.original = original
     handle.patch = patch
     handle.restore = restore
@@ -63,9 +78,26 @@ def patcher[T: Event](call: PatcherCall[T]) -> PatcherHandle[T]:
     return handle
 
 
+def _make_patcher() -> Patcher:
+    def bind[TMS: MessageSegment, TM: Message, TE: Event](
+        highlight_cls: type[Highlight[TMS, TM, TE]],
+    ) -> Patcher:
+        def wrapper(call: PatcherCall[TE]) -> PatcherHandle[TE]:
+            return _patcher(call, highlight_cls)
+
+        patcher = cast("Patcher", wrapper)
+        patcher.bind = bind
+        return patcher
+
+    return bind(Highlight)
+
+
+patcher = _make_patcher()
+
+
 @patcher
 def patch_base_event(self: Event) -> str:
-    return f"[{Highlight.event_type(self)}]: {Highlight.apply(self)}"
+    return Highlight.apply(self)
 
 
 @nonebot.get_driver().on_startup

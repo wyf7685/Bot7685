@@ -71,13 +71,12 @@ class H(Highlight):
 
 @patcher
 def patch_event(self: Event) -> str:
-    return f"[{H.event_type(self)}]: {H.apply(model_dump(self))}"
+    return H.apply(model_dump(self))
 
 
 @patcher
 def patch_direct_message_create_event(self: DirectMessageCreateEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.id)} "
         f"from {H.user(self.author)}: "
         f"{H.apply(self.get_message())}"
@@ -87,7 +86,6 @@ def patch_direct_message_create_event(self: DirectMessageCreateEvent) -> str:
 @patcher
 def patch_direct_message_update_event(self: DirectMessageUpdateEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.id)} "
         f"from {H.user(self.author)} "
         f"updated to {H.apply(Message.from_guild_message(self))}"
@@ -97,7 +95,6 @@ def patch_direct_message_update_event(self: DirectMessageUpdateEvent) -> str:
 @patcher
 def patch_direct_message_delete_event(self: DirectMessageDeleteEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.id)} "
         f"from {H.id(self.channel_id)} "
         f"deleted at {H.time(self.time)}"
@@ -107,7 +104,6 @@ def patch_direct_message_delete_event(self: DirectMessageDeleteEvent) -> str:
 @patcher
 def patch_guild_message_create_event(self: GuildMessageCreateEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.id)} "
         f"from {H.user(self.author)}@{H.channel(self)}: "
         f"{H.apply(self.get_message())}"
@@ -117,7 +113,6 @@ def patch_guild_message_create_event(self: GuildMessageCreateEvent) -> str:
 @patcher
 def patch_guild_message_update_event(self: GuildMessageUpdateEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.id)} "
         f"from {H.user(self.author)}@{H.channel(self)} "
         f"updated to {H.apply(Message.from_guild_message(self))}"
@@ -127,8 +122,5 @@ def patch_guild_message_update_event(self: GuildMessageUpdateEvent) -> str:
 @patcher
 def patch_guild_message_delete_event(self: GuildMessageDeleteEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
-        f"Message {H.id(self.id)} "
-        f"from {H.channel(self)} "
-        f"deleted at {H.time(self.time)}"
+        f"Message {H.id(self.id)} from {H.channel(self)} deleted at {H.time(self.time)}"
     )

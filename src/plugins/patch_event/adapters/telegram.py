@@ -26,7 +26,6 @@ class H(Highlight):
 @patcher
 def patch_group_message_event(self: GroupMessageEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.message_id)} "
         f"from {H.user(self.from_)}"
         f"@[Chat {H.chat(self.chat)}]: "
@@ -37,7 +36,6 @@ def patch_group_message_event(self: GroupMessageEvent) -> str:
 @patcher
 def patch_forum_topic_message_event(self: ForumTopicMessageEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.message_id)} "
         f"from {H.user(self.from_)}"
         f"@[Chat {H.chat(self.chat)}]: "
@@ -49,7 +47,6 @@ def patch_forum_topic_message_event(self: ForumTopicMessageEvent) -> str:
 @patcher
 def patch_private_message_event(self: PrivateMessageEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.message_id)} "
         f"from {H.user(self.from_)}: "
         f"{H.apply(self.original_message)}"
@@ -59,7 +56,6 @@ def patch_private_message_event(self: PrivateMessageEvent) -> str:
 @patcher
 def patch_group_edited_message_event(self: GroupEditedMessageEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"EditedMessage {H.id(self.message_id)} "
         f"from {H.user(self.from_)}"
         f"@[Chat {H.chat(self.chat)}]: "
@@ -70,7 +66,6 @@ def patch_group_edited_message_event(self: GroupEditedMessageEvent) -> str:
 @patcher
 def patch_forum_topic_edited_message_event(self: ForumTopicEditedMessageEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"EditedMessage {H.id(self.message_id)} "
         f"from {H.user(self.from_)}"
         f"@[Chat {H.chat(self.chat)} "
@@ -82,7 +77,6 @@ def patch_forum_topic_edited_message_event(self: ForumTopicEditedMessageEvent) -
 @patcher
 def patch_private_edited_message_event(self: PrivateEditedMessageEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"EditedMessage {H.id(self.message_id)} "
         f"from {H.user(self.from_)}: "
         f"{H.apply(self.get_message())}"

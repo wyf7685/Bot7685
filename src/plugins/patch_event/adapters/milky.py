@@ -210,16 +210,15 @@ class H(Highlight[MessageSegment, Message]):
 @patcher
 def patch_event(self: Event) -> str:
     return (
-        f"[{H.event_type(self)}]: {H.apply(self)}"
+        H.apply(self)
         if type(self).get_event_description is Event.get_event_description
-        else f"[{H.event_type(self)}]: {self.get_event_description()}"
+        else self.get_event_description()
     )
 
 
 @patcher
 def patch_message_event(self: MessageEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.message_id)} from {H.source(self.data)}: "
         f"{H.apply(self.get_message())}"
     )
@@ -228,7 +227,6 @@ def patch_message_event(self: MessageEvent) -> str:
 @patcher
 def patch_friend_message_event(self: FriendMessageEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.message_id)} from {H.source(self.data)}: "
         f"{H.apply(self.get_message())}"
     )
@@ -237,7 +235,6 @@ def patch_friend_message_event(self: FriendMessageEvent) -> str:
 @patcher
 def patch_message_recall_event(self: MessageRecallEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Message {H.id(self.data.message_seq)} "
         f"from {H.source(self.data)} "
         f"deleted by {H.user(self.data.operator_id)}"
@@ -256,7 +253,6 @@ def _nudge_action(action: str, img_url: str, /) -> str:
 @patcher
 def patch_friend_nudge_event(self: FriendNudgeEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"{H.user(self.self_id if self.data.is_self_send else self.data.user_id)} "
         f"{_nudge_action(self.data.display_action, self.data.display_action_img_url)} "
         f"{H.user(self.self_id if self.data.is_self_receive else self.data.user_id)} "
@@ -267,7 +263,6 @@ def patch_friend_nudge_event(self: FriendNudgeEvent) -> str:
 @patcher
 def patch_group_nudge_event(self: GroupNudgeEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"{H.group(self.data.group_id)}: "
         f"{H.user(self.data.sender_id, self.data.group_id)} "
         f"{_nudge_action(self.data.display_action, self.data.display_action_img_url)} "
@@ -279,7 +274,6 @@ def patch_group_nudge_event(self: GroupNudgeEvent) -> str:
 @patcher
 def patch_group_message_reaction_event(self: GroupMessageReactionEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"Reaction {H.style.y(self.data.face_id)} "
         f"{'added to' if self.data.is_add else 'removed from'} "
         f"{H.id(self.data.message_seq)} "
@@ -290,7 +284,6 @@ def patch_group_message_reaction_event(self: GroupMessageReactionEvent) -> str:
 @patcher
 def patch_group_mute_event(self: GroupMuteEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"{H.group_member(self.data.group_id, self.data.user_id)} "
         f"{'muted' if self.data.duration > 0 else 'unmuted'} "
         f"by {H.user(self.data.operator_id, self.data.group_id)}"
@@ -305,7 +298,6 @@ def patch_group_mute_event(self: GroupMuteEvent) -> str:
 @patcher
 def patch_group_whole_mute_event(self: GroupWholeMuteEvent) -> str:
     return (
-        f"[{H.event_type(self)}]: "
         f"{H.group(self.data.group_id)} "
         f"{'muted' if self.data.is_mute else 'unmuted'} "
         f"by {H.user(self.data.operator_id, self.data.group_id)}"
