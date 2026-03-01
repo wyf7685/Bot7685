@@ -7,13 +7,20 @@ get_new_page, replacing them with virtual HTTP URLs that are served from the
 *bot-side* filesystem via Playwright's route interception API.
 
 Virtual URL format:
-    http://{dir_hash}.htmlrender-local.bot/<relative-path>
+    http://{dir_hash}.htmlrender-local.bot/{abs_dir_path}/
 where:
     dir_hash = format(hash(str(abs_dir)) & 0xFFFFFFFFFFFFFFFF, "x")
+    abs_dir_path = POSIX absolute path of the template directory
 
-The hash is computed over the resolved absolute directory path, so the same
-physical directory always maps to the same virtual host within a single
-process run.
+Embedding the absolute directory path as the URL path component lets the
+browser resolve relative references (including `../`) correctly:
+    ../images/file.png
+    → http://{hash}.bot/opt/.../resources/images/file.png
+The handler then strips the URL path and serves it as an absolute FS path.
+
+A catch-all proxy route (registered first, lowest priority) intercepts all
+external HTTP/HTTPS requests, proxies them via httpx on the bot side, and
+adds Access-Control-Allow-Origin: * to avoid CORS errors.
 
 Patch points
 ------------
@@ -26,6 +33,7 @@ Patch points
 
 import contextvars
 import importlib.metadata
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from mimetypes import guess_type
 from pathlib import Path
@@ -33,18 +41,17 @@ from typing import TYPE_CHECKING, Literal
 from urllib.parse import unquote, urlparse
 
 import anyio
+import httpx
 import nonebot
-from nonebot.utils import logger_wrapper
+from nonebot.utils import escape_tag, logger_wrapper
+from playwright.async_api import Page, Request, Route
+
+type RouteHandler = Callable[[Route, Request], object]
 
 log = logger_wrapper("pw")
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Callable
-
     import nonebot_plugin_htmlrender.browser as _browser_mod
-    from playwright.async_api import Page, Request, Route
-
-    type RouteHandler = Callable[[Route, Request], object]
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -71,7 +78,7 @@ def _path_hash(path: Path) -> str:
     Python's built-in hash() can return negative values; masking with
     0xFFFF_FFFF_FFFF_FFFF guarantees a non-negative 64-bit integer.
     """
-    return format(hash(str(path.resolve())) & 0xFFFFFFFFFFFFFFFF, "x")
+    return format(hash(str(path.resolve())) & 0xFFFF_FFFF_FFFF_FFFF, "x")
 
 
 def _virtual_base(local_dir: Path) -> str:
@@ -96,32 +103,37 @@ def _parse_file_url(url: str) -> Path | None:
     return Path(path_str)
 
 
-def _make_file_handler(local_dir: Path) -> RouteHandler:
-    """Return a Playwright route handler that serves files from local_dir."""
+def _make_file_handler() -> RouteHandler:
+    """Return a Playwright route handler that interprets the URL path as an
+    absolute filesystem path and serves the corresponding file.
 
-    resolved_dir = local_dir.resolve()
+    Because the absolute directory path is embedded in the virtual URL
+    (see _register_dir), the browser correctly resolves `../` references
+    before the request reaches this handler.  The URL path is therefore
+    always a valid absolute FS path — no extra resolution is needed.
+    """
 
     async def handler(route: Route, request: Request) -> None:
-        rel = unquote(urlparse(request.url).path).lstrip("/")
+        url_path = unquote(urlparse(request.url).path)
 
-        if not rel:
-            # page.goto(virtual_base + "/") triggers this; return an empty
-            # placeholder page so Playwright considers the navigation done.
+        if not url_path or url_path == "/":
+            # page.goto() root navigation — return an empty placeholder so
+            # Playwright considers the navigation successful.
             await route.fulfill(content_type="text/html", body=b"")
             return
 
-        target = await anyio.Path(resolved_dir / rel).resolve()
-
-        # Path-traversal guard
-        try:
-            target.relative_to(resolved_dir)
-        except ValueError:
-            log("WARNING", f"Path traversal blocked: {target}")
-            await route.fulfill(status=403)
-            return
+        # Convert URL path component back to an absolute filesystem path.
+        # POSIX: "/opt/venv/.../file.css" → anyio.Path("/opt/venv/.../file.css")
+        # Windows: "/C:/Users/.../file.css" → anyio.Path("C:/Users/.../file.css")
+        stripped = url_path.lstrip("/")
+        target = (
+            anyio.Path(stripped)  # Windows: "C:/..." is already absolute
+            if len(stripped) >= 2 and stripped[1] == ":"
+            else anyio.Path("/" + stripped)  # POSIX: restore leading "/"
+        )
 
         if not await target.is_file():
-            log("DEBUG", f"404: {target}")
+            log("DEBUG", f"404: <y>{escape_tag(str(target))}</>")
             await route.fulfill(status=404)
             return
 
@@ -140,18 +152,32 @@ def _register_dir(
 ) -> str:
     """Ensure a virtual HTTP route exists in *routes* for *local_dir*.
 
-    Returns the virtual base URL with a trailing slash, suitable for use as
-    the target of page.goto() or as a base_url for Browser.new_page().
+    Returns a virtual URL with the absolute directory path embedded as the
+    URL path component, e.g.:
+        http://{hash}.htmlrender-local.bot/opt/venv/.../templates/
+
+    Using this as the page.goto() target and base_url lets the browser
+    resolve `../` references to the correct absolute paths, which the
+    handler then maps back to the local filesystem.
     """
     resolved = local_dir.resolve()
-    virtual_base = _virtual_base(resolved)
-    pattern = f"{virtual_base}/**"
+    virtual_host = _virtual_base(resolved)
+    pattern = f"{virtual_host}/**"
 
     if not any(p == pattern for p, _ in routes):
-        routes.append((pattern, _make_file_handler(resolved)))
-        log("DEBUG", f"Virtual route: {pattern} → {resolved}")
+        routes.append((pattern, _make_file_handler()))
+        log("DEBUG", f"Virtual route: <y>{pattern}</>")
 
-    return virtual_base + "/"
+    # Encode the absolute directory path as the URL path component.
+    # POSIX: /opt/venv/... → /opt/venv/...
+    # Windows: C:\Users\... → /C:/Users/...
+    path_str = str(resolved)
+    url_path = (
+        "/" + path_str.replace("\\", "/")  # Windows: prefix "/"
+        if len(path_str) >= 2 and path_str[1] == ":"
+        else path_str  # POSIX: already starts with "/"
+    )
+    return f"{virtual_host}{url_path}/"
 
 
 def _virtualize(url: str, routes: list[tuple[str, RouteHandler]]) -> str:
@@ -163,6 +189,69 @@ def _virtualize(url: str, routes: list[tuple[str, RouteHandler]]) -> str:
     if local_dir is None:
         return url
     return _register_dir(routes, local_dir)
+
+
+@asynccontextmanager
+async def _make_proxy_handler() -> AsyncIterator[RouteHandler]:
+    """Yield a catch-all route handler that proxies external HTTP/HTTPS
+    requests through the bot-side httpx client.
+
+    This prevents CORS errors for external resources (CDN fonts, scripts, etc.)
+    referenced by templates.  Every response gets Access-Control-Allow-Origin: *
+    added so the browser accepts cross-origin subresources.
+
+    Virtual-host requests that slip past the specific route registrations are
+    passed through via route.fallback() rather than proxied.
+    """
+
+    async def handler(route: Route, request: Request) -> None:
+        # Virtual-host URLs are handled by more specific routes registered
+        # later (higher priority in Playwright LIFO).  If one reaches here
+        # something went wrong — fall back rather than trying to proxy it.
+        if _VIRTUAL_HOST_SUFFIX in (urlparse(request.url).hostname or ""):
+            log(
+                "WARNING",
+                "Request for virtual host reached proxy handler: "
+                f"<y>{escape_tag(request.url)}</>",
+            )
+            await route.fallback()
+            return
+
+        url = request.url
+        try:
+            resp = await client.request(
+                method=request.method,
+                url=url,
+                # Strip headers that don't make sense when relayed
+                headers={
+                    k: v
+                    for k, v in request.headers.items()
+                    if k.lower() not in {"host", "origin", "referer"}
+                },
+                content=request.post_data_buffer,
+            )
+            # Drop transfer/encoding headers; Playwright handles them itself
+            resp_headers = {
+                k: v
+                for k, v in resp.headers.multi_items()
+                if k.lower() not in {"content-encoding", "transfer-encoding"}
+            }
+            resp_headers["access-control-allow-origin"] = "*"
+            resp_headers["access-control-allow-credentials"] = "true"
+            await route.fulfill(
+                status=resp.status_code,
+                headers=resp_headers,
+                body=resp.content,
+            )
+        except Exception as exc:
+            log(
+                "WARNING",
+                f"Proxy failed for <y>{escape_tag(url)}</>: {escape_tag(str(exc))}",
+            )
+            await route.fallback()
+
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        yield handler
 
 
 # ---------------------------------------------------------------------------
@@ -188,7 +277,15 @@ async def _patched_get_new_page(
     if isinstance(base_url := kwargs.get("base_url"), str):
         kwargs["base_url"] = _virtualize(base_url, routes)
 
-    async with _orig_get_new_page(device_scale_factor, **kwargs) as page:
+    async with (
+        _orig_get_new_page(device_scale_factor, **kwargs) as page,
+        _make_proxy_handler() as proxy_handler,
+    ):
+        # Proxy catch-all registered first → lowest priority in Playwright LIFO.
+        # Handles external CDN resources and adds CORS headers to all responses.
+        await page.route("**/*", proxy_handler)
+        # Virtual host routes registered last → highest priority.
+        # These override the proxy for requests to our virtual hosts.
         for pattern, handler in routes:
             await page.route(pattern, handler)
         yield page
