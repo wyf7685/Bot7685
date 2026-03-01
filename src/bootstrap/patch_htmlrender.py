@@ -7,16 +7,17 @@ get_new_page, replacing them with virtual HTTP URLs that are served from the
 *bot-side* filesystem via Playwright's route interception API.
 
 Virtual URL format:
-    http://{dir_hash}.htmlrender-local.bot/{abs_dir_path}/
+    http://htmlrender-local.bot/{abs_dir_path}/
 where:
-    dir_hash = format(hash(str(abs_dir)) & 0xFFFFFFFFFFFFFFFF, "x")
     abs_dir_path = POSIX absolute path of the template directory
 
 Embedding the absolute directory path as the URL path component lets the
 browser resolve relative references (including `../`) correctly:
     ../images/file.png
-    → http://{hash}.bot/opt/.../resources/images/file.png
-The handler then strips the URL path and serves it as an absolute FS path.
+    → http://htmlrender-local.bot/opt/.../resources/images/file.png
+The handler strips the URL path and serves it as an absolute FS path.
+All directories share the same virtual host; the absolute path in the URL
+path component provides unambiguous file identity without any hashing.
 
 A catch-all proxy route (registered first, lowest priority) intercepts all
 external HTTP/HTTPS requests, proxies them via httpx on the bot side, and
@@ -25,17 +26,16 @@ adds Access-Control-Allow-Origin: * to avoid CORS errors.
 Patch points
 ------------
 * `nonebot_plugin_htmlrender.browser.get_new_page`  — register routes on page
-* `nonebot_plugin_htmlrender.data_source.get_new_page` — same (direct import)
 * `nonebot_plugin_htmlrender.data_source.html_to_pic`  — full replacement to
   bypass the original `file:` check and inject the ContextVar before opening
   the page.
 """
 
+import contextlib
 import contextvars
 import importlib.metadata
 import re
 from collections.abc import AsyncIterator, Callable
-from contextlib import asynccontextmanager
 from mimetypes import guess_type
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -59,7 +59,9 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 _PATCH_HTMLRENDER_VERSION = "0.6.7"
-_VIRTUAL_HOST_SUFFIX = "htmlrender-local.bot"
+_VIRTUAL_HOST = "htmlrender-local.bot"
+_VIRTUAL_BASE = f"http://{_VIRTUAL_HOST}"
+_VIRTUAL_PATTERN = f"{_VIRTUAL_BASE}/**"
 
 # ContextVar: list of (glob_pattern, async_handler) pairs to be registered
 # on every page opened within the current async task's call to html_to_pic.
@@ -68,23 +70,32 @@ _ctx_routes: contextvars.ContextVar[list[tuple[str, RouteHandler]] | None] = (
     contextvars.ContextVar("_htmlrender_pw_routes", default=None)
 )
 
+
+@contextlib.asynccontextmanager
+async def _set_routes(routes: list[tuple[str, RouteHandler]]) -> AsyncIterator[None]:
+    """Context manager to set the ContextVar for route registrations."""
+    token = _ctx_routes.set(routes)
+    try:
+        yield
+    finally:
+        _ctx_routes.reset(token)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _path_hash(path: Path) -> str:
-    """Unsigned hex hash of the resolved absolute path string.
+def _abs_path_to_url_path(path: Path) -> str:
+    """Convert a resolved absolute Path to a URL path component string.
 
-    Python's built-in hash() can return negative values; masking with
-    0xFFFF_FFFF_FFFF_FFFF guarantees a non-negative 64-bit integer.
+    POSIX: /opt/venv/lib/...  → /opt/venv/lib/...
+    Windows: C:\\Users\\...  → /C:/Users/...
     """
-    return format(hash(str(path.resolve())) & 0xFFFF_FFFF_FFFF_FFFF, "x")
-
-
-def _virtual_base(local_dir: Path) -> str:
-    """Return the virtual HTTP base URL (no trailing slash) for local_dir."""
-    return f"http://{_path_hash(local_dir)}.{_VIRTUAL_HOST_SUFFIX}"
+    path_str = str(path)
+    if len(path_str) >= 2 and path_str[1] == ":":  # Windows drive letter
+        return "/" + path_str.replace("\\", "/")
+    return path_str  # POSIX: already starts with "/"
 
 
 def _parse_file_url(url: str) -> Path | None:
@@ -104,95 +115,70 @@ def _parse_file_url(url: str) -> Path | None:
     return Path(path_str)
 
 
-def _make_file_handler() -> RouteHandler:
-    """Return a Playwright route handler that interprets the URL path as an
-    absolute filesystem path and serves the corresponding file.
-
-    Because the absolute directory path is embedded in the virtual URL
-    (see _register_dir), the browser correctly resolves `../` references
-    before the request reaches this handler.  The URL path is therefore
-    always a valid absolute FS path — no extra resolution is needed.
+async def _file_handler(route: Route, request: Request) -> None:
     """
+    Playwright route handler that serves files from the bot-side filesystem
+    based on the URL path component.
 
-    async def handler(route: Route, request: Request) -> None:
-        url_path = unquote(urlparse(request.url).path)
+    The URL path is interpreted as an absolute filesystem path.  This works
+    because the virtual URL format embeds the absolute directory path, and
+    the browser resolves relative references before the request reaches this
+    handler.
 
-        if not url_path or url_path == "/":
-            # page.goto() root navigation — return an empty placeholder so
-            # Playwright considers the navigation successful.
-            await route.fulfill(content_type="text/html", body=b"")
-            return
-
-        # Convert URL path component back to an absolute filesystem path.
-        # POSIX: "/opt/venv/.../file.css" → anyio.Path("/opt/venv/.../file.css")
-        # Windows: "/C:/Users/.../file.css" → anyio.Path("C:/Users/.../file.css")
-        stripped = url_path.lstrip("/")
-        target = anyio.Path(
-            stripped  # Windows: "C:/..." is already absolute
-            if len(stripped) >= 2 and stripped[1] == ":"
-            else "/" + stripped  # POSIX: restore leading "/"
-        )
-
-        if not await target.is_file():
-            log("DEBUG", f"404: <y>{escape_tag(str(target))}</>")
-            await route.fulfill(status=404)
-            return
-
-        mime, _ = guess_type(target.name)
-        await route.fulfill(
-            body=await target.read_bytes(),
-            content_type=mime or "application/octet-stream",
-        )
-
-    return handler
-
-
-def _register_dir(
-    routes: list[tuple[str, RouteHandler]],
-    local_dir: Path,
-) -> str:
-    """Ensure a virtual HTTP route exists in *routes* for *local_dir*.
-
-    Returns a virtual URL with the absolute directory path embedded as the
-    URL path component, e.g.:
-        http://{hash}.htmlrender-local.bot/opt/venv/.../templates/
-
-    Using this as the page.goto() target and base_url lets the browser
-    resolve `../` references to the correct absolute paths, which the
-    handler then maps back to the local filesystem.
+    For example, a request to http://htmlrender-local.bot/opt/file.css
+    corresponds to the bot-side file at /opt/file.css.
     """
-    resolved = local_dir.resolve()
-    virtual_host = _virtual_base(resolved)
-    pattern = f"{virtual_host}/**"
+    url_path = unquote(urlparse(request.url).path)
 
-    if not any(p == pattern for p, _ in routes):
-        routes.append((pattern, _make_file_handler()))
-        log("DEBUG", f"Virtual route: <y>{pattern}</>")
+    if not url_path or url_path == "/":
+        # page.goto() root navigation — return an empty placeholder so
+        # Playwright considers the navigation successful.
+        await route.fulfill(content_type="text/html", body=b"")
+        return
 
-    # Encode the absolute directory path as the URL path component.
-    # POSIX: /opt/venv/... → /opt/venv/...
-    # Windows: C:\Users\... → /C:/Users/...
-    path_str = str(resolved)
-    url_path = (
-        "/" + path_str.replace("\\", "/")  # Windows: prefix "/"
-        if len(path_str) >= 2 and path_str[1] == ":"
-        else path_str  # POSIX: already starts with "/"
+    # Convert URL path component back to an absolute filesystem path.
+    # POSIX: "/opt/venv/.../file.css" → anyio.Path("/opt/venv/.../file.css")
+    # Windows: "/C:/Users/.../file.css" → anyio.Path("C:/Users/.../file.css")
+    stripped = url_path.lstrip("/")
+    target = anyio.Path(
+        stripped  # Windows: "C:/..." is already absolute
+        if len(stripped) >= 2 and stripped[1] == ":"
+        else "/" + stripped  # POSIX: restore leading "/"
     )
-    return f"{virtual_host}{url_path}/"
+
+    if not await target.is_file():
+        log("DEBUG", f"404: <y>{escape_tag(str(target))}</>")
+        await route.fulfill(status=404)
+        return
+
+    mime, _ = guess_type(target.name)
+    await route.fulfill(
+        body=await target.read_bytes(),
+        content_type=mime or "application/octet-stream",
+    )
 
 
-def _virtualize(url: str, routes: list[tuple[str, RouteHandler]]) -> str:
-    """If *url* is a file:// URL, register a route and return the virtual URL.
+def _file_url_to_virtual(url: str, routes: list[tuple[str, RouteHandler]]) -> str:
+    """Convert a file:// URL to a virtual HTTP URL and ensure the shared file
+    route is registered in *routes* (idempotent).
 
-    Any other URL scheme is returned unchanged.
+    Returns the URL unchanged if it is not a file:// URL.
     """
     local_dir = _parse_file_url(url)
     if local_dir is None:
         return url
-    return _register_dir(routes, local_dir)
+
+    resolved = local_dir.resolve()
+
+    # Register the single shared file handler once per page session.
+    if not any(p == _VIRTUAL_PATTERN for p, _ in routes):
+        routes.append((_VIRTUAL_PATTERN, _file_handler))
+        log("DEBUG", f"Virtual route registered: <y>{_VIRTUAL_PATTERN}</>")
+
+    return f"{_VIRTUAL_BASE}{_abs_path_to_url_path(resolved)}/"
 
 
-@asynccontextmanager
+@contextlib.asynccontextmanager
 async def _make_proxy_handler() -> AsyncIterator[RouteHandler]:
     """Yield a catch-all route handler that proxies external HTTP/HTTPS
     requests through the bot-side httpx client.
@@ -211,7 +197,7 @@ async def _make_proxy_handler() -> AsyncIterator[RouteHandler]:
         # something went wrong — return 404 immediately instead of fallback(),
         # because fallback() on the lowest-priority handler sends the request
         # to the real network, causing a DNS timeout for our virtual hosts.
-        if _VIRTUAL_HOST_SUFFIX in (urlparse(request.url).hostname or ""):
+        if _VIRTUAL_HOST in (urlparse(request.url).hostname or ""):
             log(
                 "WARNING",
                 "Request for virtual host reached proxy handler (route miss?): "
@@ -268,7 +254,7 @@ else:
     _orig_get_new_page = None
 
 
-@asynccontextmanager
+@contextlib.asynccontextmanager
 async def _patched_get_new_page(
     device_scale_factor: float = 2,
     **kwargs: object,
@@ -277,19 +263,17 @@ async def _patched_get_new_page(
 
     # Transform base_url when it is a file:// URL.
     # If called from _patched_html_to_pic, base_url was already virtualised
-    # there; _virtualize() will return it unchanged (not a file:// URL).
+    # there; _file_url_to_virtual() will return it unchanged (not file://).
     if isinstance(base_url := kwargs.get("base_url"), str):
-        kwargs["base_url"] = _virtualize(base_url, routes)
+        kwargs["base_url"] = _file_url_to_virtual(base_url, routes)
 
     async with (
         _orig_get_new_page(device_scale_factor, **kwargs) as page,
         _make_proxy_handler() as proxy_handler,
     ):
         # Proxy catch-all registered first → lowest priority in Playwright LIFO.
-        # Handles external CDN resources and adds CORS headers to all responses.
         await page.route("**/*", proxy_handler)
-        # Virtual host routes registered last → highest priority.
-        # These override the proxy for requests to our virtual hosts.
+        # Virtual host route registered last → highest priority.
         for pattern, handler in routes:
             await page.route(pattern, handler)
         yield page
@@ -317,42 +301,41 @@ async def _patched_html_to_pic(
     routes: list[tuple[str, RouteHandler]] = []
 
     # Virtualise template_path.
-    template_path = _virtualize(template_path, routes)
+    template_path = _file_url_to_virtual(template_path, routes)
 
     # Virtualise base_url if present; otherwise fall back to template_path so
     # the browser context always has a virtual base_url set.
     if isinstance(base_url := kwargs.get("base_url"), str):
-        kwargs["base_url"] = _virtualize(base_url, routes)
+        kwargs["base_url"] = _file_url_to_virtual(base_url, routes)
     else:
         kwargs["base_url"] = template_path
 
     # Publish routes to the ContextVar so _patched_get_new_page can pick them
     # up even if called indirectly through other wrappers.
-    token = _ctx_routes.set(routes)
-    try:
-        async with _patched_get_new_page(device_scale_factor, **kwargs) as page:
-            page.on("console", lambda msg: log("DEBUG", f"浏览器控制台: {msg.text}"))
-            # Skip page.goto() to the virtual host URL.
-            # Instead inject a <base href> tag so the browser resolves all
-            # relative resource references against the virtual template URL.
-            # The routes registered above intercept those requests and serve
-            # files from the bot-side filesystem.
-            base_tag = f'<base href="{template_path}">'
-            if m := re.search(r"<head(?:\s[^>]*)?>", html, re.IGNORECASE):
-                insert_at = m.end()
-                html = html[:insert_at] + base_tag + html[insert_at:]
-            else:
-                html = base_tag + html
-            await page.set_content(html, wait_until="networkidle")
-            await page.wait_for_timeout(wait)
-            return await page.screenshot(
-                full_page=full_page,
-                type=type,
-                quality=quality,
-                timeout=screenshot_timeout,
-            )
-    finally:
-        _ctx_routes.reset(token)
+    async with (
+        _set_routes(routes),
+        _patched_get_new_page(device_scale_factor, **kwargs) as page,
+    ):
+        page.on("console", lambda msg: log("DEBUG", f"浏览器控制台: {msg.text}"))
+        # Skip page.goto() to the virtual host URL.
+        # Instead inject a <base href> tag so the browser resolves all
+        # relative resource references against the virtual template URL.
+        # The routes registered above intercept those requests and serve
+        # files from the bot-side filesystem.
+        base_tag = f'<base href="{template_path}">'
+        if m := re.search(r"<head(?:\s[^>]*)?>", html, re.IGNORECASE):
+            insert_at = m.end()
+            html = html[:insert_at] + base_tag + html[insert_at:]
+        else:
+            html = base_tag + html
+        await page.set_content(html, wait_until="networkidle")
+        await page.wait_for_timeout(wait)
+        return await page.screenshot(
+            full_page=full_page,
+            type=type,
+            quality=quality,
+            timeout=screenshot_timeout,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +368,7 @@ def patch_htmlrender() -> None:
     _browser_mod.get_new_page = _patched_get_new_page
     # data_source module — the `from ... import get_new_page` binding inside it
     _ds_mod.get_new_page = _patched_get_new_page
-    # html_to_pic replacement (template_to_pic calls it by module-level name lookup,
+    # html_to_pic replacement (template_to_pic calls it by module-level name lookup)
     _ds_mod.html_to_pic = _patched_html_to_pic
     # also patch the re-exports
     _htmlrender_mod.get_new_page = _patched_get_new_page
