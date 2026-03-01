@@ -6,7 +6,7 @@ from nonebot.compat import type_validate_python
 from nonebot.utils import deep_update
 from pydantic import BaseModel
 
-from .utils import logger_wrapper
+from src.utils import logger_wrapper
 
 type LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 type LogLevelMap = dict[str, LogLevel]

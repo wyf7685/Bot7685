@@ -7,9 +7,10 @@ import nonebot
 from nonebot.adapters import Adapter
 from nonebot.utils import resolve_dot_notation
 
+from src.utils import find_and_link_external, logger_wrapper
+
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
-from .utils import find_and_link_external, logger_wrapper
 
 log = logger_wrapper("Bootstrap")
 
@@ -82,7 +83,7 @@ def load_plugins(config: BootstrapConfig) -> None:
         # Apply htmlrender monkey-patch before any plugin is loaded,
         # so that all template_to_pic / html_to_pic calls go through
         # the virtual-HTTP file router (required for remote Playwright).
-        from .pw import patch_htmlrender
+        from .patch_htmlrender import patch_htmlrender
 
         patch_htmlrender()
     except ImportError as err:

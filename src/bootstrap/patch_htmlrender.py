@@ -49,7 +49,7 @@ from playwright.async_api import Page, Request, Route
 
 type RouteHandler = Callable[[Route, Request], object]
 
-log = logger_wrapper("pw")
+log = logger_wrapper("Patch HTMLRender")
 
 if TYPE_CHECKING:
     import nonebot_plugin_htmlrender.browser as _browser_mod
@@ -127,10 +127,10 @@ def _make_file_handler() -> RouteHandler:
         # POSIX: "/opt/venv/.../file.css" → anyio.Path("/opt/venv/.../file.css")
         # Windows: "/C:/Users/.../file.css" → anyio.Path("C:/Users/.../file.css")
         stripped = url_path.lstrip("/")
-        target = (
-            anyio.Path(stripped)  # Windows: "C:/..." is already absolute
+        target = anyio.Path(
+            stripped  # Windows: "C:/..." is already absolute
             if len(stripped) >= 2 and stripped[1] == ":"
-            else anyio.Path("/" + stripped)  # POSIX: restore leading "/"
+            else "/" + stripped  # POSIX: restore leading "/"
         )
 
         if not await target.is_file():
@@ -249,7 +249,8 @@ async def _make_proxy_handler() -> AsyncIterator[RouteHandler]:
         except Exception as exc:
             log(
                 "WARNING",
-                f"Proxy failed for <y>{escape_tag(url)}</>: {escape_tag(str(exc))}",
+                f"Proxy failed for <y>{escape_tag(url)}</>",
+                exc,
             )
             await route.fallback()
 
@@ -331,11 +332,7 @@ async def _patched_html_to_pic(
     try:
         async with _patched_get_new_page(device_scale_factor, **kwargs) as page:
             page.on("console", lambda msg: log("DEBUG", f"浏览器控制台: {msg.text}"))
-            # Skip page.goto() to the virtual host URL.  In remote Playwright
-            # setups the browser may attempt real DNS resolution for the virtual
-            # host if the route pattern doesn't match the navigation request,
-            # causing a 30-second timeout.
-            #
+            # Skip page.goto() to the virtual host URL.
             # Instead inject a <base href> tag so the browser resolves all
             # relative resource references against the virtual template URL.
             # The routes registered above intercept those requests and serve
@@ -376,13 +373,12 @@ def patch_htmlrender() -> None:
         )
         return
 
-    global _orig_get_new_page
-
     nonebot.require("nonebot_plugin_htmlrender")
     import nonebot_plugin_htmlrender as _htmlrender_mod
     import nonebot_plugin_htmlrender.browser as _browser_mod
     import nonebot_plugin_htmlrender.data_source as _ds_mod
 
+    global _orig_get_new_page
     _orig_get_new_page = _browser_mod.get_new_page
 
     # browser module — affects every caller that imports get_new_page from there
@@ -391,7 +387,6 @@ def patch_htmlrender() -> None:
     _ds_mod.get_new_page = _patched_get_new_page
     # html_to_pic replacement (template_to_pic calls it by module-level name lookup,
     _ds_mod.html_to_pic = _patched_html_to_pic
-
     # also patch the re-exports
     _htmlrender_mod.get_new_page = _patched_get_new_page
     _htmlrender_mod.html_to_pic = _patched_html_to_pic
