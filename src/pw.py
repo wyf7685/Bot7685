@@ -33,6 +33,7 @@ Patch points
 
 import contextvars
 import importlib.metadata
+import re
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from mimetypes import guess_type
@@ -207,14 +208,16 @@ async def _make_proxy_handler() -> AsyncIterator[RouteHandler]:
     async def handler(route: Route, request: Request) -> None:
         # Virtual-host URLs are handled by more specific routes registered
         # later (higher priority in Playwright LIFO).  If one reaches here
-        # something went wrong — fall back rather than trying to proxy it.
+        # something went wrong — return 404 immediately instead of fallback(),
+        # because fallback() on the lowest-priority handler sends the request
+        # to the real network, causing a DNS timeout for our virtual hosts.
         if _VIRTUAL_HOST_SUFFIX in (urlparse(request.url).hostname or ""):
             log(
                 "WARNING",
-                "Request for virtual host reached proxy handler: "
+                "Request for virtual host reached proxy handler (route miss?): "
                 f"<y>{escape_tag(request.url)}</>",
             )
-            await route.fallback()
+            await route.fulfill(status=404)
             return
 
         url = request.url
@@ -312,13 +315,15 @@ async def _patched_html_to_pic(
 ) -> bytes:
     routes: list[tuple[str, RouteHandler]] = []
 
-    # Virtualise template_path (used as the goto() target).
+    # Virtualise template_path.
     template_path = _virtualize(template_path, routes)
 
-    # Virtualise base_url if present in page kwargs
-    # (passed as **pages from template_to_pic → html_to_pic).
+    # Virtualise base_url if present; otherwise fall back to template_path so
+    # the browser context always has a virtual base_url set.
     if isinstance(base_url := kwargs.get("base_url"), str):
         kwargs["base_url"] = _virtualize(base_url, routes)
+    else:
+        kwargs["base_url"] = template_path
 
     # Publish routes to the ContextVar so _patched_get_new_page can pick them
     # up even if called indirectly through other wrappers.
@@ -326,7 +331,21 @@ async def _patched_html_to_pic(
     try:
         async with _patched_get_new_page(device_scale_factor, **kwargs) as page:
             page.on("console", lambda msg: log("DEBUG", f"浏览器控制台: {msg.text}"))
-            await page.goto(template_path)
+            # Skip page.goto() to the virtual host URL.  In remote Playwright
+            # setups the browser may attempt real DNS resolution for the virtual
+            # host if the route pattern doesn't match the navigation request,
+            # causing a 30-second timeout.
+            #
+            # Instead inject a <base href> tag so the browser resolves all
+            # relative resource references against the virtual template URL.
+            # The routes registered above intercept those requests and serve
+            # files from the bot-side filesystem.
+            base_tag = f'<base href="{template_path}">'
+            if m := re.search(r"<head(?:\s[^>]*)?>", html, re.IGNORECASE):
+                insert_at = m.end()
+                html = html[:insert_at] + base_tag + html[insert_at:]
+            else:
+                html = base_tag + html
             await page.set_content(html, wait_until="networkidle")
             await page.wait_for_timeout(wait)
             return await page.screenshot(
