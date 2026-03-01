@@ -34,9 +34,9 @@ jobs:
       cancel-in-progress: true
 
     steps:
-      - uses: actions/checkout@v4
-
-      - run: git submodule update --init --recursive
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
       - name: Setup Python
         uses: ./.github/actions/setup-python
