@@ -56,7 +56,7 @@ def _timer[**P, R](info: str, /) -> Callable[[Callable[P, R]], Callable[P, R]]:
 def load_adapter(module_name: str) -> type[Adapter] | None:
     try:
         return resolve_dot_notation(module_name, "Adapter", "nonebot.adapters.")
-    except (ImportError, AttributeError):
+    except ImportError, AttributeError:
         log("WARNING", f"Failed to resolve adapter: <y>{module_name}</y>")
         return None
 
@@ -78,6 +78,22 @@ def load_adapters(config: BootstrapConfig) -> None:
 
 @_timer("Loading plugins")
 def load_plugins(config: BootstrapConfig) -> None:
+    try:
+        # Apply htmlrender monkey-patch before any plugin is loaded,
+        # so that all template_to_pic / html_to_pic calls go through
+        # the virtual-HTTP file router (required for remote Playwright).
+        from .pw import patch_htmlrender
+
+        patch_htmlrender()
+    except ImportError as err:
+        log(
+            "WARNING",
+            "nonebot_plugin_htmlrender is not installed, skipping Playwright patches",
+            err,
+        )
+    except Exception as err:
+        log("ERROR", "Failed to apply Playwright patches", err)
+
     nonebot.load_all_plugins(
         module_path=config.plugins,
         plugin_dir={config.plugin_dirs}
