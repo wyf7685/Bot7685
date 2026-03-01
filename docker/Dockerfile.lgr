@@ -1,8 +1,0 @@
-FROM ghcr.io/lagrangedev/lagrange.onebot:edge
-
-RUN apt-get update \
-    && apt-get -y --no-install-recommends install curl jq \
-    && rm -rf /var/lib/apt/lists/*
-
-HEALTHCHECK --interval=10s --timeout=10s --start-period=5s --retries=6 \
-    CMD curl -sf http://127.0.0.1:8083/get_status | jq -e '.data.online == true' || exit 1

@@ -1,13 +1,13 @@
-name: Docker Lagrange
+name: Docker Playwright
 
 on:
-  # push:
-  #   paths:
-  #     - "docker/Dockerfile.lgr"
-  #     - ".github/workflows/docker-lgr.yml"
+  push:
+    branches:
+      - master
+    paths:
+      - "docker/Dockerfile.playwright"
+      - ".github/workflows/docker-playwright.yml"
   workflow_dispatch:
-  # schedule:
-  #   - cron: "0 0 * * 0"
 
 jobs:
   docker:
@@ -17,6 +17,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Extract Playwright Version
+        id: pw_version
+        run: |
+          VERSION=$(uv tree --package playwright 2>/dev/null | grep playwright | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Playwright version: ${VERSION}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -35,15 +42,18 @@ jobs:
         id: metadata
         with:
           images: wyf7685/bot7685
-          tags: type=raw,value=lagrange
+          tags: type=raw,value=playwright
 
       - name: Build and Publish
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./docker/Dockerfile.lgr
+          file: ./docker/Dockerfile.playwright
           push: true
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
+          build-args: |
+            PLAYWRIGHT_VERSION=${{ steps.pw_version.outputs.version }}
+            PLAYWRIGHT_BROWSER=firefox
           cache-from: type=gha
           cache-to: type=gha,mode=max
