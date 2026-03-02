@@ -10,7 +10,9 @@ RUN chmod +x /data/converter.sh && \
 
 FROM debian:bookworm-slim AS venv
 
-RUN apt-get update && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
     git ca-certificates python3-dev gcc g++ build-essential \
     libffi-dev libssl-dev zlib1g-dev liblzma-dev libbz2-dev libreadline-dev \
@@ -30,18 +32,14 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 FROM debian:bookworm-slim AS app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    nano \
-    ffmpeg \
-    fontconfig \
-    locales \
-    fonts-noto && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates curl nano ffmpeg fontconfig locales fonts-noto && \
     echo "zh_CN.UTF-8 UTF-8" > /etc/locale.gen && \
     echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
-    locale-gen && \
-    rm -rf /var/lib/apt/lists/*
+    locale-gen
 
 WORKDIR /app
 
