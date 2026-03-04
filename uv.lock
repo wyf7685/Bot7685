@@ -214,6 +214,18 @@ wheels = [
 ]
 
 [[package]]
+name = "anysqlite"
+version = "0.0.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0f/4b/cd5d66b9f87e773bc71344a368b9472987e33514e6627e28342b9c3e7c43/anysqlite-0.0.5.tar.gz", hash = "sha256:9dfcf87baf6b93426ad1d9118088c41dbf24ef01b445eea4a5d486bac2755cce", size = 3432, upload-time = "2023-10-02T13:49:25.135Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0b/31/349eae2bc9d9331dd8951684cf94528d91efaa71129dc30822ac111dfc66/anysqlite-0.0.5-py3-none-any.whl", hash = "sha256:cb345dc4f76f6b37f768d7a0b3e9cf5c700dfcb7a6356af8ab46a11f666edbe7", size = 3907, upload-time = "2023-10-02T13:49:26.943Z" },
+]
+
+[[package]]
 name = "apscheduler"
 version = "3.11.2"
 source = { registry = "https://pypi.org/simple" }
@@ -474,6 +486,7 @@ dependencies = [
     { name = "bot7685-ext" },
     { name = "cloudscraper" },
     { name = "cos-python-sdk-v5" },
+    { name = "githubkit", extra = ["auth-app"] },
     { name = "gunicorn" },
     { name = "httpx" },
     { name = "humanize" },
@@ -482,6 +495,7 @@ dependencies = [
     { name = "msgspec", extra = ["toml", "yaml"] },
     { name = "nonebot-adapter-discord" },
     { name = "nonebot-adapter-feishu" },
+    { name = "nonebot-adapter-github" },
     { name = "nonebot-adapter-milky" },
     { name = "nonebot-adapter-onebot" },
     { name = "nonebot-adapter-qq" },
@@ -533,6 +547,7 @@ requires-dist = [
     { name = "bot7685-ext", specifier = "==0.2.0" },
     { name = "cloudscraper", specifier = ">=1.2.71" },
     { name = "cos-python-sdk-v5", specifier = ">=1.9.36" },
+    { name = "githubkit", extras = ["auth-app"], specifier = ">=0.14.6" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "humanize", specifier = ">=4.12.3,<5.0" },
@@ -541,6 +556,7 @@ requires-dist = [
     { name = "msgspec", extras = ["toml", "yaml"], specifier = ">=0.19.0" },
     { name = "nonebot-adapter-discord", specifier = ">=0.1.8" },
     { name = "nonebot-adapter-feishu", specifier = ">=2.6.2" },
+    { name = "nonebot-adapter-github", specifier = ">=0.6.0" },
     { name = "nonebot-adapter-milky", specifier = ">=0.4.3" },
     { name = "nonebot-adapter-onebot", specifier = ">=2.4.6" },
     { name = "nonebot-adapter-qq", specifier = ">=1.6.5" },
@@ -1281,6 +1297,27 @@ wheels = [
 ]
 
 [[package]]
+name = "githubkit"
+version = "0.14.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "hishel" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4e/05/82961e26bac250994f2f8db5c76109565bc5c2ab29882f46944dd1c33e44/githubkit-0.14.6.tar.gz", hash = "sha256:4f6015cdb64ed12883bb64781fc7ceb6f13aa72b08b6aea37a762f72183e4072", size = 2709113, upload-time = "2026-03-02T04:24:30.318Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/8e/56ee492a82351b38f9d366308d569cd52772ef35573f79dd57d4a152030f/githubkit-0.14.6-py3-none-any.whl", hash = "sha256:de405fc28b959697b49a19e238e8cb12e3a09679cf356525458e4782c7a15f60", size = 6611599, upload-time = "2026-03-02T04:24:27.449Z" },
+]
+
+[package.optional-dependencies]
+auth-app = [
+    { name = "pyjwt", extra = ["crypto"] },
+]
+
+[[package]]
 name = "greenlet"
 version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1346,6 +1383,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/1d/17/afa56379f94ad0fe8defd37d6eb3f89a25404ffc71d4d848893d270325fc/h2-4.3.0.tar.gz", hash = "sha256:6c59efe4323fa18b47a632221a1888bd7fde6249819beda254aeca909f221bf1", size = 2152026, upload-time = "2025-08-23T18:12:19.778Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/69/b2/119f6e6dcbd96f9069ce9a2665e0146588dc9f88f29549711853645e736a/h2-4.3.0-py3-none-any.whl", hash = "sha256:c438f029a25f7945c69e0ccf0fb951dc3f73a5f6412981daee861431b70e2bdd", size = 61779, upload-time = "2025-08-23T18:12:17.779Z" },
+]
+
+[[package]]
+name = "hishel"
+version = "0.1.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "anysqlite" },
+    { name = "httpx" },
+    { name = "msgpack" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e5/64/a104ccac48f123f853254483617b16e0efc1649bd7e35bcdc5a5a5ef0ae2/hishel-0.1.5.tar.gz", hash = "sha256:9d40c682cd94fd6e1394fb05713ae20a75ed8aeba6f5272380444039ce6257f2", size = 75468, upload-time = "2025-10-18T13:32:41.854Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/70/83/4f8b77839e62114bb034375ee8e08cfb6af1164754b925b271d3f1ec06ee/hishel-0.1.5-py3-none-any.whl", hash = "sha256:0bfbe9a2b9342090eba82ba6de88258092e1c4c7b730cd4cb4b570e4b40e44a7", size = 92486, upload-time = "2025-10-18T13:32:40.333Z" },
 ]
 
 [[package]]
@@ -2063,6 +2116,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/11/67/e27d60edd50260a46e27a8170851203a74f8aed05fa84b1cffcc2ce619ab/nonebot_adapter_feishu-2.6.2.tar.gz", hash = "sha256:1223ba0720bd1e0c1f85d5c1216fdbc91711196e351d1b870bcffeeeac41436d", size = 19151, upload-time = "2024-06-28T02:59:02.885Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/25/0f/0aa5eb7538118b408181a88f2ed75e2a2b91eb98c0c522b5494b7cd128ff/nonebot_adapter_feishu-2.6.2-py3-none-any.whl", hash = "sha256:1f68dbfe353c0c7a29798cffaf72e174ef62e8b903c723c6a661d033237febcd", size = 21650, upload-time = "2024-06-28T02:59:00.929Z" },
+]
+
+[[package]]
+name = "nonebot-adapter-github"
+version = "0.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "githubkit", extra = ["auth-app"] },
+    { name = "nonebot2" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/20/b2/1ef684dfdc79571035ee884de3679e491e208bcc707c7206cedf41496c23/nonebot_adapter_github-0.6.0.tar.gz", hash = "sha256:f746942b9d915acbdcf018a6b3d10e59ec3e591937635365ac7174c2939921de", size = 29757, upload-time = "2025-12-11T08:51:07.333Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/28/ec/df43c1326e49838683d7047e2f7ea5f304e47e22fe14166d358aa653949c/nonebot_adapter_github-0.6.0-py3-none-any.whl", hash = "sha256:b0f26258b873bfb7a1f6c52067562788804a46b1d21599c4f04111fa8af1d6f6", size = 113866, upload-time = "2025-12-11T08:51:08.223Z" },
 ]
 
 [[package]]
@@ -3347,6 +3414,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b9/13/55deec25bf09383216fa7f1dfcdbfca40a04aa00b6d15a5cbf25af8fce5f/pygtrie-2.5.0.tar.gz", hash = "sha256:203514ad826eb403dab1d2e2ddd034e0d1534bbe4dbe0213bb0593f66beba4e2", size = 39266, upload-time = "2022-07-16T14:29:47.459Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/cd/bd196b2cf014afb1009de8b0f05ecd54011d881944e62763f3c1b1e8ef37/pygtrie-2.5.0-py3-none-any.whl", hash = "sha256:8795cda8105493d5ae159a5bef313ff13156c5d4d72feddefacaad59f8c8ce16", size = 25099, upload-time = "2022-09-23T20:30:05.12Z" },
+]
+
+[[package]]
+name = "pyjwt"
+version = "2.11.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5c/5a/b46fa56bf322901eee5b0454a34343cdbdae202cd421775a8ee4e42fd519/pyjwt-2.11.0.tar.gz", hash = "sha256:35f95c1f0fbe5d5ba6e43f00271c275f7a1a4db1dab27bf708073b75318ea623", size = 98019, upload-time = "2026-01-30T19:59:55.694Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6f/01/c26ce75ba460d5cd503da9e13b21a33804d38c2165dec7b716d06b13010c/pyjwt-2.11.0-py3-none-any.whl", hash = "sha256:94a6bde30eb5c8e04fee991062b534071fd1439ef58d2adc9ccb823e7bcd0469", size = 28224, upload-time = "2026-01-30T19:59:54.539Z" },
+]
+
+[package.optional-dependencies]
+crypto = [
+    { name = "cryptography" },
 ]
 
 [[package]]
