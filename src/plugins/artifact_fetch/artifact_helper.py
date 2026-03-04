@@ -11,6 +11,7 @@ from githubkit.exception import RequestFailed
 from githubkit.versions.latest.models import Artifact, WorkflowRun
 from nonebot import logger
 from nonebot.params import Depends
+from nonebot.utils import escape_tag
 from nonebot_plugin_alconna import UniMessage
 
 from src.utils import with_semaphore
@@ -37,11 +38,12 @@ async def download_artifact(
         avg_speed = chunk_count * chunk_size / time_elapsed
         remaining_bytes = total_size - chunk_count * chunk_size
         time_remaining = remaining_bytes / avg_speed if avg_speed > 0 else float("inf")
-        logger.debug(
-            f"{artifact.name}: "
-            f"Wrote chunk {chunk_count}/{total_chunks} ({progress_percentage:.2f}%)"
-            f" - avg: {avg_speed / (1024 * 1024):.2f} MB/s"
-            f" - eta: {time_remaining:.2f} seconds"
+        logger.opt(colors=True).debug(
+            f"<le>{escape_tag(artifact.name)}</>: "
+            f"Wrote chunk <c>{chunk_count}</>/<c>{total_chunks}</>"
+            f" (<g>{progress_percentage:.2f}</>%)"
+            f" | avg: <c>{avg_speed / (1024 * 1024):.2f}</> MB/s"
+            f" | eta: <c>{time_remaining:.2f}</> seconds"
         )
 
     async def file_writer(file: anyio.AsyncFile) -> None:
