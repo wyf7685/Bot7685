@@ -124,7 +124,7 @@ async def on_bot_connect(bot: Bot) -> None:
         scheduler.add_job(
             update_user_card_cache,
             args=(bot,),
-            trigger=CronTrigger(second="0/15"),
+            trigger=CronTrigger(minute="0/15"),
         ),
     )
 
