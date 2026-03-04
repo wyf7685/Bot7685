@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 
 class DownloadConfig(BaseModel):
-    chunk_size: int = 1024 * 1024 * 4  # 4 MB
+    chunk_size: int = 1024 * 1024 * 1  # 1 MB
     concurrency_limit: int = 16
 
 
