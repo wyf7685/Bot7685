@@ -1,13 +1,14 @@
 import contextlib
 import hashlib
 from collections.abc import AsyncIterator, Buffer
-from typing import TYPE_CHECKING, Annotated, Self
+from typing import Annotated, Self
 
 import anyio
 import anyio.lowlevel
 import httpx
 from githubkit import AppAuthStrategy, GitHub
 from githubkit.exception import RequestFailed
+from githubkit.versions.latest.models import Artifact, WorkflowRun
 from nonebot import logger
 from nonebot.params import Depends
 from nonebot_plugin_alconna import UniMessage
@@ -17,9 +18,6 @@ from src.utils import with_semaphore
 from .config import AppGitHub, plugin_config
 from .depends import Repository
 
-if TYPE_CHECKING:
-    from githubkit.versions.latest.models import Artifact, WorkflowRun
-
 
 async def download_artifact(
     client: httpx.AsyncClient,
@@ -27,33 +25,35 @@ async def download_artifact(
     save_path: anyio.Path,
     concurrency_limit: int = plugin_config.download.concurrency_limit,
 ) -> None:
-    w_send, w_recv = anyio.create_memory_object_stream[tuple[int, Buffer]]()
+    chunk_send, chunk_recv = anyio.create_memory_object_stream[tuple[int, Buffer]]()
     chunk_size = plugin_config.download.chunk_size
     total_size = artifact.size_in_bytes
     total_chunks = (total_size + chunk_size - 1) // chunk_size
     max_attempts = 5
 
+    def log_progress(chunk_count: int) -> None:
+        progress_percentage = chunk_count / total_chunks * 100
+        time_elapsed = anyio.current_time() - time_start
+        avg_speed = chunk_count * chunk_size / time_elapsed
+        remaining_bytes = total_size - chunk_count * chunk_size
+        time_remaining = remaining_bytes / avg_speed if avg_speed > 0 else float("inf")
+        logger.debug(
+            f"{artifact.name}: "
+            f"Wrote chunk {chunk_count}/{total_chunks} ({progress_percentage:.2f}%)"
+            f" - avg: {avg_speed / (1024 * 1024):.2f} MB/s"
+            f" - eta: {time_remaining:.2f} seconds"
+        )
+
     async def file_writer(file: anyio.AsyncFile) -> None:
         await file.truncate(total_size)  # pre-allocate file size
 
-        count = 0
-        async for start, chunk in w_recv:
+        chunk_count = 0
+        async for start, chunk in chunk_recv:
             await file.seek(start)
             await file.write(chunk)
-            count += 1
-            progress_percentage = count / total_chunks * 100
-            time_elapsed = anyio.current_time() - time_start
-            speed = count * chunk_size / time_elapsed
-            remaining_bytes = total_size - count * chunk_size
-            time_remaining = remaining_bytes / speed if speed > 0 else float("inf")
-            logger.debug(
-                f"{artifact.name}: "
-                f"Wrote chunk {count}/{total_chunks} ({progress_percentage:.2f}%)"
-                f" - Avg Speed: {speed / (1024 * 1024):.2f} MB/s"
-                f" - Estimated time remaining: {time_remaining:.2f} seconds"
-            )
-            if count >= total_chunks:
-                break
+            chunk_count += 1
+            if chunk_count % 10 == 0 or chunk_count == total_chunks:
+                log_progress(chunk_count)
 
     @with_semaphore(concurrency_limit)
     async def request_chunk(chunk_range: str) -> Buffer:
@@ -92,18 +92,20 @@ async def download_artifact(
                         excs,
                     ) from None
             else:
-                await w_send.send((start, buffer))
+                await chunk_send.send((start, buffer))
                 break
 
+    async def fetch_chunks() -> None:
+        async with chunk_send, anyio.create_task_group() as tg:
+            for seq in range(total_chunks):
+                tg.start_soon(fetch_chunk_with_retry, seq)
+                await anyio.lowlevel.checkpoint()
+
     time_start = anyio.current_time()
-    async with (
-        await save_path.open("wb") as file,
-        anyio.create_task_group() as tg,
-    ):
+    async with await save_path.open("wb") as file, anyio.create_task_group() as tg:
         tg.start_soon(file_writer, file)
-        for seq in range(total_chunks):
-            tg.start_soon(fetch_chunk_with_retry, seq)
-            await anyio.lowlevel.checkpoint()
+        tg.start_soon(fetch_chunks)
+
     time_end = anyio.current_time()
     time_elapsed = time_end - time_start
     speed_mb = total_size / time_elapsed / (1024 * 1024)
@@ -190,10 +192,11 @@ class ArtifactHelper:
             save_path = save_dir / f"{artifact.name}.zip"
             try:
                 await download_artifact(client, artifact, save_path)
+                saved[artifact.name] = save_path
             except Exception:
                 logger.exception(f"Failed to download artifact {artifact.name}")
-            saved[artifact.name] = save_path
 
+        await save_dir.mkdir(parents=True, exist_ok=True)
         async with (
             self.github.get_async_client() as client,
             anyio.create_task_group() as tg,
@@ -229,3 +232,19 @@ async def _artifact_helper(
 
 
 Helper = Annotated[ArtifactHelper, Depends(_artifact_helper)]
+
+
+async def _requested_artifacts(
+    helper: Helper,
+    workflow_id: int | str | None = None,
+) -> list[Artifact]:
+    run = await helper.fetch_latest_run(workflow_id)
+    artifacts = await helper.fetch_artifacts(run.id)
+    if not artifacts:
+        await UniMessage.text("未找到最新工作流运行的任何 artifact").finish(
+            reply_to=True
+        )
+    return artifacts
+
+
+RequestedArtifacts = Annotated[list[Artifact], Depends(_requested_artifacts)]

@@ -9,6 +9,7 @@ from nonebot.adapters.milky import Bot as MilkyBot
 from nonebot.adapters.milky.event import GroupMessageEvent
 from nonebot.adapters.milky.model.api import FilesInfo
 from nonebot.exception import NetworkError
+from nonebot.params import Depends
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -19,7 +20,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
-from .artifact_helper import Helper
+from .artifact_helper import Helper, RequestedArtifacts
 
 CACHE_DIR = anyio.Path(get_plugin_cache_dir())
 
@@ -42,9 +43,11 @@ matcher = on_alconna(alc)
 
 async def get_target_folder(
     bot: MilkyBot,
-    group_id: int,
+    event: GroupMessageEvent,
     target_folder: str | None = None,
 ) -> tuple[str | None, FilesInfo]:
+    group_id = event.data.peer_id
+
     root_files = await bot.get_group_files(group_id=group_id)
     if target_folder is None:
         return None, root_files
@@ -65,22 +68,12 @@ async def assign_fetch(
     bot: MilkyBot,
     event: GroupMessageEvent,
     helper: Helper,
-    workflow_id: int | str | None = None,
-    target_folder: str | None = None,
+    artifacts: RequestedArtifacts,
+    target_folder: tuple[str | None, FilesInfo] = Depends(get_target_folder),
 ) -> None:
-    run = await helper.fetch_latest_run(workflow_id)
-    artifacts = await helper.fetch_artifacts(run.id)
-    if not artifacts:
-        await UniMessage.text("未找到最新工作流运行的任何 artifact").finish(
-            reply_to=True
-        )
-    artifact_names = {f"{artifact.name}.zip" for artifact in artifacts}
-
-    target_folder_id, target_folder_info = await get_target_folder(
-        bot, event.data.peer_id, target_folder
-    )
+    target_folder_id, target_folder_info = target_folder
     folder_file_names = {f.file_name for f in target_folder_info.files}
-    if artifact_names.issubset(folder_file_names):
+    if {f"{a.name}.zip" for a in artifacts}.issubset(folder_file_names):
         await UniMessage.text(
             "所有 artifact 已存在于目标文件夹中，无需重复上传。"
         ).finish(reply_to=True)
