@@ -8,6 +8,7 @@ on:
       - "docker/Dockerfile"
       - "docker/assets/**"
       - ".github/workflows/docker-bot7685.yml"
+      - "uv.lock"
   workflow_dispatch:
 
 jobs:
