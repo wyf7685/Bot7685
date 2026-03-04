@@ -5,7 +5,7 @@ from nonebot import get_bots, get_plugin_config
 from nonebot.adapters.github import GitHubBot
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DownloadConfig(BaseModel):
@@ -14,8 +14,8 @@ class DownloadConfig(BaseModel):
 
 
 class PluginConfig(BaseModel):
-    app_id: str
-    download: DownloadConfig
+    app_id: str | None = None
+    download: DownloadConfig = Field(default_factory=DownloadConfig)
 
 
 class Config(BaseModel):
@@ -28,7 +28,9 @@ plugin_config = get_plugin_config(Config).artifact_fetch
 def get_github_bot() -> GitHubBot | None:
     return (
         bot
-        if (bot := get_bots().get(plugin_config.app_id)) and isinstance(bot, GitHubBot)
+        if plugin_config.app_id is not None
+        and (bot := get_bots().get(plugin_config.app_id))
+        and isinstance(bot, GitHubBot)
         else None
     )
 
