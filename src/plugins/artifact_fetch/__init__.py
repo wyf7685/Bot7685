@@ -5,6 +5,7 @@ require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_localstore")
 
+from . import matcher as matcher
 from .config import Config
 
 __plugin_meta__ = PluginMetadata(

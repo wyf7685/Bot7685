@@ -31,7 +31,7 @@ alc = Alconna(
         Option("--owner|-o", Args["owner", str]),
         Option("--repo|-r", Args["repo", str]),
         Option("--workflow-id|-w", Args["workflow_id?", int | str]),
-        Option("--target-folder", Args["target_folder?", str]),
+        Option("--target-folder|-t", Args["target_folder?", str]),
     ),
     Subcommand(
         "subscribe",
