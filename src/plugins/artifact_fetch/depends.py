@@ -56,7 +56,7 @@ async def _request_admin_approval(
             return False
         return None
 
-    async for result in wait(default=False):
+    async for result in wait(default=False, timeout=30):
         if result is None:
             await UniMessage.text("请回复同意或拒绝").send(reply_to=True)
             continue
