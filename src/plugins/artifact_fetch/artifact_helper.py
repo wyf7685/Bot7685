@@ -2,14 +2,13 @@ import contextlib
 import functools
 import hashlib
 from collections.abc import AsyncIterator, Buffer
-from typing import Annotated, Self
+from typing import TYPE_CHECKING, Annotated, Self
 
 import anyio
 import anyio.lowlevel
 import httpx
-from githubkit import AppAuthStrategy, GitHub
 from githubkit.exception import RequestFailed
-from githubkit.versions.latest.models import Artifact, WorkflowRun
+from githubkit.versions.latest.models import Artifact
 from nonebot import logger
 from nonebot.params import Depends
 from nonebot.utils import escape_tag
@@ -19,6 +18,10 @@ from src.utils import with_semaphore
 
 from .config import AppGitHub, plugin_config
 from .depends import Repository
+
+if TYPE_CHECKING:
+    from githubkit import AppAuthStrategy, AppInstallationAuthStrategy, GitHub
+    from githubkit.versions.latest.models import WorkflowRun
 
 
 async def download_artifact(
@@ -132,7 +135,12 @@ async def download_artifact(
 
 
 class ArtifactHelper:
-    def __init__(self, owner: str, repo: str, github: GitHub) -> None:
+    def __init__(
+        self,
+        owner: str,
+        repo: str,
+        github: GitHub[AppInstallationAuthStrategy],
+    ) -> None:
         self.owner = owner
         self.repo = repo
         self.github = github

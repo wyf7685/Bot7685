@@ -1,4 +1,5 @@
 import contextlib
+from collections.abc import AsyncIterator
 from typing import Annotated, NamedTuple
 
 import nonebot_plugin_waiter.unimsg as waiter
@@ -15,7 +16,10 @@ class Repos(NamedTuple):
     repo: str
 
 
-def _lazy_recall(receipt: Receipt) -> None:
+processing_repos: set[Repos] = set()
+
+
+def schedule_recall(receipt: Receipt) -> None:
     async def recall() -> None:
         with contextlib.suppress(Exception):
             await receipt.recall()
@@ -61,21 +65,22 @@ async def _request_admin_approval(
             await UniMessage.text("请回复同意或拒绝").send(reply_to=True)
             continue
 
-        _lazy_recall(receipt)
+        schedule_recall(receipt)
         return result
 
     # Should never reach here, but just in case
-    _lazy_recall(receipt)
+    schedule_recall(receipt)
     return False
 
 
+@contextlib.asynccontextmanager
 async def _extract_repository(
     event: Event,
     session: Uninfo,
     target: MsgTarget,
     owner: Match[str],
     repo: Match[str],
-) -> Repos:
+) -> AsyncIterator[Repos]:
     if not owner.available or not repo.available:
         # TODO: read from database
         await UniMessage.text("请指定仓库的 owner 和 repo").finish(reply_to=True)
@@ -93,7 +98,13 @@ async def _extract_repository(
         if not approved:
             await UniMessage.text("管理员未通过你的请求").finish(reply_to=True)
 
-    return repos
+    if repos in processing_repos:
+        await UniMessage.text("该仓库正在被访问，请稍后再试").finish(reply_to=True)
+    try:
+        processing_repos.add(repos)
+        yield repos
+    finally:
+        processing_repos.discard(repos)
 
 
 Repository = Annotated[Repos, Depends(_extract_repository)]

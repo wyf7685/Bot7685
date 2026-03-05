@@ -37,7 +37,7 @@ def get_github_bot() -> GitHubBot | None:
 
 async def _bot_github() -> GitHub[AppAuthStrategy]:
     if bot := get_github_bot():
-        return bot._github  # noqa: SLF001
+        return bot.github
     return Matcher.skip()
 
 
