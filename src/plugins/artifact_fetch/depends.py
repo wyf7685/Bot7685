@@ -73,7 +73,6 @@ async def _request_admin_approval(
     return False
 
 
-@contextlib.asynccontextmanager
 async def _extract_repository(
     event: Event,
     session: Uninfo,
