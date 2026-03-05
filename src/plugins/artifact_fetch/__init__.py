@@ -4,7 +4,8 @@ from nonebot.plugin import PluginMetadata
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_localstore")
-
+require("nonebot_plugin_uninfo")
+require("nonebot_plugin_waiter")
 from . import matcher as matcher
 from .config import Config
 
@@ -14,4 +15,5 @@ __plugin_meta__ = PluginMetadata(
     usage="<TODO>",
     type="application",
     config=Config,
+    supported_adapters={"~milky"},
 )

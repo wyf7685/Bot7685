@@ -1,4 +1,5 @@
 import contextlib
+import functools
 import hashlib
 from collections.abc import AsyncIterator, Buffer
 from typing import Annotated, Self
@@ -32,13 +33,13 @@ async def download_artifact(
     total_chunks = (total_size + chunk_size - 1) // chunk_size
     max_attempts = 5
 
-    def log_progress(chunk_count: int) -> None:
+    def render_progress_log(chunk_count: int, current_time: float) -> str:
         progress_percentage = chunk_count / total_chunks * 100
-        time_elapsed = anyio.current_time() - time_start
-        avg_speed = chunk_count * chunk_size / time_elapsed
+        time_elapsed = current_time - time_start
+        avg_speed = chunk_count * chunk_size / time_elapsed if time_elapsed > 0 else 0
         remaining_bytes = total_size - chunk_count * chunk_size
         time_remaining = remaining_bytes / avg_speed if avg_speed > 0 else float("inf")
-        logger.opt(colors=True).debug(
+        return (
             f"<le>{escape_tag(artifact.name)}</>: "
             f"Wrote chunk <c>{chunk_count}</>/<c>{total_chunks}</>"
             f" (<g>{progress_percentage:.2f}</>%)"
@@ -55,7 +56,12 @@ async def download_artifact(
             await file.write(chunk)
             chunk_count += 1
             if chunk_count % 10 == 0 or chunk_count == total_chunks:
-                log_progress(chunk_count)
+                render = functools.partial(
+                    render_progress_log,
+                    chunk_count=chunk_count,
+                    current_time=anyio.current_time(),
+                )
+                logger.opt(colors=True, lazy=True).debug("{}", render)
 
     @with_semaphore(concurrency_limit)
     async def request_chunk(chunk_range: str) -> Buffer:
@@ -95,7 +101,7 @@ async def download_artifact(
                     ) from None
             else:
                 await chunk_send.send((start, buffer))
-                break
+                return
 
     async def fetch_chunks() -> None:
         async with chunk_send, anyio.create_task_group() as tg:
@@ -115,7 +121,7 @@ async def download_artifact(
     logger.info(f"{artifact.name}: Download completed in {time_elapsed:.2f} seconds")
     logger.info(f"{artifact.name}: Average speed: {speed_mb:.2f} MB/s")
 
-    if artifact.digest:
+    if artifact.digest and artifact.digest.startswith("sha256:"):
         sha = hashlib.sha256()
         async with await save_path.open("rb") as f:
             while chunk := await f.read(10 * 1024 * 1024):  # read in 10 MB chunks
