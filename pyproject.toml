@@ -3,27 +3,26 @@ name = "Bot7685"
 version = "0.1.0"
 description = "Bot7685 by wyf7685"
 readme = "README.md"
-requires-python = ">=3.13,<4.0"
+requires-python = ">=3.14,<4.0"
 dependencies = [
   # nonebot2
-  "nonebot2[fastapi,httpx,websockets,aiohttp]>=2.4.3",
+  "nonebot2[fastapi,httpx,websockets]>=2.4.4",
   # adapters
   "nonebot-adapter-discord>=0.1.8",
   "nonebot-adapter-feishu>=2.6.2",
+  "nonebot-adapter-github>=0.6.0",
   "nonebot-adapter-milky>=0.4.3",
   "nonebot-adapter-onebot>=2.4.6",
-  "nonebot-adapter-qq>=1.6.5",
-  "nonebot-adapter-satori>=0.13.7",
+  "nonebot-adapter-qq>=1.6.6",
+  "nonebot-adapter-satori>=0.13.8",
   "nonebot-adapter-telegram>=0.1.0b20",
   # plugins
-  "nonebot-plugin-akinator>=1.0.3",
   "nonebot-plugin-alconna>=0.60.4",
   "nonebot-plugin-apscheduler>=0.5.0",
-  "nonebot-plugin-chatrecorder",
   "nonebot-plugin-htmlrender==0.6.7",
   "nonebot-plugin-localstore>=0.7.4",
   "nonebot-plugin-orm[asyncpg]>=0.8.3",
-  "nonebot-plugin-skland>=0.6.0",
+  "nonebot-plugin-skland>=0.6.4",
   "nonebot-plugin-uninfo>=0.9.0",
   "nonebot-plugin-user>=0.5.3",
   "nonebot-plugin-waiter>=0.8.1",
@@ -32,41 +31,39 @@ dependencies = [
   # plugin deps
   "aiocache[redis]>=0.12.3",
   "anyio>=4.12.1",
-  "async-lru>=2.1.0",
   "cloudscraper>=1.2.71",
-  "cos-python-sdk-v5>=1.9.36",
-  "gunicorn>=23.0.0",
+  "cos-python-sdk-v5>=1.9.41",
+  "githubkit[auth-app]>=0.14.6",
+  "gunicorn>=25.1.0",
   "httpx>=0.28.1",
-  "humanize>=4.12.3,<5.0",
-  "jmcomic>=2.6.13",
-  "msgspec[toml,yaml]>=0.19.0",
-  "paramiko>=4.0.0",
-  "mcstatus>=12.0.5",
+  "humanize>=4.15.0,<5.0",
+  "jmcomic>=2.6.15",
+  "mcstatus>=12.2.1,<13.0.0",
+  "msgspec[toml,yaml]>=0.20.0",
   "pillow>=10.0.0",
   "playwright==1.58.0",
-  "pydantic>=2.11.7",
-  "tarina>=0.6.8",
+  "pydantic>=2.12.5",
   # plugins
   "nonebot-plugin-exe-code",
   "nonebot-plugin-talk-stats",
   "nonebot-plugin-werewolf",
+  # forked plugins
+  "nonebot-plugin-chatrecorder",
   "nonebot-plugin-zssm",
   # Bot7685 Extensions
-  "bot7685-ext==0.2.0",
-  "githubkit[auth-app]>=0.14.6",
-  "nonebot-adapter-github>=0.6.0",
+  "bot7685-ext==0.3.0",
 ]
 
 [dependency-groups]
 dev = [
-  "ruff>=0.12.10",
-  "basedpyright>=1.31.3",
+  "ruff>=0.15.5",
+  "basedpyright>=1.38.2",
   "nonebot-adapter-console>=0.9.0",
-  "nonebot-plugin-orm[aiosqlite]>=0.7.7",
+  "nonebot-plugin-orm[aiosqlite]>=0.8.3",
   "nonebug>=0.4.3",
-  "pytest>=8.4.1",
-  "pytest-mock>=3.14.1",
-  "pre-commit>=4.3.0",
+  "pytest>=8.4.2",
+  "pytest-mock>=3.15.1",
+  "pre-commit>=4.5.1",
   "respx>=0.22.0",
 ]
 

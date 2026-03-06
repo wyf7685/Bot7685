@@ -4,10 +4,10 @@ from collections.abc import Iterable
 from enum import Enum
 from typing import Any, ClassVar, Protocol
 
+from bot7685_ext import LRU
 from nonebot.adapters import Event, Message, MessageSegment
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
-from tarina import LRU
 
 DATETIME_FIELDS = [
     "year",
