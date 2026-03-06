@@ -1,6 +1,6 @@
 import contextlib
 from collections.abc import AsyncIterator
-from typing import Annotated, NamedTuple
+from typing import Annotated
 
 import nonebot_plugin_waiter.unimsg as waiter
 from nonebot import get_driver
@@ -10,11 +10,7 @@ from nonebot_plugin_alconna import Match, MsgTarget, UniMessage
 from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_uninfo import Uninfo
 
-
-class Repos(NamedTuple):
-    owner: str
-    repo: str
-
+from .data_source import Repos
 
 processing_repos: set[Repos] = set()
 

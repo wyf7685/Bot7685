@@ -17,11 +17,12 @@ from nonebot_plugin_alconna import UniMessage
 from src.utils import with_semaphore
 
 from .config import AppGitHub, plugin_config
+from .data_source import WorkflowID
 from .depends import Repository
 
 if TYPE_CHECKING:
     from githubkit import AppAuthStrategy, AppInstallationAuthStrategy, GitHub
-    from githubkit.versions.latest.models import WorkflowRun
+    from githubkit.versions.latest.models import Workflow, WorkflowRun
 
 
 async def download_artifact(
@@ -166,6 +167,20 @@ class ArtifactHelper:
         async with self.github:
             yield self
 
+    async def get_workflow(self, workflow_id: WorkflowID) -> Workflow | None:
+        try:
+            response = await self.github.rest.actions.async_get_workflow(
+                owner=self.owner,
+                repo=self.repo,
+                workflow_id=workflow_id,
+            )
+        except RequestFailed as exc:
+            if exc.response.status_code == 404:
+                return None
+            raise
+        else:
+            return response.parsed_data
+
     async def fetch_latest_run(
         self,
         workflow_id: int | str | None = None,
@@ -252,10 +267,15 @@ Helper = Annotated[ArtifactHelper, Depends(_artifact_helper)]
 
 async def _requested_artifacts(
     helper: Helper,
-    workflow_id: int | str | None = None,
+    workflow_id: WorkflowID | None = None,
 ) -> list[Artifact]:
-    run = await helper.fetch_latest_run(workflow_id)
-    artifacts = await helper.fetch_artifacts(run.id)
+    try:
+        run = await helper.fetch_latest_run(workflow_id)
+        artifacts = await helper.fetch_artifacts(run.id)
+    except Exception as exc:
+        logger.exception("Failed to fetch artifacts")
+        await UniMessage.text(f"获取 artifact 失败: {exc}").finish(reply_to=True)
+
     if not artifacts:
         await UniMessage.text("未找到最新工作流运行的任何 artifact").finish(
             reply_to=True

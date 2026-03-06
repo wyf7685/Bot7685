@@ -6,7 +6,7 @@ require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_uninfo")
 require("nonebot_plugin_waiter")
-from . import matcher as matcher
+from . import matchers as matchers
 from .config import Config
 
 __plugin_meta__ = PluginMetadata(
