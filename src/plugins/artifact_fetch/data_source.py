@@ -1,3 +1,4 @@
+import contextlib
 import functools
 import shutil
 import uuid
@@ -52,7 +53,7 @@ class Subscription(BaseModel):
 subscriptions = ConfigListFile(DATA_DIR / "subscriptions.json", Subscription)
 
 
-async def _cache_directory() -> AsyncIterator[anyio.Path]:
+async def _get_cache_directory() -> AsyncIterator[anyio.Path]:
     cache_dir = CACHE_DIR / uuid.uuid4().hex
     await cache_dir.mkdir(parents=True, exist_ok=True)
     try:
@@ -63,4 +64,7 @@ async def _cache_directory() -> AsyncIterator[anyio.Path]:
         )
 
 
-CacheDirectory = Annotated[anyio.Path, Depends(_cache_directory)]
+get_cache_directory = contextlib.asynccontextmanager(_get_cache_directory)
+
+
+CacheDirectory = Annotated[anyio.Path, Depends(_get_cache_directory)]
