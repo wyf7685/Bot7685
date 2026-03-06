@@ -5,9 +5,10 @@ from typing import Annotated, Any
 
 from nonebot.adapters import Bot, Event
 from nonebot.dependencies import Dependent
+from nonebot.internal.params import DependencyCache
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
-from nonebot.typing import T_DependencyCache, T_State
+from nonebot.typing import T_State, _DependentCallable
 from nonebot_plugin_alconna import MsgTarget, Target
 
 from .base import PROVIDERS, UploadProvider
@@ -52,7 +53,7 @@ async def _extract_provider_extra(
     event: Event,
     state: T_State,
     stack: contextlib.AsyncExitStack,
-    dependency_cache: T_DependencyCache,
+    dependency_cache: dict[_DependentCallable[Any], DependencyCache] | None = None,
 ) -> dict[str, Any]:
     if uploader.extract_extra is None:
         return {}

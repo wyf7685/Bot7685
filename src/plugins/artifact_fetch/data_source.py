@@ -22,7 +22,7 @@ class Repos(NamedTuple):
     repo: str
 
 
-type WorkflowID = int | str
+WorkflowID = int | str
 
 
 class Subscription(BaseModel):
