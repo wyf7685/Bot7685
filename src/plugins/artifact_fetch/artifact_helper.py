@@ -1,5 +1,4 @@
 import contextlib
-import functools
 import hashlib
 from collections.abc import AsyncIterator, Buffer
 from typing import TYPE_CHECKING, Annotated, Self
@@ -60,12 +59,9 @@ async def download_artifact(
             await file.write(chunk)
             chunk_count += 1
             if chunk_count % 10 == 0 or chunk_count == total_chunks:
-                render = functools.partial(
-                    render_progress_log,
-                    chunk_count=chunk_count,
-                    current_time=anyio.current_time(),
+                logger.opt(colors=True).debug(
+                    render_progress_log(chunk_count, anyio.current_time())
                 )
-                logger.opt(colors=True, lazy=True).debug("{}", render)
 
     @with_semaphore(concurrency_limit)
     async def request_chunk(chunk_range: str) -> Buffer:
