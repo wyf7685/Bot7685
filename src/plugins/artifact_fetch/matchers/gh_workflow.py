@@ -1,4 +1,3 @@
-from collections.abc import AsyncIterator
 from typing import Annotated
 
 import anyio
@@ -69,7 +68,7 @@ async def handle_requested(
     msg = (
         f"🚀 Workflow 已启动\n"
         f"📦 仓库: {repo.full_name}\n"
-        f"⚙️  工作流: {run.name}\n"
+        f"⚙️ 工作流: {run.name}\n"
         f"🌿 分支: {run.head_branch}\n"
         f"💬 提交: {run.head_commit.message}\n"
         f"🔗 链接: {run.html_url}"
@@ -89,7 +88,7 @@ async def handle_completed(
     msg = (
         f"{'✅' if run.conclusion == 'success' else '❌'} Workflow 已完成\n"
         f"📦 仓库: {repo.full_name}\n"
-        f"⚙️  工作流: {run.name}\n"
+        f"⚙️ 工作流: {run.name}\n"
         f"📊 状态: {run.conclusion}\n"
         f"🌿 分支: {run.head_branch}\n"
         f"🔗 链接: {run.html_url}"
@@ -103,23 +102,15 @@ async def _check_upload_artifact(sub: SubscriptionMatched) -> None:
         on_completed.skip()
 
 
-async def _helper_with_artifact(
-    app_github: AppGitHub,
-    sub: SubscriptionMatched,
-) -> AsyncIterator[ArtifactHelper]:
-    helper = await ArtifactHelper.from_owner_repo(app_github, *sub.repos)
-    async with helper.begin():
-        yield helper
-
-
 @on_completed.handle(parameterless=[Depends(_check_upload_artifact)])
 async def handle_completed_with_artifact(
+    app_github: AppGitHub,
     event: WorkflowRunCompleted,
     sub: SubscriptionMatched,
     cache_dir: CacheDirectory,
-    helper: Annotated[ArtifactHelper, Depends(_helper_with_artifact)],
 ) -> None:
     target = sub.target
+    helper = await ArtifactHelper.from_owner_repo(app_github, *sub.repos)
 
     artifacts = await helper.fetch_artifacts(event.payload.workflow_run.id)
     if not artifacts:

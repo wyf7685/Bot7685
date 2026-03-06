@@ -1,6 +1,5 @@
-import contextlib
 import hashlib
-from collections.abc import AsyncIterator, Buffer
+from collections.abc import Buffer
 from typing import TYPE_CHECKING, Annotated, Self
 
 import anyio
@@ -158,11 +157,6 @@ class ArtifactHelper:
         )
         return cls(owner, repo, installation_github)
 
-    @contextlib.asynccontextmanager
-    async def begin(self) -> AsyncIterator[Self]:
-        async with self.github:
-            yield self
-
     async def get_workflow(self, workflow_id: WorkflowID) -> Workflow | None:
         try:
             response = await self.github.rest.actions.async_get_workflow(
@@ -237,11 +231,11 @@ class ArtifactHelper:
 async def _artifact_helper(
     app_github: AppGitHub,
     repository: Repository,
-) -> AsyncIterator[ArtifactHelper]:
+) -> ArtifactHelper:
     owner, repo = repository
 
     try:
-        helper = await ArtifactHelper.from_owner_repo(app_github, owner, repo)
+        return await ArtifactHelper.from_owner_repo(app_github, owner, repo)
     except RequestFailed as exc:
         if exc.response.status_code != 404:
             logger.error(f"Failed to create ArtifactHelper: {exc.response.text}")
@@ -253,9 +247,6 @@ async def _artifact_helper(
         await UniMessage.text(
             f"无法访问仓库 {owner}/{repo}\n请确保已安装 GitHub App 并授权访问该仓库"
         ).finish(reply_to=True)
-
-    async with helper.begin():
-        yield helper
 
 
 Helper = Annotated[ArtifactHelper, Depends(_artifact_helper)]

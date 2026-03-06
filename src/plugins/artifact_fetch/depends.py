@@ -35,38 +35,27 @@ async def _request_admin_approval(
         .text("\n请管理员回复同意或拒绝")
     ).send(target)
 
-    async def _rule(
-        t: MsgTarget,
-        s: Uninfo,
-        # TODO: 检查是否为回复机器人消息
-        # msg: UniMsg,
-    ) -> bool:
-        # 校验同会话
-        if not t.verify(target):
+    approval_words = {"同意", "批准", "通过", "y", "yes", "approve"}
+    rejection_words = {"拒绝", "不同意", "驳回", "n", "no", "reject", "refuse"}
+    keywords = approval_words | rejection_words
+
+    async def _rule(event: Event, t: MsgTarget, s: Uninfo) -> bool:
+        if not t.verify(target):  # 同会话
             return False
-        # 校验管理员权限
-        return bool(s.member and s.member.role and s.member.role.level > 1)
+        if s.member and s.member.role and s.member.role.level > 1:  # 管理员权限
+            return False
+        if event.get_plaintext().strip().lower() not in keywords:
+            await UniMessage.text("请回复同意或拒绝").send(reply_to=True)
+            return False
+        return True
 
     @waiter.waiter(waits=[type(event)], rule=_rule)
-    def wait(event: Event) -> bool | None:
-        text = event.get_plaintext().strip().lower()
-        if text in {"同意", "批准", "通过", "y", "yes"}:
-            return True
-        if text in {"拒绝", "不同意", "驳回", "n", "no"}:
-            return False
-        return None
+    def wait(event: Event) -> bool:
+        return event.get_plaintext().strip().lower() in approval_words
 
-    async for result in wait(default=False, timeout=30):
-        if result is None:
-            await UniMessage.text("请回复同意或拒绝").send(reply_to=True)
-            continue
-
-        schedule_recall(receipt)
-        return result
-
-    # Should never reach here, but just in case
+    result = await wait.wait(default=False, timeout=30)
     schedule_recall(receipt)
-    return False
+    return result
 
 
 async def _extract_repository(
