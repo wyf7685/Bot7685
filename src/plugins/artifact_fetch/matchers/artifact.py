@@ -1,6 +1,7 @@
 from typing import Annotated
 
 import anyio
+from nonebot import logger
 from nonebot.params import Depends
 from nonebot_plugin_alconna import (
     Alconna,
@@ -28,11 +29,21 @@ alc = Alconna(
     ),
     Subcommand(
         "subscribe",
-        Option("--owner|-o", Args["owner", str]),
-        Option("--repo|-r", Args["repo", str]),
-        Option("--workflow-id|-w", Args["workflow_id?", WorkflowID]),
-        Option("--upload-artifact", dest="upload_artifact"),
-        Option("--target-folder|-t", Args["target_folder?", str]),
+        Subcommand(
+            "add",
+            Option("--owner|-o", Args["owner", str]),
+            Option("--repo|-r", Args["repo", str]),
+            Option("--workflow-id|-w", Args["workflow_id?", WorkflowID]),
+            Option("--upload-artifact", dest="upload_artifact"),
+            Option("--target-folder|-t", Args["target_folder?", str]),
+        ),
+        Subcommand(
+            "remove",
+            Option("--owner|-o", Args["owner", str]),
+            Option("--repo|-r", Args["repo", str]),
+            Option("--workflow-id|-w", Args["workflow_id?", WorkflowID]),
+        ),
+        alias={"sub"},
     ),
 )
 matcher = on_alconna(alc)
@@ -56,14 +67,26 @@ async def assign_fetch(
             tg.start_soon(uploader.upload, file, name, target, uploader_extra)
 
 
-async def _build_sub(
+async def _extracted_sub(
     target: MsgTarget,
     repos: Repository,
+    workflow_id: WorkflowID | None = None,
+) -> Subscription:
+    return Subscription(
+        owner=repos.owner,
+        repo=repos.repo,
+        workflow_id=workflow_id,
+        target_data=target.dump(),
+    )
+
+
+async def _verify_new_sub(
+    new_sub: Annotated[Subscription, Depends(_extracted_sub)],
     helper: Helper,
     workflow_id: WorkflowID | None = None,
 ) -> Subscription:
     for sub in subscriptions.load():
-        if sub.repos == repos and sub.workflow_id == workflow_id:
+        if sub.verify(new_sub):
             await UniMessage.text("已存在相同订阅").finish(reply_to=True)
 
     if workflow_id is not None:
@@ -73,32 +96,46 @@ async def _build_sub(
                 reply_to=True
             )
 
-    return Subscription(
-        owner=repos.owner,
-        repo=repos.repo,
-        workflow_id=workflow_id,
-        target_data=target.dump(),
-    )
+    return new_sub
 
 
-NewSubscription = Annotated[Subscription, Depends(_build_sub)]
-
-
-@matcher.assign("~subscribe.upload_artifact")
-async def assign_subscribe_upload(
-    sub: NewSubscription,
+@matcher.assign("~subscribe.add.upload_artifact")
+async def assign_subscribe_add_upload(
+    sub: Annotated[Subscription, Depends(_verify_new_sub)],
     uploader_extra: UploaderExtra,
 ) -> None:
     sub.upload_artifact = True
     sub.extra = uploader_extra
+    logger.debug(f"Extracted extra for subscription: {uploader_extra!r}")
 
 
-@matcher.assign("~subscribe")
-async def assign_subscribe(sub: NewSubscription) -> None:
+@matcher.assign("~subscribe.add")
+async def assign_subscribe_add(
+    sub: Annotated[Subscription, Depends(_verify_new_sub)],
+) -> None:
     subscriptions.add(sub)
+    logger.info(f"Added subscription: {sub!r}")
     msg = (
         f"已订阅仓库 {sub.owner}/{sub.repo} 的工作流"
         + (f"（ID: {sub.workflow_id}）" if sub.workflow_id else "")
         + "的运行状态更新"
     )
     await UniMessage.text(msg).finish(reply_to=True)
+
+
+@matcher.assign("~subscribe.remove")
+async def assign_subscribe_remove(
+    sub: Annotated[Subscription, Depends(_extracted_sub)],
+) -> None:
+    for existing in subscriptions.load()[:]:
+        if existing.verify(sub):
+            subscriptions.remove(existing.verify)
+            logger.info(f"Removed subscription: {existing!r}")
+            msg = (
+                f"已取消订阅仓库 {sub.owner}/{sub.repo} 的工作流"
+                + (f"（ID: {sub.workflow_id}）" if sub.workflow_id else "")
+                + "的运行状态更新"
+            )
+            await UniMessage.text(msg).finish(reply_to=True)
+
+    await UniMessage.text("未找到匹配的订阅").finish(reply_to=True)

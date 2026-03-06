@@ -41,6 +41,13 @@ class Subscription(BaseModel):
     def target(self) -> Target:
         return Target.load(self.target_data)
 
+    def verify(self, other: Subscription) -> bool:
+        return (
+            self.target.verify(other.target)
+            and self.repos == other.repos
+            and self.workflow_id == other.workflow_id
+        )
+
 
 subscriptions = ConfigListFile(DATA_DIR / "subscriptions.json", Subscription)
 
