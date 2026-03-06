@@ -23,7 +23,7 @@ def _load_providers() -> None:
 
     for name in module_names:
         with contextlib.suppress(ImportError):
-            importlib.import_module(f".{name}", __package__)
+            importlib.import_module(f".providers.{name}", __package__)
 
 
 _load_providers()
@@ -55,11 +55,11 @@ async def _extract_provider_extra(
     stack: contextlib.AsyncExitStack,
     dependency_cache: dict[_DependentCallable[Any], DependencyCache] | None = None,
 ) -> dict[str, Any]:
-    if uploader.extract_extra is None:
+    if (call := type(uploader).extract_extra) is None:
         return {}
 
     dependent = Dependent[dict[str, Any]].parse(
-        call=uploader.extract_extra,
+        call=call,
         allow_types=matcher.HANDLER_PARAM_TYPES,
     )
     return await dependent(
