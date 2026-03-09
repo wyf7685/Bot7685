@@ -33,5 +33,5 @@ async def reaction_after_matcher(
     event: MessageEvent,
     exception: Exception | None,
 ) -> None:
-    emoji = "144" if exception is None else "10060"  # 🎉/❌
+    emoji = "144" if exception is None else "41"  # 🎉/[发抖]
     driver.task_group.start_soon(safe_reaction, bot, event, emoji)

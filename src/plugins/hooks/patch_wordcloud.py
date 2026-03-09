@@ -7,6 +7,9 @@ filter_words = {"不支持该消息类型", "当前QQ版本不支持此应用"}
 
 @nonebot.get_driver().on_startup
 def _() -> None:
+    if nonebot.get_plugin("nonebot_plugin_wordcloud") is None:
+        return
+
     try:
         nonebot.require("nonebot_plugin_wordcloud")
         import nonebot_plugin_wordcloud.data_source as source

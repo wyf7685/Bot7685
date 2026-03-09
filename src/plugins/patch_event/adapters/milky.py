@@ -33,7 +33,7 @@ from src.plugins.gtg import call_later
 
 logger = nonebot.logger.opt(colors=True)
 scheduler_job: dict[Bot, tuple[SchedulerJob, ...]] = {}
-group_name_cache: dict[int, str | None] = {}
+group_name_cache: dict[int, str] = {}
 user_card_cache: dict[tuple[int, int | None], str | None] = {}
 
 
@@ -79,11 +79,15 @@ async def on_bot_connect(bot: Bot) -> None:
             update_group_cache,
             args=(bot,),
             trigger=CronTrigger(hour="*", minute="0"),
+            misfire_grace_time=30,
+            max_instances=1,
         ),
         scheduler.add_job(
             update_user_cache,
             args=(bot,),
-            trigger=CronTrigger(minute="0/15"),
+            trigger=CronTrigger(second="0/15"),
+            misfire_grace_time=15,
+            max_instances=1,
         ),
     )
 
