@@ -1,10 +1,10 @@
 #! /usr/bin/env sh
 set -e
 
-if [ ! -d "${VIRTUAL_ENV}" ]; then
-  uv venv "${VIRTUAL_ENV}"
-fi
-uv sync --locked --active --no-dev
+# if [ ! -d "${VIRTUAL_ENV}" ]; then
+#   uv venv "${VIRTUAL_ENV}"
+# fi
+# uv sync --locked --active --no-dev
 
 export APP_MODULE="bot:app"
 export MAX_WORKERS="1"
