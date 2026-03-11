@@ -1,8 +1,9 @@
-from typing import Annotated, Final, Protocol
+from typing import Annotated, Any, Final, Protocol
 
 import anyio
 import anyio.lowlevel
 from githubkit.typing import Missing
+from githubkit.versions.latest.models import Artifact
 from nonebot import get_driver, logger, on_type
 from nonebot.adapters.github.event import WorkflowRunCompleted, WorkflowRunRequested
 from nonebot.matcher import Matcher
@@ -188,8 +189,8 @@ async def notify_workflow_run_completed(
         f"{'✅' if run.conclusion == 'success' else '❌'} Workflow 已完成\n"
         f"📦 仓库: {repo_name}\n"
         f"⚙️ 工作流: {run.name}\n"
-        f"📊 状态: {run.conclusion}\n"
         f"🌿 分支: {run.head_branch}\n"
+        f"📊 状态: {run.conclusion}\n"
         f"🔗 链接: {run.html_url}"
     )
     await UniMessage.text(msg).send(sub.target)
@@ -229,18 +230,22 @@ async def upload_artifacts_for_run(
         owner=sub.repos.owner, repo=sub.repos.repo, run_id=run_id
     )
     run_data = run_resp.parsed_data
-    rename_vars = {
+    format_data = {
         "run": run_data,
         "head_sha": run_data.head_sha,
         "head_sha_short": run_data.head_sha[:7],
     }
+
+    def prepare_format_data(artifact: Artifact) -> dict[str, Any]:
+        match = cfg.match_regex(artifact.name)
+        data = {**format_data, "artifact": artifact, "match": match}
+        if match is not None:
+            data["$0"] = match.group(0)
+            data.update({f"${i}": g for i, g in enumerate(match.groups(), start=1)})
+        return data
+
     saved = {
-        cfg.rename(
-            artifact_name=name,
-            artifact=filtered_artifacts[name],
-            match=cfg.match_regex(name),
-            **rename_vars,
-        ): path
+        cfg.rename(name, prepare_format_data(filtered_artifacts[name])): path
         for name, path in saved.items()
     }
 

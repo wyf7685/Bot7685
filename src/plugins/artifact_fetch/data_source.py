@@ -37,10 +37,10 @@ class ArtifactConfig(BaseModel):
             return None
         return re.search(self.filter_regex, name)
 
-    def rename(self, artifact_name: str, **kwargs: Any) -> str:
+    def rename(self, artifact_name: str, format_data: dict[str, Any]) -> str:
         if self.rename_template is None:
             return artifact_name
-        return self.rename_template.format(name=artifact_name, **kwargs)
+        return self.rename_template.format(name=artifact_name, **format_data)
 
 
 class Subscription(BaseModel):
