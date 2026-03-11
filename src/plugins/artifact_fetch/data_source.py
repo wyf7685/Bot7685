@@ -32,10 +32,10 @@ class ArtifactConfig(BaseModel):
     rename_template: str | None = None
     extra: dict[str, Any] = Field(default_factory=dict)
 
-    def filter(self, name: str) -> bool:
+    def match_regex(self, name: str) -> re.Match[str] | None:
         if self.filter_regex is None:
-            return True
-        return re.search(self.filter_regex, name) is not None
+            return None
+        return re.search(self.filter_regex, name)
 
     def rename(self, artifact_name: str, **kwargs: Any) -> str:
         if self.rename_template is None:

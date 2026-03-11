@@ -211,7 +211,9 @@ async def upload_artifacts_for_run(
         await UniMessage.text("未找到工作流运行的任何 artifact").send(target)
 
     filtered_artifacts = {
-        artifact.name: artifact for artifact in artifacts if cfg.filter(artifact.name)
+        artifact.name: artifact
+        for artifact in artifacts
+        if cfg.match_regex(artifact.name)
     }
     if not filtered_artifacts:
         await UniMessage.text("没有 artifact 符合过滤条件").send(target)
@@ -236,6 +238,7 @@ async def upload_artifacts_for_run(
         cfg.rename(
             artifact_name=name,
             artifact=filtered_artifacts[name],
+            match=cfg.match_regex(name),
             **rename_vars,
         ): path
         for name, path in saved.items()
