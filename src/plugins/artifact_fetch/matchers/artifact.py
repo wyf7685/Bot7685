@@ -2,13 +2,16 @@ from typing import Annotated
 
 import anyio
 from nonebot import logger
+from nonebot.adapters import Bot
 from nonebot.params import Depends
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
+    CustomNode,
     MsgTarget,
     Option,
     Subcommand,
+    SupportScope,
     UniMessage,
     on_alconna,
 )
@@ -51,6 +54,7 @@ alc = Alconna(
             Option("--repo|-r", Args["repo", str]),
             Option("--workflow-id|-w", Args["workflow_id?", WorkflowID]),
         ),
+        Subcommand("list"),
         alias={"sub"},
     ),
 )
@@ -156,3 +160,46 @@ async def assign_subscribe_remove(
             await UniMessage.text(msg).finish(reply_to=True)
 
     await UniMessage.text("未找到匹配的订阅").finish(reply_to=True)
+
+
+@matcher.assign("~subscribe.list")
+async def assign_subscribe_list(bot: Bot, target: MsgTarget) -> None:
+    subs = subscriptions.load()
+    if not subs:
+        await UniMessage.text("当前没有任何订阅").finish(reply_to=True)
+
+    msgs: list[str] = []
+    for sub in filter(lambda sub: target.verify(sub.target), subs):
+        msg = (
+            f"- 仓库: {sub.owner}/{sub.repo}\n"
+            f"  工作流: {f'ID {sub.workflow_id}' if sub.workflow_id else '全部'}\n"
+        )
+        if cfg := sub.artifact_upload_config:
+            msg += "  Artifact 上传配置:\n"
+            msg += f"    - 过滤正则: {cfg.filter_regex or '<未配置>'}\n"
+            msg += f"    - 重命名模板: {cfg.rename_template or '<未配置>'}\n"
+        msgs.append(msg.strip())
+
+    if not msgs:
+        await UniMessage.text("当前会话没有任何订阅").finish(reply_to=True)
+
+    summary = f"当前会话共有 {len(msgs)} 条订阅"
+    if target.scope == SupportScope.qq_client:
+        summary_node = CustomNode(
+            uid=bot.self_id,
+            name="订阅列表 - 标题",
+            content=summary,
+            context=target.id,
+        )
+        nodes = [
+            CustomNode(
+                uid=bot.self_id,
+                name=f"订阅列表 - {idx}",
+                content=msg,
+                context=target.id,
+            )
+            for idx, msg in enumerate(msgs, 1)
+        ]
+        await UniMessage.reference(summary_node, *nodes).finish()
+    else:
+        await UniMessage.text("\n\n".join([summary, *msgs])).finish(reply_to=True)
