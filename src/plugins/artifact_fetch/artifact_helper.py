@@ -213,7 +213,7 @@ class ArtifactHelper:
             save_path = save_dir / f"{artifact.name}.zip"
             try:
                 await download_artifact(client, artifact, save_path)
-                saved[f"{artifact.name}.zip"] = save_path
+                saved[artifact.name] = save_path
             except Exception:
                 logger.exception(f"Failed to download artifact {artifact.name}")
 

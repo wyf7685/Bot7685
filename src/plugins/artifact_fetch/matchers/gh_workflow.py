@@ -5,6 +5,7 @@ import anyio.lowlevel
 from githubkit.typing import Missing
 from nonebot import get_driver, logger, on_type
 from nonebot.adapters.github.event import WorkflowRunCompleted, WorkflowRunRequested
+from nonebot.matcher import Matcher
 from nonebot.params import Depends
 from nonebot_plugin_alconna import UniMessage
 
@@ -61,13 +62,30 @@ async def _is_subscribed(
 SubscriptionMatched = Annotated[Subscription, Depends(_matching_sub)]
 
 
+async def _get_artifact_helper(
+    app_github: AppGitHub,
+    sub: SubscriptionMatched,
+) -> ArtifactHelper:
+    owner, repo = sub.repos
+    try:
+        return await ArtifactHelper.from_owner_repo(app_github, owner, repo)
+    except Exception:
+        logger.opt(exception=True).warning(
+            f"Failed to create ArtifactHelper for {owner}/{repo}"
+        )
+        Matcher.skip()
+
+
+Helper = Annotated[ArtifactHelper, Depends(_get_artifact_helper)]
+
+
 on_requested = on_type(WorkflowRunRequested, rule=_is_subscribed)
 on_completed = on_type(WorkflowRunCompleted, rule=_is_subscribed)
 
 
 @on_requested.handle()
 async def handle_requested(
-    app_github: AppGitHub,
+    helper: Helper,
     event: WorkflowRunRequested,
     sub: SubscriptionMatched,
 ) -> None:
@@ -83,7 +101,7 @@ async def handle_requested(
         f"🔗 链接: {run.html_url}"
     )
 
-    get_driver().task_group.start_soon(_track_workflow_run, app_github, event, sub)
+    get_driver().task_group.start_soon(_track_workflow_run, helper, event, sub)
     await UniMessage.text(msg).send(sub.target)
 
 
@@ -100,7 +118,7 @@ async def _cleanup_tracking_runs() -> None:
 
 
 async def _track_workflow_run(
-    app_github: AppGitHub,
+    helper: Helper,
     event: WorkflowRunRequested,
     sub: Subscription,
 ) -> None:
@@ -113,7 +131,7 @@ async def _track_workflow_run(
         tg.cancel_scope.cancel()
 
     async def get_run() -> WorkflowRunLike:
-        response = await app_github.rest.actions.async_get_workflow_run(
+        response = await helper.github.rest.actions.async_get_workflow_run(
             owner=sub.repos.owner, repo=sub.repos.repo, run_id=run_id
         )
         return response.parsed_data
@@ -134,7 +152,7 @@ async def _track_workflow_run(
         logger.warning("on_completed handler did not trigger")
         tg.start_soon(notify_workflow_run_completed, run, repo_name, sub)
         async with get_cache_directory() as cache_dir:
-            await upload_artifacts_for_run(app_github, sub, run_id, cache_dir)
+            await upload_artifacts_for_run(helper, sub, run_id, cache_dir)
 
     async def wrapper() -> None:
         try:
@@ -178,26 +196,55 @@ async def notify_workflow_run_completed(
 
 
 async def upload_artifacts_for_run(
-    app_github: AppGitHub,
+    helper: Helper,
     sub: Subscription,
     run_id: int,
     cache_dir: CacheDirectory,
 ) -> None:
     target = sub.target
-    helper = await ArtifactHelper.from_owner_repo(app_github, *sub.repos)
+    assert sub.artifact_upload_config is not None
+    cfg = sub.artifact_upload_config
+    uploader_extra = cfg.extra
 
     artifacts = await helper.fetch_artifacts(run_id)
     if not artifacts:
         await UniMessage.text("未找到工作流运行的任何 artifact").send(target)
 
-    saved = await helper.download_artifacts(*artifacts, save_dir=cache_dir)
+    filtered_artifacts = {
+        artifact.name: artifact for artifact in artifacts if cfg.filter(artifact.name)
+    }
+    if not filtered_artifacts:
+        await UniMessage.text("没有 artifact 符合过滤条件").send(target)
+
+    saved = await helper.download_artifacts(
+        *filtered_artifacts.values(),
+        save_dir=cache_dir,
+    )
     if not saved:
         await UniMessage.text("未能成功下载任何 artifact").send(target)
+
+    run_resp = await helper.github.rest.actions.async_get_workflow_run(
+        owner=sub.repos.owner, repo=sub.repos.repo, run_id=run_id
+    )
+    run_data = run_resp.parsed_data
+    rename_vars = {
+        "run": run_data,
+        "head_sha": run_data.head_sha,
+        "head_sha_short": run_data.head_sha[:7],
+    }
+    saved = {
+        cfg.rename(
+            artifact_name=name,
+            artifact=filtered_artifacts[name],
+            **rename_vars,
+        ): path
+        for name, path in saved.items()
+    }
 
     uploader = await get_upload_provider(target)
     async with anyio.create_task_group() as tg:
         for name, file in saved.items():
-            tg.start_soon(uploader.upload, file, name, target, sub.extra)
+            tg.start_soon(uploader.upload, file, name, target, uploader_extra)
 
 
 @on_completed.handle()
@@ -214,16 +261,16 @@ async def handle_completed(
 
 
 async def _check_upload_artifact(sub: SubscriptionMatched) -> None:
-    if not sub.upload_artifact:
+    if sub.artifact_upload_config is None:
         on_completed.skip()
 
 
 @on_completed.handle(parameterless=[Depends(_check_upload_artifact)])
 async def handle_completed_with_artifact(
-    app_github: AppGitHub,
     event: WorkflowRunCompleted,
+    helper: Helper,
     sub: SubscriptionMatched,
     cache_dir: CacheDirectory,
 ) -> None:
     run_id = event.payload.workflow_run.id
-    await upload_artifacts_for_run(app_github, sub, run_id, cache_dir)
+    await upload_artifacts_for_run(helper, sub, run_id, cache_dir)

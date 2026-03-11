@@ -14,7 +14,13 @@ from nonebot_plugin_alconna import (
 )
 
 from ..artifact_helper import Helper, RequestedArtifacts
-from ..data_source import CacheDirectory, Subscription, WorkflowID, subscriptions
+from ..data_source import (
+    ArtifactConfig,
+    CacheDirectory,
+    Subscription,
+    WorkflowID,
+    subscriptions,
+)
 from ..depends import Repository
 from ..upload import Uploader, UploaderExtra
 
@@ -36,6 +42,8 @@ alc = Alconna(
             Option("--workflow-id|-w", Args["workflow_id?", WorkflowID]),
             Option("--upload-artifact", dest="upload_artifact"),
             Option("--target-folder|-t", Args["target_folder?", str]),
+            Option("--filter-regex", Args["filter_regex?", str]),
+            Option("--rename-template", Args["rename_template?", str]),
         ),
         Subcommand(
             "remove",
@@ -67,7 +75,7 @@ async def assign_fetch(
             tg.start_soon(uploader.upload, file, name, target, uploader_extra)
 
 
-async def _extracted_sub(
+async def _extract_sub(
     target: MsgTarget,
     repos: Repository,
     workflow_id: WorkflowID | None = None,
@@ -81,7 +89,7 @@ async def _extracted_sub(
 
 
 async def _verify_new_sub(
-    new_sub: Annotated[Subscription, Depends(_extracted_sub)],
+    new_sub: Annotated[Subscription, Depends(_extract_sub)],
     helper: Helper,
     workflow_id: WorkflowID | None = None,
 ) -> Subscription:
@@ -103,9 +111,14 @@ async def _verify_new_sub(
 async def assign_subscribe_add_upload(
     sub: Annotated[Subscription, Depends(_verify_new_sub)],
     uploader_extra: UploaderExtra,
+    filter_regex: str | None = None,
+    rename_template: str | None = None,
 ) -> None:
-    sub.upload_artifact = True
-    sub.extra = uploader_extra
+    sub.artifact_upload_config = ArtifactConfig(
+        filter_regex=filter_regex,
+        rename_template=rename_template,
+        extra=uploader_extra,
+    )
     logger.debug(f"Extracted extra for subscription: {uploader_extra!r}")
 
 
@@ -117,15 +130,19 @@ async def assign_subscribe_add(
     logger.info(f"Added subscription: {sub!r}")
     msg = (
         f"已订阅仓库 {sub.owner}/{sub.repo} 的工作流"
-        + (f"（ID: {sub.workflow_id}）" if sub.workflow_id else "")
-        + "的运行状态更新"
+        f"{f'（ID: {sub.workflow_id}）' if sub.workflow_id else ''}"
+        "的运行状态更新"
     )
+    if cfg := sub.artifact_upload_config:
+        msg += "\n\nArtifact 上传配置:\n"
+        msg += f"- 过滤正则: {cfg.filter_regex or '<未配置>'}\n"
+        msg += f"- 重命名模板: {cfg.rename_template or '<未配置>'}\n"
     await UniMessage.text(msg).finish(reply_to=True)
 
 
 @matcher.assign("~subscribe.remove")
 async def assign_subscribe_remove(
-    sub: Annotated[Subscription, Depends(_extracted_sub)],
+    sub: Annotated[Subscription, Depends(_extract_sub)],
 ) -> None:
     for existing in subscriptions.load()[:]:
         if existing.verify(sub):

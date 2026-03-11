@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import re
 import shutil
 import uuid
 from collections.abc import AsyncIterator
@@ -26,13 +27,28 @@ class Repos(NamedTuple):
 WorkflowID = int | str
 
 
+class ArtifactConfig(BaseModel):
+    filter_regex: str | None = None
+    rename_template: str | None = None
+    extra: dict[str, Any] = Field(default_factory=dict)
+
+    def filter(self, name: str) -> bool:
+        if self.filter_regex is None:
+            return True
+        return re.search(self.filter_regex, name) is not None
+
+    def rename(self, artifact_name: str, **kwargs: Any) -> str:
+        if self.rename_template is None:
+            return artifact_name
+        return self.rename_template.format(name=artifact_name, **kwargs)
+
+
 class Subscription(BaseModel):
     owner: str
     repo: str
     workflow_id: WorkflowID | None = None
     target_data: dict[str, Any]
-    upload_artifact: bool = False
-    extra: dict[str, Any] = Field(default_factory=dict)
+    artifact_upload_config: ArtifactConfig | None = None
 
     @property
     def repos(self) -> Repos:

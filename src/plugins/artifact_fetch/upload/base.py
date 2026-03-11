@@ -46,6 +46,9 @@ class UploadProvider[TB: Bot, TE: Event](abc.ABC):
             )
             return
 
+        if not name.endswith(".zip"):
+            name = f"{name}.zip"
+
         try:
             await self.do_upload(file, name, target, extra)
         except Exception as exc:
