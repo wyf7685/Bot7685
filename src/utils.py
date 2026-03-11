@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Any, cast
 
 import anyio
-import anyio.abc
 import nonebot
 from msgspec import json as msgjson
 from msgspec import toml as msgtoml
