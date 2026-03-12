@@ -71,7 +71,7 @@ class H(Highlight):
 
 @patcher
 def patch_event(self: Event) -> str:
-    return H.apply(model_dump(self))
+    return f"\n{H.apply(model_dump(self), indent=2)}"
 
 
 @patcher
