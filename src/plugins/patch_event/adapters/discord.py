@@ -1,8 +1,8 @@
-from typing import ClassVar, Protocol
+from typing import ClassVar, Protocol, cast
 
 from nonebot.adapters.discord import Event, Message
-from nonebot.adapters.discord.api import UNSET, Channel, SnowflakeType, User
-from nonebot.adapters.discord.api.types import Unset
+from nonebot.adapters.discord.api import Channel, MessageGet, SnowflakeType, User
+from nonebot.adapters.discord.api.types import UNSET, UnsetType
 from nonebot.adapters.discord.event import (
     DirectMessageCreateEvent,
     DirectMessageDeleteEvent,
@@ -29,7 +29,7 @@ def find_guild_name(guild: SnowflakeType) -> str | None:
 def find_channel_name(guild: SnowflakeType, channel: SnowflakeType) -> str | None:
     for c in guild_channel_cache.get(guild, []):
         if c.id == channel:
-            return c.name or None
+            return c.name if isinstance(c.name, str) else None
     return None
 
 
@@ -52,7 +52,7 @@ class H(Highlight):
     exclude_value: ClassVar[tuple[object, ...]] = (UNSET, None)
 
     @classmethod
-    def user(cls, user: User | Unset) -> str:
+    def user(cls, user: User | UnsetType) -> str:
         return (
             cls.name(user.id, user.global_name or user.username)
             if user is not UNSET
@@ -85,10 +85,14 @@ def patch_direct_message_create_event(self: DirectMessageCreateEvent) -> str:
 
 @patcher
 def patch_direct_message_update_event(self: DirectMessageUpdateEvent) -> str:
+    try:
+        message = Message.from_guild_message(cast("MessageGet", self))
+    except Exception:
+        message = None
     return (
         f"Message {H.id(self.id)} "
         f"from {H.user(self.author)} "
-        f"updated to {H.apply(Message.from_guild_message(self))}"
+        f"updated{f' to {H.apply(message)}' if message else ''}"
     )
 
 
@@ -112,10 +116,14 @@ def patch_guild_message_create_event(self: GuildMessageCreateEvent) -> str:
 
 @patcher
 def patch_guild_message_update_event(self: GuildMessageUpdateEvent) -> str:
+    try:
+        message = Message.from_guild_message(cast("MessageGet", self))
+    except Exception:
+        message = None
     return (
         f"Message {H.id(self.id)} "
         f"from {H.user(self.author)}@{H.channel(self)} "
-        f"updated to {H.apply(Message.from_guild_message(self))}"
+        f"updated{f' to {H.apply(message)}' if message else ''}"
     )
 
 
