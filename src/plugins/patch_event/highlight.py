@@ -45,48 +45,31 @@ class _Style:
 
 
 style = _Style()
-_struct_indent: ContextVar[int | None] = ContextVar(
-    "bot7685_highlight_struct_indent", default=None
-)
-
-
-@contextlib.contextmanager
-def use_struct_indent(indent: int | None = None) -> Iterator[None]:
-    token = _struct_indent.set(indent)
-    try:
-        yield
-    finally:
-        _struct_indent.reset(token)
+_struct_indent = ContextVar[int | None]("highlight_struct_indent", default=None)
+_struct_depth = ContextVar[int]("highlight_struct_depth", default=0)
 
 
 class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Event]:
     style: ClassVar[_Style] = style
     exclude_value: ClassVar[tuple[object, ...]] = ()
-    _struct_indent: ClassVar[ContextVar[int | None]]
-    _struct_depth: ClassVar[ContextVar[int]]
-
-    def __init_subclass__(cls, **kwargs: object) -> None:
-        super().__init_subclass__(**kwargs)
-        cls._struct_indent = ContextVar("highlight_struct_indent", default=None)
-        cls._struct_depth = ContextVar("highlight_struct_depth", default=0)
 
     @classmethod
     @contextlib.contextmanager
     def _use_struct_indent(cls, indent: int | None) -> Iterator[None]:
-        token = cls._struct_indent.set(indent)
+        token = _struct_indent.set(indent)
         try:
             yield
         finally:
-            cls._struct_indent.reset(token)
+            _struct_indent.reset(token)
 
     @classmethod
     @contextlib.contextmanager
     def _push_struct_depth(cls) -> Iterator[None]:
-        token = cls._struct_depth.set(cls._struct_depth.get() + 1)
+        token = _struct_depth.set(_struct_depth.get() + 1)
         try:
             yield
         finally:
-            cls._struct_depth.reset(token)
+            _struct_depth.reset(token)
 
     @classmethod
     def repr(cls, data: object, /, *color: str) -> str:
@@ -147,15 +130,16 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
     def _seq(cls, seq: Iterable[str], bracket: str, /) -> str:
         st, ed = bracket
 
-        indent = cls._struct_indent.get()
+        indent = _struct_indent.get()
         if indent is None:
             return f"{st}{', '.join(seq)}{ed}"
-
-        space = " " * indent * (cls._struct_depth.get() + 1)
 
         seq = list(seq)
         if not seq:
             return bracket
+
+        depth = _struct_depth.get()
+        space = " " * indent * (depth + 1)
 
         if len(seq) <= 3:
             single_line = f"{st} {', '.join(seq)} {ed}"
@@ -165,7 +149,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
         return (
             f"{st}\n"
             f"{',\n'.join(f'{space}{i}' for i in seq)}\n"
-            f"{' ' * indent * cls._struct_depth.get()}{ed}"
+            f"{' ' * indent * depth}{ed}"
         )
 
     @register(dict)
@@ -211,7 +195,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
         model = type(data)
         with cls._push_struct_depth():
             kv = (
-                f"<i><y>{name}</y></i>={cls.apply(value)}"
+                f"{style.i_y(name)}={cls.apply(value)}"
                 for name in model.model_fields
                 if (value := getattr(data, name)) not in cls.exclude_value
             )
