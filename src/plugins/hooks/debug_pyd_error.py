@@ -3,7 +3,6 @@ import json
 
 from nonebot import logger, require
 from nonebot.message import run_postprocessor
-from nonebot.utils import escape_tag
 from pydantic import ValidationError
 
 local_ns_lookup = {
@@ -47,8 +46,6 @@ async def catch_error(exception: ValidationError) -> None:
     from src.plugins.patch_event.highlight import Highlight
 
     colored = Highlight.apply(var_value)
-    logger.opt(colors=True).error(
-        f"ValidationError in function '{qualname}':\n"
-        f"Input data:\n{colored}\n"
-        f"Error details:\n{escape_tag(repr(exception))}"
+    logger.opt(colors=True).debug(
+        f"ValidationError in function '{qualname}':\nInput data:\n{colored}"
     )
