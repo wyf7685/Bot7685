@@ -1,11 +1,11 @@
 import contextlib
 import datetime
+import enum
 import functools
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextvars import ContextVar
 from enum import Enum
-from types import EllipsisType
-from typing import Any, ClassVar, Protocol
+from typing import Any, ClassVar, Literal, Protocol
 
 from bot7685_ext import LRU
 from nonebot.adapters import Event, Message, MessageSegment
@@ -40,36 +40,39 @@ class _Style:
                 lru[text] = f"{prefix}{text}{suffix}"
             return lru[text]
 
+        fn.__name__ = tag
+        fn.__qualname__ = f"Style.{tag}"
         setattr(self, tag, fn)
         return fn
 
 
 style = _Style()
+
+
+class _Unset(Enum):
+    UNSET = enum.auto()
+
+
+UNSET = _Unset.UNSET
+type Unset = Literal[_Unset.UNSET]
+
 _struct_indent = ContextVar[int | None]("highlight_struct_indent", default=None)
 _struct_depth = ContextVar[int]("highlight_struct_depth", default=0)
+_line_length = ContextVar[int]("highlight_line_length", default=120)
+
+
+@contextlib.contextmanager
+def push_struct_depth() -> Iterator[None]:
+    token = _struct_depth.set(_struct_depth.get() + 1)
+    try:
+        yield
+    finally:
+        _struct_depth.reset(token)
 
 
 class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Event]:
     style: ClassVar[_Style] = style
     exclude_value: ClassVar[tuple[object, ...]] = ()
-
-    @classmethod
-    @contextlib.contextmanager
-    def _use_struct_indent(cls, indent: int | None) -> Iterator[None]:
-        token = _struct_indent.set(indent)
-        try:
-            yield
-        finally:
-            _struct_indent.reset(token)
-
-    @classmethod
-    @contextlib.contextmanager
-    def _push_struct_depth(cls) -> Iterator[None]:
-        token = _struct_depth.set(_struct_depth.get() + 1)
-        try:
-            yield
-        finally:
-            _struct_depth.reset(token)
 
     @classmethod
     def repr(cls, data: object, /, *color: str) -> str:
@@ -88,10 +91,20 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
     register = _handle.register  # pyright:ignore[reportUnannotatedClassAttribute]
 
     @classmethod
-    def apply(cls, data: object, /, indent: int | None | EllipsisType = ...) -> str:
-        if indent is ...:
+    def apply(
+        cls,
+        data: object,
+        /,
+        indent: int | None | Unset = UNSET,
+        line_length: int | Unset = UNSET,
+    ) -> str:
+        if indent is UNSET and line_length is UNSET:
             return cls._handle(data)
-        with cls._use_struct_indent(indent):
+        with contextlib.ExitStack() as stack:
+            if indent is not UNSET:
+                stack.enter_context(_struct_indent.set(indent))
+            if line_length is not UNSET:
+                stack.enter_context(_line_length.set(line_length))
             return cls._handle(data)
 
     @classmethod
@@ -106,17 +119,17 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
     @classmethod
     @functools.cache
     def _(cls, data: bool) -> str:
-        return cls.repr(data, "lg")
+        return style.lg(data)
 
     @register(int)
     @classmethod
     def _(cls, data: int) -> str:
-        return cls.enum(data) if isinstance(data, Enum) else cls.repr(data, "lc", "i")
+        return cls.enum(data) if isinstance(data, Enum) else style.i_lc(data)
 
     @register(float)
     @classmethod
     def _(cls, data: float) -> str:
-        return cls.repr(data, "lc", "i")
+        return style.i_lc(data)
 
     @register(str)
     @classmethod
@@ -125,6 +138,18 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
             return cls.enum(data)
         text = escape_tag(repr(data))
         return text[0] + style.c(text[1:-1]) + text[-1]
+
+    @classmethod
+    def _kv(
+        cls,
+        items: Iterable[tuple[str, object]],
+        separator: str,
+        format_key: Callable[[str], str],
+        /,
+    ) -> Iterable[str]:
+        for key, value in items:
+            if value not in cls.exclude_value:
+                yield f"{format_key(key)}{separator}{cls.apply(value)}"
 
     @classmethod
     def _seq(cls, seq: Iterable[str], bracket: str, /) -> str:
@@ -143,7 +168,10 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
 
         if len(seq) <= 3:
             single_line = f"{st} {', '.join(seq)} {ed}"
-            if len(space) + len(single_line) <= 120 and "\n" not in single_line:
+            if (
+                len(space) + len(single_line) <= _line_length.get()
+                and "\n" not in single_line
+            ):
                 return single_line
 
         return (
@@ -155,30 +183,25 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
     @register(dict)
     @classmethod
     def _(cls, data: dict[str, object]) -> str:
-        with cls._push_struct_depth():
-            kv = (
-                f"{cls.repr(key, 'le', 'i')}: {cls.apply(value)}"
-                for key, value in data.items()
-                if value not in cls.exclude_value
-            )
-            return cls._seq(kv, "{}")
+        with push_struct_depth():
+            return cls._seq(cls._kv(data.items(), ": ", style.i_le), "{}")
 
     @register(list)
     @classmethod
     def _(cls, data: list[object]) -> str:
-        with cls._push_struct_depth():
+        with push_struct_depth():
             return cls._seq(map(cls.apply, data), "[]")
 
     @register(set)
     @classmethod
     def _(cls, data: set[object]) -> str:
-        with cls._push_struct_depth():
+        with push_struct_depth():
             return cls._seq(map(cls.apply, data), "{}")
 
     @register(tuple)
     @classmethod
     def _(cls, data: tuple[object]) -> str:
-        with cls._push_struct_depth():
+        with push_struct_depth():
             return cls._seq(map(cls.apply, data), "()")
 
     @register(datetime.datetime)
@@ -193,13 +216,12 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
     @classmethod
     def _(cls, data: BaseModel) -> str:
         model = type(data)
-        with cls._push_struct_depth():
-            kv = (
-                f"{style.i_y(name)}={cls.apply(value)}"
-                for name in model.model_fields
-                if (value := getattr(data, name)) not in cls.exclude_value
+        items = ((name, getattr(data, name)) for name in model.model_fields)
+        with push_struct_depth():
+            return (
+                f"{style.lg(model.__name__)}"
+                f"{cls._seq(cls._kv(items, '=', style.i_y), '()')}"
             )
-            return f"{style.lg(model.__name__)}{cls._seq(kv, '()')}"
 
     @register(MessageSegment)
     @classmethod
