@@ -1,13 +1,3 @@
-FROM buildpack-deps:bookworm AS silk
-
-ADD https://github.com/kn007/silk-v3-decoder.git /data
-
-RUN chmod +x /data/converter.sh && \
-    /data/converter.sh && \
-    mkdir -p /out/silk && \
-    mv /data/converter.sh /out && \
-    mv /data/silk/decoder /out/silk
-
 FROM debian:bookworm-slim AS venv
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -58,7 +48,6 @@ RUN chmod +x /entrypoint.sh
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 RUN uv python install 3.14 --no-cache
 
-COPY --from=silk /out /opt/silk-decoder
 COPY --from=venv /opt/venv /opt/venv
 
 VOLUME [ "/app" ]

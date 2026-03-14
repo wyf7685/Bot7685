@@ -7,11 +7,83 @@ on:
     paths:
       - "docker/Dockerfile.playwright"
       - ".github/workflows/docker-playwright.yml"
+      - "uv.lock"
   workflow_dispatch:
 
 jobs:
+  extract_version:
+    name: Extract Playwright Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.pw_version.outputs.version }}
+      skip_build: ${{ steps.pw_version.outputs.skip_build }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: ./.github/actions/setup-python
+
+      - name: Extract and Compare Playwright Version
+        id: pw_version
+        run: |
+          set -euo pipefail
+
+          function extract_from_uv_lock() {
+            local lock_file="$1"
+            grep -A1 '^name = "playwright"$' "${lock_file}" | grep '^version = "' | head -n1 | sed -E 's/version = "([^"]+)"/\1/'
+          }
+
+          VERSION=$(extract_from_uv_lock "uv.lock")
+
+          if [ -z "${VERSION}" ]; then
+            echo "Failed to extract playwright version"
+            exit 1
+          fi
+
+          SKIP_BUILD=false
+          UV_LOCK_CHANGED=false
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BEFORE_SHA="${{ github.event.before }}"
+            CURRENT_SHA="${{ github.sha }}"
+            if git diff --name-only "${BEFORE_SHA}" "${CURRENT_SHA}" | grep -qx "uv.lock"; then
+              UV_LOCK_CHANGED=true
+            fi
+          fi
+
+          if [ "${UV_LOCK_CHANGED}" = "true" ]; then
+            BEFORE_SHA="${{ github.event.before }}"
+            PREV_LOCK_FILE="$(mktemp)"
+
+            if git show "${BEFORE_SHA}:uv.lock" > "${PREV_LOCK_FILE}" 2>/dev/null; then
+              PREV_VERSION=$(extract_from_uv_lock "${PREV_LOCK_FILE}")
+
+              if [ -n "${PREV_VERSION}" ]; then
+                echo "Previous playwright version: ${PREV_VERSION}"
+                if [ "${PREV_VERSION}" = "${VERSION}" ]; then
+                  SKIP_BUILD=true
+                fi
+              else
+                echo "Previous playwright version not found in previous uv.lock."
+              fi
+            else
+              echo "Unable to read previous uv.lock from ${BEFORE_SHA}; build will continue."
+            fi
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "skip_build=${SKIP_BUILD}" >> $GITHUB_OUTPUT
+          echo "Playwright version: ${VERSION}"
+          echo "Skip build: ${SKIP_BUILD}"
+
   docker:
     name: Docker Hub Release
+    needs: [extract_version]
+    if: needs.extract_version.outputs.skip_build != 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -19,16 +91,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: recursive
-
-      - name: Setup Python
-        uses: ./.github/actions/setup-python
-
-      - name: Extract Playwright Version
-        id: pw_version
-        run: |
-          VERSION=$(uv tree --package playwright 2>/dev/null | grep playwright | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Playwright version: ${VERSION}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -58,7 +120,7 @@ jobs:
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
           build-args: |
-            PLAYWRIGHT_VERSION=${{ steps.pw_version.outputs.version }}
+            PLAYWRIGHT_VERSION=${{ needs.extract_version.outputs.version }}
             PLAYWRIGHT_BROWSER=firefox
           cache-from: type=gha
           cache-to: type=gha,mode=max

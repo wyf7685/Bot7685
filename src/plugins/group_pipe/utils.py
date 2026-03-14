@@ -1,8 +1,7 @@
 import contextlib
 import copy
 import pathlib
-import shutil
-from collections.abc import AsyncGenerator, AsyncIterable
+from collections.abc import AsyncGenerator
 from typing import NamedTuple
 
 import anyio
@@ -47,7 +46,7 @@ async def download_url(url: str) -> bytes:
     try:
         resp = await async_client().get(url)
         resp.raise_for_status()
-    except (httpx.ConnectError, httpx.HTTPError):
+    except httpx.ConnectError, httpx.HTTPError:
         return b""
     else:
         return resp.read()
@@ -58,7 +57,7 @@ async def check_url_ok(url: str) -> bool:
     try:
         async with async_client().stream("GET", url) as resp:
             resp.raise_for_status()
-    except (httpx.ConnectError, httpx.HTTPError):
+    except httpx.ConnectError, httpx.HTTPError:
         return False
     else:
         return True
@@ -139,23 +138,6 @@ async def _ffmpeg_transform(
 async def webm_to_gif(raw: bytes) -> bytes:
     async with _ffmpeg_transform(raw, "gif") as gif_file:
         return await gif_file.read_bytes()
-
-
-async def amr_to_mp3(file: pathlib.Path) -> AsyncIterable[pathlib.Path]:
-    tmpfile = shutil.copyfile(file, get_plugin_cache_dir() / file.name)
-
-    cmd = [
-        "/silk-v3-decoder/converter.sh",
-        str(tmpfile),
-        "mp3",
-    ]
-    result = await anyio.run_process(cmd)
-    result.check_returncode()
-
-    output = tmpfile.with_name(f"{file.stem}.mp3")
-    yield output
-    tmpfile.unlink()
-    output.unlink()
 
 
 def _repr_uniseg(seg: Segment) -> str:
