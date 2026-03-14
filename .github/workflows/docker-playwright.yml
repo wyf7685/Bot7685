@@ -24,9 +24,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Python
-        uses: ./.github/actions/setup-python
-
       - name: Extract and Compare Playwright Version
         id: pw_version
         run: |
