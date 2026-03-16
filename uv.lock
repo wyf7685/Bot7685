@@ -1974,7 +1974,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-skland"
-version = "0.6.6"
+version = "0.6.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arclet-alconna" },
@@ -1991,9 +1991,9 @@ dependencies = [
     { name = "qrcode", extra = ["pil"] },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/51/c2dc2e70652f3f3e85186cf8844159837c5ed9ebf50c3f7de210889c715c/nonebot_plugin_skland-0.6.6.tar.gz", hash = "sha256:c96f88f97826129e7703cf35281fa95e29474d25188a0f26e7d4d193c803ece6", size = 38978373, upload-time = "2026-03-12T09:09:57.509Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/78/9fc2cb73e871c9f5e928e677f89c0e44328f3b9bff76ccebf901730d74dc/nonebot_plugin_skland-0.6.7.tar.gz", hash = "sha256:9cfc13d0e09d59da6a105284aacc66a987e320afb6be9cbddb4cfa97025e2e0f", size = 19967182, upload-time = "2026-03-16T10:01:05.362Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/c4/1f05482f180c04d14d7640dc6b9d7fff285bd2977f7c578feccc14b5303b/nonebot_plugin_skland-0.6.6-py3-none-any.whl", hash = "sha256:53fab0b089a86db640072b8e45f4f8ce33f6d665da739f3d2151d03700d6cbe5", size = 39045731, upload-time = "2026-03-12T09:09:54.686Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/f2/840f4347a57d9fc083104161d5a0b31f0de8a6273abb167c2098be331aa9/nonebot_plugin_skland-0.6.7-py3-none-any.whl", hash = "sha256:a2b9722c52d184f1cf32057c3a775b1c178a2c4c56396f37294aef2e743aa80e", size = 20034886, upload-time = "2026-03-16T10:01:02.137Z" },
 ]
 
 [[package]]
