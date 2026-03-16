@@ -23,4 +23,4 @@ class H(Highlight):
 
 @patcher
 def patch_event(self: Event) -> str:
-    return f"\n{H.apply(self, indent=2, line_length=180)}"
+    return H.apply(self)
