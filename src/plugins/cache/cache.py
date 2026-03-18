@@ -1,6 +1,6 @@
 import functools
 from collections.abc import Awaitable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from aiocache import BaseCache, RedisCache, SimpleMemoryCache
 from aiocache.serializers import PickleSerializer
@@ -9,7 +9,7 @@ from nonebot import get_driver, get_plugin_config
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from . import Cache  # __init__.pyi
+    from . import Cache  # type_check_only Protocol from ./__init__.pyi
 
 
 class RedisConfig(BaseModel):
@@ -68,9 +68,12 @@ class CacheWrapper:
         return func
 
 
-class get_cache[KT, VT]:  # noqa: N801
+class _Cache[KT, VT]:
     def __new__(cls, namespace: str, *, pickle: bool = False) -> Cache[KT, VT]:
-        return CacheWrapper(namespace, pickle=pickle)  # pyright:ignore[reportReturnType]
+        return cast("Cache[KT, VT]", CacheWrapper(namespace, pickle=pickle))
+
+
+get_cache = _Cache
 
 
 def cache_with[R, *Ts](
