@@ -9,7 +9,7 @@ from nonebot import get_driver, get_plugin_config
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from .cache import Cache  # ./cache.pyi
+    from . import Cache  # __init__.pyi
 
 
 class RedisConfig(BaseModel):
@@ -23,7 +23,7 @@ class Config(BaseModel):
     redis: RedisConfig | None = None
 
 
-_redis_config = get_plugin_config(Config).redis
+redis_config = get_plugin_config(Config).redis
 
 
 def _get_cache(*, pickle: bool) -> BaseCache:
@@ -31,12 +31,12 @@ def _get_cache(*, pickle: bool) -> BaseCache:
     return (
         RedisCache(
             serializer,
-            endpoint=_redis_config.host,
-            port=_redis_config.port,
-            db=_redis_config.db,
-            password=_redis_config.password,
+            endpoint=redis_config.host,
+            port=redis_config.port,
+            db=redis_config.db,
+            password=redis_config.password,
         )
-        if _redis_config is not None
+        if redis_config is not None
         else SimpleMemoryCache(serializer)
     )
 

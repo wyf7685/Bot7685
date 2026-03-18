@@ -1,2 +1,4 @@
-from .cache import cache_with as cache_with
-from .cache import get_cache as get_cache
+from . import gh_cache as _  # noqa: F401
+from .cache import cache_with, get_cache
+
+__all__ = ["cache_with", "get_cache"]

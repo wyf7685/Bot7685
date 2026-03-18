@@ -1,8 +1,9 @@
 from collections.abc import Awaitable, Callable, Iterable
 from datetime import timedelta
-from typing import Literal, overload
+from typing import Literal, Protocol, overload, type_check_only
 
-class Cache[KT, VT]:
+@type_check_only
+class Cache[KT, VT](Protocol):
     async def add(self, key: KT, value: VT, ttl: float | timedelta = ...) -> None: ...
     @overload
     async def get(self, key: KT) -> VT | None: ...
