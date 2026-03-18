@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Final, Protocol
+from typing import Annotated, Any, Protocol
 
 import anyio
 import anyio.lowlevel
@@ -8,6 +8,7 @@ from nonebot import get_driver, logger, on_type
 from nonebot.adapters.github.event import WorkflowRunCompleted, WorkflowRunRequested
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
+from nonebot.rule import Rule
 from nonebot_plugin_alconna import UniMessage
 
 from ..artifact_helper import ArtifactHelper
@@ -30,12 +31,9 @@ async def _workflow_run_repos(
     return Repos(owner=owner, repo=repo)
 
 
-WorkflowRunRepos = Annotated[Repos, Depends(_workflow_run_repos)]
-
-
 async def _matching_sub(
     event: WorkflowRunRequested | WorkflowRunCompleted,
-    repos: WorkflowRunRepos,
+    repos: Annotated[Repos, Depends(_workflow_run_repos)],
 ) -> Subscription | None:
     workflow_id = event.payload.workflow_run.workflow_id
     workflow_name = (
@@ -54,6 +52,7 @@ async def _matching_sub(
     return None
 
 
+@Rule
 async def _is_subscribed(
     sub: Annotated[Subscription | None, Depends(_matching_sub)],
 ) -> bool:
@@ -102,7 +101,12 @@ async def handle_requested(
         f"🔗 链接: {run.html_url}"
     )
 
-    get_driver().task_group.start_soon(_track_workflow_run, helper, event, sub)
+    get_driver().task_group.start_soon(
+        _track_workflow_run,
+        *(helper, sub),
+        event.payload.workflow_run.id,
+        event.payload.repository.full_name,
+    )
     await UniMessage.text(msg).send(sub.target)
 
 
@@ -120,11 +124,10 @@ async def _cleanup_tracking_runs() -> None:
 
 async def _track_workflow_run(
     helper: Helper,
-    event: WorkflowRunRequested,
     sub: Subscription,
+    run_id: int,
+    repo_name: str,
 ) -> None:
-    run_id = event.payload.workflow_run.id
-    repo_name = event.payload.repository.full_name
     _tracking_runs[run_id] = stop_event = anyio.Event()
 
     async def wait_for_cancel() -> None:
@@ -168,16 +171,22 @@ async def _track_workflow_run(
     finally:
         if stop_event.is_set():
             logger.info("Tracking cancelled by on_completed handler")
-        _tracking_runs.pop(event.payload.workflow_run.id, None)
+        _tracking_runs.pop(run_id, None)
 
 
 class WorkflowRunLike(Protocol):
-    id: Final[int]
-    name: Final[Missing[str | None]]
-    head_branch: Final[str | None]
-    html_url: Final[str]
-    status: Final[str | None]
-    conclusion: Final[str | None]
+    @property
+    def id(self) -> int: ...
+    @property
+    def name(self) -> Missing[str | None]: ...
+    @property
+    def head_branch(self) -> str | None: ...
+    @property
+    def html_url(self) -> str: ...
+    @property
+    def status(self) -> str | None: ...
+    @property
+    def conclusion(self) -> str | None: ...
 
 
 async def notify_workflow_run_completed(

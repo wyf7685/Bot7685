@@ -10,18 +10,20 @@ from nonebot_plugin_alconna import Match, MsgTarget, UniMessage
 from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_uninfo import Uninfo
 
-from .data_source import Repos
+from .data_source import Repos, subscriptions
 
 processing_repos: set[Repos] = set()
 
 
 def schedule_recall(receipt: Receipt) -> None:
+    if not receipt.recallable:
+        return
+
     async def recall() -> None:
         with contextlib.suppress(Exception):
             await receipt.recall()
 
-    if receipt.recallable:
-        get_driver().task_group.start_soon(recall)
+    get_driver().task_group.start_soon(recall)
 
 
 async def _request_admin_approval(
@@ -58,19 +60,48 @@ async def _request_admin_approval(
     return result
 
 
+async def _select_repos(
+    target: MsgTarget,
+    owner: Match[str],
+    repo: Match[str],
+) -> Repos:
+    if owner.available and repo.available:
+        return Repos(owner=owner.result, repo=repo.result)
+
+    subs = [
+        sub
+        for sub in subscriptions.load()
+        if sub.target.verify(target)
+        and (not owner.available or sub.owner == owner.result)
+        and (not repo.available or sub.repo == repo.result)
+    ]
+    if not subs:
+        await UniMessage.text("请指定仓库的 owner 和 repo").finish(reply_to=True)
+
+    if len(subs) == 1:
+        return subs[0].repos
+
+    formatted_subs = "\n".join(
+        f"{idx}. {sub.owner}/{sub.repo}" for idx, sub in enumerate(subs, 1)
+    )
+    prompt = f"请回复要访问的仓库编号：\n\n{formatted_subs}"
+    result = await waiter.prompt(prompt)
+    if (
+        result is None
+        or not (text := result.extract_plain_text().strip()).isdigit()
+        or not 1 <= (idx := int(text)) <= len(subs)
+    ):
+        await UniMessage.text("输入无效，操作已取消").finish(reply_to=True)
+
+    return subs[idx - 1].repos
+
+
 async def _extract_repository(
     event: Event,
     session: Uninfo,
     target: MsgTarget,
-    owner: Match[str],
-    repo: Match[str],
+    repos: Annotated[Repos, Depends(_select_repos)],
 ) -> AsyncIterator[Repos]:
-    if not owner.available or not repo.available:
-        # TODO: read from database
-        await UniMessage.text("请指定仓库的 owner 和 repo").finish(reply_to=True)
-
-    repos = Repos(owner=owner.result, repo=repo.result)
-
     if (
         # 在群组中, 且 uninfo 支持获取成员信息
         (member := session.member)
