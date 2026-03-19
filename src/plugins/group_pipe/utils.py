@@ -1,5 +1,6 @@
 import contextlib
 import copy
+import io
 import pathlib
 from collections.abc import AsyncGenerator
 from typing import NamedTuple
@@ -8,6 +9,7 @@ import anyio
 import httpx
 import nonebot
 import yarl
+from nonebot.utils import run_sync
 from nonebot_plugin_alconna.uniseg import Segment, UniMessage
 from nonebot_plugin_alconna.uniseg.segment import Media
 from nonebot_plugin_alconna.uniseg.utils import fleep
@@ -119,25 +121,20 @@ async def _fix_file(file: _AnyFile) -> AsyncGenerator[anyio.Path]:
     yield file
 
 
-@contextlib.asynccontextmanager
-async def _ffmpeg_transform(
-    src_file: _AnyFile, dst_file_ext: str
-) -> AsyncGenerator[anyio.Path]:
-    dst_file = anyio.Path(get_plugin_cache_dir()) / f"{id(src_file)}.{dst_file_ext}"
+@run_sync
+def webm_to_gif(raw: bytes) -> bytes:
+    import imageio
 
-    async with _fix_file(src_file) as src_file:
-        result = await anyio.run_process(["ffmpeg", "-i", str(src_file), str(dst_file)])
-        result.check_returncode()
-
-    try:
-        yield dst_file
-    finally:
-        await dst_file.unlink()
-
-
-async def webm_to_gif(raw: bytes) -> bytes:
-    async with _ffmpeg_transform(raw, "gif") as gif_file:
-        return await gif_file.read_bytes()
+    reader = imageio.get_reader(io.BytesIO(raw), format="webm")  # pyright: ignore[reportArgumentType]
+    fps = reader.get_meta_data().get("fps", 10)
+    duration = reader.get_meta_data().get("duration", 0)
+    writer_kwds = {"format": "gif", "fps": fps, "duration": duration, "loop": 0}
+    with io.BytesIO() as output:
+        writer = imageio.get_writer(output, **writer_kwds)
+        for frame in reader.iter_data():
+            writer.append_data(frame)
+        writer.close()
+        return output.getvalue()
 
 
 def _repr_uniseg(seg: Segment) -> str:

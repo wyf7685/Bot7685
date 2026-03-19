@@ -26,7 +26,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    ca-certificates curl nano ffmpeg fontconfig locales fonts-noto && \
+    ca-certificates curl nano fontconfig locales fonts-noto && \
     echo "zh_CN.UTF-8 UTF-8" > /etc/locale.gen && \
     echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
     locale-gen

@@ -38,6 +38,7 @@ dependencies = [
   "gunicorn>=25.1.0",
   "httpx>=0.28.1",
   "humanize>=4.15.0,<5.0",
+  "imageio[ffmpeg]>=2.37.3",
   "jmcomic>=2.6.15",
   "mcstatus>=12.2.1,<13.0.0",
   "msgspec[toml,yaml]>=0.20.0",
