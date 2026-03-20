@@ -377,12 +377,7 @@ def register_patch() -> None:
 
     from .plugin_loader_hook import after_plugin_load
 
-    def apply_htmlrender_patch(
-        _: object,
-        plugin: Plugin,
-        exception: Exception | None,
-    ) -> None:
+    @after_plugin_load
+    def apply_htmlrender_patch(plugin: Plugin, exception: Exception | None) -> None:
         if exception is None and plugin.id_ == "nonebot_plugin_htmlrender":
             patch_htmlrender()
-
-    after_plugin_load(apply_htmlrender_patch)
