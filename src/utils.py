@@ -1,10 +1,6 @@
-import atexit
 import contextlib
 import functools
 import inspect
-import shutil
-import sys
-import tempfile
 import threading
 from collections.abc import Awaitable, Callable
 from pathlib import Path
@@ -13,7 +9,6 @@ from typing import Any, cast
 import anyio
 import nonebot
 from msgspec import json as msgjson
-from msgspec import toml as msgtoml
 from nonebot.params import Depends
 from nonebot.typing import T_State
 from nonebot.utils import escape_tag
@@ -93,87 +88,6 @@ class ConfigListFile[T: BaseModel](ConfigFile[list[T]]):
 
     def remove(self, pred: Callable[[T], bool]) -> None:
         self.save([item for item in self.load() if not pred(item)])
-
-
-def find_and_link_external() -> None:
-    external_dir = Path.cwd() / "external"
-    if not external_dir.exists() or not external_dir.is_dir():
-        return
-
-    log = logger_wrapper("Bootstrap::Link")
-
-    def debug(msg: str) -> None:
-        log("DEBUG", msg)
-
-    link_target = Path(tempfile.mkdtemp(prefix="bot7685_external_"))
-    for repo_root in external_dir.iterdir():
-        if (
-            not repo_root.is_dir()
-            or not (toml_file := repo_root / "pyproject.toml").exists()
-        ):
-            continue
-
-        try:
-            project: dict[str, dict[str, str]] = msgtoml.decode(toml_file.read_bytes())
-            if (
-                not (project_name := project.get("project", {}).get("name", ""))
-                or not (package_name := project_name.replace("-", "_"))
-                or not (package_path := repo_root / package_name).exists()
-                or not package_path.is_dir()
-            ):
-                continue
-
-        except Exception as exc:
-            debug(f"Failed to read project metadata from {repo_root}: {exc}")
-            continue
-
-        link_path = link_target / package_name
-
-        try:
-            link_path.symlink_to(package_path.resolve())
-        except OSError as exc:
-            debug(f"Failed to create symlink for {package_name}: {exc}")
-        else:
-            debug(f"Linked external package: {package_name} -> {link_path}")
-            continue
-
-        try:
-            shutil.copytree(package_path, link_path)
-        except Exception as exc:
-            debug(f"Failed to copy external package {package_name}: {exc}")
-            continue
-        else:
-            debug(f"Copied external package: {package_name} -> {link_path}")
-
-        if (egg_info := (repo_root / f"{package_name}.egg-info")).exists():
-            egg_link = link_target / egg_info.name
-            try:
-                egg_link.symlink_to(egg_info.resolve())
-            except OSError as exc:
-                debug(f"Failed to create symlink for egg-info {egg_info}: {exc}")
-            else:
-                debug(f"Linked egg-info: {egg_info} -> {egg_link}")
-                continue
-
-            try:
-                shutil.copytree(egg_info, egg_link)
-            except Exception as exc:
-                debug(f"Failed to copy egg-info {egg_info}: {exc}")
-            else:
-                debug(f"Copied egg-info: {egg_info} -> {egg_link}")
-
-    site_idx = next(
-        (i for i, p in enumerate(sys.path) if p.endswith("site-packages")),
-        len(sys.path),
-    )
-    sys.path.insert(site_idx, str(link_target))
-
-    @atexit.register
-    def _() -> None:
-        try:
-            shutil.rmtree(link_target)
-        except Exception as exc:
-            print(f"Failed to remove temporary external link directory: {exc}")  # noqa: T201
 
 
 def with_semaphore[T: Callable](initial_value: int) -> Callable[[T], T]:

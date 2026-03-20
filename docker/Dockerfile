@@ -14,7 +14,6 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 RUN uv python install 3.14 --no-cache
 
 COPY pyproject.toml uv.lock ./
-COPY external/ ./external/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv venv /opt/venv && \
     . /opt/venv/bin/activate && \

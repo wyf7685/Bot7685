@@ -7,7 +7,7 @@ import nonebot
 from nonebot.adapters import Adapter
 from nonebot.utils import resolve_dot_notation
 
-from src.utils import find_and_link_external, logger_wrapper
+from src.utils import logger_wrapper
 
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
@@ -112,7 +112,6 @@ def init_nonebot() -> object:
     config.pop("_env_file", None)
     nonebot.init(_env_file=None, **config)
     print_logo(lambda line: log("SUCCESS", line))
-    find_and_link_external()
     load_adapters(bootstrap_config)
     load_plugins(bootstrap_config)
 
