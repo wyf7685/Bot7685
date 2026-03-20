@@ -2,11 +2,11 @@ from collections.abc import Callable, Generator, Sequence
 from typing import Literal
 
 type Color = tuple[int, int, int]
-type ColorMode = Literal["rich", "ansi"]
+type ColorMode = Literal["ansi", "rich"]
 
 COLORIZER: dict[ColorMode, Callable[[int, int, int, str], str]] = {
-    "rich": (lambda r, g, b, c: f"<fg #{r:02x}{g:02x}{b:02x}>{c}</>"),
     "ansi": (lambda r, g, b, c: f"\033[38;2;{r};{g};{b}m{c}\033[0m"),
+    "rich": (lambda r, g, b, c: f"<fg #{r:02x}{g:02x}{b:02x}>{c}</>"),
 }
 
 
@@ -62,7 +62,7 @@ def render(mode: ColorMode) -> Generator[str]:
     yield from (a + b for a, b in zip(part1, part2, strict=True))
 
 
-def print_logo(log: Callable[[str], object], mode: ColorMode = "rich") -> None:
+def print_logo(log: Callable[[str], object], mode: ColorMode = "ansi") -> None:
     log("━" * WIDTH)
     [log(line) for line in render(mode)]
     log("━" * WIDTH)

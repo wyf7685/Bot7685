@@ -11,6 +11,7 @@ from src.utils import logger_wrapper
 
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
+from .plugin_loader_hook import mount_plugin_loader_hook
 
 log = logger_wrapper("Bootstrap")
 
@@ -79,22 +80,9 @@ def load_adapters(config: BootstrapConfig) -> None:
 
 @_timer("Loading plugins")
 def load_plugins(config: BootstrapConfig) -> None:
-    try:
-        # Apply htmlrender monkey-patch before any plugin is loaded,
-        # so that all template_to_pic / html_to_pic calls go through
-        # the virtual-HTTP file router (required for remote Playwright).
-        from .patch_htmlrender import patch_htmlrender
+    from . import patch_htmlrender
 
-        patch_htmlrender()
-    except ImportError as err:
-        log(
-            "WARNING",
-            "nonebot_plugin_htmlrender is not installed, skipping Playwright patches",
-            err,
-        )
-    except Exception as err:
-        log("ERROR", "Failed to apply Playwright patches", err)
-
+    patch_htmlrender.register_patch()
     nonebot.load_all_plugins(
         module_path=config.plugins,
         plugin_dir={config.plugin_dirs}
@@ -109,9 +97,10 @@ def init_nonebot() -> object:
     bootstrap_config = BootstrapConfig.from_config(config)
 
     setup_logger(bootstrap_config.logging_override)
+    mount_plugin_loader_hook()
     config.pop("_env_file", None)
     nonebot.init(_env_file=None, **config)
-    print_logo(lambda line: log("SUCCESS", line))
+    print_logo(lambda line: log("SUCCESS", line), mode="rich")
     load_adapters(bootstrap_config)
     load_plugins(bootstrap_config)
 

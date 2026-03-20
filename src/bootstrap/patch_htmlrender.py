@@ -43,7 +43,6 @@ from urllib.parse import unquote, urlparse
 
 import anyio
 import httpx
-import nonebot
 from nonebot.utils import escape_tag, logger_wrapper
 from playwright.async_api import Page, Request, Route
 
@@ -52,7 +51,9 @@ type RouteHandler = Callable[[Route, Request], object]
 log = logger_wrapper("Patch HTMLRender")
 
 if TYPE_CHECKING:
-    import nonebot_plugin_htmlrender.browser as _browser_mod
+    from nonebot_plugin_htmlrender.browser import get_new_page as _orig_get_new_page
+else:
+    _orig_get_new_page = None
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -248,11 +249,6 @@ async def _make_proxy_handler() -> AsyncIterator[RouteHandler]:
 # Patched get_new_page
 # ---------------------------------------------------------------------------
 
-if TYPE_CHECKING:
-    _orig_get_new_page = _browser_mod.get_new_page
-else:
-    _orig_get_new_page = None
-
 
 @contextlib.asynccontextmanager
 async def _patched_get_new_page(
@@ -356,7 +352,6 @@ def patch_htmlrender() -> None:
         )
         return
 
-    nonebot.require("nonebot_plugin_htmlrender")
     import nonebot_plugin_htmlrender as _htmlrender_mod
     import nonebot_plugin_htmlrender.browser as _browser_mod
     import nonebot_plugin_htmlrender.data_source as _ds_mod
@@ -375,3 +370,19 @@ def patch_htmlrender() -> None:
     _htmlrender_mod.html_to_pic = _patched_html_to_pic
 
     log("SUCCESS", "Applied htmlrender patches for remote Playwright support")
+
+
+def register_patch() -> None:
+    from nonebot.plugin import Plugin
+
+    from .plugin_loader_hook import after_plugin_load
+
+    def apply_htmlrender_patch(
+        _: object,
+        plugin: Plugin,
+        exception: Exception | None,
+    ) -> None:
+        if exception is None and plugin.id_ == "nonebot_plugin_htmlrender":
+            patch_htmlrender()
+
+    after_plugin_load(apply_htmlrender_patch)
