@@ -2,7 +2,7 @@ from collections.abc import Callable
 from importlib.machinery import SourceFileLoader
 from types import ModuleType
 
-from nonebot.plugin import Plugin, _current_plugin
+from nonebot.plugin import Plugin
 from nonebot.plugin.manager import PluginLoader
 
 type BeforePluginLoadHook = Callable[[ModuleType, Plugin], object]
@@ -25,7 +25,7 @@ def after_plugin_load[F: AfterPluginLoadHook](func: F) -> F:
 
 class HookedLoader(SourceFileLoader):
     def exec_module(self, module: ModuleType) -> None:
-        plugin = _current_plugin.get()
+        plugin: Plugin | None = getattr(module, "__plugin__", None)
 
         if plugin is not None:
             for hook in _before_plugin_load_hooks:
@@ -38,6 +38,10 @@ class HookedLoader(SourceFileLoader):
                 for hook in _after_plugin_load_hooks:
                     hook(module, plugin, err)
             raise
+        else:
+            if plugin is not None:
+                for hook in _after_plugin_load_hooks:
+                    hook(module, plugin, None)
 
 
 def mount_plugin_loader_hook() -> None:
