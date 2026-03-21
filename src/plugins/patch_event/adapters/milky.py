@@ -155,7 +155,7 @@ class H(Highlight[MessageSegment, Message]):
     @classmethod
     def group_member(cls, group: Group | int, member: Member | int, /) -> str:
         name = (
-            cls.name(member.user_id, member.nickname)
+            cls.name(member.user_id, member.card or member.nickname)
             if isinstance(member, Member)
             else cls.user(member, group.group_id if isinstance(group, Group) else group)
         )
