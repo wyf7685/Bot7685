@@ -1,19 +1,27 @@
-FROM debian:trixie-slim AS builder
+FROM debian:trixie-slim AS base
+
+RUN apt-get update
+
+FROM base AS deps
+
+RUN apt-get install -y --no-install-recommends \
+    libcrypt1 libz1
+
+FROM base AS binary
 
 ARG VERSION=v0.1.0-dev.181
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl unzip ca-certificates \
-    libcrypt1 libz1
+RUN apt-get install -y --no-install-recommends \
+    curl unzip ca-certificates
 
 RUN curl -fsSL "https://github.com/SaltifyDev/yogurt-releases/releases/download/${VERSION}/yogurt-linux-x64.zip" -o "/tmp/yogurt.zip" \
     && unzip -j "/tmp/yogurt.zip" "yogurt.kexe" -d / \
     && mv /yogurt.kexe /yogurt \
     && chmod +x /yogurt
 
-FROM debian:trixie-slim AS wrapper
+FROM base AS wrapper
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get install -y --no-install-recommends \
     gcc libc6-dev
 
 RUN cat <<'EOF' > /tmp/wrapper.c
@@ -47,12 +55,16 @@ EOF
 
 RUN gcc -O2 -s /tmp/wrapper.c -o /wrapper && chmod +x /wrapper
 
-FROM gcr.io/distroless/cc-debian13:nonroot AS runtime
+FROM gcr.io/distroless/cc-debian13 AS rootfs
 
-COPY --from=builder /lib/x86_64-linux-gnu/libcrypt.so.1 /lib/x86_64-linux-gnu/
-COPY --from=builder /lib/x86_64-linux-gnu/libz.so.1 /lib/x86_64-linux-gnu/
-COPY --from=builder /yogurt /
+COPY --from=deps /lib/x86_64-linux-gnu/libcrypt.so.1 /lib/x86_64-linux-gnu/
+COPY --from=deps /lib/x86_64-linux-gnu/libz.so.1 /lib/x86_64-linux-gnu/
+
+FROM scratch AS runtime
+
+COPY --from=rootfs / /
 COPY --from=wrapper /wrapper /
+COPY --from=binary /yogurt /
 
 WORKDIR /app
 
