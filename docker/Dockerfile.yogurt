@@ -1,0 +1,63 @@
+FROM debian:trixie-slim AS builder
+
+ARG VERSION=v0.1.0-dev.181
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl unzip ca-certificates \
+    libcrypt1 libz1
+
+RUN curl -fsSL "https://github.com/SaltifyDev/yogurt-releases/releases/download/${VERSION}/yogurt-linux-x64.zip" -o "/tmp/yogurt.zip" \
+    && unzip -j "/tmp/yogurt.zip" "yogurt.kexe" -d / \
+    && mv /yogurt.kexe /yogurt \
+    && chmod +x /yogurt
+
+FROM debian:trixie-slim AS wrapper
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc libc6-dev
+
+RUN cat <<'EOF' > /tmp/wrapper.c
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <signal.h>
+#include <fcntl.h>
+#include <stdio.h>
+const char *app_path = "/yogurt";
+const char *config_path = "/app/config.json";
+int config_exists() { struct stat st; return stat(config_path, &st) == 0; }
+int main() {
+  if (!config_exists()) {
+    int pipefd[2]; pipe(pipefd); pid_t pid = fork();
+    if (pid == 0) {
+      dup2(pipefd[0], STDIN_FILENO); close(pipefd[0]); close(pipefd[1]);
+      int null_fd = open("/dev/null", O_WRONLY);
+      if (null_fd >= 0) { dup2(null_fd, STDOUT_FILENO); dup2(null_fd, STDERR_FILENO); close(null_fd); }
+      execl(app_path, app_path, NULL); _exit(1);
+    }
+    close(pipefd[0]); write(pipefd[1], "\n", 1); close(pipefd[1]);
+    for (;;) { if (config_exists()) break; usleep(100000); }
+    kill(pid, SIGTERM); waitpid(pid, NULL, 0);
+  }
+  execl(app_path, app_path, NULL);
+  return 1;
+}
+EOF
+
+RUN gcc -O2 -s /tmp/wrapper.c -o /wrapper && chmod +x /wrapper
+
+FROM gcr.io/distroless/cc-debian13:nonroot AS runtime
+
+COPY --from=builder /lib/x86_64-linux-gnu/libcrypt.so.1 /lib/x86_64-linux-gnu/
+COPY --from=builder /lib/x86_64-linux-gnu/libz.so.1 /lib/x86_64-linux-gnu/
+COPY --from=builder /yogurt /
+COPY --from=wrapper /wrapper /
+
+WORKDIR /app
+
+EXPOSE 3000
+
+VOLUME ["/app"]
+
+ENTRYPOINT ["/wrapper"]
