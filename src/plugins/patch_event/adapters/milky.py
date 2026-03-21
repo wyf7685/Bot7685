@@ -126,11 +126,11 @@ class H(Highlight[MessageSegment, Message]):
     def message(cls, message: Message) -> str:
         return "".join(map(cls.segment, message))
 
-    @classmethod
     @overload
+    @classmethod
     def user(cls, friend: Friend, /) -> str: ...
-    @classmethod
     @overload
+    @classmethod
     def user(cls, user: int, group: int | None = None, /) -> str: ...
 
     @classmethod
