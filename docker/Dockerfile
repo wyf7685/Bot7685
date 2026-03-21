@@ -37,14 +37,13 @@ ENV TZ=Asia/Shanghai \
     LANGUAGE=zh_CN:en_US \
     PYTHONPATH=/app \
     VIRTUAL_ENV=/opt/venv \
-    UV_PYTHON_INSTALL_DIR=/opt/python \
-    UV_TOOL_BIN_DIR=/opt/uv-bin/
-ENV PATH="$VIRTUAL_ENV/bin:$UV_TOOL_BIN_DIR:$PATH"
+    UV_PYTHON_INSTALL_DIR=/opt/python
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 COPY docker/assets/* /
 RUN chmod +x /entrypoint.sh
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/
 RUN uv python install 3.14 --no-cache
 
 COPY --from=venv /opt/venv /opt/venv
