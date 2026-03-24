@@ -25,7 +25,9 @@ jobs:
         uses: actions/cache@v5
         with:
           path: version.txt
-          key: yogurt-release-version
+          key: yogurt-release-version-${{ hashFiles('version.txt') }}
+          restore-keys: |
+            yogurt-release-version-
 
       - name: Get upstream version
         id: upstream
