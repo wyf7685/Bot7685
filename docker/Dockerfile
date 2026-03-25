@@ -5,9 +5,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends \
     git ca-certificates
-    # python3-dev gcc g++ build-essential \
-    # libffi-dev libssl-dev zlib1g-dev liblzma-dev libbz2-dev libreadline-dev \
-    # libfreetype6-dev pkg-config
 
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
@@ -28,11 +25,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 WORKDIR /app
 
 ENV TZ=Asia/Shanghai \
-    LANG=zh_CN.UTF-8 \
-    LANGUAGE=zh_CN:en_US \
-    PYTHONPATH=/app \
-    VIRTUAL_ENV=/opt/venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH"
 
 COPY docker/assets/* /
 RUN chmod +x /entrypoint.sh
