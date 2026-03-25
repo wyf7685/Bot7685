@@ -33,6 +33,7 @@ Patch points
 
 import contextlib
 import contextvars
+import functools
 import importlib.metadata
 import re
 from collections.abc import AsyncIterator, Callable
@@ -47,6 +48,7 @@ from nonebot.utils import escape_tag, logger_wrapper
 from playwright.async_api import Page, Request, Route
 
 type RouteHandler = Callable[[Route, Request], object]
+type Routes = list[tuple[str, RouteHandler]]
 
 log = logger_wrapper("Patch HTMLRender")
 
@@ -67,13 +69,13 @@ _VIRTUAL_PATTERN = f"{_VIRTUAL_BASE}/**"
 # ContextVar: list of (glob_pattern, async_handler) pairs to be registered
 # on every page opened within the current async task's call to html_to_pic.
 # Default is None; _patched_html_to_pic always sets a fresh list before use.
-_ctx_routes: contextvars.ContextVar[list[tuple[str, RouteHandler]] | None] = (
-    contextvars.ContextVar("_htmlrender_pw_routes", default=None)
+_ctx_routes: contextvars.ContextVar[Routes | None] = contextvars.ContextVar(
+    "_htmlrender_pw_routes", default=None
 )
 
 
 @contextlib.asynccontextmanager
-async def _set_routes(routes: list[tuple[str, RouteHandler]]) -> AsyncIterator[None]:
+async def _set_routes(routes: Routes) -> AsyncIterator[None]:
     """Context manager to set the ContextVar for route registrations."""
     token = _ctx_routes.set(routes)
     try:
@@ -159,7 +161,7 @@ async def _file_handler(route: Route, request: Request) -> None:
     )
 
 
-def _file_url_to_virtual(url: str, routes: list[tuple[str, RouteHandler]]) -> str:
+def _file_url_to_virtual(url: str, routes: Routes) -> str:
     """Convert a file:// URL to a virtual HTTP URL and ensure the shared file
     route is registered in *routes* (idempotent).
 
@@ -179,6 +181,60 @@ def _file_url_to_virtual(url: str, routes: list[tuple[str, RouteHandler]]) -> st
     return f"{_VIRTUAL_BASE}{_abs_path_to_url_path(resolved)}/"
 
 
+async def _proxy_handler(
+    client: httpx.AsyncClient,
+    route: Route,
+    request: Request,
+) -> None:
+    # Virtual-host URLs are handled by more specific routes registered
+    # later (higher priority in Playwright LIFO).  If one reaches here
+    # something went wrong — return 404 immediately instead of fallback(),
+    # because fallback() on the lowest-priority handler sends the request
+    # to the real network, causing a DNS timeout for our virtual hosts.
+    if _VIRTUAL_HOST in (urlparse(request.url).hostname or ""):
+        log(
+            "WARNING",
+            "Request for virtual host reached proxy handler (route miss?): "
+            f"<y>{escape_tag(request.url)}</>",
+        )
+        await route.fulfill(status=404)
+        return
+
+    url = request.url
+    try:
+        resp = await client.request(
+            method=request.method,
+            url=url,
+            # Strip headers that don't make sense when relayed
+            headers={
+                k: v
+                for k, v in request.headers.items()
+                if k.lower() not in {"host", "origin", "referer"}
+            },
+            content=request.post_data_buffer,
+        )
+        # Drop transfer/encoding headers; Playwright handles them itself
+        resp_headers = {
+            k: v
+            for k, v in resp.headers.multi_items()
+            if k.lower() not in {"content-encoding", "transfer-encoding"}
+        }
+        resp_headers["access-control-allow-origin"] = "*"
+        resp_headers["access-control-allow-credentials"] = "true"
+        await route.fulfill(
+            status=resp.status_code,
+            headers=resp_headers,
+            body=resp.content,
+        )
+    except Exception as exc:
+        log(
+            "WARNING",
+            f"Proxy failed for <y>{escape_tag(url)}</>",
+            exc,
+        )
+        await route.fallback()
+
+
 @contextlib.asynccontextmanager
 async def _make_proxy_handler() -> AsyncIterator[RouteHandler]:
     """Yield a catch-all route handler that proxies external HTTP/HTTPS
@@ -191,58 +247,8 @@ async def _make_proxy_handler() -> AsyncIterator[RouteHandler]:
     Virtual-host requests that slip past the specific route registrations are
     passed through via route.fallback() rather than proxied.
     """
-
-    async def handler(route: Route, request: Request) -> None:
-        # Virtual-host URLs are handled by more specific routes registered
-        # later (higher priority in Playwright LIFO).  If one reaches here
-        # something went wrong — return 404 immediately instead of fallback(),
-        # because fallback() on the lowest-priority handler sends the request
-        # to the real network, causing a DNS timeout for our virtual hosts.
-        if _VIRTUAL_HOST in (urlparse(request.url).hostname or ""):
-            log(
-                "WARNING",
-                "Request for virtual host reached proxy handler (route miss?): "
-                f"<y>{escape_tag(request.url)}</>",
-            )
-            await route.fulfill(status=404)
-            return
-
-        url = request.url
-        try:
-            resp = await client.request(
-                method=request.method,
-                url=url,
-                # Strip headers that don't make sense when relayed
-                headers={
-                    k: v
-                    for k, v in request.headers.items()
-                    if k.lower() not in {"host", "origin", "referer"}
-                },
-                content=request.post_data_buffer,
-            )
-            # Drop transfer/encoding headers; Playwright handles them itself
-            resp_headers = {
-                k: v
-                for k, v in resp.headers.multi_items()
-                if k.lower() not in {"content-encoding", "transfer-encoding"}
-            }
-            resp_headers["access-control-allow-origin"] = "*"
-            resp_headers["access-control-allow-credentials"] = "true"
-            await route.fulfill(
-                status=resp.status_code,
-                headers=resp_headers,
-                body=resp.content,
-            )
-        except Exception as exc:
-            log(
-                "WARNING",
-                f"Proxy failed for <y>{escape_tag(url)}</>",
-                exc,
-            )
-            await route.fallback()
-
     async with httpx.AsyncClient(follow_redirects=True) as client:
-        yield handler
+        yield functools.partial(_proxy_handler, client)
 
 
 # ---------------------------------------------------------------------------
@@ -294,7 +300,7 @@ async def _patched_html_to_pic(
     full_page: bool | None = True,
     **kwargs: object,
 ) -> bytes:
-    routes: list[tuple[str, RouteHandler]] = []
+    routes: Routes = []
 
     # Virtualise template_path.
     template_path = _file_url_to_virtual(template_path, routes)
