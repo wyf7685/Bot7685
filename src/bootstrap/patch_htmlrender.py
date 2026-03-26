@@ -32,9 +32,8 @@ Patch points
 """
 
 import contextlib
-import contextvars
 import functools
-import importlib.metadata
+import os
 import re
 from collections.abc import AsyncIterator, Callable
 from mimetypes import guess_type
@@ -45,10 +44,9 @@ from urllib.parse import unquote, urlparse
 import anyio
 import httpx
 from nonebot.utils import escape_tag, logger_wrapper
-from playwright.async_api import Page, Request, Route
+from playwright.async_api import Page, Request, Response, Route
 
 type RouteHandler = Callable[[Route, Request], object]
-type Routes = list[tuple[str, RouteHandler]]
 
 log = logger_wrapper("Patch HTMLRender")
 
@@ -65,23 +63,6 @@ _PATCH_HTMLRENDER_VERSION = "0.6.7"
 _VIRTUAL_HOST = "htmlrender-local.bot"
 _VIRTUAL_BASE = f"http://{_VIRTUAL_HOST}"
 _VIRTUAL_PATTERN = f"{_VIRTUAL_BASE}/**"
-
-# ContextVar: list of (glob_pattern, async_handler) pairs to be registered
-# on every page opened within the current async task's call to html_to_pic.
-# Default is None; _patched_html_to_pic always sets a fresh list before use.
-_ctx_routes: contextvars.ContextVar[Routes | None] = contextvars.ContextVar(
-    "_htmlrender_pw_routes", default=None
-)
-
-
-@contextlib.asynccontextmanager
-async def _set_routes(routes: Routes) -> AsyncIterator[None]:
-    """Context manager to set the ContextVar for route registrations."""
-    token = _ctx_routes.set(routes)
-    try:
-        yield
-    finally:
-        _ctx_routes.reset(token)
 
 
 # ---------------------------------------------------------------------------
@@ -109,8 +90,9 @@ def _parse_file_url(url: str) -> Path | None:
     """
     if not url.startswith("file://"):
         return None
-    parsed = urlparse(url)
-    path_str = unquote(parsed.path)
+    # parsed = urlparse(url)
+    # path_str = unquote(parsed.path).replace(os.sep, "/")
+    path_str = unquote(url[7:]).replace(os.sep, "/")
     # Windows: urlparse("file:///C:/foo").path == "/C:/foo"
     # Strip the leading "/" when the second char is a drive-letter colon.
     if len(path_str) >= 3 and path_str[0] == "/" and path_str[2] == ":":
@@ -132,6 +114,7 @@ async def _file_handler(route: Route, request: Request) -> None:
     corresponds to the bot-side file at /opt/file.css.
     """
     url_path = unquote(urlparse(request.url).path)
+    log("DEBUG", f"Handling virtual file request: <y>{escape_tag(url_path)}</>")
 
     if not url_path or url_path == "/":
         # page.goto() root navigation — return an empty placeholder so
@@ -161,9 +144,8 @@ async def _file_handler(route: Route, request: Request) -> None:
     )
 
 
-def _file_url_to_virtual(url: str, routes: Routes) -> str:
-    """Convert a file:// URL to a virtual HTTP URL and ensure the shared file
-    route is registered in *routes* (idempotent).
+def _file_url_to_virtual(url: str) -> str:
+    """Convert a file:// URL to a virtual HTTP URL
 
     Returns the URL unchanged if it is not a file:// URL.
     """
@@ -172,12 +154,6 @@ def _file_url_to_virtual(url: str, routes: Routes) -> str:
         return url
 
     resolved = local_dir.resolve()
-
-    # Register the single shared file handler once per page session.
-    if not any(p == _VIRTUAL_PATTERN for p, _ in routes):
-        routes.append((_VIRTUAL_PATTERN, _file_handler))
-        log("DEBUG", f"Virtual route registered: <y>{_VIRTUAL_PATTERN}</>")
-
     return f"{_VIRTUAL_BASE}{_abs_path_to_url_path(resolved)}/"
 
 
@@ -201,6 +177,7 @@ async def _proxy_handler(
         return
 
     url = request.url
+    log("DEBUG", f"Proxying request: <y>{escape_tag(url)}</>")
     try:
         resp = await client.request(
             method=request.method,
@@ -256,18 +233,80 @@ async def _make_proxy_handler() -> AsyncIterator[RouteHandler]:
 # ---------------------------------------------------------------------------
 
 
+def _patch_page(page: Page) -> None:
+    original_goto = page.goto
+    original_set_content = page.set_content
+
+    template_path: str | None = None
+
+    # Skip page.goto() to the virtual host URL.
+    # Instead inject a <base href> tag so the browser resolves all
+    # relative resource references against the virtual template URL.
+    # The routes registered above intercept those requests and serve
+    # files from the bot-side filesystem.
+
+    async def patched_goto(
+        url: str,
+        *,
+        timeout: float | None = None,  # noqa: ASYNC109
+        wait_until: (
+            Literal["commit", "domcontentloaded", "load", "networkidle"] | None
+        ) = None,
+        referer: str | None = None,
+    ) -> Response | None:
+        if local_dir := _parse_file_url(url):
+            nonlocal template_path
+            template_path = _file_url_to_virtual(local_dir.resolve().as_uri())
+            log("DEBUG", f"Page navigation to file URL: <y>{escape_tag(url)}</>")
+            return await original_goto(
+                _VIRTUAL_BASE,
+                timeout=timeout,
+                wait_until=wait_until,
+                referer=referer,
+            )
+
+        return await original_goto(
+            url,
+            timeout=timeout,
+            wait_until=wait_until,
+            referer=referer,
+        )
+
+    async def set_content(
+        html: str,
+        *,
+        timeout: float | None = None,  # noqa: ASYNC109
+        wait_until: Literal["commit", "domcontentloaded", "load", "networkidle"]
+        | None = None,
+    ) -> None:
+        if template_path is not None:
+            base_tag = f'<base href="{template_path}">'
+            if m := re.search(r"<head(?:\s[^>]*)?>", html, re.IGNORECASE):
+                insert_at = m.end()
+                html = html[:insert_at] + base_tag + html[insert_at:]
+            else:
+                html = base_tag + html
+
+        return await original_set_content(
+            html,
+            timeout=timeout,
+            wait_until=wait_until,
+        )
+
+    page.goto = patched_goto
+    page.set_content = set_content
+
+
 @contextlib.asynccontextmanager
 async def _patched_get_new_page(
     device_scale_factor: float = 2,
     **kwargs: object,
 ) -> AsyncIterator[Page]:
-    routes = _ctx_routes.get() or []
-
     # Transform base_url when it is a file:// URL.
     # If called from _patched_html_to_pic, base_url was already virtualised
     # there; _file_url_to_virtual() will return it unchanged (not file://).
     if isinstance(base_url := kwargs.get("base_url"), str):
-        kwargs["base_url"] = _file_url_to_virtual(base_url, routes)
+        kwargs["base_url"] = _file_url_to_virtual(base_url)
 
     async with (
         _orig_get_new_page(device_scale_factor, **kwargs) as page,
@@ -276,8 +315,8 @@ async def _patched_get_new_page(
         # Proxy catch-all registered first → lowest priority in Playwright LIFO.
         await page.route("**/*", proxy_handler)
         # Virtual host route registered last → highest priority.
-        for pattern, handler in routes:
-            await page.route(pattern, handler)
+        await page.route(_VIRTUAL_PATTERN, _file_handler)
+        _patch_page(page)
         yield page
 
 
@@ -300,36 +339,17 @@ async def _patched_html_to_pic(
     full_page: bool | None = True,
     **kwargs: object,
 ) -> bytes:
-    routes: Routes = []
-
-    # Virtualise template_path.
-    template_path = _file_url_to_virtual(template_path, routes)
-
     # Virtualise base_url if present; otherwise fall back to template_path so
     # the browser context always has a virtual base_url set.
-    if isinstance(base_url := kwargs.get("base_url"), str):
-        kwargs["base_url"] = _file_url_to_virtual(base_url, routes)
-    else:
-        kwargs["base_url"] = template_path
+    kwargs["base_url"] = _file_url_to_virtual(
+        base_url
+        if isinstance(base_url := kwargs.get("base_url"), str)
+        else template_path,
+    )
 
-    # Publish routes to the ContextVar so _patched_get_new_page can pick them
-    # up even if called indirectly through other wrappers.
-    async with (
-        _set_routes(routes),
-        _patched_get_new_page(device_scale_factor, **kwargs) as page,
-    ):
+    async with _patched_get_new_page(device_scale_factor, **kwargs) as page:
         page.on("console", lambda msg: log("DEBUG", f"浏览器控制台: {msg.text}"))
-        # Skip page.goto() to the virtual host URL.
-        # Instead inject a <base href> tag so the browser resolves all
-        # relative resource references against the virtual template URL.
-        # The routes registered above intercept those requests and serve
-        # files from the bot-side filesystem.
-        base_tag = f'<base href="{template_path}">'
-        if m := re.search(r"<head(?:\s[^>]*)?>", html, re.IGNORECASE):
-            insert_at = m.end()
-            html = html[:insert_at] + base_tag + html[insert_at:]
-        else:
-            html = base_tag + html
+        await page.goto(template_path, wait_until="networkidle")
         await page.set_content(html, wait_until="networkidle")
         await page.wait_for_timeout(wait)
         return await page.screenshot(
@@ -346,9 +366,10 @@ async def _patched_html_to_pic(
 
 
 def patch_htmlrender() -> None:
-    htmlrender_version = importlib.metadata.version("nonebot_plugin_htmlrender")
-    log("DEBUG", f"nonebot_plugin_htmlrender version: {htmlrender_version}")
+    from importlib.metadata import version
 
+    htmlrender_version = version("nonebot_plugin_htmlrender")
+    log("DEBUG", f"nonebot_plugin_htmlrender version: {htmlrender_version}")
     if htmlrender_version != _PATCH_HTMLRENDER_VERSION:
         log(
             "WARNING",
