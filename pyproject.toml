@@ -17,7 +17,7 @@ dependencies = [
   "nonebot-adapter-satori>=1.3.0",
   "nonebot-adapter-telegram>=0.1.0b20",
   # plugins
-  "nonebot-plugin-alconna>=0.60.4",
+  "nonebot-plugin-alconna>=0.61.1",
   "nonebot-plugin-apscheduler>=0.5.0",
   "nonebot-plugin-htmlrender==0.6.7",
   "nonebot-plugin-kawaii-status>=0.2.0",

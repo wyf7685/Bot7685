@@ -10,24 +10,10 @@ from pathlib import Path
 from typing import Any, cast
 
 from msgspec import toml as msgtoml
-from msgspec import yaml as msgyaml
 
 root = Path(__file__).resolve().parent.parent
 env_file = root / ".env"
 toml_file = root / "pyproject.toml"
-
-
-def _load_yaml(file_path: Path) -> dict[str, Any]:
-    data = msgyaml.decode(file_path.read_bytes()) or {}
-
-    if data.pop("scope_compat", None):
-        for key, value in list(data.items()):
-            if isinstance(value, dict):
-                del data[key]
-                for k, v in value.items():
-                    data[f"{key}_{k}"] = v
-
-    return data
 
 
 def deep_update(
