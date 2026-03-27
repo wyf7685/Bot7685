@@ -1,4 +1,4 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable
 from pathlib import Path
 from typing import Self, TypedDict, final
 
@@ -28,8 +28,10 @@ class AsyncCosS3Client:
     async def upload_file_from_buffer(self, key: str, data: bytes) -> None:
         cache_file = get_plugin_cache_file(str(id(data)))
         await anyio.Path(cache_file).write_bytes(data)
-        await self.upload_file(key, cache_file)
-        await anyio.Path(cache_file).unlink()
+        try:
+            await self.upload_file(key, cache_file)
+        finally:
+            await anyio.Path(cache_file).unlink()
 
     async def upload_file(self, key: str, path: Path) -> None:
         await anyio.to_thread.run_sync(
@@ -137,16 +139,24 @@ class MultipartUploadTask:
 
     async def upload_from(
         self,
-        read: Callable[[], Awaitable[bytes | None]],
+        ait: AsyncIterator[bytes],
         max_workers: int = 4,
     ) -> None:
-        async def worker() -> None:
-            while (chunk := await read()) is not None:
+        async def producer(produce: Callable[[bytes], Awaitable[object]]) -> None:
+            async with send:
+                while chunk := await anext(ait, None):
+                    await produce(chunk)
+
+        async def consumer(aitrable: AsyncIterable[bytes]) -> None:
+            async for chunk in aitrable:
                 await self.put_chunk(chunk)
 
-        async with anyio.create_task_group() as task_group:
+        send, recv = anyio.create_memory_object_stream[bytes](0)
+        async with anyio.create_task_group() as tg:
+            tg.start_soon(producer, send.send)
             for _ in range(max_workers):
-                task_group.start_soon(worker)
+                tg.start_soon(consumer, recv.clone())
+            tg.start_soon(recv.aclose)
 
 
 async def put_file(data: bytes, key: str, retry: int = 3) -> None:
@@ -203,7 +213,7 @@ async def put_file_from_url(url: str, key: str, retry: int = 3) -> None:
         # 上传第一个分块
         await task.put_chunk(first_chunk)
         # 上传剩余分块
-        await task.upload_from(lambda: anext(aiterable, None))
+        await task.upload_from(aiterable)
 
     try:
         await task.complete()
