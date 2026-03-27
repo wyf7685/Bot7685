@@ -53,8 +53,9 @@ alc = Alconna(
             Option("--owner|-o", Args["owner", str]),
             Option("--repo|-r", Args["repo", str]),
             Option("--workflow-id|-w", Args["workflow_id?", WorkflowID]),
+            alias={"rm"},
         ),
-        Subcommand("list"),
+        Subcommand("list", alias={"ls"}),
         alias={"sub"},
     ),
 )
@@ -172,7 +173,7 @@ async def assign_subscribe_list(bot: Bot, target: MsgTarget) -> None:
     for sub in filter(lambda sub: target.verify(sub.target), subs):
         msg = (
             f"- 仓库: {sub.owner}/{sub.repo}\n"
-            f"  工作流: {f'ID {sub.workflow_id}' if sub.workflow_id else '全部'}\n"
+            f"  工作流{f' ID: {sub.workflow_id}' if sub.workflow_id else ': 全部'}\n"
         )
         if cfg := sub.artifact_upload_config:
             msg += "  Artifact 上传配置:\n"
