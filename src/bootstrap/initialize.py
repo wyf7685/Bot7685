@@ -4,6 +4,7 @@ import time
 from collections.abc import Callable
 
 import nonebot
+from bot7685_ext.nonebot import mount_plugin_loader_hook, register_htmlrender_patch
 from nonebot.adapters import Adapter
 from nonebot.utils import resolve_dot_notation
 
@@ -11,7 +12,6 @@ from src.utils import logger_wrapper
 
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
-from .plugin_loader_hook import mount_plugin_loader_hook
 
 log = logger_wrapper("Bootstrap")
 
@@ -80,9 +80,6 @@ def load_adapters(config: BootstrapConfig) -> None:
 
 @_timer("Loading plugins")
 def load_plugins(config: BootstrapConfig) -> None:
-    from . import patch_htmlrender
-
-    patch_htmlrender.register_patch()
     nonebot.load_all_plugins(
         module_path=config.plugins,
         plugin_dir={config.plugin_dirs}
@@ -98,6 +95,7 @@ def init_nonebot() -> object:
 
     setup_logger(bootstrap_config.logging_override)
     mount_plugin_loader_hook()
+    register_htmlrender_patch()
     config.pop("_env_file", None)
     nonebot.init(_env_file=None, **config)
     print_logo(lambda line: log("SUCCESS", line), mode="rich")
