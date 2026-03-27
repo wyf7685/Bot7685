@@ -4,7 +4,7 @@ from nonebot.plugin import PluginMetadata, load_plugins
 
 __plugin_meta__ = PluginMetadata(
     name="hooks",
-    description="set bot hooks",
+    description="bot hooks",
     usage="None",
     type="application",
 )

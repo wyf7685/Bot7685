@@ -1,28 +1,23 @@
-# ruff: noqa: SLF001
-
-import nonebot
+from bot7685_ext.nonebot import after_plugin_load
+from nonebot import logger
+from nonebot.plugin import Plugin
 
 filter_words = {"不支持该消息类型", "当前QQ版本不支持此应用"}
 
 
-@nonebot.get_driver().on_startup
-def _() -> None:
-    if nonebot.get_plugin("nonebot_plugin_wordcloud") is None:
+@after_plugin_load
+def patch_nbp_wordcloud(plugin: Plugin, exception: Exception | None) -> None:
+    if exception is not None or plugin.id_ != "nonebot_plugin_wordcloud":
         return
 
-    try:
-        nonebot.require("nonebot_plugin_wordcloud")
-        import nonebot_plugin_wordcloud.data_source as source
-    except (ImportError, RuntimeError):
-        return
+    import nonebot_plugin_wordcloud.data_source as ds
+    from nonebot_plugin_wordcloud.data_source import _get_wordcloud as original
 
     def _get_wordcloud(messages: list[str], mask_key: str) -> bytes | None:
         gen = (m for m in messages if all(word not in m for word in filter_words))
         return original(iter(gen), mask_key)  # pyright: ignore[reportArgumentType]
 
-    original = source._get_wordcloud  # pyright: ignore[reportPrivateUsage]
-    source._get_wordcloud = _get_wordcloud  # pyright: ignore[reportPrivateUsage]
-
-    @nonebot.get_driver().on_shutdown
-    def _() -> None:
-        source._get_wordcloud = original
+    ds._get_wordcloud = _get_wordcloud  # noqa: SLF001
+    logger.opt(colors=True).success(
+        "Patched <g>nonebot_plugin_wordcloud</g>.<y>_get_wordcloud</y>"
+    )
