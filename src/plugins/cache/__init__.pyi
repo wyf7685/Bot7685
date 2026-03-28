@@ -1,6 +1,14 @@
 from collections.abc import Awaitable, Callable, Iterable
 from datetime import timedelta
-from typing import Literal, Protocol, overload, type_check_only
+from typing import Final, Literal, Protocol, overload, type_check_only
+
+class _RedisConfig(Protocol):
+    host: Final[str]
+    port: Final[int]
+    db: Final[int]
+    password: Final[str | None]
+
+redis_config: _RedisConfig | None
 
 @type_check_only
 class Cache[KT, VT](Protocol):
