@@ -4,15 +4,19 @@ import inspect
 import threading
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import anyio
 import nonebot
 from msgspec import json as msgjson
+from nonebot.adapters import Event
 from nonebot.params import Depends
 from nonebot.typing import T_State
 from nonebot.utils import escape_tag
 from pydantic import BaseModel, TypeAdapter
+
+if TYPE_CHECKING:
+    from nonebot_plugin_alconna.uniseg import Receipt, UniMessage
 
 
 def logger_wrapper(logger_name: str, /):  # noqa: ANN201
@@ -116,23 +120,56 @@ def with_semaphore[T: Callable](initial_value: int) -> Callable[[T], T]:
     return decorator
 
 
+def schedule_recall(receipt: Receipt) -> None:
+    if not receipt.recallable:
+        return
+
+    if (frame := inspect.currentframe()) and frame.f_back:
+        frame = frame.f_back
+        loc = f"{frame.f_code.co_filename}:{frame.f_lineno}"
+    else:
+        loc = "<unknown>"
+    del frame
+
+    async def safe_recall() -> None:
+        try:
+            await receipt.recall()
+        except Exception as exc:
+            nonebot.logger.opt(colors=True).warning(
+                f"Failed to recall message (at <c>{escape_tag(loc)}</>):"
+                f" <r>{escape_tag(repr(exc))}</>"
+            )
+
+    nonebot.get_driver().task_group.start_soon(safe_recall)
+
+
 def ParamOrPrompt(  # noqa: N802
     param: str,
-    prompt: str | Callable[[], Awaitable[str]],
+    prompt: str | UniMessage | Callable[[], Awaitable[str]],
+    timeout: float = 120,
+    block: bool = True,
 ) -> Any:
-    from nonebot import require
-
-    require("nonebot_plugin_alconna")
-    from nonebot_plugin_alconna import AlconnaMatcher, Arparma, UniMessage
+    nonebot.require("nonebot_plugin_alconna")
+    from nonebot_plugin_alconna import Arparma, UniMessage
 
     if not callable(prompt):
-        prompt_msg = prompt
+        prompt_msg = UniMessage.text(prompt) if isinstance(prompt, str) else prompt
+
+        async def waiter_handler(event: Event) -> str:
+            return event.get_message().extract_plain_text().strip()
 
         async def fn() -> str:
-            resp = await AlconnaMatcher.prompt(prompt_msg)
+            nonebot.require("nonebot_plugin_waiter")
+            from nonebot_plugin_waiter import waiter
+
+            receipt = await prompt_msg.send()
+            wait = waiter(["message"], keep_session=True, block=block)(waiter_handler)
+            resp = await wait.wait(timeout=timeout)
+            schedule_recall(receipt)
+
             if resp is None:
-                await AlconnaMatcher.finish("操作已取消")
-            return resp.extract_plain_text().strip()
+                await UniMessage.text("操作已取消").finish()
+            return resp
 
         prompt = fn
 

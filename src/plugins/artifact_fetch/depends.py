@@ -1,29 +1,17 @@
-import contextlib
 from collections.abc import AsyncIterator
 from typing import Annotated
 
 import nonebot_plugin_waiter.unimsg as waiter
-from nonebot import get_driver
 from nonebot.adapters import Event
 from nonebot.params import Depends
 from nonebot_plugin_alconna import Match, MsgTarget, UniMessage
-from nonebot_plugin_alconna.uniseg import Receipt
 from nonebot_plugin_uninfo import Uninfo
+
+from src.utils import schedule_recall
 
 from .data_source import Repos, subscriptions
 
 processing_repos: set[Repos] = set()
-
-
-def schedule_recall(receipt: Receipt) -> None:
-    if not receipt.recallable:
-        return
-
-    async def recall() -> None:
-        with contextlib.suppress(Exception):
-            await receipt.recall()
-
-    get_driver().task_group.start_soon(recall)
 
 
 async def _request_admin_approval(
