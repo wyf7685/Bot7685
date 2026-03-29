@@ -24,6 +24,7 @@ __plugin_meta__ = PluginMetadata(
         "~onebot.v11",
         "~telegram",
         "~discord",
+        "~milky",
     },
 )
 

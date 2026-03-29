@@ -57,8 +57,9 @@ class MessageConverter(
 
     async def _get_rkey_api(self) -> tuple[str, str]:
         rkey_api = "https://llob.linyuchen.net/rkey"
-        resp = await async_client().get(rkey_api)
-        data: dict[str, str] = resp.json()
+        async with async_client() as client:
+            resp = await client.get(rkey_api)
+            data: dict[str, str] = resp.json()
         p_rkey = data["private_rkey"].removeprefix("&rkey=")
         g_rkey = data["group_rkey"].removeprefix("&rkey=")
         self.logger.debug(f"从 API 获取 rkey: {p_rkey, g_rkey}")

@@ -1,13 +1,15 @@
 import contextlib
 import copy
+import functools
 import io
 import pathlib
-from collections.abc import AsyncGenerator
-from typing import NamedTuple
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from contextvars import ContextVar
+from types import CoroutineType, TracebackType
+from typing import Any, NamedTuple, Self
 
 import anyio
 import httpx
-import nonebot
 import yarl
 from nonebot.utils import run_sync
 from nonebot_plugin_alconna.uniseg import Segment, UniMessage
@@ -16,24 +18,65 @@ from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
 
-class _GlobalAsyncClient:
-    client: httpx.AsyncClient | None = None
+class _ContextClientHolder:
+    def __init__(self) -> None:
+        self.client: httpx.AsyncClient | None = None
 
-    @nonebot.get_driver().on_startup
-    async def _() -> None:
-        _GlobalAsyncClient.client = httpx.AsyncClient()
-        await _GlobalAsyncClient.client.__aenter__()
+    async def get(self) -> httpx.AsyncClient:
+        if self.client is None:
+            self.client = httpx.AsyncClient()
+            await self.client.__aenter__()
+        return self.client
 
-    @nonebot.get_driver().on_shutdown
-    async def _() -> None:
-        if _GlobalAsyncClient.client is not None:
-            await _GlobalAsyncClient.client.__aexit__(None, None, None)
-            _GlobalAsyncClient.client = None
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
+    ) -> None:
+        if self.client is not None:
+            await self.client.__aexit__(exc_type, exc_value, traceback)
+            self.client = None
 
 
-def async_client() -> httpx.AsyncClient:
-    assert _GlobalAsyncClient.client is not None, "Async client not initialized"
-    return _GlobalAsyncClient.client
+_ctx_client = ContextVar[_ContextClientHolder | None](
+    "group_pipe:context_client", default=None
+)
+
+
+@contextlib.asynccontextmanager
+async def async_client() -> AsyncIterator[httpx.AsyncClient]:
+    if holder := _ctx_client.get():
+        yield await holder.get()
+        return
+
+    async with httpx.AsyncClient() as client:
+        yield client
+
+
+@contextlib.asynccontextmanager
+async def enter_client_ctx() -> AsyncIterator[None]:
+    if _ctx_client.get() is not None:
+        yield
+        return
+
+    async with _ContextClientHolder() as holder:
+        with _ctx_client.set(holder):
+            yield
+
+
+def with_client_ctx[**P, R](
+    func: Callable[P, CoroutineType[Any, Any, R]],
+) -> Callable[P, CoroutineType[Any, Any, R]]:
+    @functools.wraps(func)
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        async with enter_client_ctx():
+            return await func(*args, **kwargs)
+
+    return wrapper
 
 
 def fix_url(url: str) -> str:
@@ -46,7 +89,8 @@ def fix_url(url: str) -> str:
 async def download_url(url: str) -> bytes:
     url = fix_url(url)
     try:
-        resp = await async_client().get(url)
+        async with async_client() as client:
+            resp = await client.get(url)
         resp.raise_for_status()
     except httpx.ConnectError, httpx.HTTPError:
         return b""
@@ -57,7 +101,10 @@ async def download_url(url: str) -> bytes:
 async def check_url_ok(url: str) -> bool:
     url = fix_url(url)
     try:
-        async with async_client().stream("GET", url) as resp:
+        async with (
+            async_client() as client,
+            client.stream("GET", url) as resp,
+        ):
             resp.raise_for_status()
     except httpx.ConnectError, httpx.HTTPError:
         return False
@@ -73,7 +120,10 @@ class _FileType(NamedTuple):
 
 async def guess_url_type(url: str) -> _FileType | None:
     url = fix_url(url)
-    async with async_client().stream("GET", url) as resp:
+    async with (
+        async_client() as client,
+        client.stream("GET", url) as resp,
+    ):
         size = resp.headers.get("Content-Length")
         if not size:
             return None
@@ -88,7 +138,10 @@ async def guess_url_type(url: str) -> _FileType | None:
 
 async def solve_url_302(url: str) -> str:
     url = fix_url(url)
-    async with async_client().stream("GET", url) as resp:
+    async with (
+        async_client() as client,
+        client.stream("GET", url) as resp,
+    ):
         if resp.status_code == 302:
             return await solve_url_302(resp.headers["Location"].partition("?")[0])
     return url

@@ -12,22 +12,27 @@ from nonebot_plugin_alconna.uniseg import (
     get_message_id,
 )
 
-type _M = Message[MessageSegment[_M]]
-type ConverterPred = Callable[[MessageSegment[_M]], bool]
+from .utils import with_client_ctx
+
+type _Message = Message[MessageSegment[_Message]]
+type ConverterPred = Callable[[MessageSegment[_Message]], bool]
 type ConverterCall[TC: MessageConverter, TMS: MessageSegment] = Callable[
     [TC, TMS], Awaitable[Segment | list[Segment] | None]
 ]
 type BoundConverterCall[TMS: MessageSegment] = Callable[
     [TMS], Awaitable[Segment | list[Segment] | None]
 ]
+type _ConverterPreds[TC: MessageConverter] = dict[
+    ConverterCall[TC, MessageSegment[_Message]],
+    tuple[ConverterPred, ...],
+]
 
-
-CONVERTERS: dict[str | None, type[MessageConverter[Bot, _M]]] = {}
+CONVERTERS: dict[str | None, type[MessageConverter[Bot, _Message]]] = {}
 SENDERS: dict[str | None, type[MessageSender[Bot]]] = {}
 
 
 class MessageConverter[TB: Bot, TM: Message](abc.ABC):
-    _converter_: ClassVar[set[ConverterCall[Self, MessageSegment]]] = set()
+    _converter_: ClassVar[_ConverterPreds[Self]] = {}
 
     src_bot: TB
     dst_bot: Bot | None
@@ -51,25 +56,25 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
         super().__init_subclass__(**kwargs)
         CONVERTERS[adapter] = cls  # pyright:ignore[reportArgumentType]
 
-        # DO NOT use `|=` which updates the original set
-        # create a new set for subclass with `|`
+        # DO NOT use `|=` which updates the original dict
+        # create a new dict for subclass with `|`
         cls._converter_ = cls._converter_ | {
-            cast("ConverterCall[Self, MessageSegment]", call)
+            cast("ConverterCall[Self, MessageSegment]", call): preds
             for name in dir(cls)
             if (call := getattr(cls, name, None)) is not None
             and callable(call)
-            and hasattr(call, "__predicates__")
+            and (preds := getattr(call, "__predicates__", None)) is not None
         }
+
+        cls.convert = with_client_ctx(cls.convert)
 
     async def __default(self, seg: MessageSegment) -> Segment | list[Segment] | None:
         return (fn := get_builder(self.src_bot)) and fn.convert(seg)
 
     def _find_fn[TMS: MessageSegment](self, seg: TMS) -> BoundConverterCall[TMS]:
-        for call in self._converter_:
-            preds: tuple[ConverterPred, ...] = getattr(call, "__predicates__", ())
+        for call, preds in self._converter_.items():
             if any(pred(seg) for pred in preds):
                 return functools.partial(call, self)
-
         return self.__default
 
 
@@ -108,19 +113,21 @@ def converts[C: ConverterCall](*target: str | type[MessageSegment]) -> Callable[
 
 
 @overload
-def get_converter() -> type[MessageConverter[Bot, _M]]: ...
+def get_converter() -> type[MessageConverter[Bot, _Message]]: ...
 @overload
-def get_converter(adapter: str | None = None, /) -> type[MessageConverter[Bot, _M]]: ...
+def get_converter(
+    adapter: str | None = None, /
+) -> type[MessageConverter[Bot, _Message]]: ...
 @overload
-def get_converter(bot: Bot, /) -> type[MessageConverter[Bot, _M]]: ...
+def get_converter(bot: Bot, /) -> type[MessageConverter[Bot, _Message]]: ...
 @overload
-def get_converter(src_bot: Bot, dst_bot: Bot) -> MessageConverter[Bot, _M]: ...
+def get_converter(src_bot: Bot, dst_bot: Bot) -> MessageConverter[Bot, _Message]: ...
 
 
 def get_converter(
     src_bot: Bot | str | None = None,
     dst_bot: Bot | None = None,
-) -> type[MessageConverter[Bot, _M]] | MessageConverter[Bot, _M]:
+) -> type[MessageConverter[Bot, _Message]] | MessageConverter[Bot, _Message]:
     if dst_bot is not None:
         if not isinstance(src_bot, Bot):
             raise TypeError("src_bot must be Bot")
