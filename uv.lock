@@ -1453,7 +1453,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-chatrecorder"
 version = "0.7.0"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git#799240bf92eadf9eda9bcfaddfce0c6665875a9b" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git#fde57df436095e890ef08cbe46cb2c2281f30861" }
 dependencies = [
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm" },
