@@ -28,12 +28,6 @@ def setup_logger(logging_override: LogLevelMap | None = None) -> None:
         "./logs/{time:YYYY-MM-DD}.log",
         rotation="00:00",
         level="DEBUG",
-        format=log_format,
-    )
-    nonebot.logger.add(
-        "./logs/color/{time:YYYY-MM-DD}.log",
-        rotation="00:00",
-        level="DEBUG",
         colorize=True,
         diagnose=True,
         format=log_format,
