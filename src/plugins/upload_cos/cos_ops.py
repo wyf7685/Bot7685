@@ -1,16 +1,15 @@
-from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable
-from pathlib import Path
-from typing import Self, TypedDict, final
+from collections.abc import AsyncIterable
+from pathlib import Path, PurePosixPath
+from typing import ClassVar, Self, TypedDict, final
 
 import anyio
 import anyio.to_thread
 import httpx
-from nonebot_plugin_localstore import get_plugin_cache_file
 from qcloud_cos import CosConfig, CosS3Client
 
 from .config import config
 
-ROOT = Path("qbot/upload")
+ROOT = PurePosixPath("qbot/upload")
 DEFAULT_CHUNK_SIZE = 4 * 1024 * 1024  # 4MB
 DEFAULT_EXPIRE_SECS = 3600  # 1 hour
 
@@ -22,20 +21,28 @@ class _PartDict(TypedDict):
 
 @final
 class AsyncCosS3Client:
+    _instance: ClassVar[Self | None] = None
+
     def __init__(self, client: CosS3Client) -> None:
         self._client = client
 
-    async def upload_file_from_buffer(self, key: str, data: bytes) -> None:
-        cache_file = get_plugin_cache_file(str(id(data)))
-        await anyio.Path(cache_file).write_bytes(data)
-        try:
-            await self.upload_file(key, cache_file)
-        finally:
-            await anyio.Path(cache_file).unlink()
+    @classmethod
+    def get(cls) -> Self:
+        if cls._instance is None:
+            conf = CosConfig(
+                Region=config.region,
+                SecretId=config.secret_id.get_secret_value(),
+                SecretKey=config.secret_key.get_secret_value(),
+                Token=None,
+                Scheme="https",
+            )
+            client = CosS3Client(conf, retry=3)
+            cls._instance = cls(client)
+        return cls._instance
 
-    async def upload_file(self, key: str, path: Path) -> None:
+    async def put_object(self, key: str, data: bytes) -> None:
         await anyio.to_thread.run_sync(
-            self._client.upload_file, config.bucket, key, path
+            self._client.put_object, config.bucket, data, key
         )
 
     async def delete_object(self, key: str) -> None:
@@ -77,45 +84,21 @@ class AsyncCosS3Client:
         )
 
 
-__global_client: AsyncCosS3Client | None = None
-
-
-def get_client(retry: int = 1) -> AsyncCosS3Client:
-    global __global_client
-
-    if __global_client is not None:
-        return __global_client
-
-    __global_client = AsyncCosS3Client(
-        CosS3Client(
-            conf=CosConfig(
-                Region=config.region,
-                SecretId=config.secret_id.get_secret_value(),
-                SecretKey=config.secret_key.get_secret_value(),
-                Token=None,
-                Scheme="https",
-            ),
-            retry=retry,
-        )
-    )
-    return __global_client
-
-
 class MultipartUploadTask:
     client: AsyncCosS3Client
     key: str
     upload_id: str
     parts: list[_PartDict]
 
-    def __init__(self, key: str, client: AsyncCosS3Client | None = None) -> None:
-        self.client = client or get_client()
+    def __init__(self, key: str) -> None:
+        self.client = AsyncCosS3Client.get()
         self.key = (ROOT / key).as_posix()
         self.upload_id = ""
         self.parts = []
 
     @classmethod
-    async def create(cls, key: str, client: AsyncCosS3Client | None = None) -> Self:
-        self = cls(key, client)
+    async def create(cls, key: str) -> Self:
+        self = cls(key)
         self.upload_id = await self.client.create_multipart_upload(key)
         return self
 
@@ -139,13 +122,13 @@ class MultipartUploadTask:
 
     async def upload_from(
         self,
-        ait: AsyncIterator[bytes],
-        max_workers: int = 4,
+        aiterable: AsyncIterable[bytes],
+        max_workers: int = 8,
     ) -> None:
-        async def producer(produce: Callable[[bytes], Awaitable[object]]) -> None:
+        async def producer() -> None:
             async with send:
-                while chunk := await anext(ait, None):
-                    await produce(chunk)
+                async for chunk in aiterable:
+                    await send.send(chunk)
 
         async def consumer(aitrable: AsyncIterable[bytes]) -> None:
             async for chunk in aitrable:
@@ -153,70 +136,72 @@ class MultipartUploadTask:
 
         send, recv = anyio.create_memory_object_stream[bytes](0)
         async with anyio.create_task_group() as tg:
-            tg.start_soon(producer, send.send)
+            tg.start_soon(producer)
             for _ in range(max_workers):
                 tg.start_soon(consumer, recv.clone())
-            tg.start_soon(recv.aclose)
+            recv.close()
 
 
-async def put_file(data: bytes, key: str, retry: int = 3) -> None:
-    await get_client(retry).upload_file_from_buffer(
-        key=(ROOT / key).as_posix(),
-        data=data,
-    )
+async def put_file_from_aiterable(aiterable: AsyncIterable[bytes], key: str) -> None:
+    ait = aiter(aiterable)
+    first_chunk = await anext(ait, None)
+    if first_chunk is None or len(first_chunk) == 0:
+        raise ValueError("Cannot upload empty file")
+
+    if len(first_chunk) < DEFAULT_CHUNK_SIZE:
+        await AsyncCosS3Client.get().put_object(
+            key=(ROOT / key).as_posix(), data=first_chunk
+        )
+        return
+
+    task = await MultipartUploadTask.create(key)
+    try:
+        await task.put_chunk(first_chunk)
+        await task.upload_from(aiterable)
+        await task.complete()
+    except Exception:
+        await task.abort()
+        raise
 
 
-async def put_file_from_local(path: Path, key: str, retry: int = 3) -> None:
-    await get_client(retry).upload_file(
-        key=(ROOT / key).as_posix(),
-        path=path,
-    )
+async def put_file(data: bytes, key: str) -> None:
+    async def aiterable() -> AsyncIterable[bytes]:
+        ptr = 0
+        while ptr < len(data):
+            yield data[ptr : ptr + DEFAULT_CHUNK_SIZE]
+            ptr += DEFAULT_CHUNK_SIZE
+
+    await put_file_from_aiterable(aiterable(), key)
 
 
-async def delete_file(key: str, retry: int = 3) -> None:
-    await get_client(retry).delete_object(
+async def put_file_from_local(path: Path, key: str) -> None:
+    async def aiterable() -> AsyncIterable[bytes]:
+        while data := await file.read(DEFAULT_CHUNK_SIZE):
+            yield data
+
+    async with await anyio.Path(path).open("rb") as file:
+        await put_file_from_aiterable(aiterable(), key)
+
+
+async def delete_file(key: str) -> None:
+    await AsyncCosS3Client.get().delete_object(
         key=(ROOT / key).as_posix(),
     )
 
 
 async def presign(key: str, expired: int = DEFAULT_EXPIRE_SECS) -> str:
-    return await get_client().get_presigned_url(
+    return await AsyncCosS3Client.get().get_presigned_url(
         key=(ROOT / key).as_posix(),
         method="GET",
         expired=expired,
     )
 
 
-async def put_file_from_url(url: str, key: str, retry: int = 3) -> None:
-    # ref: CosS3Client.upload_file_from_buffer
-
+async def put_file_from_url(url: str, key: str) -> None:
     async with (
         httpx.AsyncClient() as _client,
         _client.stream("GET", url) as resp,
     ):
         resp.raise_for_status()
         aiterable = resp.aiter_bytes(DEFAULT_CHUNK_SIZE)
-
-        # 读取第一个文件块，判断上传策略
-        if (first_chunk := await anext(aiterable, None)) is None:
-            raise ValueError("Empty file from url")
-
-        # 小文件直接上传
-        if len(first_chunk) < DEFAULT_CHUNK_SIZE:
-            await get_client(retry).upload_file_from_buffer(
-                key=(ROOT / key).as_posix(), data=first_chunk
-            )
-            return
-
-        # 大文件创建分块上传任务
-        task = await MultipartUploadTask.create(key)
-        # 上传第一个分块
-        await task.put_chunk(first_chunk)
-        # 上传剩余分块
-        await task.upload_from(aiterable)
-
-    try:
-        await task.complete()
-    except Exception:
-        await task.abort()
-        raise
+        await put_file_from_aiterable(aiterable, key)
