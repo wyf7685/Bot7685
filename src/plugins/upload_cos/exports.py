@@ -4,7 +4,7 @@ from typing import assert_never, overload
 from .cos_ops import (
     DEFAULT_EXPIRE_SECS,
     presign,
-    put_file,
+    put_file_from_buffer,
     put_file_from_local,
     put_file_from_url,
 )
@@ -41,7 +41,7 @@ async def upload_cos(
 ) -> str:
     match source:
         case bytes():
-            await put_file(source, key)
+            await put_file_from_buffer(source, key)
         case str():
             await put_file_from_url(source, key)
         case Path():

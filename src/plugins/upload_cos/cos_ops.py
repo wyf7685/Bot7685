@@ -148,7 +148,7 @@ async def put_file_from_aiterable(aiterable: AsyncIterable[bytes], key: str) -> 
             raise
 
 
-async def put_file(data: bytes, key: str) -> None:
+async def put_file_from_buffer(data: bytes, key: str) -> None:
     async def aiterable() -> AsyncIterable[bytes]:
         ptr = 0
         while ptr < len(data):

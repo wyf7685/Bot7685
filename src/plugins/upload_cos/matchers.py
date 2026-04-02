@@ -7,13 +7,13 @@ from nonebot_plugin_alconna import Alconna, Args, Match, on_alconna
 from nonebot_plugin_alconna.uniseg import At, UniMessage
 from nonebot_plugin_alconna.uniseg.utils import fleep
 
-from .cos_ops import presign, put_file
+from .cos_ops import presign, put_file_from_buffer
 from .database import update_key, update_permission
 from .depends import ALLOW_UPLOAD, EventImageRaw
 
 upload_cos = on_startswith("cos上传", permission=ALLOW_UPLOAD)
 update_perm = on_alconna(
-    Alconna("cos加权", Args["target", At], Args["expired?", int]),
+    Alconna("cos加权", Args["target", At]["expired?", int]),
     permission=SUPERUSER,
 )
 logger = logger.opt(colors=True)
@@ -24,22 +24,21 @@ async def _(raw: EventImageRaw) -> None:
     digest = hashlib.md5(raw).hexdigest()  # noqa: S324
     key = f"{digest[:2]}/{digest}.{fleep.get(raw).extensions[0]}"
     try:
-        await put_file(raw, key)
+        await put_file_from_buffer(raw, key)
     except Exception as err:
-        await UniMessage(f"上传图片失败: {err!r}").send(reply_to=True)
+        await UniMessage.text(f"上传图片失败: {err!r}").send(reply_to=True)
 
     expired = 3600
     await update_key(key, expired)
     url = await presign(key, expired)
     logger.success(f"预签名URL: <y>{url}</y>")
-    await UniMessage(url).send(reply_to=True)
+    await UniMessage.text(url).send(reply_to=True)
 
 
 @update_perm.handle()
-async def _(target: Match[At], expired: Match[int]) -> None:
-    if not target.available:
-        return
-    user_id = target.result.target
-    expire = expired.result if expired.available else 60
-    await update_permission(user_id, expire)
-    await UniMessage("临时授权").at(user_id).text(f": {expire}s").send(reply_to=True)
+async def _(target: At, expired: Match[int]) -> None:
+    user_id = target.target
+    expired_value = expired.result if expired.available else 60
+    await update_permission(user_id, expired_value)
+    msg = UniMessage.text("临时授权 ").at(user_id).text(f": {expired_value}s")
+    await msg.send(reply_to=True)

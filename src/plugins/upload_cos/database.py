@@ -5,7 +5,7 @@ import nonebot
 from nonebot.utils import escape_tag
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_orm import Model, get_session
-from sqlalchemy import FLOAT, TEXT, delete, insert, select, update
+from sqlalchemy import FLOAT, TEXT, delete, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .cos_ops import delete_file
@@ -17,16 +17,15 @@ class CosUploadFile(Model):
 
 
 async def update_key(key: str, expired: float) -> None:
-    now = datetime.now().timestamp()
-    select_ = select(CosUploadFile).where(CosUploadFile.key == key)
-
+    expire_at = datetime.now().timestamp() + expired
     async with get_session() as session:
-        stmt = (
-            update(CosUploadFile).where(CosUploadFile.key == key)
-            if (await session.scalars(select_)).all()
-            else insert(CosUploadFile).values(key=key)
-        ).values(expire_at=now + expired)
-        await session.execute(stmt)
+        if item := await session.scalar(
+            select(CosUploadFile).where(CosUploadFile.key == key)
+        ):
+            item.expire_at = expire_at
+        else:
+            item = CosUploadFile(key=key, expire_at=expire_at)
+            session.add(item)
         await session.commit()
 
 
@@ -46,30 +45,33 @@ class CosUploadPermission(Model):
 
 
 async def update_permission(user_id: str, expired: float) -> None:
-    now = datetime.now().timestamp()
+    expire_at = datetime.now().timestamp() + expired
     select_ = select(CosUploadPermission).where(CosUploadPermission.user_id == user_id)
 
     async with get_session() as session:
-        stmt = (
-            update(CosUploadPermission).where(CosUploadPermission.user_id == user_id)
-            if (await session.scalars(select_)).all()
-            else insert(CosUploadPermission).values(user_id=user_id)
-        ).values(expire_at=now + expired)
-        await session.execute(stmt)
+        if item := await session.scalar(select_):
+            item.expire_at = expire_at
+        else:
+            item = CosUploadPermission(user_id=user_id, expire_at=expire_at)
+            session.add(item)
         await session.commit()
 
 
 async def remove_expired_perm() -> None:
-    now = datetime.now().timestamp()
-    stmt = delete(CosUploadPermission).where(CosUploadPermission.expire_at <= now)
+    stmt = delete(CosUploadPermission).where(
+        CosUploadPermission.expire_at <= datetime.now().timestamp()
+    )
     async with get_session() as session:
         await session.execute(stmt)
         await session.commit()
 
 
 async def user_has_perm(user_id: str) -> bool:
-    await remove_expired_perm()
-    stmt = select(CosUploadPermission).where(CosUploadPermission.user_id == user_id)
+    stmt = (
+        select(CosUploadPermission)
+        .where(CosUploadPermission.user_id == user_id)
+        .where(CosUploadPermission.expire_at > datetime.now().timestamp())
+    )
     async with get_session() as session:
         return await session.scalar(stmt) is not None
 
