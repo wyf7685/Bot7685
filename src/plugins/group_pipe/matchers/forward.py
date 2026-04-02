@@ -11,7 +11,6 @@ from nonebot_plugin_alconna import (
     Subcommand,
     on_alconna,
 )
-from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 
 from src.plugins.upload_cos import upload_cos
@@ -55,12 +54,7 @@ alc = Alconna(
     ),
 )
 
-matcher = on_alconna(
-    alc,
-    use_cmd_start=True,
-    block=True,
-    extensions=[TelegramSlashExtension()],
-)
+matcher = on_alconna(alc, use_cmd_start=True, block=True)
 
 
 @matcher.assign("cache")
@@ -108,7 +102,8 @@ async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
 
     for item in cache_data:
         nick = item["nick"]
-        msg = await UniMessage.load(item["msg"]).transform_async(_convert_image)
+        msg: UniMessage = UniMessage.load(item["msg"])
+        msg = await msg.transform_async(_convert_image)
         msg.insert(0, Text(f"{nick}\n\n"))
         try:
             await send(bot, target, msg)

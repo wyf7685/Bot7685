@@ -6,6 +6,7 @@ from typing import assert_never, override
 import humanize
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.discord import Adapter, Bot, MessageEvent
+from nonebot.adapters.discord.api import AttachmentSend
 from nonebot.adapters.discord.api.model import MessageGet
 from nonebot.adapters.discord.api.types import UNSET, TimeStampStyle
 from nonebot.adapters.discord.message import (
@@ -75,8 +76,10 @@ class MessageConverter(
         attachments = {a.filename: a.url for a in event.attachments}
         for seg in message:
             if isinstance(seg, AttachmentSegment):
-                attachment = seg.data["attachment"]
-                if url := attachments.get(attachment.filename):
+                attachment: AttachmentSend = seg.data["attachment"]
+                if attachment.filename is not UNSET and (
+                    url := attachments.get(attachment.filename)
+                ):
                     await attachment_cache.set(attachment.filename, url)
 
         return message
@@ -110,8 +113,10 @@ class MessageConverter(
 
     @converts(AttachmentSegment)
     async def attachment(self, segment: AttachmentSegment) -> u.Segment:
-        attachment = segment.data["attachment"]
-        if url := await attachment_cache.get(attachment.filename):
+        attachment: AttachmentSend = segment.data["attachment"]
+        if attachment.filename is not UNSET and (
+            url := await attachment_cache.get(attachment.filename)
+        ):
             info = await guess_url_type(url)
             mime = info and info.mime
 
