@@ -33,7 +33,6 @@ dependencies = [
   "aiocache[redis]>=0.12.3",
   "anyio>=4.12.1",
   "cloudscraper>=1.2.71",
-  "cos-python-sdk-v5>=1.9.41",
   "githubkit[auth-app]>=0.14.7",
   "gunicorn>=25.1.0",
   "httpx>=0.28.1",
