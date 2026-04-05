@@ -53,7 +53,7 @@ dependencies = [
   "nonebot-plugin-chatrecorder",
   "nonebot-plugin-zssm",
   # Bot7685 Extensions
-  "bot7685-ext[htmlrender,nonebot]==0.4.1",
+  "bot7685-ext[htmlrender,nonebot]==0.4.3",
 ]
 
 [dependency-groups]
