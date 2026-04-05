@@ -220,6 +220,7 @@ dependencies = [
     { name = "nonebot-plugin-kawaii-status" },
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm", extra = ["asyncpg"] },
+    { name = "nonebot-plugin-rollpig" },
     { name = "nonebot-plugin-skland" },
     { name = "nonebot-plugin-talk-stats" },
     { name = "nonebot-plugin-uninfo" },
@@ -273,6 +274,7 @@ requires-dist = [
     { name = "nonebot-plugin-kawaii-status", specifier = ">=0.2.0" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
     { name = "nonebot-plugin-orm", extras = ["asyncpg"], specifier = ">=0.8.3" },
+    { name = "nonebot-plugin-rollpig", git = "https://github.com/Bearlele/nonebot-plugin-rollpig?rev=555bcfa74e37b1f4611789495169d9c78c7cdd66" },
     { name = "nonebot-plugin-skland", specifier = ">=0.6.8" },
     { name = "nonebot-plugin-talk-stats", git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.9.0" },
@@ -1525,6 +1527,20 @@ aiosqlite = [
 ]
 asyncpg = [
     { name = "sqlalchemy", extra = ["postgresql-asyncpg"] },
+]
+
+[[package]]
+name = "nonebot-plugin-rollpig"
+version = "0.2.9"
+source = { git = "https://github.com/Bearlele/nonebot-plugin-rollpig?rev=555bcfa74e37b1f4611789495169d9c78c7cdd66#555bcfa74e37b1f4611789495169d9c78c7cdd66" }
+dependencies = [
+    { name = "httpx" },
+    { name = "nonebot-plugin-alconna" },
+    { name = "nonebot-plugin-apscheduler" },
+    { name = "nonebot-plugin-htmlrender" },
+    { name = "nonebot-plugin-localstore" },
+    { name = "nonebot-plugin-uninfo" },
+    { name = "nonebot2" },
 ]
 
 [[package]]

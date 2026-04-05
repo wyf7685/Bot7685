@@ -23,6 +23,7 @@ dependencies = [
   "nonebot-plugin-kawaii-status>=0.2.0",
   "nonebot-plugin-localstore>=0.7.4",
   "nonebot-plugin-orm[asyncpg]>=0.8.3",
+  "nonebot-plugin-rollpig>=0.2.9",
   "nonebot-plugin-skland>=0.6.8",
   "nonebot-plugin-uninfo>=0.9.0",
   "nonebot-plugin-user>=0.5.3",
@@ -69,6 +70,7 @@ nonebot-plugin-talk-stats = { git = "https://github.com/wyf7685/nonebot-plugin-t
 nonebot-plugin-werewolf = { git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" }
 nonebot-plugin-zssm = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git" }
 nonebot-plugin-chatrecorder = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" }
+nonebot-plugin-rollpig = { git = "https://github.com/Bearlele/nonebot-plugin-rollpig", rev = "555bcfa74e37b1f4611789495169d9c78c7cdd66" }
 
 [tool.pyright]
 pythonVersion = "3.14"
