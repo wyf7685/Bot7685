@@ -9,6 +9,7 @@ from types import ModuleType, TracebackType
 from typing import Any, cast, override
 
 import anyio
+from nonebot import logger
 from nonebot.internal.driver import Driver
 from nonebot.internal.driver._lifespan import LIFESPAN_FUNC, Lifespan
 from nonebot.plugin import Plugin
@@ -58,6 +59,15 @@ def _attach_plugin_id(func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
     return wrapper
 
 
+def _debug_print_layers(seq: list[list[LIFESPAN_FUNC]]) -> None:
+    for idx, layer in enumerate(seq, 1):
+        logger.debug(f"Layer {idx}:")
+        for func in layer:
+            func_name = f"{func.__module__}:{func.__qualname__}"
+            plugin_id = getattr(func, HOOK_PLUGIN_ID_ATTR, None)
+            logger.debug(f"  {func_name} (from {plugin_id})")
+
+
 class PatchedLifespan(Lifespan):
     @override
     def on_startup(self, func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
@@ -74,7 +84,9 @@ class PatchedLifespan(Lifespan):
     async def _concurrent_run_lifespan_func(
         self, funcs: Sequence[LIFESPAN_FUNC], reverse: bool = False
     ) -> None:
-        for layer in resolve_hook_exec_seq(funcs, reverse=reverse):
+        layers = resolve_hook_exec_seq(funcs, reverse=reverse)
+        _debug_print_layers(layers)
+        for layer in layers:
             async with anyio.create_task_group() as tg:
                 for func in layer:
                     if inspect.iscoroutinefunction(func):
@@ -90,10 +102,12 @@ class PatchedLifespan(Lifespan):
 
         # run startup funcs
         if self._startup_funcs:
+            logger.debug("Running startup hooks...")
             await self._concurrent_run_lifespan_func(self._startup_funcs)
 
         # run ready funcs
         if self._ready_funcs:
+            logger.debug("Running ready hooks...")
             await self._concurrent_run_lifespan_func(self._ready_funcs)
 
     @override
@@ -105,6 +119,7 @@ class PatchedLifespan(Lifespan):
         exc_tb: TracebackType | None = None,
     ) -> None:
         if self._shutdown_funcs:
+            logger.debug("Running shutdown hooks...")
             # reverse shutdown funcs to ensure stack order
             await self._concurrent_run_lifespan_func(self._shutdown_funcs, reverse=True)
 
