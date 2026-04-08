@@ -6,10 +6,9 @@ from collections import defaultdict
 from collections.abc import Sequence
 from itertools import pairwise
 from types import ModuleType, TracebackType
-from typing import Any, cast, override
+from typing import Any, override
 
 import anyio
-from nonebot import logger
 from nonebot.internal.driver import Driver
 from nonebot.internal.driver._lifespan import LIFESPAN_FUNC, Lifespan
 from nonebot.plugin import Plugin
@@ -17,22 +16,12 @@ from nonebot.plugin import _current_plugin as current_plugin
 from nonebot.plugin import require as original_require
 from nonebot.utils import run_sync
 
+from src.utils import logger_wrapper
+
 HOOK_PLUGIN_ID_ATTR = "__bot7685_hook_plugin_id__"
 
 
-def _resolve_hook_plugin_id(func: LIFESPAN_FUNC) -> str | None:
-    # nonebot_plugin_alconna.matcher:AlconnaMatcher._run_tests
-    if (
-        func.__module__ == "nonebot_plugin_alconna.matcher"
-        and func.__qualname__ == "AlconnaMatcher._run_tests"
-    ):
-        return "nonebot_plugin_alconna"
-
-    plugin = current_plugin.get()
-    return plugin.id_ if plugin else None
-
-
-def _make_wrapper[F: LIFESPAN_FUNC](func: F) -> F:
+def _attach_plugin_id(func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
     if inspect.iscoroutinefunction(func):
 
         @functools.wraps(func)
@@ -48,12 +37,22 @@ def _make_wrapper[F: LIFESPAN_FUNC](func: F) -> F:
 
         wrapper = wrapper_sync
 
-    return cast("F", wrapper)
+    plugin = current_plugin.get()
+    plugin_id = plugin.id_ if plugin else None
 
+    # nonebot_plugin_alconna.matcher:AlconnaMatcher._run_tests
+    if (
+        func.__module__ == "nonebot_plugin_alconna.matcher"
+        and func.__qualname__ == "AlconnaMatcher._run_tests"
+    ):
 
-def _attach_plugin_id(func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
-    plugin_id = _resolve_hook_plugin_id(func)
-    wrapper = _make_wrapper(func)
+        @functools.wraps(func)
+        async def _wrapper() -> Any:
+            return func()
+
+        wrapper = _wrapper
+        plugin_id = "nonebot_plugin_alconna"
+
     with contextlib.suppress(Exception):
         setattr(wrapper, HOOK_PLUGIN_ID_ATTR, plugin_id)
     return wrapper
@@ -61,14 +60,17 @@ def _attach_plugin_id(func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
 
 def _debug_print_layers(seq: list[list[LIFESPAN_FUNC]]) -> None:
     for idx, layer in enumerate(seq, 1):
-        logger.debug(f"Layer {idx}:")
+        lifespan_debug(f"Layer {idx}:")
         for func in layer:
             func_name = f"{func.__module__}:{func.__qualname__}"
             plugin_id = getattr(func, HOOK_PLUGIN_ID_ATTR, None)
-            logger.debug(f"  {func_name} (from {plugin_id})")
+            lifespan_debug(f"  {func_name} (from {plugin_id})")
 
 
-class PatchedLifespan(Lifespan):
+lifespan_debug = functools.partial(logger_wrapper("Lifespan"), "DEBUG")
+
+
+class ExtendedLifespan(Lifespan):
     @override
     def on_startup(self, func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
         return super().on_startup(_attach_plugin_id(func))
@@ -84,7 +86,7 @@ class PatchedLifespan(Lifespan):
     async def _concurrent_run_lifespan_func(
         self, funcs: Sequence[LIFESPAN_FUNC], reverse: bool = False
     ) -> None:
-        layers = resolve_hook_exec_seq(funcs, reverse=reverse)
+        layers = resolve_hook_execution_sequence(funcs, reverse=reverse)
         _debug_print_layers(layers)
         for layer in layers:
             async with anyio.create_task_group() as tg:
@@ -102,12 +104,12 @@ class PatchedLifespan(Lifespan):
 
         # run startup funcs
         if self._startup_funcs:
-            logger.debug("Running startup hooks...")
+            lifespan_debug("Running startup hooks...")
             await self._concurrent_run_lifespan_func(self._startup_funcs)
 
         # run ready funcs
         if self._ready_funcs:
-            logger.debug("Running ready hooks...")
+            lifespan_debug("Running ready hooks...")
             await self._concurrent_run_lifespan_func(self._ready_funcs)
 
     @override
@@ -119,7 +121,7 @@ class PatchedLifespan(Lifespan):
         exc_tb: TracebackType | None = None,
     ) -> None:
         if self._shutdown_funcs:
-            logger.debug("Running shutdown hooks...")
+            lifespan_debug("Running shutdown hooks...")
             # reverse shutdown funcs to ensure stack order
             await self._concurrent_run_lifespan_func(self._shutdown_funcs, reverse=True)
 
@@ -135,6 +137,7 @@ class PatchedLifespan(Lifespan):
 _plugin_deps: dict[str, set[str]] = defaultdict(set)
 
 
+@functools.wraps(original_require)
 def _patched_require(name: str) -> ModuleType:
     module = original_require(name)
     plugin: Plugin | None = getattr(module, "__plugin__", None)
@@ -144,7 +147,7 @@ def _patched_require(name: str) -> ModuleType:
     return module
 
 
-def resolve_hook_exec_seq(
+def resolve_hook_execution_sequence(
     funcs: Sequence[LIFESPAN_FUNC],
     reverse: bool = False,
 ) -> list[list[LIFESPAN_FUNC]]:
@@ -218,7 +221,10 @@ def resolve_hook_exec_seq(
 
 
 def patch_driver_lifespan(driver: Driver) -> None:
-    driver._lifespan.__class__ = PatchedLifespan  # noqa: SLF001
+    lifespan = getattr(driver, "_lifespan", None)
+    if not isinstance(lifespan, Lifespan):
+        raise TypeError("Driver does not have a valid _lifespan attribute")
+    lifespan.__class__ = ExtendedLifespan
 
 
 def patch_require() -> None:
