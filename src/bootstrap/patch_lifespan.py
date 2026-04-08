@@ -14,7 +14,7 @@ from nonebot.internal.driver._lifespan import LIFESPAN_FUNC, Lifespan
 from nonebot.plugin import Plugin
 from nonebot.plugin import _current_plugin as current_plugin
 from nonebot.plugin import require as original_require
-from nonebot.utils import run_sync
+from nonebot.utils import escape_tag, run_sync
 
 from src.utils import logger_wrapper
 
@@ -63,8 +63,8 @@ def _debug_print_layers(seq: list[list[LIFESPAN_FUNC]]) -> None:
         lifespan_debug(f"Layer {idx}:")
         for func in layer:
             func_name = f"{func.__module__}:{func.__qualname__}"
-            plugin_id = getattr(func, HOOK_PLUGIN_ID_ATTR, None)
-            lifespan_debug(f"  {func_name} (from {plugin_id})")
+            plugin_id = getattr(func, HOOK_PLUGIN_ID_ATTR, None) or "unknown"
+            lifespan_debug(f"  {escape_tag(func_name)} (from {escape_tag(plugin_id)})")
 
 
 lifespan_debug = functools.partial(logger_wrapper("Lifespan"), "DEBUG")
