@@ -12,6 +12,7 @@ from src.utils import logger_wrapper
 
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
+from .patch_lifespan import patch_driver_lifespan, patch_require
 
 log = logger_wrapper("Bootstrap")
 
@@ -90,8 +91,11 @@ def init_nonebot() -> object:
     setup_logger(bootstrap_config.logging_override)
     mount_plugin_loader_hook()
     register_htmlrender_patch()
+    patch_require()
     config.pop("_env_file", None)
     nonebot.init(_env_file=None, **config)
+    driver = nonebot.get_driver()
+    patch_driver_lifespan(driver)
     print_logo(lambda line: log("SUCCESS", line), mode="rich")
     load_adapters(bootstrap_config)
     load_plugins(bootstrap_config)
