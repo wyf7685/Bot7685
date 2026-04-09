@@ -2,17 +2,20 @@ import functools
 import logging
 import time
 from collections.abc import Callable
+from typing import Any, override
 
 import nonebot
 from bot7685_ext.nonebot import mount_plugin_loader_hook, register_htmlrender_patch
 from nonebot.adapters import Adapter
-from nonebot.utils import resolve_dot_notation
+from nonebot.compat import model_dump
+from nonebot.drivers import Driver
+from nonebot.utils import escape_tag, resolve_dot_notation
 
 from src.utils import logger_wrapper
 
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
-from .patch_lifespan import patch_driver_lifespan, patch_require
+from .patch_lifespan import patch_require
 
 log = logger_wrapper("Bootstrap")
 
@@ -35,7 +38,7 @@ def setup_logger(logging_override: LogLevelMap | None = None) -> None:
     )
 
 
-def _timer[**P, R](info: str, /) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def timer[**P, R](info: str, /) -> Callable[[Callable[P, R]], Callable[P, R]]:
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
@@ -50,6 +53,40 @@ def _timer[**P, R](info: str, /) -> Callable[[Callable[P, R]], Callable[P, R]]:
     return decorator
 
 
+def create_driver_class(combine_expr: str) -> type[Driver]:
+    from nonebot import _resolve_combine_expr
+    from nonebot.config import Config, Env
+
+    from .patch_lifespan import ExtendedLifespan
+
+    class Driver(_resolve_combine_expr(combine_expr)):
+        @override
+        def __init__(self, env: Env, config: Config) -> None:
+            super().__init__(env, config)
+            self._lifespan = ExtendedLifespan()
+
+    return Driver
+
+
+def create_driver(config_dict: dict[str, Any]) -> Driver:
+    from nonebot import _log_patcher
+    from nonebot.config import Config, Env
+
+    log("SUCCESS", "NoneBot is initializing...")
+    env = Env(environment=config_dict.get("environment", "prod"))
+    config = Config(**config_dict)
+
+    nonebot.logger.configure(
+        extra={"nonebot_log_level": config.log_level}, patcher=_log_patcher
+    )
+    log("INFO", f"Current <y><b>Env: {escape_tag(env.environment)}</b></y>")
+    log("DEBUG", f"Loaded <y><b>Config</b></y>: {escape_tag(str(model_dump(config)))}")
+
+    driver = create_driver_class(config.driver)(env, config)
+    nonebot._driver = driver  # noqa: SLF001
+    return driver
+
+
 def load_adapter(module_name: str) -> type[Adapter] | None:
     try:
         return resolve_dot_notation(module_name, "Adapter", "nonebot.adapters.")
@@ -58,13 +95,13 @@ def load_adapter(module_name: str) -> type[Adapter] | None:
         return None
 
 
-@_timer("Loading adapters")
+@timer("Loading adapters")
 def load_adapters(config: BootstrapConfig) -> None:
     driver = nonebot.get_driver()
     for module_name in config.adapters:
         message = f"Loading adapter: <m>{module_name}</m>"
         log("DEBUG", message)
-        if adapter := _timer(message)(load_adapter)(module_name):
+        if adapter := timer(message)(load_adapter)(module_name):
             driver.register_adapter(adapter)
             log(
                 "SUCCESS",
@@ -73,7 +110,7 @@ def load_adapters(config: BootstrapConfig) -> None:
             )
 
 
-@_timer("Loading plugins")
+@timer("Loading plugins")
 def load_plugins(config: BootstrapConfig) -> None:
     nonebot.load_all_plugins(
         module_path=config.plugins,
@@ -83,7 +120,7 @@ def load_plugins(config: BootstrapConfig) -> None:
     )
 
 
-@_timer("Initializing NoneBot")
+@timer("Initializing NoneBot")
 def init_nonebot() -> object:
     config = load_config()
     bootstrap_config = BootstrapConfig.from_config(config)
@@ -92,10 +129,7 @@ def init_nonebot() -> object:
     mount_plugin_loader_hook()
     register_htmlrender_patch()
     patch_require()
-    config.pop("_env_file", None)
-    nonebot.init(_env_file=None, **config)
-    driver = nonebot.get_driver()
-    patch_driver_lifespan(driver)
+    create_driver(config)
     print_logo(lambda line: log("SUCCESS", line), mode="rich")
     load_adapters(bootstrap_config)
     load_plugins(bootstrap_config)

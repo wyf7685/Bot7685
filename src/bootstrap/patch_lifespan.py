@@ -9,7 +9,6 @@ from types import ModuleType, TracebackType
 from typing import Any, override
 
 import anyio
-from nonebot.internal.driver import Driver
 from nonebot.internal.driver._lifespan import LIFESPAN_FUNC, Lifespan
 from nonebot.plugin import Plugin
 from nonebot.plugin import _current_plugin as current_plugin
@@ -58,6 +57,9 @@ def _attach_plugin_id(func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
     return wrapper
 
 
+lifespan_debug = functools.partial(logger_wrapper("Lifespan"), "DEBUG")
+
+
 def _debug_print_layers(seq: list[list[LIFESPAN_FUNC]]) -> None:
     for idx, layer in enumerate(seq, 1):
         lifespan_debug(f"Layer {idx}:")
@@ -65,9 +67,6 @@ def _debug_print_layers(seq: list[list[LIFESPAN_FUNC]]) -> None:
             func_name = f"{func.__module__}:{func.__qualname__}"
             plugin_id = getattr(func, HOOK_PLUGIN_ID_ATTR, None) or "unknown"
             lifespan_debug(f"  {escape_tag(func_name)} (from {escape_tag(plugin_id)})")
-
-
-lifespan_debug = functools.partial(logger_wrapper("Lifespan"), "DEBUG")
 
 
 class ExtendedLifespan(Lifespan):
@@ -218,13 +217,6 @@ def resolve_hook_execution_sequence(
         layers.extend([funcs[index]] for index in sorted(remaining))
 
     return layers
-
-
-def patch_driver_lifespan(driver: Driver) -> None:
-    lifespan = getattr(driver, "_lifespan", None)
-    if not isinstance(lifespan, Lifespan):
-        raise TypeError("Driver does not have a valid _lifespan attribute")
-    lifespan.__class__ = ExtendedLifespan
 
 
 def patch_require() -> None:
