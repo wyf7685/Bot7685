@@ -1,5 +1,6 @@
 import hashlib
 from collections.abc import Iterable
+from copy import deepcopy
 from typing import NamedTuple
 
 from nonebot_plugin_alconna import Target
@@ -19,7 +20,8 @@ class PipeTuple(NamedTuple):
         cls, pipes: Iterable[tuple[TargetDict, TargetDict]]
     ) -> list[PipeTuple]:
         return [
-            cls(Target.load(listen), Target.load(target)) for listen, target in pipes
+            cls(Target.load(deepcopy(listen)), Target.load(deepcopy(target)))
+            for listen, target in pipes
         ]
 
 

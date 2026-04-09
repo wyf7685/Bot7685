@@ -4,6 +4,7 @@ import re
 import shutil
 import uuid
 from collections.abc import AsyncIterator
+from copy import deepcopy
 from typing import Annotated, Any, NamedTuple
 
 import anyio
@@ -56,7 +57,7 @@ class Subscription(BaseModel):
 
     @property
     def target(self) -> Target:
-        return Target.load(self.target_data)
+        return Target.load(deepcopy(self.target_data))
 
     def verify(self, other: Subscription) -> bool:
         return (

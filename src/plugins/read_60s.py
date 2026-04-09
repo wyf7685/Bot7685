@@ -1,5 +1,6 @@
 import contextlib
 import functools
+from copy import deepcopy
 from typing import Any
 
 import httpx
@@ -44,7 +45,7 @@ class Read60sConfig(BaseModel):
 
     @functools.cached_property
     def target(self) -> Target:
-        return Target.load(self.target_data)
+        return Target.load(deepcopy(self.target_data))
 
 
 config_file = ConfigListFile(get_plugin_data_file("read_60s.json"), Read60sConfig)
