@@ -4,7 +4,7 @@ import inspect
 import threading
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import anyio
 import nonebot
@@ -19,16 +19,61 @@ if TYPE_CHECKING:
     from nonebot_plugin_alconna.uniseg import Receipt, UniMessage
 
 
-def logger_wrapper(logger_name: str, /):  # noqa: ANN201
-    logger = nonebot.logger.patch(lambda r: r.update(name="Bot7685"))
-    logger_name = escape_tag(logger_name)
+type _ValidLogLevel = Literal[
+    "TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"
+]
+_valid_log_levels: set[_ValidLogLevel] = {
+    "TRACE",
+    "DEBUG",
+    "INFO",
+    "SUCCESS",
+    "WARNING",
+    "ERROR",
+    "CRITICAL",
+}
 
-    def log(level: str, message: str, exception: Exception | None = None) -> None:
-        logger.opt(colors=True, exception=exception).log(
-            level, f"<m>{logger_name}</m> | {message}"
+
+class LoggerWrapper:
+    def __init__(self, logger_name: str) -> None:
+        self.logger = nonebot.logger.patch(lambda r: r.update(name="Bot7685"))
+        self.logger_name = escape_tag(logger_name)
+
+    def log(
+        self, level: _ValidLogLevel, message: str, exception: Exception | None = None
+    ) -> None:
+        self.logger.opt(colors=True, exception=exception).log(
+            level, f"<m>{self.logger_name}</m> | {message}"
         )
 
-    return log
+    __call__ = log
+
+    if TYPE_CHECKING:
+
+        def trace(self, message: str, exception: Exception | None = None) -> None: ...
+        def debug(self, message: str, exception: Exception | None = None) -> None: ...
+        def info(self, message: str, exception: Exception | None = None) -> None: ...
+        def success(self, message: str, exception: Exception | None = None) -> None: ...
+        def warning(self, message: str, exception: Exception | None = None) -> None: ...
+        def error(self, message: str, exception: Exception | None = None) -> None: ...
+        def critical(
+            self, message: str, exception: Exception | None = None
+        ) -> None: ...
+    else:
+
+        def __getattr__(self, item: str) -> Callable[[str, Exception | None], None]:
+            level = item.upper()
+            if level not in _valid_log_levels:
+                raise AttributeError(f"Invalid log level: {item}")
+
+            def method(message: str, exception: Exception | None = None) -> None:
+                self.log(level, message, exception)
+
+            setattr(self, item, method)
+            return method
+
+
+def logger_wrapper(logger_name: str, /) -> LoggerWrapper:
+    return LoggerWrapper(logger_name)
 
 
 class ConfigFile[T]:

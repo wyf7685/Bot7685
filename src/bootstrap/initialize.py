@@ -6,8 +6,10 @@ from typing import Any, override
 
 import nonebot
 from bot7685_ext.nonebot import mount_plugin_loader_hook, register_htmlrender_patch
+from nonebot import _log_patcher, _resolve_combine_expr
 from nonebot.adapters import Adapter
 from nonebot.compat import model_dump
+from nonebot.config import Config, Env
 from nonebot.drivers import Driver
 from nonebot.utils import escape_tag, resolve_dot_notation
 
@@ -15,7 +17,7 @@ from src.utils import logger_wrapper
 
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
-from .patch_lifespan import patch_require
+from .patch_lifespan import ExtendedLifespan, patch_require
 
 log = logger_wrapper("Bootstrap")
 
@@ -24,6 +26,8 @@ def setup_logger(logging_override: LogLevelMap | None = None) -> None:
     if logging_override is not None:
         for name, level in logging_override.items():
             logging.getLogger(name).setLevel(level)
+
+    nonebot.logger.configure(patcher=_log_patcher)
 
     log_format = (
         "<g>{time:HH:mm:ss}</g> [<lvl>{level}</lvl>] <c><u>{name}</u></c> | {message}"
@@ -45,7 +49,7 @@ def timer[**P, R](info: str, /) -> Callable[[Callable[P, R]], Callable[P, R]]:
             start = time.time()
             result = func(*args, **kwargs)
             elapsed = time.time() - start
-            log("DEBUG", f"{info} took <y>{elapsed:.3f}</y>s")
+            log.debug(f"{info} took <y>{elapsed:.3f}</y>s")
             return result
 
         return wrapper
@@ -53,12 +57,7 @@ def timer[**P, R](info: str, /) -> Callable[[Callable[P, R]], Callable[P, R]]:
     return decorator
 
 
-def create_driver_class(combine_expr: str) -> type[Driver]:
-    from nonebot import _resolve_combine_expr
-    from nonebot.config import Config, Env
-
-    from .patch_lifespan import ExtendedLifespan
-
+def _create_driver_class(combine_expr: str) -> type[Driver]:
     class Driver(_resolve_combine_expr(combine_expr)):
         @override
         def __init__(self, env: Env, config: Config) -> None:
@@ -69,20 +68,15 @@ def create_driver_class(combine_expr: str) -> type[Driver]:
 
 
 def create_driver(config_dict: dict[str, Any]) -> Driver:
-    from nonebot import _log_patcher
-    from nonebot.config import Config, Env
-
-    log("SUCCESS", "NoneBot is initializing...")
+    log.success("NoneBot is initializing...")
     env = Env(environment=config_dict.get("environment", "prod"))
     config = Config(**config_dict)
 
-    nonebot.logger.configure(
-        extra={"nonebot_log_level": config.log_level}, patcher=_log_patcher
-    )
-    log("INFO", f"Current <y><b>Env: {escape_tag(env.environment)}</b></y>")
-    log("DEBUG", f"Loaded <y><b>Config</b></y>: {escape_tag(str(model_dump(config)))}")
+    nonebot.logger.configure(extra={"nonebot_log_level": config.log_level})
+    log.info(f"Current <y><b>Env: {escape_tag(env.environment)}</b></y>")
+    log.debug(f"Loaded <y><b>Config</b></y>: {escape_tag(str(model_dump(config)))}")
 
-    driver = create_driver_class(config.driver)(env, config)
+    driver = _create_driver_class(config.driver)(env, config)
     nonebot._driver = driver  # noqa: SLF001
     return driver
 
@@ -91,7 +85,7 @@ def load_adapter(module_name: str) -> type[Adapter] | None:
     try:
         return resolve_dot_notation(module_name, "Adapter", "nonebot.adapters.")
     except ImportError, AttributeError:
-        log("WARNING", f"Failed to resolve adapter: <y>{module_name}</y>")
+        log.warning(f"Failed to resolve adapter: <y>{module_name}</y>")
         return None
 
 
@@ -100,11 +94,10 @@ def load_adapters(config: BootstrapConfig) -> None:
     driver = nonebot.get_driver()
     for module_name in config.adapters:
         message = f"Loading adapter: <m>{module_name}</m>"
-        log("DEBUG", message)
+        log.debug(message)
         if adapter := timer(message)(load_adapter)(module_name):
             driver.register_adapter(adapter)
-            log(
-                "SUCCESS",
+            log.success(
                 f"Succeeded to load adapter <g>{adapter.get_name()}</g>"
                 f' from "<m>{module_name}</m>"',
             )
@@ -130,7 +123,7 @@ def init_nonebot() -> object:
     register_htmlrender_patch()
     patch_require()
     create_driver(config)
-    print_logo(lambda line: log("SUCCESS", line), mode="rich")
+    print_logo(log.success, mode="rich")
     load_adapters(bootstrap_config)
     load_plugins(bootstrap_config)
 

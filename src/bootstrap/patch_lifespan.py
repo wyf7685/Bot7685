@@ -57,16 +57,16 @@ def _attach_plugin_id(func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
     return wrapper
 
 
-lifespan_debug = functools.partial(logger_wrapper("Lifespan"), "DEBUG")
+_debug_log = logger_wrapper("Lifespan").debug
 
 
 def _debug_print_layers(seq: list[list[LIFESPAN_FUNC]]) -> None:
     for idx, layer in enumerate(seq, 1):
-        lifespan_debug(f"Layer {idx}:")
+        _debug_log(f"Layer {idx}:")
         for func in layer:
             func_name = f"{func.__module__}:{func.__qualname__}"
             plugin_id = getattr(func, HOOK_PLUGIN_ID_ATTR, None) or "unknown"
-            lifespan_debug(f"  {escape_tag(func_name)} (from {escape_tag(plugin_id)})")
+            _debug_log(f"  {escape_tag(func_name)} (from {escape_tag(plugin_id)})")
 
 
 class ExtendedLifespan(Lifespan):
@@ -103,12 +103,12 @@ class ExtendedLifespan(Lifespan):
 
         # run startup funcs
         if self._startup_funcs:
-            lifespan_debug("Running startup hooks...")
+            _debug_log("Running startup hooks...")
             await self._concurrent_run_lifespan_func(self._startup_funcs)
 
         # run ready funcs
         if self._ready_funcs:
-            lifespan_debug("Running ready hooks...")
+            _debug_log("Running ready hooks...")
             await self._concurrent_run_lifespan_func(self._ready_funcs)
 
     @override
@@ -120,7 +120,7 @@ class ExtendedLifespan(Lifespan):
         exc_tb: TracebackType | None = None,
     ) -> None:
         if self._shutdown_funcs:
-            lifespan_debug("Running shutdown hooks...")
+            _debug_log("Running shutdown hooks...")
             # reverse shutdown funcs to ensure stack order
             await self._concurrent_run_lifespan_func(self._shutdown_funcs, reverse=True)
 

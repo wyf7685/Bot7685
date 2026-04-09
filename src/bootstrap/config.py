@@ -40,7 +40,7 @@ def _get_decoder(suffix: str) -> Callable[[bytes], dict[str, object]] | None:
 
 def _load_file(fp: Path) -> dict[str, object]:
     if (decoder := _get_decoder(fp.suffix)) is None:
-        log("WARNING", f"Unsupported configuration file type: <y>{fp.suffix}</y>")
+        log.warning(f"Unsupported configuration file type: <y>{fp.suffix}</y>")
         return {}
 
     data: dict[str, object] = decoder(fp.read_bytes()) or {}
@@ -58,14 +58,14 @@ def _load_file(fp: Path) -> dict[str, object]:
 def load_config() -> dict[str, object]:
     config_dir = Path("config")
     if (root_config := _find_config_file(config_dir / "config")) is None:
-        log("WARNING", "No configuration file found in <y>config/</y> directory")
+        log.warning("No configuration file found in <y>config/</y> directory")
         return {}
 
     config = _load_file(root_config)
 
     env = str(config.get("environment", "prod"))
     if (env_config := _find_config_file(config_dir / env)) is None:
-        log("WARNING", f"No environment configuration file found for <y>{env}</y>")
+        log.warning(f"No environment configuration file found for <y>{env}</y>")
         return config
 
     config = deep_update(config, _load_file(env_config))
@@ -74,7 +74,7 @@ def load_config() -> dict[str, object]:
         for p in filter(Path.is_file, env_dir.iterdir()):
             config = deep_update(config, _load_file(p))
     else:
-        log("WARNING", f"No environment directory found for <y>{env}</y>")
+        log.warning(f"No environment directory found for <y>{env}</y>")
 
     return config
 
