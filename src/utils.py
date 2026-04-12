@@ -198,13 +198,13 @@ def ParamOrPrompt(  # noqa: N802
     from nonebot_plugin_alconna import Arparma, UniMessage
 
     if not callable(prompt):
+        nonebot.require("nonebot_plugin_waiter")
         prompt_msg = UniMessage.text(prompt) if isinstance(prompt, str) else prompt
 
         async def waiter_handler(event: Event) -> str:
             return event.get_message().extract_plain_text().strip()
 
-        async def fn() -> str:
-            nonebot.require("nonebot_plugin_waiter")
+        async def prompt_fn() -> str:
             from nonebot_plugin_waiter import waiter
 
             receipt = await prompt_msg.send()
@@ -216,7 +216,7 @@ def ParamOrPrompt(  # noqa: N802
                 await UniMessage.text("操作已取消").finish()
             return resp
 
-        prompt = fn
+        prompt = prompt_fn
 
     sem_key = "ParamOrPrompt#semaphore"
 
@@ -232,17 +232,6 @@ def ParamOrPrompt(  # noqa: N802
         return arg
 
     return Depends(dependency)
-
-
-def ignore_exc[**P](
-    func: Callable[P, Awaitable[object]],
-) -> Callable[P, Awaitable[None]]:
-    @functools.wraps(func)
-    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> None:
-        with contextlib.suppress(Exception):
-            await func(*args, **kwargs)
-
-    return wrapper
 
 
 def _setup() -> None:

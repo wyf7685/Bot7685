@@ -33,7 +33,7 @@ from .common import MessageSender as BaseMessageSender
 
 UTC8 = dt.timezone(dt.timedelta(hours=8))
 LINK_PATTERN = re.compile(r"\[(?P<name>.+?)\]\(<(?P<url>.+?)>\)")
-attachment_cache = get_cache[str, str](namespace="group_pipe:discord:attachment")
+attachment_cache = get_cache[str](namespace="group_pipe:discord:attachment")
 
 
 def _weekday(d: int) -> str:

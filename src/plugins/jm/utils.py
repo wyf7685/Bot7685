@@ -72,3 +72,6 @@ class Task[T]:
         await self.event.wait()
         assert self.result is not ..., "Task result not set"
         return self.result
+
+
+DownloadTask = Task[bytes | None]

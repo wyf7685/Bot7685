@@ -15,7 +15,7 @@ local_ns_lookup = {
 
 
 @run_postprocessor
-async def catch_error(exception: ValidationError) -> None:
+async def catch_pyd_error(exception: ValidationError) -> None:
     traceback = exception.__traceback__
     qualname = None
 

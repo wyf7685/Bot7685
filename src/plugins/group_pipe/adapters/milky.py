@@ -15,7 +15,7 @@ from ..utils import guess_url_type
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
-file_cache = get_cache[str, str](namespace="group_pipe:milky:file")
+file_cache = get_cache[str](namespace="group_pipe:milky:file")
 
 
 class MessageConverter(

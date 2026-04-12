@@ -68,9 +68,9 @@ class CacheWrapper:
         return func
 
 
-class _Cache[KT, VT]:
-    def __new__(cls, namespace: str, *, pickle: bool = False) -> Cache[KT, VT]:
-        return cast("Cache[KT, VT]", CacheWrapper(namespace, pickle=pickle))
+class _Cache[T]:
+    def __new__(cls, namespace: str, *, pickle: bool = False) -> Cache[T]:
+        return cast("Cache[T]", CacheWrapper(namespace, pickle=pickle))
 
 
 get_cache = _Cache
@@ -83,7 +83,7 @@ def cache_with[R, *Ts](
     pickle: bool = False,
     ttl: int = 10 * 60,
 ) -> Callable[[Callable[[*Ts], Awaitable[R]]], Callable[[*Ts], Awaitable[R]]]:
-    cache = get_cache[str, R](namespace, pickle=pickle)
+    cache = get_cache[R](namespace, pickle=pickle)
 
     def decorator(
         call: Callable[[*Ts], Awaitable[R]],

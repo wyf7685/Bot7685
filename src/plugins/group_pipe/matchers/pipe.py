@@ -122,12 +122,12 @@ async def assign_list(target: MsgTarget) -> None:
     await UniMessage.text(msg.rstrip("\n")).finish(reply_to=True)
 
 
-cache = get_cache[int, dict[str, Any]]("pipe:link")
+cache = get_cache[dict[str, Any]]("pipe:link")
 
 
 @pipe_cmd.assign("create")
 async def assign_create(target: MsgTarget) -> None:
-    key = hash(target)
+    key = str(hash(target))
     await cache.set(key, target.dump(), ttl=60 * 5)
 
     await (
@@ -139,7 +139,7 @@ async def assign_create(target: MsgTarget) -> None:
 
 @pipe_cmd.assign("link")
 async def assign_link(target: MsgTarget, code: int) -> None:
-    if not (data := await cache.get(code)):
+    if not (data := await cache.get(str(code))):
         await UniMessage.text("链接码无效或已过期").finish(reply_to=True)
 
     listen = Target.load(data)
