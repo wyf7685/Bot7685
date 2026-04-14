@@ -4,6 +4,7 @@ import inspect
 import threading
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from types import CoroutineType
 from typing import TYPE_CHECKING, Any, Concatenate, Literal, cast, overload
 
 import anyio
@@ -18,8 +19,18 @@ from pydantic import BaseModel, TypeAdapter
 if TYPE_CHECKING:
     from nonebot_plugin_alconna.uniseg import Receipt, UniMessage
 
+type Supplier[T] = Callable[[], T]
 type Decorator[Input: Callable, Output: Callable = Input] = Callable[[Input], Output]
-
+type Coro[R] = CoroutineType[object, object, R]
+type AsyncDecorator[
+    **InputP,
+    InputR,
+    **OutputP = InputP,
+    OutputR = InputR,
+] = Callable[
+    [Callable[InputP, Awaitable[InputR]]],
+    Callable[OutputP, Coro[OutputR]],
+]
 
 type _ValidLogLevel = Literal[
     "TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"
@@ -82,10 +93,10 @@ class ConfigFile[T]:
     type_: type[T]
     _file: Path
     _ta: TypeAdapter[T]
-    _default: Callable[[], T]
+    _default: Supplier[T]
     _cache: T | None = None
 
-    def __init__(self, file: Path, type_: type[T], /, default: Callable[[], T]) -> None:
+    def __init__(self, file: Path, type_: type[T], /, default: Supplier[T]) -> None:
         self.type_ = type_
         self._file = file
         self._ta = TypeAdapter(type_)
@@ -116,7 +127,7 @@ class ConfigModelFile[T: BaseModel](ConfigFile[T]):
         file: Path,
         type_: type[T],
         /,
-        default: Callable[[], T] | None = None,
+        default: Supplier[T] | None = None,
     ) -> None:
         super().__init__(file, type_, default=default or type_)
 
@@ -243,54 +254,49 @@ def ParamOrPrompt(  # noqa: N802
     return Depends(dependency)
 
 
-type ContextSupplier[T] = Callable[[], contextlib.AbstractAsyncContextManager[T]]
+type AsyncContextSupplier[T] = Supplier[contextlib.AbstractAsyncContextManager[T]]
 
 
 @overload
-def attach_async_context[T, **P, R: Awaitable](
-    context: ContextSupplier[T],
+def attach_async_context[T, **P, R](
+    context: AsyncContextSupplier[T],
     /,
-) -> Decorator[Callable[Concatenate[T, P], R], Callable[P, R]]: ...
+) -> AsyncDecorator[Concatenate[T, P], R, P]: ...
 @overload
-def attach_async_context[T, **P, R: Awaitable](
-    context: ContextSupplier[T],
+def attach_async_context[T, **P, R](
+    context: AsyncContextSupplier[T],
     /,
     as_param: Literal[False],
-) -> Decorator[Callable[P, R]]: ...
+) -> AsyncDecorator[P, R]: ...
 
 
-def attach_async_context[T, **P, R: Awaitable](
-    context: ContextSupplier[T],
+def attach_async_context[T, **P, R](
+    context: AsyncContextSupplier[T],
     /,
     as_param: bool = True,
-) -> (
-    Decorator[Callable[Concatenate[T, P], R], Callable[P, R]]
-    | Decorator[Callable[P, R]]
-):
-    def decorator(
-        func: Callable[Concatenate[T, P], R] | Callable[P, R],
-    ) -> Callable[P, R]:
-        if as_param:
-            fn = cast("Callable[Concatenate[T, P], R]", func)
+) -> AsyncDecorator[Concatenate[T, P], R, P] | AsyncDecorator[P, R]:
+    if as_param:
 
-            @functools.wraps(fn)
-            async def wrapper_with_param(*args: P.args, **kwargs: P.kwargs) -> Any:
+        def decorator_with_param(
+            func: Callable[Concatenate[T, P], Awaitable[R]],
+        ) -> Callable[P, Coro[R]]:
+
+            @functools.wraps(func)
+            async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
                 async with context() as ctx_val:
-                    return await fn(ctx_val, *args, **kwargs)
+                    return await func(ctx_val, *args, **kwargs)
 
-            wrapper = cast("Callable[P, R]", wrapper_with_param)
+            return cast("Callable[P, Coro[R]]", wrapper)
 
-        else:
-            fn = cast("Callable[P, R]", func)
+        return decorator_with_param
 
-            @functools.wraps(fn)
-            async def wrapper_without_param(*args: P.args, **kwargs: P.kwargs) -> Any:
-                async with context():
-                    return await fn(*args, **kwargs)
+    def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Coro[R]]:
+        @functools.wraps(func)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
+            async with context():
+                return await func(*args, **kwargs)
 
-            wrapper = cast("Callable[P, R]", wrapper_without_param)
-
-        return wrapper
+        return cast("Callable[P, Coro[R]]", wrapper)
 
     return decorator
 

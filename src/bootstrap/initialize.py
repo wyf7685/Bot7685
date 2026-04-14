@@ -13,7 +13,7 @@ from nonebot.config import Config, Env
 from nonebot.drivers import Driver
 from nonebot.utils import escape_tag, resolve_dot_notation
 
-from src.utils import logger_wrapper
+from src.utils import Decorator, logger_wrapper
 
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
@@ -42,7 +42,7 @@ def setup_logger(logging_override: LogLevelMap | None = None) -> None:
     )
 
 
-def timer[**P, R](info: str, /) -> Callable[[Callable[P, R]], Callable[P, R]]:
+def timer[**P, R](info: str, /) -> Decorator[Callable[P, R]]:
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:

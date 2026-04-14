@@ -5,7 +5,7 @@ import math
 import re
 import time
 import types
-from collections.abc import Callable, Coroutine, Iterable, Sequence
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import NamedTuple, Self, cast
 
@@ -13,6 +13,8 @@ import anyio
 from bot7685_ext.wplace.consts import ALL_COLORS
 from loguru import logger
 from nonebot.utils import escape_tag
+
+from src.utils import AsyncDecorator, Coro
 
 from .consts import FLAG_MAP
 
@@ -202,14 +204,11 @@ def parse_rgb_str(s: str) -> tuple[int, int, int] | None:
     return r, g, b
 
 
-type AsyncCallable[**P, R] = Callable[P, Coroutine[None, None, R]]
-
-
 def with_retry[**P, R](
     *exc: type[Exception],
     retries: int = 3,
     delay: float = 0,
-) -> Callable[[AsyncCallable[P, R]], AsyncCallable[P, R]]:
+) -> AsyncDecorator[P, R]:
     assert retries >= 1, "retries must be at least 1"
     assert delay >= 0, "delay must be non-negative"
 
@@ -220,7 +219,7 @@ def with_retry[**P, R](
     else:
         exc_types = (*exc,)
 
-    def decorator(func: AsyncCallable[P, R]) -> AsyncCallable[P, R]:
+    def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Coro[R]]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             caught: list[Exception] = []

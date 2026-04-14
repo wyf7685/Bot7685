@@ -1,10 +1,10 @@
 import contextlib
 import copy
 import io
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from contextvars import ContextVar
-from types import CoroutineType, TracebackType
-from typing import Any, NamedTuple, Self
+from types import TracebackType
+from typing import NamedTuple, Self
 
 import httpx
 import yarl
@@ -66,10 +66,7 @@ async def enter_client_ctx() -> AsyncIterator[None]:
             yield
 
 
-def with_client_ctx[**P, R](
-    func: Callable[P, CoroutineType[Any, Any, R]],
-) -> Callable[P, CoroutineType[Any, Any, R]]:
-    return attach_async_context(enter_client_ctx, as_param=False)(func)
+with_client_ctx = attach_async_context(enter_client_ctx, as_param=False)
 
 
 def fix_url(url: str) -> str:

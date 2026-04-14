@@ -1,6 +1,8 @@
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Callable, Iterable
 from datetime import timedelta
 from typing import Final, Literal, Protocol, overload, type_check_only
+
+from src.utils import AsyncDecorator
 
 class _RedisConfig(Protocol):
     host: Final[str]
@@ -38,7 +40,7 @@ def cache_with[R](
     key: Callable[[], object],
     pickle: bool = False,
     ttl: int = ...,
-) -> Callable[[Callable[[], Awaitable[R]]], Callable[[], Awaitable[R]]]: ...
+) -> AsyncDecorator[[], R]: ...
 @overload
 def cache_with[R, T1](
     arg1: type[T1],
@@ -48,7 +50,7 @@ def cache_with[R, T1](
     key: Callable[[T1], object],
     pickle: bool = False,
     ttl: int = ...,
-) -> Callable[[Callable[[T1], Awaitable[R]]], Callable[[T1], Awaitable[R]]]: ...
+) -> AsyncDecorator[[T1], R]: ...
 @overload
 def cache_with[R, T1, T2](
     arg1: type[T1],
@@ -59,7 +61,7 @@ def cache_with[R, T1, T2](
     key: Callable[[T1, T2], object],
     pickle: bool = False,
     ttl: int = ...,
-) -> Callable[[Callable[[T1, T2], Awaitable[R]]], Callable[[T1, T2], Awaitable[R]]]: ...
+) -> AsyncDecorator[[T1, T2], R]: ...
 @overload
 def cache_with[R, T1, T2, T3](
     arg1: type[T1],
@@ -71,10 +73,7 @@ def cache_with[R, T1, T2, T3](
     key: Callable[[T1, T2, T3], object],
     pickle: bool = False,
     ttl: int = ...,
-) -> Callable[
-    [Callable[[T1, T2, T3], Awaitable[R]]],
-    Callable[[T1, T2, T3], Awaitable[R]],
-]: ...
+) -> AsyncDecorator[[T1, T2, T3], R]: ...
 @overload
 def cache_with[R, T1, T2, T3, T4](
     arg1: type[T1],
@@ -87,10 +86,7 @@ def cache_with[R, T1, T2, T3, T4](
     key: Callable[[T1, T2, T3, T4], object],
     pickle: bool = False,
     ttl: int = ...,
-) -> Callable[
-    [Callable[[T1, T2, T3, T4], Awaitable[R]]],
-    Callable[[T1, T2, T3, T4], Awaitable[R]],
-]: ...
+) -> AsyncDecorator[[T1, T2, T3, T4], R]: ...
 @overload
 def cache_with[R, T1, T2, T3, T4, T5](
     arg1: type[T1],
@@ -104,10 +100,7 @@ def cache_with[R, T1, T2, T3, T4, T5](
     key: Callable[[T1, T2, T3, T4, T5], object],
     pickle: bool = False,
     ttl: int = ...,
-) -> Callable[
-    [Callable[[T1, T2, T3, T4, T5], Awaitable[R]]],
-    Callable[[T1, T2, T3, T4, T5], Awaitable[R]],
-]: ...
+) -> AsyncDecorator[[T1, T2, T3, T4, T5], R]: ...
 @overload
 def cache_with[R](
     *_: type,
@@ -115,4 +108,4 @@ def cache_with[R](
     key: Callable[..., object],
     pickle: bool = False,
     ttl: int = ...,
-) -> Callable[[Callable[..., Awaitable[R]]], Callable[..., Awaitable[R]]]: ...
+) -> AsyncDecorator[..., R]: ...
