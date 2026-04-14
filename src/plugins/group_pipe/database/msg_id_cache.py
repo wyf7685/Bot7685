@@ -1,9 +1,11 @@
 import datetime
 from typing import overload
 
-from nonebot_plugin_orm import Model, get_session
+from nonebot_plugin_orm import AsyncSession, Model, get_session
 from sqlalchemy import Integer, String, select
 from sqlalchemy.orm import Mapped, mapped_column
+
+from src.utils import attach_async_context
 
 
 class MsgIdCache(Model):
@@ -19,7 +21,9 @@ class MsgIdCache(Model):
     """ 创建时间 """
 
 
+@attach_async_context(get_session)
 async def set_msg_dst_id(
+    session: AsyncSession,
     src_adapter: str,
     src_id: str,
     dst_adapter: str,
@@ -32,9 +36,7 @@ async def set_msg_dst_id(
         dst_id=dst_id,
         created_at=int(datetime.datetime.now().timestamp()),
     )
-
-    async with get_session() as session:
-        session.add(cache)
+    session.add(cache)
 
 
 @overload
@@ -53,7 +55,9 @@ async def get_reply_id(
 ) -> str | None: ...
 
 
+@attach_async_context(get_session)
 async def get_reply_id(
+    session: AsyncSession,
     src_adapter: str,
     dst_adapter: str,
     src_id: str | None = None,
@@ -67,5 +71,4 @@ async def get_reply_id(
             (MsgIdCache.src_id == src_id) if src_id else (MsgIdCache.dst_id == dst_id)
         )
     )
-    async with get_session() as session:
-        return await session.scalar(statement)
+    return await session.scalar(statement)

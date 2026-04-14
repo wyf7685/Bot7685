@@ -4,9 +4,11 @@ from copy import deepcopy
 from typing import NamedTuple
 
 from nonebot_plugin_alconna import Target
-from nonebot_plugin_orm import Model, get_session
+from nonebot_plugin_orm import AsyncSession, Model, get_session
 from sqlalchemy import JSON, Integer, delete, select
 from sqlalchemy.orm import Mapped, mapped_column
+
+from src.utils import attach_async_context
 
 type TargetDict = dict[str, object]
 
@@ -52,7 +54,9 @@ class Pipe(Model):
         return Target.load(self.target_t)
 
 
+@attach_async_context(get_session)
 async def get_pipes(
+    session: AsyncSession,
     *,
     listen: Target | None = None,
     target: Target | None = None,
@@ -63,48 +67,49 @@ async def get_pipes(
     if target is not None:
         statement = statement.where(Pipe.target == make_key(target))
 
-    async with get_session() as session:
-        result = await session.execute(statement)
-
+    result = await session.execute(statement)
     return PipeTuple.from_scalars(row.tuple() for row in result.all())
 
 
-async def get_linked_pipes(query: Target) -> tuple[list[PipeTuple], list[PipeTuple]]:
+@attach_async_context(get_session)
+async def get_linked_pipes(
+    session: AsyncSession,
+    query: Target,
+) -> tuple[list[PipeTuple], list[PipeTuple]]:
     key = make_key(query)
 
-    async with get_session() as session:
-        statement = select(Pipe.listen_t, Pipe.target_t).where(Pipe.listen == key)
-        result = await session.execute(statement)
-        listen_pipes = PipeTuple.from_scalars(row.tuple() for row in result.all())
+    statement = select(Pipe.listen_t, Pipe.target_t).where(Pipe.listen == key)
+    result = await session.execute(statement)
+    listen_pipes = PipeTuple.from_scalars(row.tuple() for row in result.all())
 
-        statement = select(Pipe.listen_t, Pipe.target_t).where(Pipe.target == key)
-        result = await session.execute(statement)
-        target_pipes = PipeTuple.from_scalars(row.tuple() for row in result.all())
+    statement = select(Pipe.listen_t, Pipe.target_t).where(Pipe.target == key)
+    result = await session.execute(statement)
+    target_pipes = PipeTuple.from_scalars(row.tuple() for row in result.all())
 
     return listen_pipes, target_pipes
 
 
-async def create_pipe(listen: Target, target: Target) -> None:
-    async with get_session() as session:
-        session.add(
-            Pipe(
-                listen=make_key(listen),
-                target=make_key(target),
-                listen_t=listen.dump(),
-                target_t=target.dump(),
-            )
+@attach_async_context(get_session)
+async def create_pipe(session: AsyncSession, listen: Target, target: Target) -> None:
+    session.add(
+        Pipe(
+            listen=make_key(listen),
+            target=make_key(target),
+            listen_t=listen.dump(),
+            target_t=target.dump(),
         )
+    )
 
 
-async def delete_pipe(pipe: PipeTuple) -> None:
+@attach_async_context(get_session)
+async def delete_pipe(session: AsyncSession, pipe: PipeTuple) -> None:
     stmt = (
         delete(Pipe)
         .where(Pipe.listen == make_key(pipe.listen))
         .where(Pipe.target == make_key(pipe.target))
     )
 
-    async with get_session() as session:
-        await session.execute(stmt)
+    await session.execute(stmt)
 
 
 def display_pipe(listen: Target, target: Target) -> str:

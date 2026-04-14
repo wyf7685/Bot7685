@@ -1,8 +1,10 @@
 import datetime
 
-from nonebot_plugin_orm import Model, get_session
+from nonebot_plugin_orm import AsyncSession, Model, get_session
 from sqlalchemy import Integer, String, select
 from sqlalchemy.orm import Mapped, mapped_column
+
+from src.utils import attach_async_context
 
 SECONDS_PER_WEEK = 7 * 24 * 60 * 60
 
@@ -26,7 +28,9 @@ class KVCache(Model):
     """
 
 
+@attach_async_context(get_session)
 async def set_cache_value(
+    session: AsyncSession,
     adapter: str,
     key: str,
     value: str,
@@ -34,27 +38,26 @@ async def set_cache_value(
 ) -> None:
     stmt = select(KVCache).where(KVCache.adapter == adapter).where(KVCache.key == key)
 
-    async with get_session() as session:
-        if cache := await session.scalar(stmt):
-            await session.delete(cache)
+    if cache := await session.scalar(stmt):
+        await session.delete(cache)
 
-        cache = KVCache(
-            adapter=adapter,
-            key=key,
-            value=value,
-            created_at=int(datetime.datetime.now().timestamp()),
-            expire=expire,
-        )
-        session.add(cache)
-        await session.commit()
+    cache = KVCache(
+        adapter=adapter,
+        key=key,
+        value=value,
+        created_at=int(datetime.datetime.now().timestamp()),
+        expire=expire,
+    )
+    session.add(cache)
+    await session.commit()
 
 
-async def get_cache_value(adapter: str, key: str) -> str | None:
+@attach_async_context(get_session)
+async def get_cache_value(session: AsyncSession, adapter: str, key: str) -> str | None:
     statement = (
         select(KVCache.value)
         .where(KVCache.adapter == adapter)
         .where(KVCache.key == key)
     )
 
-    async with get_session() as session:
-        return await session.scalar(statement)
+    return await session.scalar(statement)

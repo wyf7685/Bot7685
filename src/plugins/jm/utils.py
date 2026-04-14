@@ -1,12 +1,4 @@
-import functools
-from collections.abc import (
-    AsyncGenerator,
-    AsyncIterable,
-    Awaitable,
-    Callable,
-    Generator,
-    Sequence,
-)
+from collections.abc import AsyncGenerator, AsyncIterable, Generator, Sequence
 from types import EllipsisType
 
 import anyio
@@ -22,17 +14,6 @@ async def abatched[T](ait: AsyncIterable[T], n: int) -> AsyncGenerator[Sequence[
             batch = []
     if batch:
         yield tuple(batch)
-
-
-def queued[**P, R](func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
-    sem = anyio.Semaphore(1)
-
-    @functools.wraps(func)
-    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        async with sem:
-            return await func(*args, **kwargs)
-
-    return wrapper
 
 
 def flatten_exception_group[E: BaseException](

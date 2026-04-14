@@ -1,21 +1,19 @@
 import contextlib
 import copy
-import functools
 import io
-import pathlib
-from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable
 from contextvars import ContextVar
 from types import CoroutineType, TracebackType
 from typing import Any, NamedTuple, Self
 
-import anyio
 import httpx
 import yarl
 from nonebot.utils import run_sync
 from nonebot_plugin_alconna.uniseg import Segment, UniMessage
 from nonebot_plugin_alconna.uniseg.segment import Media
 from nonebot_plugin_alconna.uniseg.utils import fleep
-from nonebot_plugin_localstore import get_plugin_cache_dir
+
+from src.utils import attach_async_context
 
 
 class _ContextClientHolder:
@@ -71,12 +69,7 @@ async def enter_client_ctx() -> AsyncIterator[None]:
 def with_client_ctx[**P, R](
     func: Callable[P, CoroutineType[Any, Any, R]],
 ) -> Callable[P, CoroutineType[Any, Any, R]]:
-    @functools.wraps(func)
-    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        async with enter_client_ctx():
-            return await func(*args, **kwargs)
-
-    return wrapper
+    return attach_async_context(enter_client_ctx, as_param=False)(func)
 
 
 def fix_url(url: str) -> str:
@@ -86,11 +79,11 @@ def fix_url(url: str) -> str:
     return str(parsed)
 
 
-async def download_url(url: str) -> bytes:
+@attach_async_context(async_client)
+async def download_url(client: httpx.AsyncClient, url: str) -> bytes:
     url = fix_url(url)
     try:
-        async with async_client() as client:
-            resp = await client.get(url)
+        resp = await client.get(url)
         resp.raise_for_status()
     except httpx.ConnectError, httpx.HTTPError:
         return b""
@@ -98,13 +91,11 @@ async def download_url(url: str) -> bytes:
         return resp.read()
 
 
-async def check_url_ok(url: str) -> bool:
+@attach_async_context(async_client)
+async def check_url_ok(client: httpx.AsyncClient, url: str) -> bool:
     url = fix_url(url)
     try:
-        async with (
-            async_client() as client,
-            client.stream("GET", url) as resp,
-        ):
+        async with client.stream("GET", url) as resp:
             resp.raise_for_status()
     except httpx.ConnectError, httpx.HTTPError:
         return False
@@ -118,12 +109,10 @@ class _FileType(NamedTuple):
     size: int
 
 
-async def guess_url_type(url: str) -> _FileType | None:
+@attach_async_context(async_client)
+async def guess_url_type(client: httpx.AsyncClient, url: str) -> _FileType | None:
     url = fix_url(url)
-    async with (
-        async_client() as client,
-        client.stream("GET", url) as resp,
-    ):
+    async with client.stream("GET", url) as resp:
         size = resp.headers.get("Content-Length")
         if not size:
             return None
@@ -136,42 +125,13 @@ async def guess_url_type(url: str) -> _FileType | None:
         return _FileType(info.mimes[0], info.extensions[0], int(size))
 
 
-async def solve_url_302(url: str) -> str:
+@attach_async_context(async_client)
+async def solve_url_302(client: httpx.AsyncClient, url: str) -> str:
     url = fix_url(url)
-    async with (
-        async_client() as client,
-        client.stream("GET", url) as resp,
-    ):
+    async with client.stream("GET", url) as resp:
         if resp.status_code == 302:
             return await solve_url_302(resp.headers["Location"].partition("?")[0])
     return url
-
-
-type _AnyFile = bytes | anyio.Path | pathlib.Path
-
-
-@contextlib.asynccontextmanager
-async def _fix_file(file: _AnyFile) -> AsyncGenerator[anyio.Path]:
-    if isinstance(file, bytes):
-        info = fleep.get(file[:128])
-        if not info.extensions:
-            raise ValueError("无法识别的文件类型")
-
-        path = anyio.Path(get_plugin_cache_dir()) / f"{id(file)}.{info.extensions[0]}"
-        await path.write_bytes(file)
-        try:
-            yield path
-        finally:
-            await path.unlink()
-        return
-
-    if isinstance(file, pathlib.Path):
-        file = anyio.Path(file)
-
-    if not await file.exists():
-        raise FileNotFoundError(f"文件 {file} 不存在")
-
-    yield file
 
 
 @run_sync

@@ -2,12 +2,14 @@ from collections.abc import Sequence
 from typing import final
 
 from nonebot_plugin_alconna.uniseg import Target
-from nonebot_plugin_orm import Model, get_scoped_session, get_session
+from nonebot_plugin_orm import AsyncSession, Model, get_scoped_session, get_session
 from nonebot_plugin_uninfo.model import BasicInfo
 from nonebot_plugin_uninfo.orm import UserModel, get_user_model
 from nonebot_plugin_uninfo.target import to_target
 from sqlalchemy import JSON, ForeignKey, Integer, String, or_, select
 from sqlalchemy.orm import Mapped, mapped_column
+
+from src.utils import attach_async_context
 
 
 class KuroToken(Model):
@@ -69,10 +71,10 @@ class KuroTokenDAO:
         await self._db_session.commit()
 
 
-async def list_all_token() -> Sequence[KuroToken]:
-    async with get_session() as session:
-        result = await session.execute(select(KuroToken))
-        return result.scalars().all()
+@attach_async_context(get_session)
+async def list_all_token(session: AsyncSession) -> list[KuroToken]:
+    result = await session.execute(select(KuroToken))
+    return list(result.scalars().all())
 
 
 async def get_target(kuro_token: KuroToken) -> Target:

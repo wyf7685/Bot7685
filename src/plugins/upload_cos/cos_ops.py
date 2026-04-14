@@ -6,6 +6,8 @@ import anyio
 import httpx
 from nonebot import logger
 
+from src.utils import attach_async_context
+
 from .config import config
 from .cos_client import AsyncCosClient, MultipartUploadPart
 
@@ -81,10 +83,10 @@ class MultipartUploadTask:
         aiterable: AsyncIterable[bytes],
         max_workers: int = 8,
     ) -> None:
+        @attach_async_context(lambda: send, as_param=False)
         async def producer() -> None:
-            async with send:
-                async for chunk in aiterable:
-                    await send.send(chunk)
+            async for chunk in aiterable:
+                await send.send(chunk)
 
         async def consumer(aiterable_: AsyncIterable[bytes]) -> None:
             async for chunk in aiterable_:
@@ -167,27 +169,28 @@ async def put_file_from_local(path: Path, key: str) -> None:
         await put_file_from_aiterable(aiterable(), key)
 
 
-async def delete_file(key: str) -> None:
-    async with _create_client() as client:
-        await client.delete_object(
-            key=(ROOT / key).as_posix(),
-        )
+@attach_async_context(_create_client)
+async def delete_file(client: AsyncCosClient, key: str) -> None:
+    await client.delete_object(
+        key=(ROOT / key).as_posix(),
+    )
 
 
-async def presign(key: str, expired: int = DEFAULT_EXPIRE_SECS) -> str:
-    async with _create_client() as client:
-        return await client.get_presigned_url(
-            key=(ROOT / key).as_posix(),
-            method="GET",
-            expired=expired,
-        )
+@attach_async_context(_create_client)
+async def presign(
+    client: AsyncCosClient,
+    key: str,
+    expired: int = DEFAULT_EXPIRE_SECS,
+) -> str:
+    return await client.get_presigned_url(
+        key=(ROOT / key).as_posix(),
+        method="GET",
+        expired=expired,
+    )
 
 
 async def put_file_from_url(url: str, key: str) -> None:
-    async with (
-        httpx.AsyncClient() as _client,
-        _client.stream("GET", url) as resp,
-    ):
+    async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
         resp.raise_for_status()
         aiterable = resp.aiter_bytes(DEFAULT_CHUNK_SIZE)
         await put_file_from_aiterable(aiterable, key)
