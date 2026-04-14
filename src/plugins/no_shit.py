@@ -19,10 +19,10 @@ from nonebot_plugin_htmlrender import md_to_pic
 from nonebot_plugin_localstore import get_plugin_data_file
 from nonebot_plugin_waiter import waiter
 
-require("src.plugins.cache")
+require("src.service.cache")
 require("src.plugins.trusted")
-from src.plugins.cache import get_cache
 from src.plugins.trusted import TrustedUser
+from src.service.cache import get_cache
 
 ban_time_cache = get_cache[datetime]("no_shit.ban_time", pickle=True)
 

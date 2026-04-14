@@ -1,7 +1,7 @@
 import nonebot
 
-nonebot.require("src.plugins.cache")
-from src.plugins.cache import redis_config
+nonebot.require("src.service.cache")
+from src.service.cache import redis_config
 
 
 @nonebot.get_driver().on_startup

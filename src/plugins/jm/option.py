@@ -10,7 +10,7 @@ from nonebot.log import logger
 from nonebot.utils import escape_tag, run_sync
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
-from src.plugins.cache import cache_with, get_cache
+from src.service.cache import cache_with, get_cache
 from src.utils import with_semaphore
 
 logger = logger.opt(colors=True)

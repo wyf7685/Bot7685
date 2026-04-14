@@ -8,6 +8,7 @@ require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_user")
 require("nonebot_plugin_waiter")
+require("src.service.cache")
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -20,8 +21,6 @@ from nonebot_plugin_alconna import (
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import UniMessage
 from nonebot_plugin_waiter.unimsg import prompt, suggest
-
-require("src.plugins.cache")
 
 from .todo_list import SelectedTodo, UserTodo
 

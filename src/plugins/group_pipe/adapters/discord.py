@@ -23,8 +23,8 @@ from nonebot.adapters.discord.message import (
 )
 from nonebot_plugin_alconna import uniseg as u
 
-from src.plugins.cache import get_cache
 from src.plugins.upload_cos import upload_cos
+from src.service.cache import get_cache
 
 from ..adapter import converts
 from ..utils import guess_url_type

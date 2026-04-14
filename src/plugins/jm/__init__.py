@@ -27,6 +27,7 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 
+require("src.service.cache")
 require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 

@@ -11,7 +11,7 @@ from nonebot_plugin_localstore import get_plugin_data_dir
 from nonebot_plugin_user import User
 from pydantic import BaseModel, Field
 
-from src.plugins.cache import cache_with
+from src.service.cache import cache_with
 
 render_markdown = cache_with(
     str,

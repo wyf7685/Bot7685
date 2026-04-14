@@ -13,7 +13,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 
-from src.plugins.cache import get_cache
+from src.service.cache import get_cache
 
 from ..database import (
     PipeTuple,

@@ -8,7 +8,7 @@ require("nonebot_plugin_localstore")
 require("nonebot_plugin_uninfo")
 require("nonebot_plugin_user")
 require("nonebot_plugin_waiter")
-require("src.plugins.cache")
+require("src.service.cache")
 require("src.plugins.group_pipe")
 from . import command as command
 

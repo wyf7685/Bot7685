@@ -8,7 +8,7 @@ from nonebot.adapters.milky.event import MessageEvent
 from nonebot.adapters.milky.model.api import MessageResponse
 from nonebot_plugin_alconna import uniseg as u
 
-from src.plugins.cache import get_cache
+from src.service.cache import get_cache
 
 from ..adapter import converts
 from ..utils import guess_url_type

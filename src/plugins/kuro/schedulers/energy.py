@@ -5,7 +5,7 @@ import nonebot
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
-from src.plugins.cache import get_cache
+from src.service.cache import get_cache
 
 from ..database.kuro_token import get_target, list_all_token
 from ..handler import KuroHandler
