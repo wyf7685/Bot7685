@@ -165,16 +165,23 @@ def with_semaphore[T: Callable](initial_value: int) -> Callable[[T], T]:
     return decorator
 
 
+def caller_loc_repr(depth: int = 2) -> str:
+    if (frame := inspect.currentframe()) is None:
+        return "<unknown>"
+    for _ in range(depth):
+        if frame.f_back is None:
+            break
+        frame = frame.f_back
+    loc = f"{frame.f_code.co_filename}:{frame.f_lineno}"
+    del frame
+    return loc
+
+
 def schedule_recall(receipt: Receipt) -> None:
     if not receipt.recallable:
         return
 
-    if (frame := inspect.currentframe()) and frame.f_back:
-        frame = frame.f_back
-        loc = f"{frame.f_code.co_filename}:{frame.f_lineno}"
-    else:
-        loc = "<unknown>"
-    del frame
+    loc = caller_loc_repr()
 
     async def safe_recall() -> None:
         try:

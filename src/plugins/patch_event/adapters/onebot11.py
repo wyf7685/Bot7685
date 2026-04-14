@@ -29,8 +29,8 @@ from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
-nonebot.require("src.plugins.gtg")
-from src.plugins.gtg import call_later, call_soon
+nonebot.require("src.service.task")
+from src.service.task import call_later, call_soon
 
 from ..highlight import Highlight
 from ..patcher import patcher
@@ -90,7 +90,7 @@ async def update_group_cache(
 
 
 async def update_user_card_cache(bot: Bot) -> None:
-    def reset(user_id: int, group_id: int | None) -> None:
+    async def reset(user_id: int, group_id: int | None) -> None:
         user_card_cache[(user_id, group_id)] = None
 
     for (user_id, group_id), name in list(user_card_cache.items()):

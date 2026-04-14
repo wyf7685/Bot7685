@@ -20,8 +20,8 @@ from nonebot.compat import type_validate_python
 from nonebot.utils import escape_tag
 from nonebot_plugin_alconna import uniseg as u
 
-from src.plugins.gtg import call_soon
 from src.plugins.upload_cos import upload_cos
+from src.service.task import call_soon
 
 from ..adapter import converts
 from ..database import set_cache_value
