@@ -20,7 +20,15 @@ if TYPE_CHECKING:
     from nonebot_plugin_alconna.uniseg import Receipt, UniMessage
 
 type Supplier[T] = Callable[[], T]
-type Decorator[Input: Callable, Output: Callable = Input] = Callable[[Input], Output]
+type Decorator[
+    **InputP,
+    InputR,
+    **OutputP = InputP,
+    OutputR = InputR,
+] = Callable[
+    [Callable[InputP, InputR]],
+    Callable[OutputP, OutputR],
+]
 type Coro[R] = CoroutineType[object, object, R]
 type AsyncDecorator[
     **InputP,
@@ -152,13 +160,13 @@ class ConfigListFile[T: BaseModel](ConfigFile[list[T]]):
         self.save([item for item in self.load() if not pred(item)])
 
 
-def with_semaphore[F: Callable](initial_value: int) -> Decorator[F]:
-    def decorator(func: F) -> F:
+def with_semaphore[**P, R](initial_value: int) -> Decorator[P, R]:
+    def decorator(func: Callable[P, R]) -> Callable[P, R]:
         if inspect.iscoroutinefunction(func):
             async_sem = anyio.Semaphore(initial_value)
 
             @functools.wraps(func)
-            async def wrapper_async(*args: Any, **kwargs: Any) -> Any:
+            async def wrapper_async(*args: P.args, **kwargs: P.kwargs) -> R:
                 async with async_sem:
                     return await func(*args, **kwargs)
 
@@ -167,13 +175,13 @@ def with_semaphore[F: Callable](initial_value: int) -> Decorator[F]:
             sync_sem = threading.Semaphore(initial_value)
 
             @functools.wraps(func)
-            def wrapper_sync(*args: Any, **kwargs: Any) -> Any:
+            def wrapper_sync(*args: P.args, **kwargs: P.kwargs) -> R:
                 with sync_sem:
                     return func(*args, **kwargs)
 
             wrapper = wrapper_sync
 
-        return cast("F", functools.update_wrapper(wrapper, func))
+        return cast("Callable[P, R]", functools.update_wrapper(wrapper, func))
 
     return decorator
 

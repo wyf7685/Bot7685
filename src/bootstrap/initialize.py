@@ -42,7 +42,7 @@ def setup_logger(logging_override: LogLevelMap | None = None) -> None:
     )
 
 
-def timer[**P, R](info: str, /) -> Decorator[Callable[P, R]]:
+def timer[**P, R](info: str, /) -> Decorator[P, R]:
     def decorator(func: Callable[P, R]) -> Callable[P, R]:
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
