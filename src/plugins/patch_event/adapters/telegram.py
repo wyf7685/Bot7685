@@ -12,6 +12,7 @@ from ..highlight import Highlight
 from ..patcher import patcher
 
 
+@patcher.bind
 class H(Highlight):
     @classmethod
     def chat(cls, chat: Chat) -> str:

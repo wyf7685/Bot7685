@@ -48,6 +48,7 @@ class EventWithChannel(Protocol):
     def guild_id(self) -> SnowflakeType: ...
 
 
+@patcher.bind
 class H(Highlight):
     exclude_value: ClassVar[tuple[object, ...]] = (UNSET, None)
 

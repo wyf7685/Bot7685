@@ -15,6 +15,7 @@ from ..highlight import Highlight
 from ..patcher import patcher
 
 
+@patcher.bind
 class H(Highlight[MessageSegment]):
     @classmethod
     @override

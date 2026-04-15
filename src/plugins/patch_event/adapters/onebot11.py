@@ -142,6 +142,7 @@ async def on_bot_disconnect(bot: Bot) -> None:
             job.remove()
 
 
+@patcher.bind
 class H(Highlight[MessageSegment, Message]):
     @classmethod
     @override

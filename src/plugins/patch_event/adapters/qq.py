@@ -13,14 +13,12 @@ from ..highlight import Highlight
 from ..patcher import patcher
 
 
+@patcher.bind
 class H(Highlight[MessageSegment, Message, Event]):
     @classmethod
     @override
     def event_type(cls, event: Event, /) -> str:
         return f"{cls.style.lg('EventType')}.{cls.style.b_e(event.__type__.value)}"
-
-
-patcher = patcher.bind(H)
 
 
 @patcher

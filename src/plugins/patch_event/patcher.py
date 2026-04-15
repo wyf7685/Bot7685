@@ -1,7 +1,7 @@
 import functools
 import inspect
 from collections.abc import Callable
-from typing import Protocol, cast
+from typing import Literal, Protocol, cast
 
 import nonebot
 from nonebot.adapters import Event, Message, MessageSegment
@@ -21,14 +21,19 @@ class PatcherHandle[T: Event](Protocol):
 
 
 class Patcher(Protocol):
+    __patcher__: Literal[True]
+
     def __call__[T: Event](self, call: PatcherCall[T]) -> PatcherHandle[T]: ...
-    def bind[TMS: MessageSegment, TM: Message, TE: Event](
-        self, highlight_cls: type[Highlight[TMS, TM, TE]], /
-    ) -> Patcher: ...
+    def bind[
+        TMS: MessageSegment,
+        TM: Message,
+        TE: Event,
+        TH = type[Highlight[TMS, TM, TE]],
+    ](self, highlight_cls: TH, /) -> TH: ...
 
 
 logger = nonebot.logger.opt(colors=True)
-_PATCHERS: set[PatcherHandle] = set()
+_PATCHER_HANDLES: set[PatcherHandle] = set()
 
 
 def copy_signature[C: Callable](source: C, target: Callable[..., object], /) -> C:
@@ -47,7 +52,7 @@ def apply_debug_wrapper[T: Event](call: PatcherCall[T]) -> PatcherCall[T]:
     return wrapper
 
 
-def _patcher[TE: Event, TMS: MessageSegment, TM: Message](
+def _patcher_impl[TE: Event, TMS: MessageSegment, TM: Message](
     call: PatcherCall[TE],
     highlight_cls: type[Highlight[TMS, TM, TE]],
 ) -> PatcherHandle[TE]:
@@ -74,22 +79,39 @@ def _patcher[TE: Event, TMS: MessageSegment, TM: Message](
     handle.original = original
     handle.patch = patch
     handle.restore = restore
-    _PATCHERS.add(handle)
+    _PATCHER_HANDLES.add(handle)
     return handle
 
 
 def _make_patcher() -> Patcher:
-    def bind[TMS: MessageSegment, TM: Message, TE: Event](
+    def make_wrapper[TMS: MessageSegment, TM: Message, TE: Event](
         highlight_cls: type[Highlight[TMS, TM, TE]],
     ) -> Patcher:
-        def wrapper(call: PatcherCall[TE]) -> PatcherHandle[TE]:
-            return _patcher(call, highlight_cls)
+        def patcher_wrapper(call: PatcherCall[TE]) -> PatcherHandle[TE]:
+            return _patcher_impl(call, highlight_cls)
 
-        patcher = cast("Patcher", wrapper)
+        patcher = cast("Patcher", patcher_wrapper)
+        patcher.__patcher__ = True
         patcher.bind = bind
         return patcher
 
-    return bind(Highlight)
+    def bind[TH: type[Highlight]](highlight_cls: TH, /) -> TH:
+        if (current_frame := inspect.currentframe()) is None:
+            raise RuntimeError("Failed to get current frame")
+        if (caller_frame := current_frame.f_back) is None:
+            raise RuntimeError("Failed to get caller frame")
+        gen = (
+            name
+            for name, value in caller_frame.f_globals.items()
+            if getattr(value, "__patcher__", False)
+        )
+        if (patcher_name := next(gen, None)) is None:
+            raise RuntimeError("Failed to find patcher in caller frame")
+
+        caller_frame.f_globals[patcher_name] = make_wrapper(highlight_cls)
+        return highlight_cls
+
+    return make_wrapper(Highlight)
 
 
 patcher = _make_patcher()
@@ -102,11 +124,11 @@ def patch_base_event(self: Event) -> str:
 
 @nonebot.get_driver().on_startup
 def setup() -> None:
-    for patcher in _PATCHERS:
+    for patcher in _PATCHER_HANDLES:
         patcher.patch()
 
 
 @nonebot.get_driver().on_shutdown
 def dispose() -> None:
-    for patcher in _PATCHERS:
+    for patcher in _PATCHER_HANDLES:
         patcher.restore()

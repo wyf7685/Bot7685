@@ -121,6 +121,7 @@ class ModelWithScene(Protocol):
     peer_id: int
 
 
+@patcher.bind
 class H(Highlight[MessageSegment, Message]):
     @classmethod
     @override
