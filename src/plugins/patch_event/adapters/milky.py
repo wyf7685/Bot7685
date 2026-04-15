@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 from typing import Literal, Protocol, cast, overload, override
 
@@ -20,9 +21,6 @@ from nonebot.adapters.milky.model.base import ModelBase
 from nonebot.adapters.milky.model.common import Friend, Group, Member
 from nonebot.adapters.milky.model.message import IncomingMessage
 
-from ..highlight import Highlight
-from ..patcher import patcher
-
 nonebot.require("nonebot_plugin_apscheduler")
 from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
@@ -30,6 +28,9 @@ from nonebot_plugin_apscheduler import scheduler
 
 nonebot.require("src.service.task")
 from src.service.task import call_later
+
+from ..highlight import Highlight
+from ..patcher import patcher
 
 logger = nonebot.logger.opt(colors=True)
 scheduler_job: dict[Bot, tuple[SchedulerJob, ...]] = {}
@@ -52,12 +53,12 @@ async def update_user_cache(bot: Bot) -> None:
     async def reset(user_id: int, group_id: int | None) -> None:
         user_card_cache[(user_id, group_id)] = None
 
-    for (user_id, group_id), name in list(user_card_cache.items()):
-        if name is not None:
-            continue
+    async def update(user_id: int, group_id: int | None) -> None:
         if user_id == 0 or group_id == 0:
             del user_card_cache[(user_id, group_id)]
-            continue
+            return
+
+        name = None
         if group_id is not None:
             with contextlib.suppress(ActionFailed):
                 data = await bot.get_group_member_info(
@@ -68,8 +69,17 @@ async def update_user_cache(bot: Bot) -> None:
             with contextlib.suppress(ActionFailed):
                 data = await bot.get_user_profile(user_id=user_id)
                 name = data.nickname or str(user_id)
-        user_card_cache[(user_id, group_id)] = name
-        call_later(5 * 60, reset, user_id, group_id)
+
+        if name is not None:
+            user_card_cache[(user_id, group_id)] = name
+            call_later(5 * 60, reset, user_id, group_id)
+
+    coros = [
+        update(user_id, group_id)
+        for (user_id, group_id), name in user_card_cache.items()
+        if name is None
+    ]
+    await asyncio.gather(*coros)
 
 
 @nonebot.get_driver().on_bot_connect
