@@ -11,8 +11,11 @@ __plugin_meta__ = PluginMetadata(
     type="application",
     config=Config,
     supported_adapters={
-        "~onebot.v11",
         "~discord",
+        "~feishu",
+        "~github",
+        "~milky",
+        "~onebot.v11",
         "~qq",
         "~satori",
         "~telegram",

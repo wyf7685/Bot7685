@@ -36,8 +36,8 @@ logger = nonebot.logger.opt(colors=True)
 _PATCHER_HANDLES: set[PatcherHandle] = set()
 
 
-def copy_signature[C: Callable](source: C, target: Callable[..., object], /) -> C:
-    return cast("C", functools.update_wrapper(target, source))
+def copy_signature[F: Callable](source: F, target: Callable[..., object], /) -> F:
+    return cast("F", functools.update_wrapper(target, source))
 
 
 def apply_debug_wrapper[T: Event](call: PatcherCall[T]) -> PatcherCall[T]:
