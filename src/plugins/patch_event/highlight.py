@@ -1,11 +1,12 @@
 import contextlib
+import dataclasses
 import datetime
 import enum
 import functools
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from enum import Enum
-from typing import Any, ClassVar, Literal, Protocol
+from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, cast
 
 from bot7685_ext import LRU
 from nonebot.adapters import Event, Message, MessageSegment
@@ -61,13 +62,13 @@ _struct_depth = ContextVar[int]("highlight_struct_depth", default=0)
 _line_length = ContextVar[int]("highlight_line_length", default=120)
 
 
-@contextlib.contextmanager
-def push_struct_depth() -> Iterator[None]:
-    token = _struct_depth.set(_struct_depth.get() + 1)
-    try:
-        yield
-    finally:
-        _struct_depth.reset(token)
+def with_struct_depth[F: Callable](fn: F) -> F:
+    @functools.wraps(fn)
+    def wrapper(*args: object, **kwargs: object) -> object:
+        with _struct_depth.set(_struct_depth.get() + 1):
+            return fn(*args, **kwargs)
+
+    return cast("F", wrapper)
 
 
 class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Event]:
@@ -85,7 +86,9 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
 
     @functools.singledispatchmethod
     @classmethod
-    def _handle(cls, data: Any) -> str:
+    def _handle(cls, data: object) -> str:
+        if dataclasses.is_dataclass(data) and not isinstance(data, type):
+            return cls.__dataclass(data)
         return cls.repr(data)
 
     register = _handle.register  # pyright:ignore[reportUnannotatedClassAttribute]
@@ -182,27 +185,27 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
 
     @register(dict)
     @classmethod
+    @with_struct_depth
     def _(cls, data: dict[str, object]) -> str:
-        with push_struct_depth():
-            return cls._seq(cls._kv(data.items(), ": ", style.i_le), "{}")
+        return cls._seq(cls._kv(data.items(), ": ", style.i_le), "{}")
 
     @register(list)
     @classmethod
+    @with_struct_depth
     def _(cls, data: list[object]) -> str:
-        with push_struct_depth():
-            return cls._seq(map(cls.apply, data), "[]")
+        return cls._seq(map(cls.apply, data), "[]")
 
     @register(set)
     @classmethod
+    @with_struct_depth
     def _(cls, data: set[object]) -> str:
-        with push_struct_depth():
-            return cls._seq(map(cls.apply, data), "{}")
+        return cls._seq(map(cls.apply, data), "{}")
 
     @register(tuple)
     @classmethod
+    @with_struct_depth
     def _(cls, data: tuple[object]) -> str:
-        with push_struct_depth():
-            return cls._seq(map(cls.apply, data), "()")
+        return cls._seq(map(cls.apply, data), "()")
 
     @register(datetime.datetime)
     @classmethod
@@ -214,14 +217,14 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
 
     @register(BaseModel)
     @classmethod
+    @with_struct_depth
     def _(cls, data: BaseModel) -> str:
         model = type(data)
         items = ((name, getattr(data, name)) for name in model.model_fields)
-        with push_struct_depth():
-            return (
-                f"{style.lg(model.__name__)}"
-                f"{cls._seq(cls._kv(items, '=', style.i_y), '()')}"
-            )
+        return (
+            f"{style.lg(model.__name__)}"
+            f"{cls._seq(cls._kv(items, '=', style.i_y), '()')}"
+        )
 
     @register(MessageSegment)
     @classmethod
@@ -234,6 +237,22 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
         return cls.message(data)
 
     del _
+
+    @classmethod
+    @with_struct_depth
+    def __dataclass(cls, data: object) -> str:
+        if TYPE_CHECKING:
+            assert dataclasses.is_dataclass(data)
+            assert not isinstance(data, type)
+
+        items = (
+            (field.name, getattr(data, field.name))
+            for field in dataclasses.fields(data)
+        )
+        return (
+            f"{style.lg(type(data).__name__)}"
+            f"{cls._seq(cls._kv(items, '=', style.i_y), '()')}"
+        )
 
     @classmethod
     def segment(cls, segment: TMS) -> str:
