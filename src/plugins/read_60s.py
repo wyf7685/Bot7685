@@ -1,6 +1,7 @@
 import contextlib
 import functools
 from copy import deepcopy
+from datetime import datetime
 from typing import Any
 
 import httpx
@@ -54,9 +55,10 @@ config_file = ConfigListFile(get_plugin_data_file("read_60s.json"), Read60sConfi
 async def get_read60s_msg() -> UniMessage:
     with contextlib.suppress(Exception):
         async with httpx.AsyncClient() as client:
-            resp = (await client.get("https://api.2xb.cn/zaob")).raise_for_status()
-            url = resp.json()["imageUrl"]
-        return UniMessage.text("今日60S读世界已送达\n").image(url=url)
+            url = f"https://60s-static.viki.moe/images/{datetime.now():%Y-%m-%d}.png"
+            resp = (await client.get(url)).raise_for_status()
+            raw = resp.content
+        return UniMessage.text("今日60S读世界已送达\n").image(raw=raw)
     return UniMessage.text("今日60S读世界获取失败!")
 
 
