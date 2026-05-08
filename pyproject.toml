@@ -79,8 +79,6 @@ typeCheckingMode = "standard"
 ignore = [
   ".venv",
   "data",       # nbp-orm migration scripts
-  "**/build",
   "**/scripts",
-  "external/nonebot-plugin-chatrecorder"  # too many adapters
 ]
 disableBytesTypePromotions = true
