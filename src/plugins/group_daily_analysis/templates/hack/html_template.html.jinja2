@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="{{ 'zh-CN' if t2i_font_source == 'Mainland' else 'zh-Hant' }}">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Night Mode Analysis Portal</title>
+    <link rel="preconnect" href="{{ t2i_google_fonts_mirror }}">
+    <link rel="preconnect" href="{{ t2i_gstatic_mirror }}" crossorigin>
+    <link
+        href="{{ t2i_google_fonts_mirror }}/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600;800&family=Noto+Sans+TC:wght@400;700&family=Noto+Sans+SC:wght@400;700&display=swap"
+        rel="stylesheet">
+    {% include 'shared_styles.html.jinja2' %}
+</head>
+
+<body>
+    <div class="layout">
+        <!-- Top Navigation Mockup -->
+        <div class="top-nav">
+            <div class="nav-item active">● ready</div>
+            <div class="nav-item">~/analysis</div>
+            <div style="flex: 1"></div>
+            <div class="nav-item">$ ai --summary</div>
+            <div class="nav-item">$ cd /groups</div>
+            <div class="nav-item">$ api --status</div>
+            <div class="nav-item">🌐 EN</div>
+            <div class="user-avatar" style="width: 25px; height: 25px; border-radius: 50%;"></div>
+        </div>
+
+        <div class="main-container">
+            <!-- Left Side: Analytical Data -->
+            <div class="left-col">
+                <div class="report-section hero-section">
+                    <div class="comment">// main.ts</div>
+                    <h1><span class="prompt">&gt;</span> Group Activity<br>Insights<span class="cursor"></span></h1>
+                    <div class="comment" style="margin-bottom: 30px;">// Report for {{current_date}}</div>
+
+                    <div class="code-block">
+                        <span class="keyword">const</span> stats = {<br>
+                        &nbsp;&nbsp;messages: <span style="color: var(--accent-orange);">{{message_count}}</span>,<br>
+                        &nbsp;&nbsp;active_users: <span
+                            style="color: var(--accent-orange);">{{participant_count}}</span>,<br>
+                        &nbsp;&nbsp;peak_time: <span
+                            style="color: var(--accent-blue);">'{{most_active_period}}'</span><br>
+                        };<br>
+                        <span style="color: var(--accent-green);">// Total characters: {{total_characters}}</span>
+                    </div>
+                </div>
+
+                {% if chat_quality_html %}
+                <div class="report-section quality-section">
+                    <div class="section-header">
+                        <span class="prompt">$</span> analyze --quality
+                    </div>
+                    {{ chat_quality_html | safe }}
+                </div>
+                {% endif %}
+ 
+                <!-- Topics moved into left column -->
+                {% if topics_html %}
+                <div class="report-section topics-section">
+                    <div class="section-header">
+                        <span class="prompt">$</span> ls ./topics
+                    </div>
+                    <div class="topic-list">
+                        {{topics_html | safe}}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+ 
+            <!-- Right Side: Visuals & Members -->
+            <div class="right-col">
+                <div class="window report-section chart-section">
+                    <div class="window-header">
+                        <div class="traffic-lights">
+                            <div class="light red"></div>
+                            <div class="light yellow"></div>
+                            <div class="light green"></div>
+                        </div>
+                        <div class="window-title">trend-analytics.tsx</div>
+                    </div>
+                    <div class="chart-container">
+                        {{hourly_chart_html | safe}}
+                    </div>
+                </div>
+ 
+                <!-- User Titles grouped here -->
+                {% if titles_html %}
+                <div class="report-section titles-section">
+                    <div class="section-header">
+                        <span class="prompt">$</span> cat ./user_titles
+                    </div>
+                    <div class="user-grid">
+                        {{titles_html | safe}}
+                    </div>
+                </div>
+                {% endif %}
+ 
+                <!-- Golden Quotes grouped here -->
+                {% if quotes_html %}
+                <div class="report-section quotes-section">
+                    <div class="section-header">
+                        <span class="prompt">$</span> grep -r "golden_quotes"
+                    </div>
+                    <div class="quote-container">
+                        {{quotes_html | safe}}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <footer>
+            <div>SYSTEM_REPORT // {{current_datetime}}</div>
+            <div>
+                TOKENS: <span class="footer-token">{{total_tokens}}</span>
+                [P: {{prompt_tokens}} | C: {{completion_tokens}}]
+            </div>
+            <div style="color: var(--accent-orange);">SXP-Simon/astrbot_plugin_qq_group_daily_analysis 群分析</div>
+        </footer>
+    </div>
+</body>
+
+</html>
+
+
+
+
