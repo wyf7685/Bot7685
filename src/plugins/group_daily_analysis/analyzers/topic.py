@@ -1,11 +1,11 @@
 """话题分析器。"""
 
-from __future__ import annotations
-
+import dataclasses
 import re
+from collections.abc import Iterable
 from pathlib import Path
 from string import Template
-from typing import Any
+from typing import override
 
 from ..domain.models import SummaryTopic
 from ..domain.value_objects import UnifiedMessage
@@ -21,13 +21,22 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic]):
         self._max_topics = max_topics
         self._prompt_template = prompt_template
 
+    @override
     def get_max_count(self) -> int:
         return self._max_topics
 
+    @property
+    @override
+    def data_object_model(self) -> type[SummaryTopic]:
+        return SummaryTopic
+
+    @override
     def build_prompt(self, messages: list[UnifiedMessage]) -> str:
+        messages = list(self._extract_text_messages(messages))
         messages_text = self.format_messages_for_prompt(messages)
         if not messages_text:
             return ""
+        self._build_nickname_mapping(messages)
 
         template_str = self._prompt_template
         if not template_str:
@@ -43,33 +52,33 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic]):
             messages_text=messages_text,
         )
 
-    def create_data_object(self, item: dict[str, Any]) -> SummaryTopic | None:
-        topic = item.get("topic", "").strip()
-        detail = item.get("detail", "").strip()
-        if not topic or not detail:
-            return None
+    @override
+    def process_response(self, response: list[SummaryTopic]) -> list[SummaryTopic]:
+        for topic in super().process_response(response):
+            raw_ids = topic.contributors or topic.contributor_ids or []
+            resolved = {
+                user_id: nickname
+                for raw_id in raw_ids
+                if (user_id := raw_id.strip().strip("[]"))
+                and (nickname := self._lookup_nickname(user_id))
+            }
 
-        contributors = item.get("contributors", [])
-        if not isinstance(contributors, list):
-            contributors = ["群友"]
-        else:
-            contributors = [str(c).strip() for c in contributors if c] or ["群友"]
+            topic.contributor_ids = list(resolved.keys())
+            topic.contributors = list(resolved.values())
 
-        return SummaryTopic(
-            topic=topic,
-            contributors=contributors,
-            detail=detail,
-            contributor_ids=[str(c) for c in contributors],
-        )
+        return response
 
-    def _extract_with_regex(self, text: str) -> list[dict[str, Any]]:
-        """正则降级提取话题。"""
-        pattern = r'"topic"\s*:\s*"([^"]*)"'
-        topics = re.findall(pattern, text)
-        return [
-            {"topic": t, "contributors": ["群友"], "detail": t}
-            for t in topics[: self._max_topics]
-        ]
+    def _extract_text_messages(
+        self, messages: list[UnifiedMessage]
+    ) -> Iterable[UnifiedMessage]:
+        for msg in messages:
+            if text := msg.text_content:
+                cleaned_text = text.replace("\n", " ").replace("\r", " ")
+                cleaned_text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", cleaned_text)
+                if 2 <= len(text) <= 500:
+                    yield UnifiedMessage(
+                        **{**dataclasses.asdict(msg), "text_content": cleaned_text}
+                    )
 
 
 _DEFAULT_TOPIC_PROMPT = """\

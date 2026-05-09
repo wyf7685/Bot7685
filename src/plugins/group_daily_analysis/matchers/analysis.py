@@ -1,5 +1,6 @@
 """群分析命令 — 手动分析 + 订阅管理。"""
 
+from nonebot.adapters import Bot
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -131,14 +132,16 @@ async def assign_list(target: MsgTarget) -> None:
 
 @matcher.assign("~")
 async def _(
-    session: Uninfo, target: MsgTarget, iface: QryItrface, days: int | None = None
+    bot: Bot,
+    session: Uninfo,
+    target: MsgTarget,
+    iface: QryItrface,
+    days: int | None = None,
 ) -> None:
     if target.private:
         await UniMessage.text("请在群聊中使用此命令").finish(reply_to=True)
 
-    await UniMessage.text("正在启动分析引擎...").send(reply_to=True)
-
-    result = await run_daily_analysis(session, days=days)
+    result = await run_daily_analysis(bot, session, days=days)
 
     if result is None:
         await UniMessage.text("未找到足够的群聊记录").finish(reply_to=True)

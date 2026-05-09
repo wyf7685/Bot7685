@@ -1,12 +1,10 @@
 """消息获取服务 — 基于 chatrecorder。"""
 
-from __future__ import annotations
-
 from datetime import datetime, timedelta, timezone
 
-from nonebot import get_bot
+from nonebot.adapters import Bot
 from nonebot_plugin_alconna import At, Image, Reply, Text, UniMessage
-from nonebot_plugin_chatrecorder import get_message_records
+from nonebot_plugin_chatrecorder import MessageRecord, get_message_records
 from nonebot_plugin_chatrecorder.message import deserialize_message
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_uninfo import Session
@@ -23,6 +21,7 @@ UTC8 = timezone(timedelta(hours=8))
 
 
 async def fetch_group_messages(
+    bot: Bot,
     session: Session,
     days: int = 1,
     exclude_self_ids: list[str] | None = None,
@@ -57,7 +56,6 @@ async def fetch_group_messages(
 
     # 转换为统一格式
     messages: list[UnifiedMessage] = []
-    bot = get_bot()
 
     for record in records:
         spid = record.session_persist_id
@@ -70,52 +68,7 @@ async def fetch_group_messages(
         sender_name = user_name_map.get(spid, sender_id)
 
         # 解析消息内容
-        contents: list[MessageContent] = []
-        text_parts: list[str] = []
-        reply_to_id: str | None = None
-
-        try:
-            unimsg = UniMessage.of(deserialize_message(bot, record.message))
-            for seg in unimsg:
-                if isinstance(seg, Text):
-                    text_parts.append(seg.text)
-                    contents.append(
-                        MessageContent(type=MessageContentType.TEXT, text=seg.text)
-                    )
-                elif isinstance(seg, At):
-                    contents.append(
-                        MessageContent(
-                            type=MessageContentType.AT, at_user_id=str(seg.target)
-                        )
-                    )
-                elif isinstance(seg, Image):
-                    contents.append(
-                        MessageContent(
-                            type=MessageContentType.IMAGE, url=seg.url or seg.id or ""
-                        )
-                    )
-                elif isinstance(seg, Reply):
-                    reply_to_id = str(seg.id)
-                    contents.append(MessageContent(type=MessageContentType.REPLY))
-        except Exception:
-            # 反序列化失败时回退到 plain_text
-            text_parts.append(record.plain_text or "")
-
-        # 用 plain_text 作为兜底
-        if not text_parts and record.plain_text:
-            text_parts.append(record.plain_text)
-
-        msg = UnifiedMessage(
-            message_id=record.message_id or str(record.id),
-            sender_id=sender_id,
-            sender_name=sender_name,
-            group_id=session.scene.id,
-            text_content="".join(text_parts),
-            contents=tuple(contents),
-            timestamp=int(record.time.timestamp()),
-            platform=str(session.adapter),
-            reply_to_id=reply_to_id,
-        )
+        msg = _parse_record(bot, session, record, sender_id, sender_name)
         messages.append(msg)
 
     messages.sort(key=lambda m: m.timestamp)
@@ -149,3 +102,53 @@ async def _resolve_user_info(
             user_name_map[sid] = user_model.user_id
 
     return user_id_map, user_name_map
+
+
+def _parse_record(
+    bot: Bot,
+    session: Session,
+    record: MessageRecord,
+    sender_id: str,
+    sender_name: str,
+) -> UnifiedMessage:
+    contents: list[MessageContent] = []
+    text_parts: list[str] = []
+    reply_to_id: str | None = None
+
+    try:
+        unimsg = UniMessage.of(deserialize_message(bot, record.message), bot)
+    except Exception:
+        unimsg = UniMessage.text(record.plain_text or "")
+
+    for seg in unimsg:
+        match seg:
+            case Text(text=text):
+                text_parts.append(text)
+                contents.append(MessageContent(type=MessageContentType.TEXT, text=text))
+            case At(target=target):
+                contents.append(
+                    MessageContent(type=MessageContentType.AT, at_user_id=str(target))
+                )
+            case Image(url=url):
+                contents.append(
+                    MessageContent(type=MessageContentType.IMAGE, url=url or "")
+                )
+            case Reply(id=reply_id):
+                reply_to_id = str(reply_id)
+                contents.append(MessageContent(type=MessageContentType.REPLY))
+
+    # 用 plain_text 作为兜底
+    if not text_parts and record.plain_text:
+        text_parts.append(record.plain_text)
+
+    return UnifiedMessage(
+        message_id=record.message_id or str(record.id),
+        sender_id=sender_id,
+        sender_name=sender_name,
+        group_id=session.scene.id,
+        text_content="".join(text_parts),
+        contents=tuple(contents),
+        timestamp=int(record.time.timestamp()),
+        platform=str(session.adapter),
+        reply_to_id=reply_to_id,
+    )

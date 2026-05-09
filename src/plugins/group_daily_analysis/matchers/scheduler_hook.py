@@ -50,8 +50,10 @@ async def _auto_analysis_job() -> None:
         try:
             target = sub.target
             session = sub.session_data
+            bot = await target.select()
 
             result = await run_daily_analysis(
+                bot,
                 session,
                 days=sub.analysis_days,
             )
@@ -74,11 +76,8 @@ async def _auto_analysis_job() -> None:
 async def _send_report(result: AnalysisResult, target: Target) -> None:
     """根据配置发送报告，图片失败时降级为文本。"""
     if config.output_format == "image":
-        try:
-            bot = await target.select()
-            iface = get_interface(bot)
-        except Exception:
-            iface = None
+        bot = await target.select()
+        iface = get_interface(bot)
 
         avatar_getter = None
         if iface:

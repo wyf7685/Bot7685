@@ -1,9 +1,9 @@
 """群分析领域数据模型。"""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Any
+
+from src.service.llm import TokenUsage
 
 
 @dataclass
@@ -44,7 +44,19 @@ class QualityDimension:
     name: str
     percentage: float
     comment: str
-    color: str = "#607d8b"
+
+    def with_color(self, color: str) -> QualityDimensionWithColor:
+        return QualityDimensionWithColor(
+            name=self.name,
+            percentage=self.percentage,
+            comment=self.comment,
+            color=color,
+        )
+
+
+@dataclass
+class QualityDimensionWithColor(QualityDimension):
+    color: str
 
 
 @dataclass
@@ -55,21 +67,6 @@ class QualityReview:
     subtitle: str
     dimensions: list[QualityDimension]
     summary: str
-
-
-@dataclass
-class TokenUsage:
-    """Token 使用统计"""
-
-    prompt_tokens: int = 0
-    completion_tokens: int = 0
-    total_tokens: int = 0
-
-    def __iadd__(self, other: TokenUsage) -> TokenUsage:  # noqa: PYI034
-        self.prompt_tokens += other.prompt_tokens
-        self.completion_tokens += other.completion_tokens
-        self.total_tokens += other.total_tokens
-        return self
 
 
 @dataclass

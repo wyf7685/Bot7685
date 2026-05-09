@@ -1,27 +1,37 @@
 """聊天质量分析器。"""
 
-from __future__ import annotations
-
 from pathlib import Path
 from string import Template
-from typing import Any
+from typing import override
 
-from ..domain.models import QualityDimension, QualityReview
+from ..domain.models import QualityReview
 from ..domain.value_objects import UnifiedMessage
 from .base import BaseAnalyzer
 
 PROMPT_DIR = Path(__file__).parent.parent / "prompts"
 
 
-class ChatQualityAnalyzer(BaseAnalyzer[QualityReview]):
+class ChatQualityAnalyzer(BaseAnalyzer[QualityReview, QualityReview]):
     data_type = "聊天质量"
 
     def __init__(self, prompt_template: str | None = None) -> None:
         self._prompt_template = prompt_template
 
+    @override
     def get_max_count(self) -> int:
         return 1  # 每次只生成一份质量报告
 
+    @property
+    @override
+    def data_object_model(self) -> type[QualityReview]:
+        return QualityReview
+
+    @property
+    @override
+    def response_model(self) -> type[QualityReview]:
+        return QualityReview
+
+    @override
     def build_prompt(self, messages: list[UnifiedMessage]) -> str:
         messages_text = self.format_messages_for_prompt(messages)
         if not messages_text:
@@ -38,60 +48,36 @@ class ChatQualityAnalyzer(BaseAnalyzer[QualityReview]):
         tpl = Template(template_str)
         return tpl.safe_substitute(messages_text=messages_text)
 
-    def _try_parse_json(self, text: str) -> list[dict[str, Any]] | None:
-        """重写：聊天质量返回单个对象而非数组。"""
-        import json
-
-        text = text.strip()
-        if text.startswith("```"):
-            lines = text.split("\n")
-            start = 1
-            end = len(lines) - 1
-            if lines[-1].strip() == "```":
-                end -= 1
-            text = "\n".join(lines[start:end]).strip()
-
-        try:
-            data = json.loads(text)
-            if isinstance(data, dict):
-                return [data]
-            if isinstance(data, list):
-                return data
-        except json.JSONDecodeError:
-            pass
-        return None
-
-    def create_data_object(self, item: dict[str, Any]) -> QualityReview | None:
-        title = item.get("title", "").strip()
-        subtitle = item.get("subtitle", "").strip()
-        summary = item.get("summary", "").strip()
-
-        raw_dims = item.get("dimensions", [])
-        if not isinstance(raw_dims, list):
-            raw_dims = []
-
-        dimensions: list[QualityDimension] = []
-        for d in raw_dims:
-            if not isinstance(d, dict):
-                continue
-            dimensions.append(
-                QualityDimension(
-                    name=d.get("name", "").strip(),
-                    percentage=float(d.get("percentage", 0)),
-                    comment=d.get("comment", "").strip(),
-                    color=d.get("color", "#607d8b"),
-                )
-            )
-
-        if not dimensions:
-            return None
-
-        return QualityReview(
-            title=title or "今日群聊",
-            subtitle=subtitle or "",
-            dimensions=dimensions,
-            summary=summary or "",
+    @override
+    def process_response(self, response: QualityReview) -> list[QualityReview]:
+        # 控制维度占比总和不超过100%
+        total_percentage = sum(
+            max(0.0, min(100.0, d.percentage)) for d in response.dimensions
         )
+
+        factor = 1.0
+        if total_percentage > 100:
+            factor = 100.0 / total_percentage
+        for d in response.dimensions:
+            d.percentage = round(max(0.0, min(100.0, d.percentage)) * factor, 1)
+
+        # 自动分配颜色
+        colors = [
+            "#607d8b",
+            "#2196f3",
+            "#f44336",
+            "#e91e63",
+            "#ff9800",
+            "#4caf50",
+            "#009688",
+            "#9c27b0",
+        ]
+        response.dimensions = [
+            d.with_color(colors[i % len(colors)])
+            for i, d in enumerate(response.dimensions)
+        ]
+
+        return [response]
 
 
 _DEFAULT_PROMPT = """\

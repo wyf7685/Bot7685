@@ -1,10 +1,11 @@
 """金句分析器。"""
 
-from __future__ import annotations
-
 from pathlib import Path
 from string import Template
-from typing import Any
+from typing import override
+
+from nonebot import logger
+from nonebot.utils import escape_tag
 
 from ..domain.models import GoldenQuote
 from ..domain.value_objects import UnifiedMessage
@@ -19,14 +20,24 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote]):
     def __init__(self, max_quotes: int = 5, prompt_template: str | None = None) -> None:
         self._max_quotes = max_quotes
         self._prompt_template = prompt_template
+        self._id_to_nickname: dict[str, str] = {}
 
+    @override
     def get_max_count(self) -> int:
         return self._max_quotes
 
+    @property
+    @override
+    def data_object_model(self) -> type[GoldenQuote]:
+        return GoldenQuote
+
+    @override
     def build_prompt(self, messages: list[UnifiedMessage]) -> str:
+        messages = [msg for msg in messages if 2 <= msg.get_text_length() <= 500]
         messages_text = self.format_messages_for_prompt(messages)
         if not messages_text:
             return ""
+        self._build_nickname_mapping(messages)
 
         template_str = self._prompt_template
         if not template_str:
@@ -42,19 +53,25 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote]):
             messages_text=messages_text,
         )
 
-    def create_data_object(self, item: dict[str, Any]) -> GoldenQuote | None:
-        content = item.get("content", "").strip()
-        sender = item.get("sender", "").strip()
-        reason = item.get("reason", "").strip()
-        if not content:
-            return None
+    @override
+    def process_response(self, response: list[GoldenQuote]) -> list[GoldenQuote]:
+        for quote in super().process_response(response):
+            if (sender_id := quote.sender.strip().strip("[]")) and (
+                nickname := self._lookup_nickname(sender_id)
+            ):
+                quote.sender = nickname
+                quote.user_id = sender_id
+            elif (user_id := quote.user_id.strip().strip("[]")) and (
+                nickname := self._lookup_nickname(user_id)
+            ):
+                quote.sender = nickname
+                quote.user_id = user_id
+            else:
+                logger.opt(colors=True).warning(
+                    f"[金句分析] 无法匹配 User ID: <y>{escape_tag(quote.user_id)}</>"
+                )
 
-        return GoldenQuote(
-            content=content,
-            sender=sender or "未知",
-            reason=reason,
-            user_id=item.get("user_id", ""),
-        )
+        return response
 
 
 _DEFAULT_PROMPT = """\

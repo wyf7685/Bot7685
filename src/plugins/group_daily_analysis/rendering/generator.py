@@ -4,8 +4,7 @@
 不依赖任何平台特定 API。
 """
 
-from __future__ import annotations
-
+import asyncio
 import base64
 import json
 import re
@@ -28,9 +27,10 @@ from ..services.analysis_service import AnalysisResult
 
 TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 PROFILE_MANIFEST_PATH = (
-    Path(__file__).parent.parent / "assets" / "profile_assets" / "manifest.json"
+    Path(__file__).parent.parent / "assets" / "profile_manifest.json"
 )
 
+# url -> base64 data uri
 _avatar_cache = get_cache[str]("group_daily_avatar", pickle=False)
 
 # avatar_getter: user_id -> avatar_url (跨平台)
@@ -58,17 +58,21 @@ async def render_image(
     stats = result.statistics
 
     # ── 1. 子模板渲染 ──────────────────────────────────────
-    topics_html = await _render_topics(result.topics, template_dir, avatar_getter)
-    titles_html = await _render_user_titles(
-        result.user_titles, template_dir, avatar_getter
+    (
+        topics_html,
+        titles_html,
+        quotes_html,
+        chart_html,
+        quality_html,
+    ) = await asyncio.gather(
+        _render_topics(result.topics, template_dir, avatar_getter),
+        _render_user_titles(result.user_titles, template_dir, avatar_getter),
+        _render_quotes(result.golden_quotes, template_dir, avatar_getter),
+        _render_activity_chart(
+            stats.activity_visualization.hourly_activity, template_dir
+        ),
+        _render_chat_quality(result.chat_quality, template_dir),
     )
-    quotes_html = await _render_quotes(
-        result.golden_quotes, template_dir, avatar_getter
-    )
-    chart_html = _render_activity_chart(
-        stats.activity_visualization.hourly_activity, template_dir
-    )
-    quality_html = await _render_chat_quality(result.chat_quality, template_dir)
 
     # ── 2. 拼装 render_data ────────────────────────────────
     now = datetime.now()
@@ -137,23 +141,22 @@ async def _render_user_titles(
     manifest = _load_profile_manifest()
     mode = config.render.profile_display_mode
 
-    items: list[dict[str, Any]] = []
-    for u in titles:
+    async def render_user_title(u: UserTitle) -> dict[str, Any]:
         avatar_data = await _get_avatar_data_uri(u.user_id, avatar_getter)
         profile = _resolve_profile(manifest, mode, u.mbti)
-        items.append(
-            {
-                "name": u.name,
-                "user_id": u.user_id,
-                "title": u.title,
-                "mbti": u.mbti,
-                "reason": u.reason,
-                "avatar_data": avatar_data,
-                "profile_code": profile.get("code", u.mbti),
-                "profile_name": profile.get("name_zh", u.mbti),
-                "profile_image": profile.get("image", ""),
-            }
-        )
+        return {
+            "name": u.name,
+            "user_id": u.user_id,
+            "title": u.title,
+            "mbti": u.mbti,
+            "reason": u.reason,
+            "avatar_data": avatar_data,
+            "profile_code": profile.get("code", u.mbti),
+            "profile_name": profile.get("name_zh", u.mbti),
+            "profile_image": profile.get("image", ""),
+        }
+
+    items = await asyncio.gather(*(render_user_title(u) for u in titles))
     return _render_sub_template(
         template_dir, "user_title_item.html.jinja2", titles=items
     )
@@ -166,24 +169,26 @@ async def _render_quotes(
 ) -> str:
     if not quotes:
         return ""
-    items: list[dict[str, Any]] = []
-    for q in quotes:
+
+    async def render_quote(q: GoldenQuote) -> dict[str, Any]:
         avatar_data = (
             await _get_avatar_data_uri(q.user_id, avatar_getter) if q.user_id else ""
         )
         reason = await _render_mentions(q.reason, avatar_getter)
-        items.append(
-            {
-                "content": q.content,
-                "sender": q.sender,
-                "reason": reason,
-                "avatar_data": avatar_data,
-            }
-        )
+        return {
+            "content": q.content,
+            "sender": q.sender,
+            "reason": reason,
+            "avatar_data": avatar_data,
+        }
+
+    items = await asyncio.gather(*(render_quote(q) for q in quotes))
     return _render_sub_template(template_dir, "quote_item.html.jinja2", quotes=items)
 
 
-def _render_activity_chart(hourly_activity: dict[int, int], template_dir: Path) -> str:
+async def _render_activity_chart(
+    hourly_activity: dict[int, int], template_dir: Path
+) -> str:
     if not hourly_activity:
         return ""
     hours = list(range(24))
@@ -280,17 +285,17 @@ async def _get_avatar_data_uri(
         return cached
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(url)
-            if resp.status_code == 200:
-                b64 = base64.b64encode(resp.content).decode()
-                content_type = resp.headers.get("content-type", "image/png")
-                uri = f"data:{content_type};base64,{b64}"
-                await _avatar_cache.set(url, uri, ttl=24 * 3600)
-                return uri
+        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
+            resp = (await client.get(url)).raise_for_status()
+            b64 = base64.b64encode(resp.content).decode()
+            content_type = resp.headers.get("content-type", "image/png")
+            uri = f"data:{content_type};base64,{b64}"
     except Exception as e:
         logger.debug(f"头像下载失败 ({uid}): {escape_tag(str(e))}")
-    return ""
+        return ""
+
+    await _avatar_cache.set(url, value=uri, ttl=3 * 24 * 3600)
+    return uri
 
 
 async def _render_mentions(text: str, avatar_getter: AvatarGetter | None) -> str:
@@ -303,11 +308,12 @@ async def _render_mentions(text: str, avatar_getter: AvatarGetter | None) -> str
         return text
 
     # 预取头像 URL 并下载
-    avatar_map: dict[str, str] = {}
-    for uid in set(uids):
-        uri = await _get_avatar_data_uri(uid, avatar_getter)
-        if uri:
+    async def prepare_avatar(uid: str) -> None:
+        if uri := await _get_avatar_data_uri(uid, avatar_getter):
             avatar_map[uid] = uri
+
+    avatar_map: dict[str, str] = {}
+    await asyncio.gather(*(prepare_avatar(uid) for uid in set(uids)))
 
     def _replace(m: re.Match[str]) -> str:
         uid = m.group(1)

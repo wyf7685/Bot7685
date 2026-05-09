@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import Any
 
+from nonebot.adapters import Bot
 from nonebot.log import logger
 from nonebot_plugin_uninfo import Session
+
+from src.plugins.group_daily_analysis.analyzers.base import BaseAnalyzer
+from src.service.llm import TokenUsage
 
 from ..analyzers.chat_quality import ChatQualityAnalyzer
 from ..analyzers.golden_quote import GoldenQuoteAnalyzer
@@ -18,7 +25,6 @@ from ..domain.models import (
     GroupStatistics,
     QualityReview,
     SummaryTopic,
-    TokenUsage,
     UserTitle,
 )
 from ..domain.value_objects import UnifiedMessage
@@ -41,6 +47,7 @@ class AnalysisResult:
 
 
 async def run_daily_analysis(
+    bot: Bot,
     session: Session,
     days: int | None = None,
     system_prompt: str | None = None,
@@ -58,7 +65,7 @@ async def run_daily_analysis(
     days = days or config.analysis_days
 
     # 1. 拉取消息
-    messages = await fetch_group_messages(session, days=days)
+    messages = await fetch_group_messages(bot, session, days=days)
     if len(messages) < config.min_messages:
         logger.warning(
             f"群 {session.scene.id} 消息不足: {len(messages)} < {config.min_messages}"
@@ -68,47 +75,40 @@ async def run_daily_analysis(
     # 2. 基础统计
     statistics = _calculate_statistics(messages)
 
-    # 3. LLM 分析（并发）
-    topics: list[SummaryTopic] = []
-    user_titles: list[UserTitle] = []
-    golden_quotes: list[GoldenQuote] = []
-    chat_quality: QualityReview | None = None
-    token_usage = TokenUsage()
+    # 3. LLM 分析
+    async def execute_analyzer[T](
+        feature_enabled: bool, analyzer_factory: Callable[[], BaseAnalyzer[T, Any]], /
+    ) -> tuple[list[T], TokenUsage]:
+        if not feature_enabled:
+            return [], TokenUsage()
+        return await analyzer_factory().analyze(messages, system_prompt)
 
     features = config.features
-
-    # 话题分析
-    if features.topic_enabled:
-        analyzer = TopicAnalyzer(max_topics=features.max_topics)
-        result, usage = await analyzer.analyze(messages, system_prompt)
-        topics = result
-        token_usage += usage
-
-    # 用户称号分析
-    if features.user_title_enabled:
-        analyzer = UserTitleAnalyzer(max_titles=features.max_user_titles)
-        result, usage = await analyzer.analyze(messages, system_prompt)
-        user_titles = result
-        token_usage += usage
-
-    # 金句分析
-    if features.golden_quote_enabled:
-        analyzer = GoldenQuoteAnalyzer(max_quotes=features.max_golden_quotes)
-        result, usage = await analyzer.analyze(messages, system_prompt)
-        golden_quotes = result
-        token_usage += usage
-
-    # 聊天质量分析
-    if features.chat_quality_enabled:
-        analyzer = ChatQualityAnalyzer()
-        result, usage = await analyzer.analyze(messages, system_prompt)
-        if result:
-            chat_quality = result[0]
-        token_usage += usage
+    (topics, _), (user_titles, _), (golden_quotes, _), (chat_quality, _) = (
+        results
+    ) = await asyncio.gather(
+        execute_analyzer(
+            features.topic_enabled,
+            lambda: TopicAnalyzer(max_topics=features.max_topics),
+        ),
+        execute_analyzer(
+            features.user_title_enabled,
+            lambda: UserTitleAnalyzer(max_titles=features.max_user_titles),
+        ),
+        execute_analyzer(
+            features.golden_quote_enabled,
+            lambda: GoldenQuoteAnalyzer(max_quotes=features.max_golden_quotes),
+        ),
+        execute_analyzer(
+            features.chat_quality_enabled,
+            lambda: ChatQualityAnalyzer(),
+        ),
+    )
+    token_usage = sum((usage for _, usage in results), TokenUsage())
 
     statistics.golden_quotes = golden_quotes
     statistics.token_usage = token_usage
-    statistics.chat_quality_review = chat_quality
+    statistics.chat_quality_review = chat_quality[0] if chat_quality else None
 
     return AnalysisResult(
         group_id=session.scene.id,
@@ -118,7 +118,7 @@ async def run_daily_analysis(
         topics=topics,
         user_titles=user_titles,
         golden_quotes=golden_quotes,
-        chat_quality=chat_quality,
+        chat_quality=chat_quality[0] if chat_quality else None,
         token_usage=token_usage,
     )
 

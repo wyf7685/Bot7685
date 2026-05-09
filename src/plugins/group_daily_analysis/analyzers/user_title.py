@@ -1,10 +1,8 @@
 """用户称号分析器。"""
 
-from __future__ import annotations
-
 from pathlib import Path
 from string import Template
-from typing import Any
+from typing import override
 
 from ..domain.models import UserTitle
 from ..domain.value_objects import UnifiedMessage
@@ -20,9 +18,16 @@ class UserTitleAnalyzer(BaseAnalyzer[UserTitle]):
         self._max_titles = max_titles
         self._prompt_template = prompt_template
 
+    @override
     def get_max_count(self) -> int:
         return self._max_titles
 
+    @property
+    @override
+    def data_object_model(self) -> type[UserTitle]:
+        return UserTitle
+
+    @override
     def build_prompt(self, messages: list[UnifiedMessage]) -> str:
         messages_text = self.format_messages_for_prompt(messages)
         if not messages_text:
@@ -40,21 +45,6 @@ class UserTitleAnalyzer(BaseAnalyzer[UserTitle]):
         return tpl.safe_substitute(
             max_titles=self._max_titles,
             messages_text=messages_text,
-        )
-
-    def create_data_object(self, item: dict[str, Any]) -> UserTitle | None:
-        name = item.get("name", "").strip()
-        user_id = item.get("user_id", "").strip()
-        title = item.get("title", "").strip()
-        if not title:
-            return None
-
-        return UserTitle(
-            name=name or "未知",
-            user_id=user_id or "0",
-            title=title,
-            mbti=item.get("mbti", "").strip(),
-            reason=item.get("reason", "").strip(),
         )
 
 

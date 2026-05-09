@@ -1,18 +1,17 @@
 """基础分析器 — 定义通用分析流程。"""
 
-from __future__ import annotations
-
-import json
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import cast
 
 from nonebot.log import logger
 
-from ..domain.models import TokenUsage
+from src.service.llm import TokenUsage
+
 from ..domain.value_objects import UnifiedMessage
+from ..services.llm_service import call_llm
 
 
-class BaseAnalyzer[TDataObject](ABC):
+class BaseAnalyzer[DataObject, Response = list[DataObject]](ABC):
     """分析器基类。
 
     子类需实现:
@@ -31,21 +30,35 @@ class BaseAnalyzer[TDataObject](ABC):
     @abstractmethod
     def build_prompt(self, messages: list[UnifiedMessage]) -> str: ...
 
+    @property
     @abstractmethod
-    def create_data_object(self, item: dict[str, Any]) -> TDataObject | None: ...
+    def data_object_model(self) -> type[DataObject]: ...
 
     @property
-    def response_model(self) -> type | None:
-        """Pydantic 模型，子类可重写以启用结构化输出。"""
-        return None
+    def response_model(self) -> type[Response]:
+        return cast("type[Response]", list[self.data_object_model])
+
+    def process_response(self, response: Response) -> list[DataObject]:
+        return (
+            list(response)[: self.get_max_count()] if isinstance(response, list) else []
+        )
+
+    def _build_nickname_mapping(self, messages: list[UnifiedMessage]) -> None:
+        self._id_to_nickname = {
+            msg.sender_id: msg.get_display_name() for msg in messages if msg.sender_id
+        }
+
+    def _lookup_nickname(self, user_id: str) -> str | None:
+        if not hasattr(self, "_id_to_nickname"):
+            return None
+        return self._id_to_nickname.get(user_id)
 
     async def analyze(
         self,
         messages: list[UnifiedMessage],
         system_prompt: str | None = None,
-    ) -> tuple[list[TDataObject], TokenUsage]:
+    ) -> tuple[list[DataObject], TokenUsage]:
         """执行分析流程。"""
-        from ..services.llm_service import call_llm
 
         logger.opt(colors=True).info(
             f"开始 <y>{self.data_type}</> 分析，输入 <g>{len(messages)}</> 条消息"
@@ -57,64 +70,22 @@ class BaseAnalyzer[TDataObject](ABC):
             return [], TokenUsage()
 
         # 调用 LLM
-        result_text = await call_llm(prompt, system_prompt=system_prompt)
-        if not result_text:
-            logger.error(f"{self.data_type} 分析: LLM 返回空结果")
-            return [], TokenUsage()
+        response, token_usage = await call_llm(
+            self.response_model, prompt, system_prompt
+        )
+        if not response:
+            logger.error(f"{self.data_type} 分析: LLM 未返回结果")
+            return [], token_usage
 
-        # 尝试解析 JSON
-        parsed = self._try_parse_json(result_text)
-        if parsed is None:
-            # 正则降级
-            parsed = self._extract_with_regex(result_text)
-
-        if not parsed:
-            logger.error(f"{self.data_type} 分析: JSON 解析与正则降级均失败")
-            return [], TokenUsage()
-
-        # 构造数据对象
-        objects: list[TDataObject] = []
-        for item in parsed[: self.get_max_count()]:
-            obj = self.create_data_object(item)
-            if obj is not None:
-                objects.append(obj)
+        objects = self.process_response(response)
 
         logger.opt(colors=True).info(
             f"{self.data_type} 分析完成，获得 <g>{len(objects)}</> 条结果"
         )
-        return objects, TokenUsage()
-
-    def _try_parse_json(self, text: str) -> list[dict[str, Any]] | None:
-        """尝试从 LLM 返回文本中解析 JSON 数组。"""
-        text = text.strip()
-
-        # 去除 markdown 包裹
-        if text.startswith("```"):
-            lines = text.split("\n")
-            start = 1
-            end = len(lines) - 1
-            if lines[-1].strip() == "```":
-                end -= 1
-            text = "\n".join(lines[start:end]).strip()
-
-        try:
-            data = json.loads(text)
-            if isinstance(data, list):
-                return data
-            if isinstance(data, dict):
-                return [data]
-        except json.JSONDecodeError:
-            pass
-        return None
-
-    def _extract_with_regex(self, _text: str, /) -> list[dict[str, Any]]:
-        """正则降级提取（子类可重写）。"""
-        return []
+        return objects, token_usage
 
     @staticmethod
-    def format_messages_for_prompt(
-        messages: list[UnifiedMessage],
-    ) -> str:
+    def format_messages_for_prompt(messages: list[UnifiedMessage]) -> str:
         """将消息列表格式化为 prompt 可用的文本。"""
         lines: list[str] = []
         for msg in messages:
