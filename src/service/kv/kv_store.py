@@ -3,7 +3,7 @@ from pydantic import TypeAdapter
 from sqlalchemy.sql.elements import BooleanClauseList
 
 from .database import get_session
-from .model import KVCacheEntry
+from .model import KVStoreEntry
 
 
 class KVStore:
@@ -11,13 +11,13 @@ class KVStore:
         self.plugin_id = plugin_id
 
     def _key_to_where_clause(self, key: str) -> BooleanClauseList:
-        return (KVCacheEntry.plugin_id == self.plugin_id) & (KVCacheEntry.key == key)
+        return (KVStoreEntry.plugin_id == self.plugin_id) & (KVStoreEntry.key == key)
 
     async def exists(self, key: str) -> bool:
         async with get_session() as session:
             result = await session.execute(
                 sa.select(sa.func.count())
-                .select_from(KVCacheEntry)
+                .select_from(KVStoreEntry)
                 .where(self._key_to_where_clause(key))
             )
             return result.scalar_one() > 0
@@ -25,7 +25,7 @@ class KVStore:
     async def read_bytes(self, key: str) -> bytes:
         async with get_session() as session:
             result = await session.execute(
-                sa.select(KVCacheEntry.value).where(self._key_to_where_clause(key))
+                sa.select(KVStoreEntry.value).where(self._key_to_where_clause(key))
             )
             entry = result.scalar_one_or_none()
         if entry is None:
@@ -36,7 +36,7 @@ class KVStore:
         if await self.exists(key):
             async with get_session() as session:
                 await session.execute(
-                    sa.update(KVCacheEntry)
+                    sa.update(KVStoreEntry)
                     .where(self._key_to_where_clause(key))
                     .values(value=data)
                     .execution_options(synchronize_session="fetch")
@@ -44,14 +44,14 @@ class KVStore:
                 await session.commit()
         else:
             async with get_session() as session:
-                new_entry = KVCacheEntry(plugin_id=self.plugin_id, key=key, value=data)
+                new_entry = KVStoreEntry(plugin_id=self.plugin_id, key=key, value=data)
                 session.add(new_entry)
                 await session.commit()
 
     async def delete(self, key: str) -> None:
         async with get_session() as session:
             await session.execute(
-                sa.delete(KVCacheEntry).where(self._key_to_where_clause(key))
+                sa.delete(KVStoreEntry).where(self._key_to_where_clause(key))
             )
             await session.commit()
 
@@ -63,7 +63,7 @@ class KVStore:
         data = text.encode(encoding)
         await self.write_bytes(key, data)
 
-    def with_type[T](self, type_: type[T]) -> TypedKVStore[T]:
+    def with_type[T](self, type_: type[T], /) -> TypedKVStore[T]:
         return TypedKVStore(self, type_)
 
 

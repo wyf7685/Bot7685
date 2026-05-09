@@ -6,8 +6,8 @@ class Base(DeclarativeBase):
     pass
 
 
-class KVCacheEntry(Base):
-    __tablename__ = "kv_cache_entry"
+class KVStoreEntry(Base):
+    __tablename__ = "kv_store_entry"
 
     plugin_id: Mapped[str] = mapped_column(String(64), primary_key=True, index=True)
     key: Mapped[str] = mapped_column(String(256), primary_key=True, index=True)
