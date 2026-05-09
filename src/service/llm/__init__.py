@@ -1,7 +1,7 @@
 """OpenAI 兼容的 LLM 服务。"""
 
 from .client import LLMClient
-from .config import LLMConfig
+from .config import service_config
 from .exceptions import (
     CircuitBreakerOpenError,
     LLMClientNotInitializedError,
@@ -25,7 +25,6 @@ __all__ = [
     "CircuitBreakerOpenError",
     "LLMClient",
     "LLMClientNotInitializedError",
-    "LLMConfig",
     "LLMJSONParseError",
     "LLMRequestError",
     "LLMResponseError",
@@ -37,17 +36,9 @@ __all__ = [
     "UserMessage",
     "dump_messages",
     "get_llm_client",
-    "init_llm_client",
 ]
 
 _client: LLMClient | None = None
-
-
-def init_llm_client(config: LLMConfig) -> LLMClient:
-    """初始化全局 LLM 客户端（通常在 on_startup 中调用）。"""
-    global _client
-    _client = LLMClient(config)
-    return _client
 
 
 def get_llm_client() -> LLMClient:
@@ -56,8 +47,8 @@ def get_llm_client() -> LLMClient:
     Raises:
         LLMClientNotInitializedError: 如果客户端尚未初始化
     """
+    global _client
     if _client is None:
-        raise LLMClientNotInitializedError(
-            "LLM 客户端尚未初始化，请先调用 init_llm_client()"
-        )
+        _client = LLMClient(service_config)
+
     return _client
