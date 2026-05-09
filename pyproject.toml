@@ -22,7 +22,7 @@ dependencies = [
   "nonebot-plugin-htmlrender==0.6.7",
   "nonebot-plugin-kawaii-status>=0.2.0",
   "nonebot-plugin-localstore>=0.7.4",
-  "nonebot-plugin-orm[asyncpg]>=0.8.3",
+  "nonebot-plugin-orm[asyncpg,aiosqlite]>=0.8.3",
   "nonebot-plugin-rollpig>=0.2.9",
   "nonebot-plugin-skland>=0.6.8",
   "nonebot-plugin-uninfo>=0.9.0",
