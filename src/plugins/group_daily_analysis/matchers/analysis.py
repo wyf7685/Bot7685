@@ -5,14 +5,19 @@ from nonebot_plugin_alconna import (
     Alconna,
     Args,
     CommandMeta,
+    Match,
     MsgTarget,
+    Option,
     Subcommand,
     UniMessage,
     on_alconna,
+    store_true,
 )
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_uninfo import Uninfo
 from nonebot_plugin_uninfo.params import QryItrface
+
+from src.plugins.trusted import TrustedUser
 
 from ..config import config
 from ..persistence.subscription import (
@@ -31,6 +36,13 @@ alc = Alconna(
     Subcommand(
         "subscribe",
         Args["hour", int]["minute", int],
+        Option(
+            "-i|--incremental",
+            dest="incremental",
+            default=False,
+            action=store_true,
+            help_text="是否启用增量分析模式",
+        ),
         alias={"订阅"},
         help_text="订阅当前群聊的定时分析 (需指定时 分)",
     ),
@@ -67,6 +79,7 @@ matcher = on_alconna(
     alc,
     priority=10,
     block=True,
+    permission=TrustedUser(),
     aliases={"群分析"},
     extensions=[TelegramSlashExtension()],
     use_cmd_start=True,
@@ -78,7 +91,11 @@ matcher = on_alconna(
 
 @matcher.assign("~subscribe")
 async def assign_subscribe(
-    session: Uninfo, target: MsgTarget, hour: int, minute: int
+    session: Uninfo,
+    target: MsgTarget,
+    hour: int,
+    minute: int,
+    incremental: Match[bool],
 ) -> None:
     if target.private:
         await UniMessage.text("请在群聊中使用此命令").finish(reply_to=True)
@@ -89,10 +106,12 @@ async def assign_subscribe(
     sub = AnalysisSubscription(
         target_data=target.dump(),
         session_data=session,
+        incremental_enabled=incremental.result,
     )
     add_subscription(sub)
     await UniMessage.text(
-        f"已订阅每日 {hour:02d}:{minute:02d} 的群聊分析\n"
+        f"已订阅每日 {hour:02d}:{minute:02d} 的群聊分析"
+        f" (增量模式: {'启用' if incremental.result else '关闭'})\n"
         f"当前共 {len(subscriptions.load())} 个订阅"
     ).finish()
 

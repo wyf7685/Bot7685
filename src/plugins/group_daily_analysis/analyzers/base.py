@@ -11,15 +11,19 @@ from ..domain.value_objects import UnifiedMessage
 from ..services.llm_service import call_llm
 
 
-class BaseAnalyzer[DataObject, Response = list[DataObject]](ABC):
+class BaseAnalyzer[
+    DataObject,
+    InputData = list[UnifiedMessage],
+    Response = list[DataObject],
+](ABC):
     """分析器基类。
 
     子类需实现:
     - data_type: 数据类型标识（用于日志）
     - max_count(): 最大提取数量
     - build_prompt(): 构建 LLM 提示词
-    - create_data_object(): 从 dict 构造领域对象
-    - response_model: Pydantic 模型（用于结构化输出）
+    - data_object_model: Pydantic 模型（返回类型）
+    - response_model: Pydantic 模型（用于结构化输出），默认 list[data_object_model]
     """
 
     data_type: str = "unknown"
@@ -28,7 +32,7 @@ class BaseAnalyzer[DataObject, Response = list[DataObject]](ABC):
     def get_max_count(self) -> int: ...
 
     @abstractmethod
-    def build_prompt(self, messages: list[UnifiedMessage]) -> str: ...
+    def build_prompt(self, data: InputData, /) -> str: ...
 
     @property
     @abstractmethod
@@ -55,21 +59,23 @@ class BaseAnalyzer[DataObject, Response = list[DataObject]](ABC):
 
     async def analyze(
         self,
-        messages: list[UnifiedMessage],
+        data: InputData,
         system_prompt: str | None = None,
     ) -> tuple[list[DataObject], TokenUsage]:
-        """执行分析流程。"""
+        """执行分析流程。
 
-        logger.opt(colors=True).info(
-            f"开始 <y>{self.data_type}</> 分析，输入 <g>{len(messages)}</> 条消息"
-        )
+        Args:
+            data: 输入数据，具体类型由子类的 build_prompt 决定
+            system_prompt: 可选的系统提示词
+        """
 
-        prompt = self.build_prompt(messages)
+        logger.opt(colors=True).info(f"开始 <y>{self.data_type}</> 分析")
+
+        prompt = self.build_prompt(data)
         if not prompt or not prompt.strip():
             logger.warning(f"{self.data_type} 分析: prompt 为空，跳过")
             return [], TokenUsage()
 
-        # 调用 LLM
         response, token_usage = await call_llm(
             self.response_model, prompt, system_prompt
         )

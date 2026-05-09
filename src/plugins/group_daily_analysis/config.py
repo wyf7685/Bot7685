@@ -46,6 +46,20 @@ class AutoAnalysisSettings(BaseModel):
     )
 
 
+class IncrementalSettings(BaseModel):
+    """增量分析配置"""
+
+    enabled: bool = Field(default=False, description="启用增量分析模式")
+    interval_minutes: int = Field(default=120, description="增量分析间隔（分钟）")
+    max_daily_analyses: int = Field(default=8, description="每日最大增量分析次数")
+    safe_limit: int = Field(default=2000, description="单次拉取消息上限")
+    min_messages: int = Field(default=20, description="触发增量分析的最小消息数")
+    topics_per_batch: int = Field(default=3, description="每次增量分析的话题数")
+    quotes_per_batch: int = Field(default=3, description="每次增量分析的金句数")
+    active_start_hour: int = Field(default=8, description="活跃时段起始小时（含）")
+    active_end_hour: int = Field(default=23, description="活跃时段结束小时（含）")
+
+
 class PluginConfig(BaseModel):
     """群日常分析插件主配置"""
 
@@ -58,6 +72,7 @@ class PluginConfig(BaseModel):
     features: FeatureToggles = Field(default_factory=FeatureToggles)
     render: RenderSettings = Field(default_factory=RenderSettings)
     auto_analysis: AutoAnalysisSettings = Field(default_factory=AutoAnalysisSettings)
+    incremental: IncrementalSettings = Field(default_factory=IncrementalSettings)
 
 
 class Config(BaseModel):

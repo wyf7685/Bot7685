@@ -21,9 +21,12 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote]):
         self._max_quotes = max_quotes
         self._prompt_template = prompt_template
         self._id_to_nickname: dict[str, str] = {}
+        self.incremental_max_count: int | None = None
 
     @override
     def get_max_count(self) -> int:
+        if self.incremental_max_count is not None:
+            return self.incremental_max_count
         return self._max_quotes
 
     @property

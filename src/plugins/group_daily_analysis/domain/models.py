@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+from src.plugins.group_daily_analysis.domain.incremental import UserActivityRanking
 from src.service.llm import TokenUsage
 
 
@@ -90,6 +91,19 @@ class EmojiStatistics:
             + self.other_emoji_count
         )
 
+    def __add__(self, other: EmojiStatistics) -> EmojiStatistics:
+        return EmojiStatistics(
+            face_count=self.face_count + other.face_count,
+            mface_count=self.mface_count + other.mface_count,
+            bface_count=self.bface_count + other.bface_count,
+            sface_count=self.sface_count + other.sface_count,
+            other_emoji_count=self.other_emoji_count + other.other_emoji_count,
+            face_details={
+                key: self.face_details.get(key, 0) + other.face_details.get(key, 0)
+                for key in set(self.face_details) | set(other.face_details)
+            },
+        )
+
 
 @dataclass
 class ActivityVisualization:
@@ -97,7 +111,7 @@ class ActivityVisualization:
 
     hourly_activity: dict[int, int] = field(default_factory=dict)
     daily_activity: dict[str, int] = field(default_factory=dict)
-    user_activity_ranking: list[dict[str, Any]] = field(default_factory=list)
+    user_activity_ranking: list[UserActivityRanking] = field(default_factory=list)
     peak_hours: list[int] = field(default_factory=list)
     activity_heatmap_data: dict[str, Any] = field(default_factory=dict)
 

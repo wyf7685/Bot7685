@@ -25,6 +25,7 @@ async def fetch_group_messages(
     session: Session,
     days: int = 1,
     exclude_self_ids: list[str] | None = None,
+    since_timestamp: float | None = None,
 ) -> list[UnifiedMessage]:
     """从 chatrecorder 获取指定群组最近 N 天的消息并转换为统一格式。
 
@@ -32,12 +33,18 @@ async def fetch_group_messages(
         session: uninfo 注入的 Session
         days: 回溯天数
         exclude_self_ids: 需要排除的发送者 ID 列表（如机器人自身）
+        since_timestamp: epoch 时间戳，仅拉取此时间之后的消息（增量分析用）
 
     Returns:
         list[UnifiedMessage]: 按时间排序的统一消息列表
     """
     now = datetime.now(UTC8)
     time_start = now - timedelta(days=days)
+
+    # 增量分析：确保起始时间不早于上次分析时间戳
+    if since_timestamp is not None:
+        since_dt = datetime.fromtimestamp(since_timestamp, tz=UTC8)
+        time_start = max(time_start, since_dt)
 
     records = await get_message_records(
         session=session,
@@ -69,6 +76,11 @@ async def fetch_group_messages(
 
         # 解析消息内容
         msg = _parse_record(bot, session, record, sender_id, sender_name)
+
+        # 二次去重：过滤时间戳不严格大于水位线的消息
+        if since_timestamp is not None and msg.timestamp <= since_timestamp:
+            continue
+
         messages.append(msg)
 
     messages.sort(key=lambda m: m.timestamp)

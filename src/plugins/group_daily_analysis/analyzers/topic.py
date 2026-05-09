@@ -20,9 +20,12 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic]):
     def __init__(self, max_topics: int = 5, prompt_template: str | None = None) -> None:
         self._max_topics = max_topics
         self._prompt_template = prompt_template
+        self.incremental_max_count: int | None = None
 
     @override
     def get_max_count(self) -> int:
+        if self.incremental_max_count is not None:
+            return self.incremental_max_count
         return self._max_topics
 
     @property

@@ -19,6 +19,7 @@ class AnalysisSubscription(BaseModel):
     target_data: dict[str, Any] = Field(description="MsgTarget.dump() 序列化数据")
     session_data: Session = Field(description="uninfo Session 对象，用于查询消息")
     analysis_days: int = Field(default=1, description="分析天数")
+    incremental_enabled: bool = Field(default=False, description="是否使用增量分析模式")
 
     @property
     def target(self) -> Target:

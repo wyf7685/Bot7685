@@ -21,6 +21,8 @@ require("nonebot_plugin_orm")
 require("nonebot_plugin_uninfo")
 require("src.service.cache")
 require("src.service.llm")
+require("src.service.kv")
+require("src.plugins.trusted")
 
 from . import matchers as matchers
 from .config import Config

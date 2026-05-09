@@ -11,7 +11,13 @@ from .base import BaseAnalyzer
 PROMPT_DIR = Path(__file__).parent.parent / "prompts"
 
 
-class ChatQualityAnalyzer(BaseAnalyzer[QualityReview, QualityReview]):
+class ChatQualityAnalyzer(
+    BaseAnalyzer[
+        QualityReview,
+        list[UnifiedMessage],
+        QualityReview,
+    ]
+):
     data_type = "聊天质量"
 
     def __init__(self, prompt_template: str | None = None) -> None:
