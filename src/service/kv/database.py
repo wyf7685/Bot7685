@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from .config import plugin_config
 from .model import Base
 
-DATABASE_URL = plugin_config.kv_cache_db_url
+DATABASE_URL = plugin_config.kv_store_db_url
 _engine = _sessionmaker = None
 
 

@@ -23,6 +23,8 @@ from .models import (
     GroupStatistics,
     QualityReview,
     SummaryTopic,
+    UserActivity,
+    UserActivityRanking,
     UserTitle,
 )
 
@@ -40,56 +42,6 @@ class IncrementalIndex:
 
     batch_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: float = field(default_factory=time_mod.time)
-
-
-@dataclass
-class UserActivity:
-    """用户活跃数据"""
-
-    user_id: str
-    nickname: str
-    message_count: int = 0
-    char_count: int = 0
-    emoji_count: int = 0
-    reply_count: int = 0
-    hours: dict[int, int] = field(default_factory=lambda: dict.fromkeys(range(24), 0))
-    last_message_time: int = 0
-
-    def __add__(self, other: UserActivity) -> UserActivity:
-        if self.user_id != other.user_id:
-            raise ValueError("只能合并同一用户的活跃数据")
-        return UserActivity(
-            user_id=self.user_id,
-            nickname=other.nickname,
-            message_count=self.message_count + other.message_count,
-            char_count=self.char_count + other.char_count,
-            emoji_count=self.emoji_count + other.emoji_count,
-            reply_count=self.reply_count + other.reply_count,
-            hours={
-                h: self.hours.get(h, 0) + other.hours.get(h, 0)
-                for h in set(self.hours) | set(other.hours)
-            },
-            last_message_time=max(self.last_message_time, other.last_message_time),
-        )
-
-
-@dataclass
-class UserActivityRanking:
-    """用户活跃排名"""
-
-    user_id: str
-    nickname: str
-    message_count: int
-    char_count: int
-
-    @classmethod
-    def from_activity(cls, activity: UserActivity) -> UserActivityRanking:
-        return cls(
-            user_id=activity.user_id,
-            nickname=activity.nickname,
-            message_count=activity.message_count,
-            char_count=activity.char_count,
-        )
 
 
 @dataclass
@@ -131,18 +83,6 @@ class IncrementalBatch:
     chat_quality_review: QualityReview | None = None
     last_message_timestamp: int = 0
     participant_ids: list[str] = field(default_factory=list)
-
-    # def get_summary(self) -> dict[str, Any]:
-    #     return {
-    #         "batch_id": self.batch_id[:8],
-    #         "timestamp": datetime.fromtimestamp(self.timestamp, tz=_UTC8).strftime(
-    #             "%Y-%m-%d %H:%M:%S"
-    #         ),
-    #         "messages_count": self.messages_count,
-    #         "topics_count": len(self.topics),
-    #         "quotes_count": len(self.golden_quotes),
-    #         "participants": len(self.participant_ids),
-    #     }
 
 
 @dataclass
@@ -274,25 +214,6 @@ class IncrementalState:
         if not union:
             return 0.0
         return len(intersection) / len(union)
-
-    # def get_summary(self) -> dict[str, Any]:
-    #     return {
-    #         "group_id": self.group_id,
-    #         "window": self.get_window_date_str(),
-    #         "total_messages": self.total_message_count,
-    #         "total_characters": self.total_character_count,
-    #         "total_analyses": self.total_analysis_count,
-    #         "topics_count": len(self.topics),
-    #         "quotes_count": len(self.golden_quotes),
-    #         "participants": len(self.all_participant_ids),
-    #         "total_tokens": self.total_token_usage.total_tokens,
-    #         "last_analysis_time": (
-    #             datetime.fromtimestamp(self.updated_at, tz=_UTC8).strftime("%H:%M:%S")
-    #             if self.updated_at
-    #             else "无"
-    #         ),
-    #         "peak_hours": self.get_peak_hours(3),
-    #     }
 
 
 @dataclass

@@ -64,7 +64,7 @@ class PluginConfig(BaseModel):
     """群日常分析插件主配置"""
 
     analysis_days: int = Field(default=1, description="默认分析天数")
-    min_messages: int = Field(default=200, description="最小消息数阈值")
+    min_messages: int = Field(default=20, description="最小消息数阈值")
     output_format: str = Field(
         default="image", description="输出格式 (image/text/html)"
     )

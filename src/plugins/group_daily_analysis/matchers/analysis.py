@@ -149,8 +149,8 @@ async def assign_list(target: MsgTarget) -> None:
 # ── 手动分析 ──────────────────────────────────────────────
 
 
-@matcher.assign("~")
-async def _(
+@matcher.handle()
+async def handle_analysis(
     bot: Bot,
     session: Uninfo,
     target: MsgTarget,

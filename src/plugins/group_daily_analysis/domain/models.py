@@ -3,7 +3,6 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.plugins.group_daily_analysis.domain.incremental import UserActivityRanking
 from src.service.llm import TokenUsage
 
 
@@ -68,6 +67,56 @@ class QualityReview:
     subtitle: str
     dimensions: list[QualityDimension]
     summary: str
+
+
+@dataclass
+class UserActivity:
+    """用户活跃数据"""
+
+    user_id: str
+    nickname: str
+    message_count: int = 0
+    char_count: int = 0
+    emoji_count: int = 0
+    reply_count: int = 0
+    hours: dict[int, int] = field(default_factory=lambda: dict.fromkeys(range(24), 0))
+    last_message_time: int = 0
+
+    def __add__(self, other: UserActivity) -> UserActivity:
+        if self.user_id != other.user_id:
+            raise ValueError("只能合并同一用户的活跃数据")
+        return UserActivity(
+            user_id=self.user_id,
+            nickname=other.nickname,
+            message_count=self.message_count + other.message_count,
+            char_count=self.char_count + other.char_count,
+            emoji_count=self.emoji_count + other.emoji_count,
+            reply_count=self.reply_count + other.reply_count,
+            hours={
+                h: self.hours.get(h, 0) + other.hours.get(h, 0)
+                for h in set(self.hours) | set(other.hours)
+            },
+            last_message_time=max(self.last_message_time, other.last_message_time),
+        )
+
+
+@dataclass
+class UserActivityRanking:
+    """用户活跃排名"""
+
+    user_id: str
+    nickname: str
+    message_count: int
+    char_count: int
+
+    @classmethod
+    def from_activity(cls, activity: UserActivity) -> UserActivityRanking:
+        return cls(
+            user_id=activity.user_id,
+            nickname=activity.nickname,
+            message_count=activity.message_count,
+            char_count=activity.char_count,
+        )
 
 
 @dataclass
