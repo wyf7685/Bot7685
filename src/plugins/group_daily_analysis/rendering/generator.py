@@ -6,6 +6,7 @@
 
 import asyncio
 import base64
+import dataclasses
 import json
 import re
 from collections.abc import Awaitable, Callable
@@ -117,14 +118,13 @@ async def _render_topics(
     if not topics:
         return ""
     items: list[dict[str, Any]] = []
-    for i, t in enumerate(topics):
+    for i, t in enumerate(topics, 1):
         detail = await _render_mentions(t.detail, avatar_getter)
         items.append(
             {
-                "index": i + 1,
+                "index": i,
                 "topic": t.topic,
-                "contributors": t.contributors,
-                "contributor_ids": t.contributor_ids,
+                "contributors": "、".join(t.contributors),
                 "detail": detail,
             }
         )
@@ -191,14 +191,21 @@ async def _render_activity_chart(
 ) -> str:
     if not hourly_activity:
         return ""
-    hours = list(range(24))
-    counts = [hourly_activity.get(h, 0) for h in hours]
+
+    chart_data = []
+    max_activity = max(hourly_activity.values()) if hourly_activity else 1
+
+    for hour in range(24):
+        count = hourly_activity.get(hour, 0)
+        percentage = (count / max_activity) * 100 if max_activity > 0 else 0
+        chart_data.append(
+            {"hour": hour, "count": count, "percentage": round(percentage, 1)}
+        )
+
     return _render_sub_template(
         template_dir,
         "activity_chart.html.jinja2",
-        hours=hours,
-        counts=counts,
-        max_count=max(counts) if counts else 1,
+        chart_data=chart_data,
     )
 
 
@@ -208,7 +215,9 @@ async def _render_chat_quality(
     if not quality:
         return ""
     return _render_sub_template(
-        template_dir, "chat_quality_item.html.jinja2", quality=quality
+        template_dir,
+        "chat_quality_item.html.jinja2",
+        **dataclasses.asdict(quality),
     )
 
 

@@ -1,7 +1,5 @@
 """熔断器与全局限流器，复用自 AstrBot 插件。"""
 
-from __future__ import annotations
-
 import asyncio
 import enum
 import time
