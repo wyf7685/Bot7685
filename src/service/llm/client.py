@@ -1,13 +1,14 @@
-from __future__ import annotations
-
 import asyncio
+import contextlib
 import json
-from typing import Any, TypeVar
+from collections.abc import Callable, Generator
+from contextvars import ContextVar
+from typing import Any
 
 import httpx
 from nonebot.log import logger
 from nonebot.utils import escape_tag
-from pydantic import BaseModel
+from pydantic import TypeAdapter
 
 from .config import LLMConfig
 from .exceptions import (
@@ -17,9 +18,7 @@ from .exceptions import (
     LLMRetriesExhaustedError,
 )
 from .resilience import CircuitBreaker, GlobalRateLimiter
-from .schema import Message, dump_messages
-
-T = TypeVar("T", bound=BaseModel)
+from .schema import Message, TokenUsage, dump_messages
 
 
 class LLMClient:
@@ -33,6 +32,7 @@ class LLMClient:
             failure_threshold=config.max_retries + 2,
             recovery_timeout=60.0,
         )
+        self._token_usage = ContextVar[list[TokenUsage]]("token_usage")
         GlobalRateLimiter.get_instance(config.max_concurrent)
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -44,6 +44,16 @@ class LLMClient:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
             self._client = None
+
+    @contextlib.contextmanager
+    def capture_token_usage(self) -> Generator[Callable[[], TokenUsage]]:
+        with self._token_usage.set([TokenUsage()]):
+            yield lambda: self._token_usage.get()[0]
+
+    def _update_token_usage(self, usage: TokenUsage) -> None:
+        container = self._token_usage.get(None)
+        if container := self._token_usage.get(None):
+            container[0] += usage
 
     async def chat_completion(
         self,
@@ -72,10 +82,20 @@ class LLMClient:
             max_tokens=max_tokens,
             response_format=response_format,
         )
-        text = content.get("choices", [{}])[0].get("message", {}).get("content", "")
+        text: str = (
+            content.get("choices", [{}])[0].get("message", {}).get("content", "")
+        )
+        usage_info: dict[str, int] = content.get("usage", {})
+        self._update_token_usage(
+            TokenUsage(
+                prompt_tokens=usage_info.get("prompt_tokens", 0),
+                completion_tokens=usage_info.get("completion_tokens", 0),
+                total_tokens=usage_info.get("total_tokens", 0),
+            )
+        )
         return text.strip()
 
-    async def chat_completion_json(
+    async def chat_completion_json[T](
         self,
         *messages: Message,
         response_model: type[T],
@@ -98,13 +118,11 @@ class LLMClient:
         Returns:
             T: response_model 的实例
         """
-        schema = response_model.model_json_schema()
+        type_adapter = TypeAdapter(response_model)
+        schema = type_adapter.json_schema()
         response_format = {
             "type": "json_schema",
-            "json_schema": {
-                "name": response_model.__name__,
-                "schema": schema,
-            },
+            "json_schema": {"name": response_model.__name__, "schema": schema},
         }
 
         raw_content = await self.chat_completion(
@@ -116,7 +134,7 @@ class LLMClient:
         )
 
         parsed = self._parse_json(raw_content)
-        return response_model.model_validate(parsed)
+        return type_adapter.validate_python(parsed)
 
     async def _raw_completion(
         self,
@@ -134,62 +152,57 @@ class LLMClient:
         for attempt in range(1, config.max_retries + 1):
             if not cb.allow_request():
                 raise CircuitBreakerOpenError("LLM 熔断器已打开，拒绝请求")
+            payload: dict[str, Any] = {
+                "model": model or config.model,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": temperature,
+            }
+            if response_format is not None:
+                payload["response_format"] = response_format
+
+            headers = {
+                "Authorization": f"Bearer {config.api_key}",
+                "Content-Type": "application/json",
+            }
 
             try:
                 async with GlobalRateLimiter.get_instance().semaphore:
-                    payload: dict[str, Any] = {
-                        "model": model or config.model,
-                        "messages": messages,
-                        "max_tokens": max_tokens,
-                        "temperature": temperature,
-                    }
-                    if response_format is not None:
-                        payload["response_format"] = response_format
-
-                    headers = {
-                        "Authorization": f"Bearer {config.api_key}",
-                        "Content-Type": "application/json",
-                    }
-
                     client = await self._get_client()
                     resp = await client.post(
                         f"{config.base_url.rstrip('/')}/chat/completions",
                         json=payload,
                         headers=headers,
                     )
-
-                    if resp.status_code != 200:
-                        if response_format is not None and self._is_format_unsupported(
-                            resp.text
-                        ):
-                            logger.opt(colors=True).warning(
-                                "Provider 不支持 <y>response_format</>，降级重试"
-                            )
-                            return await self._raw_completion(
-                                messages,
-                                model=model,
-                                temperature=temperature,
-                                max_tokens=max_tokens,
-                                response_format=None,
-                            )
-                        raise LLMResponseError(
-                            f"API 错误 ({resp.status_code}): {resp.text[:200]}"
-                        )
-
-                    cb.record_success()
-                    return resp.json()
-
-            except LLMResponseError, CircuitBreakerOpenError:
-                raise
             except Exception as e:
                 cb.record_failure()
                 last_exc = e
                 logger.opt(colors=True).warning(
                     f"LLM 请求失败 (第 <y>{attempt}</> 次): {escape_tag(str(e))}"
                 )
+                if attempt < config.max_retries:
+                    await asyncio.sleep(config.retry_backoff * attempt)
+            else:
+                if resp.status_code != 200:
+                    if response_format is not None and self._is_format_unsupported(
+                        resp.text
+                    ):
+                        logger.opt(colors=True).warning(
+                            "Provider 不支持 <y>response_format</>，降级重试"
+                        )
+                        return await self._raw_completion(
+                            messages,
+                            model=model,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            response_format=None,
+                        )
+                    raise LLMResponseError(
+                        f"API 错误 ({resp.status_code}): {resp.text[:200]}"
+                    )
 
-            if attempt < config.max_retries:
-                await asyncio.sleep(config.retry_backoff * attempt)
+                cb.record_success()
+                return resp.json()
 
         raise LLMRetriesExhaustedError(
             f"LLM 请求全部重试失败: {last_exc}"
@@ -219,7 +232,7 @@ class LLMClient:
             end = len(lines) - 1
             if lines[-1].strip() == "```":
                 end -= 1
-            text = "\n".join(lines[start:end]).strip()
+            text = "\n".join(lines[start:end]).strip().removeprefix("json").lstrip()
 
         try:
             return json.loads(text)

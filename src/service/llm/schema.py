@@ -35,3 +35,19 @@ def dump_messages(*messages: Message) -> list[dict[str, str]]:
         elif isinstance(msg, AssistantMessage):
             result.append({"role": "assistant", "content": msg.content})
     return result
+
+
+@dataclass(frozen=True, slots=True)
+class TokenUsage:
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+    def __add__(self, other: TokenUsage) -> TokenUsage:
+        return TokenUsage(
+            prompt_tokens=self.prompt_tokens + other.prompt_tokens,
+            completion_tokens=self.completion_tokens + other.completion_tokens,
+            total_tokens=self.total_tokens + other.total_tokens,
+        )
+
+    __iadd__ = __add__

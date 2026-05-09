@@ -15,6 +15,7 @@ from .schema import (
     AssistantMessage,
     Message,
     SystemMessage,
+    TokenUsage,
     UserMessage,
     dump_messages,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "LLMServiceError",
     "Message",
     "SystemMessage",
+    "TokenUsage",
     "UserMessage",
     "dump_messages",
     "get_llm_client",
