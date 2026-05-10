@@ -1,13 +1,17 @@
 """消息获取服务 — 基于 chatrecorder。"""
 
+import asyncio
+import contextlib
 from datetime import datetime, timedelta, timezone
+from typing import NamedTuple
 
 from nonebot.adapters import Bot
+from nonebot.exception import AdapterException
 from nonebot_plugin_alconna import At, Image, Reply, Text, UniMessage
 from nonebot_plugin_chatrecorder import MessageRecord, get_message_records
 from nonebot_plugin_chatrecorder.message import deserialize_message
 from nonebot_plugin_orm import get_session
-from nonebot_plugin_uninfo import Session
+from nonebot_plugin_uninfo import Session, get_interface
 from nonebot_plugin_uninfo.orm import SessionModel, UserModel
 from sqlalchemy import select
 
@@ -18,6 +22,12 @@ from ..domain.value_objects import (
 )
 
 UTC8 = timezone(timedelta(hours=8))
+
+
+class _UserInfo(NamedTuple):
+    user_id: str
+    name: str
+    card: str
 
 
 async def fetch_group_messages(
@@ -59,23 +69,20 @@ async def fetch_group_messages(
 
     # 构建 session_persist_id -> (user_id, nickname) 映射
     spids = {r.session_persist_id for r in records}
-    user_id_map, user_name_map = await _resolve_user_info(spids)
+    users = await _resolve_users(bot, session, spids)
 
     # 转换为统一格式
     messages: list[UnifiedMessage] = []
 
     for record in records:
-        spid = record.session_persist_id
-        sender_id = user_id_map.get(spid, str(spid))
+        user = users[record.session_persist_id]
 
         # 排除指定 ID
-        if exclude_self_ids and sender_id in exclude_self_ids:
+        if exclude_self_ids and user.user_id in exclude_self_ids:
             continue
 
-        sender_name = user_name_map.get(spid, sender_id)
-
         # 解析消息内容
-        msg = _parse_record(bot, session, record, sender_id, sender_name)
+        msg = _parse_record(bot, session, record, user)
 
         # 二次去重：过滤时间戳不严格大于水位线的消息
         if since_timestamp is not None and msg.timestamp <= since_timestamp:
@@ -87,15 +94,14 @@ async def fetch_group_messages(
     return messages
 
 
-async def _resolve_user_info(
+async def _resolve_users(
+    bot: Bot,
+    session: Session,
     spids: set[int],
-) -> tuple[dict[int, str], dict[int, str]]:
+) -> dict[int, _UserInfo]:
     """通过 session_persist_id 批量查询 user_id 和 nickname。"""
-    user_id_map: dict[int, str] = {}
-    user_name_map: dict[int, str] = {}
-
     if not spids:
-        return user_id_map, user_name_map
+        return {}
 
     async with get_session() as db_session:
         stmt = (
@@ -105,23 +111,36 @@ async def _resolve_user_info(
         )
         rows = (await db_session.execute(stmt)).all()
 
-    for sid, user_model in (r.tuple() for r in rows):
-        user_id_map[sid] = user_model.user_id
+    interface = get_interface(bot)
+
+    async def resolve_user(sid: int, user_model: UserModel) -> tuple[int, _UserInfo]:
         try:
             user = await user_model.to_user()
-            user_name_map[sid] = user.nick or user.name or user.id
+            name = user.nick or user.name or user.id
         except Exception:
-            user_name_map[sid] = user_model.user_id
+            name = user_model.user_id
 
-    return user_id_map, user_name_map
+        member = None
+        if interface is not None:
+            with contextlib.suppress(NotImplementedError, AdapterException):
+                member = await interface.get_member(
+                    session.scene.type, session.scene.id, user_model.user_id
+                )
+
+        card = (
+            member and (member.nick or member.user.nick or member.user.name)
+        ) or name
+        return sid, _UserInfo(user_model.user_id, name, card)
+
+    items = await asyncio.gather(*(resolve_user(*r.tuple()) for r in rows))
+    return dict(items)
 
 
 def _parse_record(
     bot: Bot,
     session: Session,
     record: MessageRecord,
-    sender_id: str,
-    sender_name: str,
+    user: _UserInfo,
 ) -> UnifiedMessage:
     contents: list[MessageContent] = []
     text_parts: list[str] = []
@@ -155,8 +174,9 @@ def _parse_record(
 
     return UnifiedMessage(
         message_id=record.message_id or str(record.id),
-        sender_id=sender_id,
-        sender_name=sender_name,
+        sender_id=user.user_id,
+        sender_name=user.name,
+        sender_card=user.card,
         group_id=session.scene.id,
         text_content="".join(text_parts),
         contents=tuple(contents),

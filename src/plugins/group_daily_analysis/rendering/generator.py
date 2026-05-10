@@ -267,8 +267,8 @@ async def _render_to_image(
                 return await container.screenshot(type="png")
             return await page.screenshot(full_page=True, type="png")
 
-    except Exception as e:
-        logger.opt(colors=True).error(f"图片渲染失败: {escape_tag(str(e))}")
+    except Exception:
+        logger.exception("图片渲染失败")
         return None
 
 

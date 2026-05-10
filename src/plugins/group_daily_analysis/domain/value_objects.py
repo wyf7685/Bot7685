@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -65,7 +65,7 @@ class UnifiedMessage:
         return len(self.text_content)
 
     def get_datetime(self) -> datetime:
-        return datetime.fromtimestamp(self.timestamp)  # noqa: DTZ006
+        return datetime.fromtimestamp(self.timestamp, UTC)
 
 
 @dataclass(frozen=True)
