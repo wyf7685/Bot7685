@@ -27,7 +27,7 @@ from ..persistence.subscription import (
     remove_subscription,
     subscriptions,
 )
-from ..rendering.generator import render_image
+from ..rendering import render_image
 from ..services.analysis_service import AnalysisResult, run_daily_analysis
 
 alc = Alconna(
@@ -154,7 +154,7 @@ async def handle_analysis(
     bot: Bot,
     session: Uninfo,
     target: MsgTarget,
-    iface: QryItrface,
+    interface: QryItrface | None = None,
     days: int | None = None,
 ) -> None:
     if target.private:
@@ -165,21 +165,19 @@ async def handle_analysis(
     if result is None:
         await UniMessage.text("未找到足够的群聊记录").finish(reply_to=True)
 
-    await _send_report(result, iface)
+    await _send_report(result, interface)
 
 
 # ── 报告发送调度 ─────────────────────────────────────────
 
 
-async def _send_report(result: AnalysisResult, iface: QryItrface | None = None) -> None:
+async def _send_report(
+    result: AnalysisResult,
+    interface: QryItrface | None = None,
+) -> None:
     """根据配置选择输出格式发送报告。图片失败时自动降级为文本。"""
-    if config.output_format == "image" and iface is not None:
-
-        async def avatar_getter(uid: str) -> str | None:
-            user = await iface.get_user(uid)
-            return user.avatar if user else None
-
-        image_bytes = await render_image(result, avatar_getter=avatar_getter)
+    if config.output_format == "image" and interface is not None:
+        image_bytes = await render_image(result, interface)
         if image_bytes:
             await UniMessage.image(raw=image_bytes).finish()
         # 图片渲染失败，降级文本

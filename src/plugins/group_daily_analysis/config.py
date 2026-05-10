@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from nonebot import get_plugin_config
 from pydantic import BaseModel, Field
@@ -27,8 +28,14 @@ class RenderSettings(BaseModel):
     """图片渲染配置"""
 
     report_template: str = Field(default="scrapbook", description="报告模板名称")
-    profile_display_mode: str = Field(
+    profile_display_mode: Literal["mbti", "sbti", "acgti"] = Field(
         default="mbti", description="人格标签展示模式 (mbti/sbti/acgti)"
+    )
+    profile_image_opacity: float = Field(
+        default=0.12, description="人格标签图片不透明度 (0.0-1.0)"
+    )
+    profile_image_size_mode: Literal["content", "cover"] = Field(
+        default="content", description="人格标签图片尺寸模式 (content/cover)"
     )
     device_scale_factor: float = Field(default=1.8, description="渲染分辨率倍率")
     render_timeout: int = Field(default=50000, description="渲染超时时间（毫秒）")

@@ -5,49 +5,36 @@
 """
 
 import asyncio
-import base64
-import dataclasses
-import json
-import re
-from collections.abc import Awaitable, Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import httpx
-import jinja2
 from nonebot.log import logger
-from nonebot.utils import escape_tag
 from nonebot_plugin_htmlrender import get_new_page
 
-from src.service.cache import get_cache
-
 from ..config import config
-from ..domain.models import GoldenQuote, QualityReview, SummaryTopic, UserTitle
 from ..services.analysis_service import AnalysisResult
-
-TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
-PROFILE_MANIFEST_PATH = (
-    Path(__file__).parent.parent / "assets" / "profile_manifest.json"
+from .avatar import AvatarManager
+from .sub_templates import (
+    _get_jinja_env,
+    render_activity_chart,
+    render_chat_quality,
+    render_quotes,
+    render_topics,
+    render_user_titles,
 )
 
-# url -> base64 data uri
-_avatar_cache = get_cache[str]("group_daily_avatar", pickle=False)
+if TYPE_CHECKING:
+    from nonebot_plugin_uninfo.params import Interface
 
-# avatar_getter: user_id -> avatar_url (跨平台)
-AvatarGetter = Callable[[str], Awaitable[str | None]]
+TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 
 
-async def render_image(
-    result: AnalysisResult,
-    avatar_getter: AvatarGetter | None = None,
-) -> bytes | None:
+async def render_image(result: AnalysisResult, interface: Interface) -> bytes | None:
     """将分析结果渲染为图片 bytes。
 
     Args:
         result: 分析结果
-        avatar_getter: 异步回调，接收 user_id 返回头像 URL。
-                       由调用方通过 uninfo Interface.get_user(uid).avatar 提供。
     """
     template_dir = TEMPLATE_DIR / config.render.report_template
     if not template_dir.exists():
@@ -57,6 +44,7 @@ async def render_image(
         return None
 
     stats = result.statistics
+    avatar_manager = AvatarManager(interface)
 
     # ── 1. 子模板渲染 ──────────────────────────────────────
     (
@@ -66,13 +54,13 @@ async def render_image(
         chart_html,
         quality_html,
     ) = await asyncio.gather(
-        _render_topics(result.topics, template_dir, avatar_getter),
-        _render_user_titles(result.user_titles, template_dir, avatar_getter),
-        _render_quotes(result.golden_quotes, template_dir, avatar_getter),
-        _render_activity_chart(
+        render_topics(result.topics, template_dir, avatar_manager),
+        render_user_titles(result.user_titles, template_dir, avatar_manager),
+        render_quotes(result.golden_quotes, template_dir, avatar_manager),
+        render_activity_chart(
             stats.activity_visualization.hourly_activity, template_dir
         ),
-        _render_chat_quality(result.chat_quality, template_dir),
+        render_chat_quality(result.chat_quality, template_dir),
     )
 
     # ── 2. 拼装 render_data ────────────────────────────────
@@ -101,165 +89,32 @@ async def render_image(
 
     # ── 3. 渲染主模板 + 截图 ───────────────────────────────
     return await _render_to_image(
-        template_dir, "image_template.html.jinja2", render_data
+        template_dir, "image_template.html.jinja2", render_data, avatar_manager
     )
-
-
-# ══════════════════════════════════════════════════════════
-#  子模板渲染
-# ══════════════════════════════════════════════════════════
-
-
-async def _render_topics(
-    topics: list[SummaryTopic],
-    template_dir: Path,
-    avatar_getter: AvatarGetter | None,
-) -> str:
-    if not topics:
-        return ""
-    items: list[dict[str, Any]] = []
-    for i, t in enumerate(topics, 1):
-        detail = await _render_mentions(t.detail, avatar_getter)
-        items.append(
-            {
-                "index": i,
-                "topic": t.topic,
-                "contributors": "、".join(t.contributors),
-                "detail": detail,
-            }
-        )
-    return _render_sub_template(template_dir, "topic_item.html.jinja2", topics=items)
-
-
-async def _render_user_titles(
-    titles: list[UserTitle],
-    template_dir: Path,
-    avatar_getter: AvatarGetter | None,
-) -> str:
-    if not titles:
-        return ""
-    manifest = _load_profile_manifest()
-    mode = config.render.profile_display_mode
-
-    async def render_user_title(u: UserTitle) -> dict[str, Any]:
-        avatar_data = await _get_avatar_data_uri(u.user_id, avatar_getter)
-        profile = _resolve_profile(manifest, mode, u.mbti)
-        return {
-            "name": u.name,
-            "user_id": u.user_id,
-            "title": u.title,
-            "mbti": u.mbti,
-            "reason": u.reason,
-            "avatar_data": avatar_data,
-            "profile_code": profile.get("code", u.mbti),
-            "profile_name": profile.get("name_zh", u.mbti),
-            "profile_image": profile.get("image", ""),
-        }
-
-    items = await asyncio.gather(*(render_user_title(u) for u in titles))
-    return _render_sub_template(
-        template_dir, "user_title_item.html.jinja2", titles=items
-    )
-
-
-async def _render_quotes(
-    quotes: list[GoldenQuote],
-    template_dir: Path,
-    avatar_getter: AvatarGetter | None,
-) -> str:
-    if not quotes:
-        return ""
-
-    async def render_quote(q: GoldenQuote) -> dict[str, Any]:
-        avatar_data = (
-            await _get_avatar_data_uri(q.user_id, avatar_getter) if q.user_id else ""
-        )
-        reason = await _render_mentions(q.reason, avatar_getter)
-        return {
-            "content": q.content,
-            "sender": q.sender,
-            "reason": reason,
-            "avatar_data": avatar_data,
-        }
-
-    items = await asyncio.gather(*(render_quote(q) for q in quotes))
-    return _render_sub_template(template_dir, "quote_item.html.jinja2", quotes=items)
-
-
-async def _render_activity_chart(
-    hourly_activity: dict[int, int], template_dir: Path
-) -> str:
-    if not hourly_activity:
-        return ""
-
-    chart_data = []
-    max_activity = max(hourly_activity.values()) if hourly_activity else 1
-
-    for hour in range(24):
-        count = hourly_activity.get(hour, 0)
-        percentage = (count / max_activity) * 100 if max_activity > 0 else 0
-        chart_data.append(
-            {"hour": hour, "count": count, "percentage": round(percentage, 1)}
-        )
-
-    return _render_sub_template(
-        template_dir,
-        "activity_chart.html.jinja2",
-        chart_data=chart_data,
-    )
-
-
-async def _render_chat_quality(
-    quality: QualityReview | None, template_dir: Path
-) -> str:
-    if not quality:
-        return ""
-    return _render_sub_template(
-        template_dir,
-        "chat_quality_item.html.jinja2",
-        **dataclasses.asdict(quality),
-    )
-
-
-# ══════════════════════════════════════════════════════════
-#  Jinja2 渲染
-# ══════════════════════════════════════════════════════════
-
-
-def _get_jinja_env(template_dir: Path) -> jinja2.Environment:
-    return jinja2.Environment(
-        loader=jinja2.FileSystemLoader(str(template_dir)),
-        autoescape=jinja2.select_autoescape(["html", "xml"]),
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
-
-
-def _render_sub_template(template_dir: Path, template_name: str, **kwargs: Any) -> str:
-    try:
-        env = _get_jinja_env(template_dir)
-        return env.get_template(template_name).render(**kwargs)
-    except Exception as e:
-        logger.warning(f"子模板渲染失败 ({template_name}): {escape_tag(str(e))}")
-        return ""
 
 
 async def _render_to_image(
-    template_dir: Path, template_name: str, render_data: dict[str, Any]
+    template_dir: Path,
+    template_name: str,
+    render_data: dict[str, Any],
+    avatar_manager: AvatarManager,
 ) -> bytes | None:
     try:
         env = _get_jinja_env(template_dir)
         html = env.get_template(template_name).render(**render_data)
 
+        # 应用头像 CSS 复用，减小 HTML 体积
+        html = avatar_manager.reuse.apply(html)
+
         scale = config.render.device_scale_factor
-        timeout = config.render.render_timeout
+        timeout = min(config.render.render_timeout, 5000)
 
         async with get_new_page(
             viewport={"width": 800, "height": 2000},
             device_scale_factor=scale,
         ) as page:
             await page.set_content(html, wait_until="networkidle")
-            await page.wait_for_timeout(min(timeout, 5000))
+            await page.wait_for_timeout(timeout)
             height = await page.evaluate("document.body.scrollHeight")
             await page.set_viewport_size({"width": 800, "height": height + 50})
             container = await page.query_selector("#report-container")
@@ -270,78 +125,3 @@ async def _render_to_image(
     except Exception:
         logger.exception("图片渲染失败")
         return None
-
-
-# ══════════════════════════════════════════════════════════
-#  头像 & 工具函数
-# ══════════════════════════════════════════════════════════
-
-
-async def _get_avatar_data_uri(
-    uid: str,
-    avatar_getter: AvatarGetter | None,
-) -> str:
-    """通过 avatar_getter 获取头像 URL，下载并转为 base64 Data URI。"""
-    if not uid or uid == "0" or not avatar_getter:
-        return ""
-
-    url = await avatar_getter(uid)
-    if not url:
-        return ""
-
-    # 从缓存读取
-    if cached := await _avatar_cache.get(url):
-        return cached
-
-    try:
-        async with httpx.AsyncClient(timeout=5.0, follow_redirects=True) as client:
-            resp = (await client.get(url)).raise_for_status()
-            b64 = base64.b64encode(resp.content).decode()
-            content_type = resp.headers.get("content-type", "image/png")
-            uri = f"data:{content_type};base64,{b64}"
-    except Exception as e:
-        logger.debug(f"头像下载失败 ({uid}): {escape_tag(str(e))}")
-        return ""
-
-    await _avatar_cache.set(url, value=uri, ttl=3 * 24 * 3600)
-    return uri
-
-
-async def _render_mentions(text: str, avatar_getter: AvatarGetter | None) -> str:
-    """将 [123456] 格式的用户引用替换为带头像的 HTML 胶囊。"""
-    if not avatar_getter:
-        return text
-
-    uids = re.findall(r"\[(\d+)\]", text)
-    if not uids:
-        return text
-
-    # 预取头像 URL 并下载
-    async def prepare_avatar(uid: str) -> None:
-        if uri := await _get_avatar_data_uri(uid, avatar_getter):
-            avatar_map[uid] = uri
-
-    avatar_map: dict[str, str] = {}
-    await asyncio.gather(*(prepare_avatar(uid) for uid in set(uids)))
-
-    def _replace(m: re.Match[str]) -> str:
-        uid = m.group(1)
-        src = avatar_map.get(uid, "")
-        img = f'<img class="mention-avatar" src="{src}" />' if src else ""
-        return f'<span class="mention" data-uid="{uid}">{img}@{uid}</span>'
-
-    return re.sub(r"\[(\d+)\]", _replace, text)
-
-
-def _load_profile_manifest() -> dict[str, Any]:
-    try:
-        return json.loads(PROFILE_MANIFEST_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-def _resolve_profile(manifest: dict[str, Any], mode: str, mbti: str) -> dict[str, str]:
-    if not mbti:
-        return {}
-    mode_data = manifest.get(mode, manifest.get("mbti", {}))
-    return mode_data.get(mbti.upper(), {})

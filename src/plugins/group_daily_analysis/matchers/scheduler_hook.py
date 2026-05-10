@@ -11,7 +11,7 @@ from nonebot_plugin_uninfo.params import get_interface
 from ..config import config
 from ..persistence.incremental_store import IncrementalStore
 from ..persistence.subscription import subscriptions
-from ..rendering.generator import render_image
+from ..rendering import render_image
 from ..services.analysis_service import (
     AnalysisResult,
     run_daily_analysis,
@@ -174,23 +174,14 @@ async def _incremental_analysis_job() -> None:
 
 async def _send_report(result: AnalysisResult, target: Target) -> None:
     """根据配置发送报告，图片失败时降级为文本。"""
-    if config.output_format == "image":
-        bot = await target.select()
-        iface = get_interface(bot)
-
-        avatar_getter = None
-        if iface:
-
-            async def _get(uid: str) -> str | None:
-                user = await iface.get_user(uid)
-                return user.avatar if user else None
-
-            avatar_getter = _get
-
-        image_bytes = await render_image(result, avatar_getter=avatar_getter)
+    if config.output_format == "image" and (
+        interface := get_interface(await target.select())
+    ):
+        image_bytes = await render_image(result, interface)
         if image_bytes:
             await UniMessage.image(raw=image_bytes).send(target)
             return
+
     await UniMessage.text(_format_text_report(result)).send(target)
 
 
