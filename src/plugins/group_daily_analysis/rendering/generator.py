@@ -16,7 +16,7 @@ from ..config import config
 from ..services.analysis_service import AnalysisResult
 from .avatar import AvatarManager
 from .sub_templates import (
-    _get_jinja_env,
+    get_jinja_env,
     render_activity_chart,
     render_chat_quality,
     render_quotes,
@@ -100,26 +100,14 @@ async def _render_to_image(
     avatar_manager: AvatarManager,
 ) -> bytes | None:
     try:
-        env = _get_jinja_env(template_dir)
+        env = get_jinja_env(template_dir)
         html = await env.get_template(template_name).render_async(**render_data)
-
-        # 应用头像 CSS 复用，减小 HTML 体积
         html = avatar_manager.reuse.apply(html)
 
-        scale = config.render.device_scale_factor
-        timeout = min(config.render.render_timeout, 5000)
-
         async with get_new_page(
-            viewport={"width": 800, "height": 2000},
-            device_scale_factor=scale,
+            device_scale_factor=config.render.device_scale_factor
         ) as page:
             await page.set_content(html, wait_until="networkidle")
-            await page.wait_for_timeout(timeout)
-            height = await page.evaluate("document.body.scrollHeight")
-            await page.set_viewport_size({"width": 800, "height": height + 50})
-            container = await page.query_selector("#report-container")
-            if container:
-                return await container.screenshot(type="png")
             return await page.screenshot(full_page=True, type="png")
 
     except Exception:

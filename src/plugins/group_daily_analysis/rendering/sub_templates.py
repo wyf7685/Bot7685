@@ -16,7 +16,7 @@ from .mentions import render_mentions
 from .profile import ProfileResolver
 
 
-def _get_jinja_env(template_dir: Path) -> jinja2.Environment:
+def get_jinja_env(template_dir: Path) -> jinja2.Environment:
     return jinja2.Environment(
         loader=jinja2.FileSystemLoader(str(template_dir)),
         autoescape=jinja2.select_autoescape(["html", "xml"]),
@@ -32,7 +32,7 @@ async def render_sub_template(
     **kwargs: Any,
 ) -> str:
     try:
-        env = _get_jinja_env(template_dir)
+        env = get_jinja_env(template_dir)
         return await env.get_template(template_name).render_async(**kwargs)
     except Exception as e:
         logger.warning(f"子模板渲染失败 ({template_name}): {escape_tag(str(e))}")
