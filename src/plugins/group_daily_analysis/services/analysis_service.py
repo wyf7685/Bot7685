@@ -21,6 +21,7 @@ from ..analyzers.user_title import UserTitleAnalyzer, UserTitleInput
 from ..config import config
 from ..domain.incremental import IncrementalBatch, UserActivity
 from ..domain.models import (
+    ActivityVisualization,
     EmojiStatistics,
     GoldenQuote,
     GroupStatistics,
@@ -172,6 +173,9 @@ def _calculate_statistics(messages: list[UnifiedMessage]) -> GroupStatistics:
         most_active_period=most_active_period,
         golden_quotes=[],
         emoji_count=emoji_count,
+        activity_visualization=ActivityVisualization(
+            hourly_activity=dict(hour_counter)
+        ),
     )
 
 
