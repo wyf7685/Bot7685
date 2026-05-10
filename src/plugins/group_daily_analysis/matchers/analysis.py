@@ -6,14 +6,13 @@ from nonebot.adapters import Bot
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
+    Arparma,
     CommandMeta,
-    Match,
     MsgTarget,
     Option,
     Subcommand,
     UniMessage,
     on_alconna,
-    store_true,
 )
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_uninfo import Interface, QueryInterface, Uninfo
@@ -40,8 +39,6 @@ alc = Alconna(
         Option(
             "-i|--incremental",
             dest="incremental",
-            default=False,
-            action=store_true,
             help_text="是否启用增量分析模式",
         ),
         alias={"订阅"},
@@ -92,11 +89,11 @@ matcher = on_alconna(
 
 @matcher.assign("~subscribe")
 async def assign_subscribe(
+    arp: Arparma,
     session: Uninfo,
     target: MsgTarget,
     hour: int,
     minute: int,
-    incremental: Match[bool],
 ) -> None:
     if target.private:
         await UniMessage.text("请在群聊中使用此命令").finish(reply_to=True)
@@ -104,15 +101,16 @@ async def assign_subscribe(
     if not (0 <= hour < 24 and 0 <= minute < 60):
         await UniMessage.text("时间格式错误，请输入正确的时间 (0-23 0-59)").finish()
 
+    incremental = arp.find("subscribe.incremental")
     sub = AnalysisSubscription(
         target_data=target.dump(),
         session_data=session,
-        incremental_enabled=incremental.result,
+        incremental_enabled=incremental,
     )
     add_subscription(sub)
     await UniMessage.text(
         f"已订阅每日 {hour:02d}:{minute:02d} 的群聊分析"
-        f" (增量模式: {'启用' if incremental.result else '关闭'})\n"
+        f" (增量模式: {'启用' if incremental else '关闭'})\n"
         f"当前共 {len(subscriptions.load())} 个订阅"
     ).finish()
 
