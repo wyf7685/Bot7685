@@ -178,7 +178,7 @@ class LLMClient:
                 cb.record_failure()
                 last_exc = e
                 logger.opt(colors=True).warning(
-                    f"LLM 请求失败 (第 <y>{attempt}</> 次): {escape_tag(str(e))}"
+                    f"LLM 请求失败 (第 <y>{attempt}</> 次): {escape_tag(repr(e))}"
                 )
                 if attempt < config.max_retries:
                     await asyncio.sleep(config.retry_backoff * attempt)

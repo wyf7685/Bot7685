@@ -101,7 +101,7 @@ async def _render_to_image(
 ) -> bytes | None:
     try:
         env = _get_jinja_env(template_dir)
-        html = env.get_template(template_name).render(**render_data)
+        html = await env.get_template(template_name).render_async(**render_data)
 
         # 应用头像 CSS 复用，减小 HTML 体积
         html = avatar_manager.reuse.apply(html)
