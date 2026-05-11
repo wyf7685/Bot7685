@@ -61,7 +61,10 @@ async def _detect_one(event: Event, bot: Bot, image: Image) -> bool:
 
     image_path = CACHE_DIR / f"{raw_hash}.{info.extensions[0]}"
     image_path.write_bytes(raw)
-    result = await _detect_image(image_path)
+    try:
+        result = await _detect_image(image_path)
+    finally:
+        image_path.unlink(missing_ok=True)
 
     if image.id is not None:
         await _cache.set(f"id:{image.id}", result, ttl=3600 * 24 * 7)
