@@ -4,7 +4,7 @@ import random
 from pathlib import Path
 from typing import Literal, assert_never
 
-from nonebot import on_message, require
+from nonebot import logger, on_message, require
 from nonebot.adapters import Bot, Event
 from nonebot.utils import run_sync
 
@@ -14,8 +14,10 @@ from nonebot_plugin_alconna import Image, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
-require("src.service.cache")
+require("src.plugins.patch_event")
 require("src.plugins.trusted")
+require("src.service.cache")
+from src.plugins.patch_event.highlight import Highlight
 from src.plugins.trusted import TrustedUser
 from src.service.cache import get_cache
 
@@ -31,6 +33,7 @@ _cache = get_cache[bool]("screen_detector", pickle=True)
 def _detect_image(path: Path) -> bool:
     try:
         result = _detector.detect(path)
+        logger.opt(colors=True).debug(f"检测结果: {Highlight.apply(result)}")
         return result.get("result", "normal") == "screen_photo"
     except Exception:
         return False
@@ -104,4 +107,4 @@ def _get_reply_message() -> UniMessage:
 
 @matcher.handle()
 async def handle_screen_photo() -> None:
-    await _get_reply_message().finish(reply_to=True)
+    await _get_reply_message().text("[[本地测试]]").finish(reply_to=True)
