@@ -19,8 +19,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    ca-certificates nano && \    
-    libglib2.0-0 libsm6 libxext6 libxrender1 \
+    ca-certificates nano \    
+    libglib2.0-0 libsm6 libxext6 libxrender1 && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
