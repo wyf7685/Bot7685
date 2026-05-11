@@ -1,0 +1,25 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from cv2.typing import MatLike
+
+
+def analyze_color_noise(image: MatLike) -> float:
+    try:
+        import cv2
+        import numpy as np
+    except Exception:
+        return 0.0
+
+    if image is None:
+        return 0.0
+
+    array = np.asarray(image)
+    if array.ndim != 3:
+        return 0.0
+
+    hsv = cv2.cvtColor(array, cv2.COLOR_BGR2HSV)
+    s = hsv[:, :, 1].astype(float)
+    blurred_s = cv2.GaussianBlur(s, (5, 5), 0)
+    residual = s - blurred_s
+    return float(np.std(residual)) / 30.0
