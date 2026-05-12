@@ -193,7 +193,9 @@ class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Eve
     @classmethod
     @with_struct_depth
     def _(cls, data: dict[str, object]) -> str:
-        return cls._seq(cls._kv(data.items(), ": ", style.i_le), "{}")
+        return cls._seq(
+            cls._kv(data.items(), ": ", lambda s: style.i(cls.apply(s))), "{}"
+        )
 
     @register(list)
     @classmethod
