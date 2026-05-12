@@ -1,7 +1,5 @@
 """分析订阅管理 — 基于 ConfigListFile 持久化。"""
 
-from __future__ import annotations
-
 from copy import deepcopy
 from typing import Any
 

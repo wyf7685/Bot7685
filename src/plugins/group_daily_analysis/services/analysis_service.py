@@ -1,7 +1,5 @@
 """分析编排服务 — 协调消息获取、统计、LLM 分析。"""
 
-from __future__ import annotations
-
 import asyncio
 import time as time_mod
 from collections import Counter
