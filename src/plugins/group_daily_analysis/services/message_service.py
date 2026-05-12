@@ -3,7 +3,6 @@
 import asyncio
 import contextlib
 from datetime import datetime, timedelta, timezone
-from typing import NamedTuple
 
 from nonebot.adapters import Bot
 from nonebot.exception import AdapterException
@@ -18,16 +17,11 @@ from sqlalchemy import select
 from ..domain.value_objects import (
     MessageContent,
     MessageContentType,
+    UnifiedMember,
     UnifiedMessage,
 )
 
 UTC8 = timezone(timedelta(hours=8))
-
-
-class _UserInfo(NamedTuple):
-    user_id: str
-    name: str
-    card: str
 
 
 async def fetch_group_messages(
@@ -36,7 +30,7 @@ async def fetch_group_messages(
     days: int = 1,
     exclude_self_ids: list[str] | None = None,
     since_timestamp: float | None = None,
-) -> list[UnifiedMessage]:
+) -> tuple[list[UnifiedMessage], set[UnifiedMember]]:
     """从 chatrecorder 获取指定群组最近 N 天的消息并转换为统一格式。
 
     Args:
@@ -46,7 +40,7 @@ async def fetch_group_messages(
         since_timestamp: epoch 时间戳，仅拉取此时间之后的消息（增量分析用）
 
     Returns:
-        list[UnifiedMessage]: 按时间排序的统一消息列表
+        tuple[list[UnifiedMessage], set[UnifiedMember]]: 消息列表和成员列表
     """
     now = datetime.now(UTC8)
     time_start = now - timedelta(days=days)
@@ -65,7 +59,7 @@ async def fetch_group_messages(
     )
 
     if not records:
-        return []
+        return [], set()
 
     # 构建 session_persist_id -> (user_id, nickname) 映射
     spids = {r.session_persist_id for r in records}
@@ -91,14 +85,14 @@ async def fetch_group_messages(
         messages.append(msg)
 
     messages.sort(key=lambda m: m.timestamp)
-    return messages
+    return messages, set(users.values())
 
 
 async def _resolve_users(
     bot: Bot,
     session: Session,
     spids: set[int],
-) -> dict[int, _UserInfo]:
+) -> dict[int, UnifiedMember]:
     """通过 session_persist_id 批量查询 user_id 和 nickname。"""
     if not spids:
         return {}
@@ -109,30 +103,42 @@ async def _resolve_users(
             .where(SessionModel.id.in_(spids))
             .join(SessionModel, UserModel.id == SessionModel.user_persist_id)
         )
-        rows = (await db_session.execute(stmt)).all()
+        rows = [r.tuple() for r in (await db_session.execute(stmt)).all()]
 
     interface = get_interface(bot)
 
-    async def resolve_user(sid: int, user_model: UserModel) -> tuple[int, _UserInfo]:
+    async def resolve_user(
+        sid: int, user_model: UserModel
+    ) -> tuple[int, UnifiedMember]:
         try:
             user = await user_model.to_user()
-            name = user.nick or user.name or user.id
+            nickname = user.nick or user.name or user.id
         except Exception:
-            name = user_model.user_id
+            nickname = user_model.user_id
 
-        member = None
+        card = nickname
+        avatar_url = None
         if interface is not None:
             with contextlib.suppress(NotImplementedError, AdapterException):
                 member = await interface.get_member(
                     session.scene.type, session.scene.id, user_model.user_id
                 )
+                if member is not None:
+                    card = (
+                        member.nick or member.user.nick or member.user.name
+                    ) or nickname
+                    avatar_url = member.user.avatar
 
-        card = (
-            member and (member.nick or member.user.nick or member.user.name)
-        ) or name
-        return sid, _UserInfo(user_model.user_id, name, card)
+        return sid, UnifiedMember(
+            user_id=user_model.user_id,
+            nickname=nickname,
+            card=card,
+            avatar_url=avatar_url,
+        )
 
-    items = await asyncio.gather(*(resolve_user(*r.tuple()) for r in rows))
+    items = await asyncio.gather(
+        *(resolve_user(sid, user_model) for sid, user_model in rows)
+    )
     return dict(items)
 
 
@@ -140,7 +146,7 @@ def _parse_record(
     bot: Bot,
     session: Session,
     record: MessageRecord,
-    user: _UserInfo,
+    user: UnifiedMember,
 ) -> UnifiedMessage:
     contents: list[MessageContent] = []
     text_parts: list[str] = []
@@ -174,9 +180,7 @@ def _parse_record(
 
     return UnifiedMessage(
         message_id=record.message_id or str(record.id),
-        sender_id=user.user_id,
-        sender_name=user.name,
-        sender_card=user.card,
+        sender=user,
         group_id=session.scene.id,
         text_content="".join(text_parts),
         contents=tuple(contents),

@@ -3,15 +3,13 @@
 import dataclasses
 import re
 from collections.abc import Iterable
-from pathlib import Path
 from string import Template
 from typing import override
 
+from ..config import PROMPT_DIR
 from ..domain.models import SummaryTopic
 from ..domain.value_objects import UnifiedMessage
 from .base import BaseAnalyzer
-
-PROMPT_DIR = Path(__file__).parent.parent / "prompts"
 
 
 class TopicAnalyzer(BaseAnalyzer[SummaryTopic]):

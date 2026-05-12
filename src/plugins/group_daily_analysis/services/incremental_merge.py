@@ -66,12 +66,16 @@ class IncrementalMergeService:
                 state.hourly_character_counts, batch.hourly_char_counts, 0
             )
 
+            # 合并成员列表（去重）
+            for member in batch.members:
+                if member in state.members:
+                    state.members.discard(member)
+                state.members.add(member)
+
             # 合并用户统计
             for user_id, stats in batch.user_stats.items():
                 if user_id not in state.user_activities:
-                    state.user_activities[user_id] = UserActivity(
-                        user_id, stats.nickname
-                    )
+                    state.user_activities[user_id] = UserActivity(stats.user)
                 state.user_activities[user_id] += stats
 
             # 合并表情统计
@@ -132,7 +136,7 @@ class IncrementalMergeService:
             golden_quotes=state.golden_quotes,
             emoji_count=state.emoji_counts.total_emoji_count,
             emoji_statistics=state.emoji_counts,
-            activity_visualization=activity_visualization,
+            activity=activity_visualization,
             token_usage=state.total_token_usage,
             chat_quality_review=state.chat_quality_review,
         )

@@ -1,16 +1,11 @@
 """人格档案清单加载与解析。"""
 
 import json
-from pathlib import Path
 from typing import Any
 
 from nonebot import logger
 
-from ..config import config
-
-PROFILE_MANIFEST_PATH = (
-    Path(__file__).parent.parent / "assets" / "profile_manifest.json"
-)
+from ..config import PROFILE_MANIFEST_FILE, config
 
 DEFAULT_PROFILE_MAPPING = {
     "mbti": {
@@ -78,13 +73,13 @@ class ProfileResolver:
     @staticmethod
     def _load_manifest() -> dict[str, dict[str, str]]:
         """加载人格资源清单。"""
-        if not PROFILE_MANIFEST_PATH.exists():
-            logger.warning(f"人格资源清单不存在: {PROFILE_MANIFEST_PATH}")
+        if not PROFILE_MANIFEST_FILE.exists():
+            logger.warning(f"人格资源清单不存在: {PROFILE_MANIFEST_FILE}")
             return {"sbti": {}, "acgti": {}}
 
         try:
             raw: dict[str, list[dict[str, str]]] = json.loads(
-                PROFILE_MANIFEST_PATH.read_text(encoding="utf-8-sig")
+                PROFILE_MANIFEST_FILE.read_text(encoding="utf-8-sig")
             )
         except Exception as e:
             logger.warning(f"加载人格资源清单失败: {e}")

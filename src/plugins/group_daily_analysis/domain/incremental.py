@@ -27,6 +27,7 @@ from .models import (
     UserActivityRanking,
     UserTitle,
 )
+from .value_objects import UnifiedMember
 
 _UTC8 = timezone(timedelta(hours=8))
 
@@ -67,6 +68,7 @@ class IncrementalBatch:
     )
 
     # 用户活跃数据
+    members: set[UnifiedMember] = field(default_factory=set)
     user_stats: dict[str, UserActivity] = field(default_factory=dict)
 
     # 表情统计
@@ -108,6 +110,7 @@ class IncrementalState:
     hourly_character_counts: dict[int, int] = field(default_factory=dict)
 
     # 用户活跃数据
+    members: set[UnifiedMember] = field(default_factory=set)
     user_activities: dict[str, UserActivity] = field(default_factory=dict)
 
     # 表情统计

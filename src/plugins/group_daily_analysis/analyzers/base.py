@@ -49,7 +49,7 @@ class BaseAnalyzer[
 
     def _build_nickname_mapping(self, messages: list[UnifiedMessage]) -> None:
         self._id_to_nickname = {
-            msg.sender_id: msg.get_display_name() for msg in messages if msg.sender_id
+            msg.sender_id: msg.display_name for msg in messages if msg.sender_id
         }
 
     def _lookup_nickname(self, user_id: str) -> str | None:
@@ -95,7 +95,7 @@ class BaseAnalyzer[
         """将消息列表格式化为 prompt 可用的文本。"""
         lines: list[str] = []
         for msg in messages:
-            if not msg.has_text():
+            if not msg.has_text:
                 continue
             time_str = msg.get_datetime().strftime("%H:%M")
             lines.append(f"[{time_str}] [{msg.sender_id}]: {msg.text_content}")

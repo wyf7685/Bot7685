@@ -3,19 +3,16 @@
 import asyncio
 import base64
 import functools
-from typing import TYPE_CHECKING
 
 import httpx
 from nonebot.log import logger
 from nonebot.utils import escape_tag
+from nonebot_plugin_alconna.uniseg.utils import fleep
 
 from src.service.cache import get_cache
 
+from ..domain.value_objects import UnifiedMember
 from .avatar_reuse import ReusableAvatarManager
-
-if TYPE_CHECKING:
-    from nonebot_plugin_uninfo import User
-    from nonebot_plugin_uninfo.params import Interface
 
 MAX_CONCURRENT_DOWNLOADS = 10
 
@@ -36,14 +33,9 @@ def get_default_avatar_base64() -> str:
 
 
 def _detect_mime(data: bytes | bytearray) -> str:
-    if data.startswith(b"\x89PNG"):
-        return "image/png"
-    if data.startswith(b"\xff\xd8"):
-        return "image/jpeg"
-    if data.startswith(b"GIF8"):
-        return "image/gif"
-    if data.startswith(b"RIFF") and b"WEBP" in data[:16]:
-        return "image/webp"
+    info = fleep.get(bytes(data[:128]))
+    if info.mimes:
+        return info.mimes[0]
     return "image/jpeg"
 
 
@@ -54,29 +46,18 @@ def _is_valid_image(data: bytes | bytearray) -> bool:
 
 
 class AvatarManager:
-    def __init__(self, interface: Interface) -> None:
-        self.reuse: ReusableAvatarManager = ReusableAvatarManager()
-        self._interface = interface
-        self._user_cache: dict[str, User] = {}
-        self._client: httpx.AsyncClient | None = None
+    def __init__(self, members: set[UnifiedMember]) -> None:
+        self._members = {member.user_id: member for member in members}
+        self._client = None
+        self._reuse = ReusableAvatarManager()
 
-    async def _get_user(self, uid: str) -> User | None:
-        if uid not in self._user_cache:
-            try:
-                user = await self._interface.get_user(uid)
-                if user:
-                    self._user_cache[uid] = user
-            except Exception:
-                return None
-        return self._user_cache.get(uid)
+    def _get_avatar_url(self, uid: str) -> str | None:
+        user = self._members.get(uid)
+        return user and user.avatar_url
 
-    async def _get_avatar_url(self, uid: str) -> str | None:
-        user = await self._get_user(uid)
-        return user.avatar if user else None
-
-    async def get_nickname(self, uid: str) -> str | None:
-        user = await self._get_user(uid)
-        return user and (user.nick or user.name or user.id)
+    def get_nickname(self, uid: str) -> str | None:
+        user = self._members.get(uid)
+        return user and user.display_name
 
     def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -91,7 +72,7 @@ class AvatarManager:
         if not uid or uid == "0":
             return ""
 
-        url = await self._get_avatar_url(uid)
+        url = self._get_avatar_url(uid)
         if not url:
             return ""
 
@@ -123,8 +104,20 @@ class AvatarManager:
         await _avatar_cache.set(url, value=uri, ttl=3 * 24 * 3600)
         return uri
 
-    async def get_avatar(self, uid: str) -> tuple[str, str | None]:
+    async def get_avatar(self, uid: str) -> str:
         """获取头像 Data URI，失败时返回 None 以便使用默认头像。"""
         uri = await self._get_avatar_data_uri(uid)
-        ref = self.reuse.register(uri, uid)
-        return uri, ref
+        self.register_reuse(uri, uid)
+        return uri
+
+    def register_reuse(
+        self,
+        avatar_url: str | None,
+        avatar_key: str | None = None,
+    ) -> str | None:
+        """将头像 URL 注册为可复用资源，返回缩短的引用 ID。"""
+        return self._reuse.register(avatar_url, avatar_key)
+
+    def apply_reuse(self, html: str) -> str:
+        """将 HTML 中的头像 Data URI 替换为可复用引用。"""
+        return self._reuse.apply(html)

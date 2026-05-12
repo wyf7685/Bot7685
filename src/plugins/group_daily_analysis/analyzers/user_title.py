@@ -3,15 +3,13 @@
 import dataclasses
 import json
 from dataclasses import dataclass
-from pathlib import Path
 from string import Template
 from typing import override
 
+from ..config import PROMPT_DIR
 from ..domain.incremental import UserActivity
 from ..domain.models import UserTitle
 from .base import BaseAnalyzer
-
-PROMPT_DIR = Path(__file__).parent.parent / "prompts"
 
 
 @dataclass(slots=True)

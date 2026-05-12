@@ -1,7 +1,6 @@
 """Mention 渲染 — 将 [uid] 替换为胶囊样式的 HTML。"""
 
 import asyncio
-import contextlib
 import html
 import re
 
@@ -22,10 +21,8 @@ async def render_mentions(text: str, avatar_manager: AvatarManager) -> str:
         return _escape_text(text)
 
     async def prepare(uid: str) -> tuple[str, str, str | None]:
-        avatar, _ = await avatar_manager.get_avatar(uid)
-        nickname = None
-        with contextlib.suppress(Exception):
-            nickname = await avatar_manager.get_nickname(uid)
+        avatar = await avatar_manager.get_avatar(uid)
+        nickname = avatar_manager.get_nickname(uid)
         return uid, avatar, nickname
 
     results = await asyncio.gather(*(prepare(uid) for uid in uids))
@@ -54,7 +51,7 @@ async def render_mentions(text: str, avatar_manager: AvatarManager) -> str:
             avatar = get_default_avatar_base64()
         name = nickname_map.get(uid) or uid
 
-        ref = avatar_manager.reuse.register(avatar, uid)
+        ref = avatar_manager.register_reuse(avatar, uid)
         if ref:
             avatar_html = (
                 '<span class="user-capsule-avatar" '

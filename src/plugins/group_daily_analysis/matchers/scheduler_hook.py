@@ -6,7 +6,6 @@ from apscheduler.triggers.cron import CronTrigger
 from nonebot.log import logger
 from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_apscheduler import scheduler
-from nonebot_plugin_uninfo.params import get_interface
 
 from ..config import config
 from ..persistence.incremental_store import IncrementalStore
@@ -174,10 +173,8 @@ async def _incremental_analysis_job() -> None:
 
 async def _send_report(result: AnalysisResult, target: Target) -> None:
     """根据配置发送报告，图片失败时降级为文本。"""
-    if config.output_format == "image" and (
-        interface := get_interface(await target.select())
-    ):
-        image_bytes = await render_image(result, interface)
+    if config.output_format == "image":
+        image_bytes = await render_image(result)
         if image_bytes:
             await UniMessage.image(raw=image_bytes).send(target)
             return

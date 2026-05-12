@@ -1,13 +1,8 @@
-"""报告渲染器 — 子模板预渲染 + 主模板拼装 + htmlrender 截图。
-
-头像获取通过 avatar_getter 回调注入，由调用方通过 uninfo Interface 提供，
-不依赖任何平台特定 API。
-"""
+"""报告渲染器 — 子模板预渲染 + 主模板拼装 + htmlrender 截图。"""
 
 import asyncio
 from datetime import datetime
-from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from nonebot.log import logger
 from nonebot_plugin_htmlrender import get_new_page
@@ -16,7 +11,7 @@ from ..config import config
 from ..services.analysis_service import AnalysisResult
 from .avatar import AvatarManager
 from .sub_templates import (
-    get_jinja_env,
+    TemplateManager,
     render_activity_chart,
     render_chat_quality,
     render_quotes,
@@ -24,27 +19,19 @@ from .sub_templates import (
     render_user_titles,
 )
 
-if TYPE_CHECKING:
-    from nonebot_plugin_uninfo.params import Interface
 
-TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
-
-
-async def render_image(result: AnalysisResult, interface: Interface) -> bytes | None:
+async def render_image(result: AnalysisResult) -> bytes | None:
     """将分析结果渲染为图片 bytes。
 
     Args:
         result: 分析结果
     """
-    template_dir = TEMPLATE_DIR / config.render.report_template
-    if not template_dir.exists():
-        template_dir = TEMPLATE_DIR / "scrapbook"
-    if not (template_dir / "image_template.html.jinja2").exists():
-        logger.error(f"模板目录缺少 image_template.html.jinja2: {template_dir}")
+    template = TemplateManager()
+    if not template.is_valid():
+        logger.error(f"无效的模板目录: {template.template_dir}")
         return None
 
-    stats = result.statistics
-    avatar_manager = AvatarManager(interface)
+    avatar_manager = AvatarManager(result.members)
 
     # ── 1. 子模板渲染 ──────────────────────────────────────
     (
@@ -54,13 +41,11 @@ async def render_image(result: AnalysisResult, interface: Interface) -> bytes | 
         chart_html,
         quality_html,
     ) = await asyncio.gather(
-        render_topics(result.topics, template_dir, avatar_manager),
-        render_user_titles(result.user_titles, template_dir, avatar_manager),
-        render_quotes(result.golden_quotes, template_dir, avatar_manager),
-        render_activity_chart(
-            stats.activity_visualization.hourly_activity, template_dir
-        ),
-        render_chat_quality(result.chat_quality, template_dir),
+        render_topics(result.topics, template, avatar_manager),
+        render_user_titles(result.user_titles, template, avatar_manager),
+        render_quotes(result.golden_quotes, template, avatar_manager),
+        render_activity_chart(result.statistics.activity.hourly_activity, template),
+        render_chat_quality(result.chat_quality, template),
     )
 
     # ── 2. 拼装 render_data ────────────────────────────────
@@ -72,11 +57,11 @@ async def render_image(result: AnalysisResult, interface: Interface) -> bytes | 
         "current_date": f"{now.year}年{now.month:02d}月{now.day:02d}日",
         "current_datetime": now.strftime("%Y-%m-%d %H:%M:%S"),
         "group_name": result.group_name,
-        "message_count": stats.message_count,
-        "participant_count": stats.participant_count,
-        "total_characters": stats.total_characters,
-        "emoji_count": stats.emoji_count,
-        "most_active_period": stats.most_active_period,
+        "message_count": result.statistics.message_count,
+        "participant_count": result.statistics.participant_count,
+        "total_characters": result.statistics.total_characters,
+        "emoji_count": result.statistics.emoji_count,
+        "most_active_period": result.statistics.most_active_period,
         "topics_html": topics_html,
         "titles_html": titles_html,
         "quotes_html": quotes_html,
@@ -88,28 +73,18 @@ async def render_image(result: AnalysisResult, interface: Interface) -> bytes | 
     }
 
     # ── 3. 渲染主模板 + 截图 ───────────────────────────────
-    return await _render_to_image(
-        template_dir, "image_template.html.jinja2", render_data, avatar_manager
-    )
+    full_html = await template.render("image_template.html.jinja2", **render_data)
+    full_html = avatar_manager.apply_reuse(full_html)
+    return await _render_to_image(full_html)
 
 
-async def _render_to_image(
-    template_dir: Path,
-    template_name: str,
-    render_data: dict[str, Any],
-    avatar_manager: AvatarManager,
-) -> bytes | None:
+async def _render_to_image(html: str) -> bytes | None:
     try:
-        env = get_jinja_env(template_dir)
-        html = await env.get_template(template_name).render_async(**render_data)
-        html = avatar_manager.reuse.apply(html)
-
         async with get_new_page(
             device_scale_factor=config.render.device_scale_factor
         ) as page:
             await page.set_content(html, wait_until="networkidle")
             return await page.screenshot(full_page=True, type="png")
-
     except Exception:
         logger.exception("图片渲染失败")
         return None

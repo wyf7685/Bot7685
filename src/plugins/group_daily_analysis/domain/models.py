@@ -5,6 +5,8 @@ from typing import Any
 
 from src.service.llm import TokenUsage
 
+from .value_objects import UnifiedMember
+
 
 @dataclass
 class SummaryTopic:
@@ -73,8 +75,7 @@ class QualityReview:
 class UserActivity:
     """用户活跃数据"""
 
-    user_id: str
-    nickname: str
+    user: UnifiedMember
     message_count: int = 0
     char_count: int = 0
     emoji_count: int = 0
@@ -82,12 +83,19 @@ class UserActivity:
     hours: dict[int, int] = field(default_factory=lambda: dict.fromkeys(range(24), 0))
     last_message_time: int = 0
 
+    @property
+    def user_id(self) -> str:
+        return self.user.user_id
+
+    @property
+    def nickname(self) -> str:
+        return self.user.nickname
+
     def __add__(self, other: UserActivity) -> UserActivity:
         if self.user_id != other.user_id:
             raise ValueError("只能合并同一用户的活跃数据")
         return UserActivity(
-            user_id=self.user_id,
-            nickname=other.nickname,
+            user=self.user,
             message_count=self.message_count + other.message_count,
             char_count=self.char_count + other.char_count,
             emoji_count=self.emoji_count + other.emoji_count,
@@ -176,8 +184,6 @@ class GroupStatistics:
     golden_quotes: list[GoldenQuote]
     emoji_count: int
     emoji_statistics: EmojiStatistics = field(default_factory=EmojiStatistics)
-    activity_visualization: ActivityVisualization = field(
-        default_factory=ActivityVisualization
-    )
+    activity: ActivityVisualization = field(default_factory=ActivityVisualization)
     token_usage: TokenUsage = field(default_factory=TokenUsage)
     chat_quality_review: QualityReview | None = None

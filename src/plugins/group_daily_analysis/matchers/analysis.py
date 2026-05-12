@@ -1,7 +1,5 @@
 """群分析命令 — 手动分析 + 订阅管理。"""
 
-from typing import Annotated
-
 from nonebot.adapters import Bot
 from nonebot_plugin_alconna import (
     Alconna,
@@ -15,7 +13,7 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
-from nonebot_plugin_uninfo import Interface, QueryInterface, Uninfo
+from nonebot_plugin_uninfo import Uninfo
 
 from src.plugins.trusted import TrustedUser
 
@@ -153,7 +151,6 @@ async def handle_analysis(
     bot: Bot,
     session: Uninfo,
     target: MsgTarget,
-    interface: Annotated[Interface | None, QueryInterface()],
     days: int | None = None,
 ) -> None:
     if target.private:
@@ -164,16 +161,16 @@ async def handle_analysis(
     if result is None:
         await UniMessage.text("未找到足够的群聊记录").finish(reply_to=True)
 
-    await _send_report(result, interface)
+    await _send_report(result)
 
 
 # ── 报告发送调度 ─────────────────────────────────────────
 
 
-async def _send_report(result: AnalysisResult, interface: Interface | None) -> None:
+async def _send_report(result: AnalysisResult) -> None:
     """根据配置选择输出格式发送报告。图片失败时自动降级为文本。"""
-    if config.output_format == "image" and interface is not None:
-        image_bytes = await render_image(result, interface)
+    if config.output_format == "image":
+        image_bytes = await render_image(result)
         if image_bytes:
             await UniMessage.image(raw=image_bytes).finish()
         # 图片渲染失败，降级文本

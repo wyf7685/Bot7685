@@ -2,69 +2,79 @@
 
 import asyncio
 import dataclasses
-from pathlib import Path
 from typing import Any
 
 import jinja2
 from nonebot.log import logger
 from nonebot.utils import escape_tag
 
-from ..config import config
+from ..config import TEMPLATE_DIR, config
 from ..domain.models import GoldenQuote, QualityReview, SummaryTopic, UserTitle
 from .avatar import AvatarManager
 from .mentions import render_mentions
 from .profile import ProfileResolver
 
 
-def get_jinja_env(template_dir: Path) -> jinja2.Environment:
-    return jinja2.Environment(
-        loader=jinja2.FileSystemLoader(str(template_dir)),
-        autoescape=jinja2.select_autoescape(["html", "xml"]),
-        trim_blocks=True,
-        lstrip_blocks=True,
-        enable_async=True,
+class TemplateManager:
+    REQUIRED_TEMPLATES = (
+        "activity_chart.html.jinja2",
+        "chat_quality_item.html.jinja2",
+        "image_template.html.jinja2",
+        "quote_item.html.jinja2",
+        "topic_item.html.jinja2",
+        "user_title_item.html.jinja2",
     )
 
+    def __init__(self) -> None:
+        template_dir = TEMPLATE_DIR / config.render.report_template
+        if not template_dir.exists():
+            template_dir = TEMPLATE_DIR / "scrapbook"
+        self.template_dir = template_dir
+        self.env = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(template_dir),
+            autoescape=jinja2.select_autoescape(["html", "xml"]),
+            trim_blocks=True,
+            lstrip_blocks=True,
+            enable_async=True,
+        )
 
-async def render_sub_template(
-    template_dir: Path,
-    template_name: str,
-    **kwargs: Any,
-) -> str:
-    try:
-        env = get_jinja_env(template_dir)
-        return await env.get_template(template_name).render_async(**kwargs)
-    except Exception as e:
-        logger.warning(f"子模板渲染失败 ({template_name}): {escape_tag(str(e))}")
-        return ""
+    def is_valid(self) -> bool:
+        return all(
+            self.template_dir.joinpath(tpl).exists() for tpl in self.REQUIRED_TEMPLATES
+        )
+
+    async def render(self, template_name: str, /, **kwargs: Any) -> str:
+        try:
+            return await self.env.get_template(template_name).render_async(**kwargs)
+        except Exception as e:
+            logger.warning(f"模板渲染失败 ({template_name}): {escape_tag(str(e))}")
+            return ""
 
 
 async def render_topics(
     topics: list[SummaryTopic],
-    template_dir: Path,
+    template: TemplateManager,
     avatar_manager: AvatarManager,
 ) -> str:
     if not topics:
         return ""
 
-    async def render_one(index: int, topic: SummaryTopic) -> dict[str, Any]:
-        detail = await render_mentions(topic.detail, avatar_manager)
+    async def prepare_one(i: int, t: SummaryTopic) -> dict[str, Any]:
+        detail = await render_mentions(t.detail, avatar_manager)
         return {
-            "index": index,
-            "topic": topic.topic,
-            "contributors": "、".join(topic.contributors),
+            "index": i,
+            "topic": t.topic,
+            "contributors": "、".join(t.contributors),
             "detail": detail,
         }
 
-    items = await asyncio.gather(*(render_one(*item) for item in enumerate(topics, 1)))
-    return await render_sub_template(
-        template_dir, "topic_item.html.jinja2", topics=items
-    )
+    items = await asyncio.gather(*(prepare_one(i, t) for i, t in enumerate(topics, 1)))
+    return await template.render("topic_item.html.jinja2", topics=items)
 
 
 async def render_user_titles(
     titles: list[UserTitle],
-    template_dir: Path,
+    template: TemplateManager,
     avatar_manager: AvatarManager,
 ) -> str:
     if not titles:
@@ -72,30 +82,28 @@ async def render_user_titles(
 
     profile_resolver = ProfileResolver(config.render.profile_display_mode)
 
-    async def render_one(u: UserTitle) -> dict[str, Any]:
-        avatar_data, _ = await avatar_manager.get_avatar(u.user_id)
+    async def prepare_one(u: UserTitle) -> dict[str, Any]:
+        avatar_data = await avatar_manager.get_avatar(u.user_id)
         return {
             **dataclasses.asdict(u),
             "avatar_data": avatar_data,
             **profile_resolver.resolve(u.mbti),
         }
 
-    items = await asyncio.gather(*(render_one(u) for u in titles))
-    return await render_sub_template(
-        template_dir, "user_title_item.html.jinja2", titles=items
-    )
+    items = await asyncio.gather(*(prepare_one(u) for u in titles))
+    return await template.render("user_title_item.html.jinja2", titles=items)
 
 
 async def render_quotes(
     quotes: list[GoldenQuote],
-    template_dir: Path,
+    template: TemplateManager,
     avatar_manager: AvatarManager,
 ) -> str:
     if not quotes:
         return ""
 
-    async def render_one(q: GoldenQuote) -> dict[str, Any]:
-        avatar_data, _ = await avatar_manager.get_avatar(q.user_id)
+    async def prepare_one(q: GoldenQuote) -> dict[str, Any]:
+        avatar_data = await avatar_manager.get_avatar(q.user_id)
         reason = await render_mentions(q.reason, avatar_manager)
         return {
             "content": q.content,
@@ -104,15 +112,13 @@ async def render_quotes(
             "avatar_url": avatar_data,
         }
 
-    items = await asyncio.gather(*(render_one(q) for q in quotes))
-    return await render_sub_template(
-        template_dir, "quote_item.html.jinja2", quotes=items
-    )
+    items = await asyncio.gather(*(prepare_one(q) for q in quotes))
+    return await template.render("quote_item.html.jinja2", quotes=items)
 
 
 async def render_activity_chart(
     hourly_activity: dict[int, int],
-    template_dir: Path,
+    template: TemplateManager,
 ) -> str:
     if not hourly_activity:
         return ""
@@ -127,21 +133,16 @@ async def render_activity_chart(
             {"hour": hour, "count": count, "percentage": round(percentage, 1)}
         )
 
-    return await render_sub_template(
-        template_dir,
-        "activity_chart.html.jinja2",
-        chart_data=chart_data,
-    )
+    return await template.render("activity_chart.html.jinja2", chart_data=chart_data)
 
 
 async def render_chat_quality(
     quality: QualityReview | None,
-    template_dir: Path,
+    template: TemplateManager,
 ) -> str:
     if not quality:
         return ""
-    return await render_sub_template(
-        template_dir,
+    return await template.render(
         "chat_quality_item.html.jinja2",
         **dataclasses.asdict(quality),
     )

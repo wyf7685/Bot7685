@@ -92,5 +92,7 @@ class Config(BaseModel):
 
 config = get_plugin_config(Config).group_daily_analysis
 
-TEMPLATE_DIR = Path(__file__).parent / "templates"
-PROMPT_DIR = Path(__file__).parent / "prompts"
+ASSETS_DIR = Path(__file__).parent / "assets"
+TEMPLATE_DIR = ASSETS_DIR / "templates"
+PROMPT_DIR = ASSETS_DIR / "prompts"
+PROFILE_MANIFEST_FILE = ASSETS_DIR / "profile_manifest.json"

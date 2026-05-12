@@ -3,7 +3,6 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any
 
 
 class MessageContentType(Enum):
@@ -19,7 +18,7 @@ class MessageContentType(Enum):
     UNKNOWN = "unknown"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MessageContent:
     """消息内容片段"""
 
@@ -28,10 +27,26 @@ class MessageContent:
     url: str = ""
     emoji_id: str = ""
     at_user_id: str = ""
-    raw_data: Any = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
+class UnifiedMember:
+    """群成员信息"""
+
+    user_id: str
+    nickname: str
+    card: str | None = None
+    avatar_url: str | None = None
+
+    @property
+    def display_name(self) -> str:
+        return self.card or self.nickname or self.user_id
+
+    def __hash__(self) -> int:
+        return hash(self.user_id)
+
+
+@dataclass(frozen=True, slots=True)
 class UnifiedMessage:
     """统一消息格式
 
@@ -40,8 +55,7 @@ class UnifiedMessage:
     """
 
     message_id: str
-    sender_id: str
-    sender_name: str
+    sender: UnifiedMember
     group_id: str
     text_content: str
     contents: tuple[MessageContent, ...] = field(default_factory=tuple)
@@ -50,11 +64,17 @@ class UnifiedMessage:
     reply_to_id: str | None = None
     sender_card: str | None = None
 
+    @property
+    def sender_id(self) -> str:
+        return self.sender.user_id
+
+    @property
+    def display_name(self) -> str:
+        return self.sender.display_name
+
+    @property
     def has_text(self) -> bool:
         return bool(self.text_content.strip())
-
-    def get_display_name(self) -> str:
-        return self.sender_card or self.sender_name
 
     def get_emoji_count(self) -> int:
         return sum(1 for c in self.contents if c.type == MessageContentType.EMOJI)
@@ -64,13 +84,3 @@ class UnifiedMessage:
 
     def get_datetime(self) -> datetime:
         return datetime.fromtimestamp(self.timestamp, UTC)
-
-
-@dataclass(frozen=True)
-class UnifiedMember:
-    """群成员信息"""
-
-    user_id: str
-    nickname: str
-    card: str | None = None
-    avatar_url: str | None = None

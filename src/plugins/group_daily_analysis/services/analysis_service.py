@@ -27,7 +27,7 @@ from ..domain.models import (
     SummaryTopic,
     UserTitle,
 )
-from ..domain.value_objects import UnifiedMessage
+from ..domain.value_objects import UnifiedMember, UnifiedMessage
 from ..persistence.incremental_store import IncrementalStore
 from ..services.incremental_merge import IncrementalMergeService
 from ..services.message_service import fetch_group_messages
@@ -43,6 +43,7 @@ class AnalysisResult:
     group_id: str
     group_name: str
     messages: list[UnifiedMessage]
+    members: set[UnifiedMember]
     statistics: GroupStatistics
     topics: list[SummaryTopic] = field(default_factory=list)
     user_titles: list[UserTitle] = field(default_factory=list)
@@ -70,7 +71,7 @@ async def run_daily_analysis(
     days = days or config.analysis_days
 
     # 1. 拉取消息
-    messages = await fetch_group_messages(bot, session, days=days)
+    messages, members = await fetch_group_messages(bot, session, days=days)
     if len(messages) < config.min_messages:
         logger.warning(
             f"群 {session.scene.id} 消息不足: {len(messages)} < {config.min_messages}"
@@ -138,6 +139,7 @@ async def run_daily_analysis(
         group_id=session.scene.id,
         group_name=session.scene.name or session.scene.id,
         messages=messages,
+        members=members,
         statistics=statistics,
         topics=topics,
         user_titles=user_titles,
@@ -171,9 +173,7 @@ def _calculate_statistics(messages: list[UnifiedMessage]) -> GroupStatistics:
         most_active_period=most_active_period,
         golden_quotes=[],
         emoji_count=emoji_count,
-        activity_visualization=ActivityVisualization(
-            hourly_activity=dict(hour_counter)
-        ),
+        activity=ActivityVisualization(hourly_activity=dict(hour_counter)),
     )
 
 
@@ -204,7 +204,7 @@ async def run_incremental_analysis(
     last_ts = await _incremental_store.get_last_analyzed_timestamp(group_id)
 
     # 2. 拉取新消息
-    messages = await fetch_group_messages(
+    messages, members = await fetch_group_messages(
         bot, session, days=days, since_timestamp=last_ts
     )
 
@@ -255,6 +255,7 @@ async def run_incremental_analysis(
         characters_count=characters_count,
         hourly_msg_counts=hourly_msg_counts,
         hourly_char_counts=hourly_char_counts,
+        members=members,
         user_stats=user_stats,
         emoji_stats=emoji_stats,
         topics=topics,
@@ -344,6 +345,7 @@ async def run_incremental_final_report(
         group_id=group_id,
         group_name=session.scene.name or group_id,
         messages=[],
+        members=set(),
         statistics=statistics,
         topics=topics,
         user_titles=user_titles,
@@ -375,7 +377,7 @@ def _compute_user_stats(messages: list[UnifiedMessage]) -> dict[str, UserActivit
     for msg in messages:
         uid = msg.sender_id
         if uid not in user_data:
-            user_data[uid] = UserActivity(uid, msg.get_display_name())
+            user_data[uid] = UserActivity(msg.sender)
         entry = user_data[uid]
         entry.message_count += 1
         entry.char_count += msg.get_text_length()
@@ -386,8 +388,6 @@ def _compute_user_stats(messages: list[UnifiedMessage]) -> dict[str, UserActivit
         entry.hours[hour] = entry.hours.get(hour, 0) + 1
         if msg.timestamp > entry.last_message_time:
             entry.last_message_time = msg.timestamp
-        if msg.get_display_name():
-            entry.nickname = msg.get_display_name()
     return user_data
 
 

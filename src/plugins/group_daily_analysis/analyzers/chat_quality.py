@@ -1,14 +1,12 @@
 """聊天质量分析器。"""
 
-from pathlib import Path
 from string import Template
 from typing import override
 
+from ..config import PROMPT_DIR
 from ..domain.models import QualityReview
 from ..domain.value_objects import UnifiedMessage
 from .base import BaseAnalyzer
-
-PROMPT_DIR = Path(__file__).parent.parent / "prompts"
 
 
 class ChatQualityAnalyzer(

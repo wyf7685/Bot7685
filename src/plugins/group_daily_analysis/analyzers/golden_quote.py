@@ -1,17 +1,15 @@
 """金句分析器。"""
 
-from pathlib import Path
 from string import Template
 from typing import override
 
 from nonebot import logger
 from nonebot.utils import escape_tag
 
+from ..config import PROMPT_DIR
 from ..domain.models import GoldenQuote
 from ..domain.value_objects import UnifiedMessage
 from .base import BaseAnalyzer
-
-PROMPT_DIR = Path(__file__).parent.parent / "prompts"
 
 
 class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote]):
