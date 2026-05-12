@@ -25,7 +25,11 @@ DATETIME_FIELDS = [
 
 
 class _StyleCall(Protocol):
+    __name__: str
+    __qualname__: str
+
     def __call__(self, obj: object, /, *, escape: bool = False) -> str: ...
+    def cache_clear(self) -> None: ...
 
 
 class _Style:
@@ -41,8 +45,10 @@ class _Style:
                 lru[text] = f"{prefix}{text}{suffix}"
             return lru[text]
 
+        fn = cast("_StyleCall", fn)
         fn.__name__ = tag
         fn.__qualname__ = f"Style.{tag}"
+        fn.cache_clear = lambda: lru.clear()
         setattr(self, tag, fn)
         return fn
 
