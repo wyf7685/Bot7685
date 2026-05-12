@@ -28,7 +28,7 @@ def _get_current_state() -> T_State | None:
         return None
 
 
-def convert_dependent[**P, R](func: Callable[P, Awaitable[R]]) -> type[R]:
+def as_dependent[**P, R](func: Callable[P, Awaitable[R]]) -> type[R]:
     name = func.__name__
     key = f"##state_cache##{name}##"
 
@@ -54,12 +54,12 @@ def convert_dependent[**P, R](func: Callable[P, Awaitable[R]]) -> type[R]:
     return cast("type[R]", Annotated[r, Depends(wrapper)])
 
 
-@convert_dependent
+@as_dependent
 async def IsSuperUser(bot: Bot, event: Event) -> bool:
     return await SUPERUSER(bot, event)
 
 
-@convert_dependent
+@as_dependent
 async def TokenDAO(session: Uninfo) -> KuroTokenDAO:
     return KuroTokenDAO(
         user_id=await get_user_persist_id(session.basic, session.user),
@@ -67,7 +67,7 @@ async def TokenDAO(session: Uninfo) -> KuroTokenDAO:
     )
 
 
-@convert_dependent
+@as_dependent
 async def KuroTokenFromKey(ktd: TokenDAO, key: str | None = None) -> KuroToken:
     kuro_token = await ktd.find_token(key)
     if kuro_token is None:
@@ -77,7 +77,7 @@ async def KuroTokenFromKey(ktd: TokenDAO, key: str | None = None) -> KuroToken:
     return kuro_token
 
 
-@convert_dependent
+@as_dependent
 async def KuroTokenFromKeyRequired(ktd: TokenDAO, key: str) -> KuroToken:
     kuro_token = await ktd.find_token(key)
     if kuro_token is None:
@@ -86,7 +86,7 @@ async def KuroTokenFromKeyRequired(ktd: TokenDAO, key: str) -> KuroToken:
     return kuro_token
 
 
-@convert_dependent
+@as_dependent
 async def ApiFromKey(kuro_token: KuroTokenFromKey) -> KuroApi:
     api = KuroApi.from_token(kuro_token.token)
 
@@ -98,11 +98,11 @@ async def ApiFromKey(kuro_token: KuroTokenFromKey) -> KuroApi:
     return api
 
 
-@convert_dependent
+@as_dependent
 async def HandlerFromKey(api: ApiFromKey) -> KuroHandler:
     return KuroHandler(api)
 
 
-@convert_dependent
+@as_dependent
 async def KuroUserName(api: ApiFromKey) -> str:
     return f"{await api.get_user_name()}({await api.get_user_id()})"

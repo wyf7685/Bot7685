@@ -2,7 +2,7 @@ from typing import override
 
 from nonebot import require
 from nonebot.adapters import Bot, Event, Message
-from nonebot.plugin import PluginMetadata
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from pydantic import BaseModel
 
 require("nonebot_plugin_alconna")
@@ -26,7 +26,7 @@ __plugin_meta__ = PluginMetadata(
     description="meow?",
     usage="meow!",
     type="application",
-    supported_adapters={"~onebot.v11"},
+    supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
 )
 
 
