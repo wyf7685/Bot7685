@@ -107,4 +107,4 @@ def _get_reply_message() -> UniMessage:
 
 @matcher.handle()
 async def handle_screen_photo() -> None:
-    await _get_reply_message().text("[[本地测试]]").finish(reply_to=True)
+    await _get_reply_message().finish(reply_to=True)
