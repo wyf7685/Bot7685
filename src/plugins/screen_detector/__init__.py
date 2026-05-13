@@ -1,5 +1,4 @@
 import asyncio
-import functools
 import hashlib
 import random
 from pathlib import Path
@@ -45,14 +44,9 @@ def _get_detector() -> ScreenDetector:
 
 
 @get_driver().on_shutdown
-async def shutdown() -> None:
+def shutdown() -> None:
     if _detector is not None:
-        shutdown = functools.partial(
-            _detector.get_executor().shutdown,
-            wait=False,
-            cancel_futures=True,
-        )
-        await run_sync(shutdown)()
+        _detector.get_executor().shutdown(wait=False, cancel_futures=True)
 
 
 @run_sync
