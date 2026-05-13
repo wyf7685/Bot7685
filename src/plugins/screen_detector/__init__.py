@@ -25,7 +25,7 @@ from .detector import ScreenDetector
 
 ROOT = Path(__file__).parent.resolve()
 CACHE_DIR = get_plugin_cache_dir()
-DETECTION_CACHE_TTL = 3600 * 24 * 7
+DETECTION_CACHE_TTL = 3600 * 24
 VALID_MIMES = {"image/jpeg", "image/png", "image/webp"}
 _detector = ScreenDetector()
 _cache = get_cache[bool]("screen_detector", pickle=True)
