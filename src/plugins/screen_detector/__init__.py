@@ -25,6 +25,8 @@ from .detector import ScreenDetector
 
 ROOT = Path(__file__).parent.resolve()
 CACHE_DIR = get_plugin_cache_dir()
+DETECTION_CACHE_TTL = 3600 * 24 * 7
+VALID_MIMES = {"image/jpeg", "image/png", "image/webp"}
 _detector = ScreenDetector()
 _cache = get_cache[bool]("screen_detector", pickle=True)
 
@@ -39,27 +41,41 @@ def _detect_image(path: Path) -> bool:
         return False
 
 
+async def _cache_result_by_id(id: str | None, result: bool) -> None:
+    if id is not None:
+        await _cache.set(f"id:{id}", result, ttl=DETECTION_CACHE_TTL)
+
+
+async def _cache_result_by_hash(raw_hash: str, result: bool) -> None:
+    await _cache.set(f"hash:{raw_hash}", result, ttl=DETECTION_CACHE_TTL)
+
+
 async def _detect_one(event: Event, bot: Bot, image: Image) -> bool:
     if image.sticker:
         return False
 
     if (
         image.id is not None
-        and (cached := await _cache.get(f"id:{image.id}", default=None)) is not None
+        and (cached := await _cache.get(f"id:{image.id}")) is not None
     ):
         return cached
 
     raw = await image_fetch(event, bot, {}, image)
     if raw is None:
-        return False
-
-    info = fleep.get(raw[:128])
-    if not info.extensions:
+        await _cache_result_by_id(image.id, False)
         return False
 
     raw_hash = hashlib.sha256(raw).hexdigest()
-    cached = await _cache.get(f"hash:{raw_hash}", default=None)
+
+    info = fleep.get(raw[:128])
+    if not info.extensions or not info.mimes or info.mimes[0] not in VALID_MIMES:
+        await _cache_result_by_id(image.id, False)
+        await _cache_result_by_hash(raw_hash, False)
+        return False
+
+    cached = await _cache.get(f"hash:{raw_hash}")
     if cached is not None:
+        await _cache_result_by_id(image.id, cached)
         return cached
 
     image_path = CACHE_DIR / f"{raw_hash}.{info.extensions[0]}"
@@ -69,10 +85,8 @@ async def _detect_one(event: Event, bot: Bot, image: Image) -> bool:
     finally:
         image_path.unlink(missing_ok=True)
 
-    if image.id is not None:
-        await _cache.set(f"id:{image.id}", result, ttl=3600 * 24 * 7)
-    await _cache.set(f"hash:{raw_hash}", result, ttl=3600 * 24 * 7)
-
+    await _cache_result_by_id(image.id, result)
+    await _cache_result_by_hash(raw_hash, result)
     return result
 
 
