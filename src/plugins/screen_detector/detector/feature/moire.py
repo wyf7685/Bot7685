@@ -1,15 +1,10 @@
-from typing import TYPE_CHECKING
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    from cv2.typing import MatLike
+import cv2
+import numpy as np
 
 
-def analyze_moire(image: MatLike) -> float:
-    try:
-        import cv2
-        import numpy as np
-    except Exception:
-        return 0.0
+def analyze_moire(image: np.ndarray | None) -> float:
 
     if image is None:
         return 0.0
@@ -58,7 +53,7 @@ def analyze_moire(image: MatLike) -> float:
     energy_std = float(np.std(block_energy))
     energy_mean = float(np.mean(block_energy))
 
-    freq_score = 0.0 if energy_mean <= 0.0 else energy_std / (energy_mean + 1e-06)
+    freq_score = 0.0 if energy_mean <= 0.0 else energy_std / (energy_mean + 1e-6)
 
     score = (block_artifact_ratio * 0.4 + freq_score * 0.6) * 0.5
     return max(0.0, min(1.0, score))

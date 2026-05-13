@@ -1,18 +1,14 @@
+from __future__ import annotations
+
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from cv2.typing import MatLike
-
+import cv2
+import numpy as np
 
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
-def load_image(image_path: str | Path) -> MatLike:
-    try:
-        import cv2
-    except Exception as exc:
-        raise RuntimeError("OpenCV is required to load images.") from exc
+def load_image(image_path: str | Path) -> np.ndarray:
 
     image_path = Path(image_path)
     image = cv2.imread(str(image_path))

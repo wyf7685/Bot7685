@@ -1,11 +1,11 @@
+from __future__ import annotations
+
 from pathlib import Path
+
+from PIL import ExifTags, Image
 
 
 def camera_exif_score(image_path: str | Path) -> float:
-    try:
-        from PIL import ExifTags, Image
-    except Exception:
-        return 0.0
 
     try:
         with Image.open(Path(image_path)) as image:

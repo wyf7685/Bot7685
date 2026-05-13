@@ -1,10 +1,11 @@
 import asyncio
+import functools
 import hashlib
 import random
 from pathlib import Path
-from typing import Literal, assert_never
+from typing import TYPE_CHECKING, Literal, assert_never
 
-from nonebot import logger, on_message, require
+from nonebot import get_driver, logger, on_message, require
 from nonebot.adapters import Bot, Event
 from nonebot.utils import run_sync
 
@@ -21,20 +22,43 @@ from src.plugins.patch_event.highlight import Highlight
 from src.plugins.trusted import TrustedUser
 from src.service.cache import get_cache
 
-from .detector import ScreenDetector
+if TYPE_CHECKING:
+    from .detector import ScreenDetector
 
 ROOT = Path(__file__).parent.resolve()
 CACHE_DIR = get_plugin_cache_dir()
 DETECTION_CACHE_TTL = 3600 * 24
 VALID_MIMES = {"image/jpeg", "image/png", "image/webp"}
-_detector = ScreenDetector()
 _cache = get_cache[bool]("screen_detector", pickle=True)
+_detector = None
+
+
+def _get_detector() -> ScreenDetector:
+    global _detector
+
+    if _detector is None:
+        from .detector import ScreenDetector
+
+        _detector = ScreenDetector()
+
+    return _detector
+
+
+@get_driver().on_shutdown
+async def shutdown() -> None:
+    if _detector is not None:
+        shutdown = functools.partial(
+            _detector.get_executor().shutdown,
+            wait=False,
+            cancel_futures=True,
+        )
+        await run_sync(shutdown)()
 
 
 @run_sync
 def _detect_image(path: Path) -> bool:
     try:
-        result = _detector.detect(path)
+        result = _get_detector().detect(path)
         logger.opt(colors=True).debug(f"检测结果: {Highlight.apply(result)}")
         return result.get("result", "normal") == "screen_photo"
     except Exception:

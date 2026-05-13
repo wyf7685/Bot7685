@@ -1,14 +1,10 @@
-from typing import TYPE_CHECKING
+from __future__ import annotations
 
-if TYPE_CHECKING:
-    from cv2.typing import MatLike
+import cv2
+import numpy as np
 
 
-def preprocess_image(image: MatLike) -> MatLike:
-    try:
-        import cv2
-    except Exception:
-        return image
+def preprocess_image(image: np.ndarray | None) -> np.ndarray | None:
 
     if image is None:
         return image
