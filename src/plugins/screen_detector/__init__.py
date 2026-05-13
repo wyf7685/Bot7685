@@ -8,16 +8,16 @@ from nonebot import get_driver, logger, on_message, require
 from nonebot.adapters import Bot, Event
 from nonebot.utils import run_sync
 
+from src.highlight import Highlight
+
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import Image, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
-require("src.plugins.patch_event")
 require("src.plugins.trusted")
 require("src.service.cache")
-from src.plugins.patch_event.highlight import Highlight
 from src.plugins.trusted import TrustedUser
 from src.service.cache import get_cache
 

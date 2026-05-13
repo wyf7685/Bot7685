@@ -3,7 +3,8 @@ from typing import Any, override
 
 from nonebot.adapters.github import Event
 
-from ..highlight import Highlight
+from src.highlight import Highlight
+
 from ..patcher import patcher
 
 

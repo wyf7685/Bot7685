@@ -9,7 +9,8 @@ from nonebot.adapters.qq.event import (
 from nonebot.adapters.qq.message import Message, MessageSegment
 from nonebot.utils import escape_tag
 
-from ..highlight import Highlight
+from src.highlight import Highlight
+
 from ..patcher import patcher
 
 

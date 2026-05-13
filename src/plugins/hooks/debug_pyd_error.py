@@ -1,7 +1,7 @@
 import contextlib
 import json
 
-from nonebot import logger, require
+from nonebot import logger
 from nonebot.message import run_postprocessor
 from pydantic import ValidationError
 
@@ -42,8 +42,7 @@ async def catch_pyd_error(exception: ValidationError) -> None:
         with contextlib.suppress(json.JSONDecodeError):
             var_value = json.loads(var_value)
 
-    require("src.plugins.patch_event")
-    from src.plugins.patch_event.highlight import Highlight
+    from src.highlight import Highlight
 
     colored = Highlight.apply(var_value)
     logger.opt(colors=True).debug(

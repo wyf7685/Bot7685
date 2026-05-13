@@ -6,8 +6,9 @@ from typing import Literal, Protocol, cast
 import nonebot
 from nonebot.adapters import Event, Message, MessageSegment
 
+from src.highlight import Highlight
+
 from .config import plugin_config
-from .highlight import Highlight
 
 type PatcherCall[T: Event] = Callable[[T], str]
 

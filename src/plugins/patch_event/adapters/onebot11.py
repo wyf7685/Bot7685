@@ -24,6 +24,8 @@ from nonebot.compat import model_dump, type_validate_python
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
+from src.highlight import Highlight
+
 nonebot.require("nonebot_plugin_apscheduler")
 from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
@@ -32,7 +34,6 @@ from nonebot_plugin_apscheduler import scheduler
 nonebot.require("src.service.task")
 from src.service.task import call_later, call_soon
 
-from ..highlight import Highlight
 from ..patcher import patcher
 
 

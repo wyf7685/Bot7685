@@ -8,7 +8,8 @@ from nonebot.adapters.telegram.event import (
 )
 from nonebot.adapters.telegram.model import Chat, User
 
-from ..highlight import Highlight
+from src.highlight import Highlight
+
 from ..patcher import patcher
 
 

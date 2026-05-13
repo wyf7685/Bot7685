@@ -15,7 +15,8 @@ from nonebot.adapters.discord.event import (
 from nonebot.compat import model_dump
 from nonebot.message import event_preprocessor
 
-from ..highlight import Highlight
+from src.highlight import Highlight
+
 from ..patcher import patcher
 
 guild_name_cache: dict[SnowflakeType, str] = {}

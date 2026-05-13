@@ -11,7 +11,8 @@ from nonebot.adapters.satori.event import (
 )
 from nonebot.adapters.satori.models import Channel, Guild, Member, User
 
-from ..highlight import Highlight
+from src.highlight import Highlight
+
 from ..patcher import patcher
 
 

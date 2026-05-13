@@ -8,7 +8,8 @@ from nonebot.adapters.feishu.event import GroupMessageEvent, PrivateMessageEvent
 from nonebot.adapters.feishu.models import UserId
 from pydantic import BaseModel
 
-from ..highlight import Highlight
+from src.highlight import Highlight
+
 from ..patcher import patcher
 
 

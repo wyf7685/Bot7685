@@ -21,6 +21,8 @@ from nonebot.adapters.milky.model.base import ModelBase
 from nonebot.adapters.milky.model.common import Friend, Group, Member
 from nonebot.adapters.milky.model.message import IncomingMessage
 
+from src.highlight import Highlight
+
 nonebot.require("nonebot_plugin_apscheduler")
 from apscheduler.job import Job as SchedulerJob
 from apscheduler.triggers.cron import CronTrigger
@@ -29,7 +31,6 @@ from nonebot_plugin_apscheduler import scheduler
 nonebot.require("src.service.task")
 from src.service.task import call_later
 
-from ..highlight import Highlight
 from ..patcher import patcher
 
 logger = nonebot.logger.opt(colors=True)
