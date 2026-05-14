@@ -54,5 +54,8 @@ class Task[T]:
         assert self.result is not ..., "Task result not set"
         return self.result
 
+    def __await__(self) -> Generator[None, None, T]:
+        yield from self.wait().__await__()
+
 
 DownloadTask = Task[bytes | None]

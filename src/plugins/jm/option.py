@@ -46,11 +46,7 @@ async def get_album_detail(album_id: int) -> jmcomic.JmAlbumDetail:
     return await run_sync(option.new_jm_client().get_album_detail)(album_id)
 
 
-async def download_album(album_id: int) -> jmcomic.JmAlbumDetail:
-    return await run_sync(jmcomic.new_downloader(option).download_album)(album_id)
-
-
-def decode_image(raw: bytes, num: int) -> bytes:
+def _decode_image(raw: bytes, num: int) -> bytes:
     if not num:
         return raw
 
@@ -97,7 +93,7 @@ async def download_image(
                 raise
             await anyio.sleep(0.5)
         else:
-            return decode_image(response.content, num)
+            return _decode_image(response.content, num)
     raise RuntimeError("下载失败")
 
 

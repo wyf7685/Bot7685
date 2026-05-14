@@ -1,4 +1,5 @@
-from collections.abc import AsyncIterable, Awaitable, Callable
+from collections import deque
+from collections.abc import AsyncIterable, Callable
 from typing import NoReturn
 
 import anyio
@@ -9,7 +10,8 @@ from nonebot.adapters import Event
 from nonebot.exception import ActionFailed, MatcherException
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER, User
-from nonebot.plugin import PluginMetadata
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
+from nonebot.utils import escape_tag
 
 from src.utils import schedule_recall
 
@@ -38,7 +40,7 @@ __plugin_meta__ = PluginMetadata(
     name="jmcomic",
     description="jmcomic",
     usage="/jm <album_id: int>",
-    supported_adapters={"~onebot.v11", "~milky"},
+    supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
     type="application",
 )
 
@@ -56,30 +58,32 @@ async def download_task(
 ) -> None:
     try:
         task.set_result(await download_image(client, image))
-    except Exception as err:
-        logger.opt(exception=err).warning(f"下载失败: {err}")
+    except Exception as exc:
+        logger.opt(colors=True, exception=exc).warning(
+            f"下载失败: <i><c>{escape_tag(image.img_url)}</></>"
+        )
         task.set_result(None)
 
 
 async def send_segs(
     uid: str,
     data: AsyncIterable[tuple[tuple[int, int], bytes | None]],
-    start_soon: Callable[[Callable[[], Awaitable[object]]], object],
 ) -> None:
-    async for batch in abatched(data, 20):
-        nodes = [
-            CustomNode(
-                uid=uid,
-                name=f"P_{p}_{i}",
-                content=UniMessage.image(raw=raw)
-                if raw is not None
-                else UniMessage.text("[图片下载失败]"),
-            )
-            for (p, i), raw in batch
-        ]
-        st, ed = batch[0][0], batch[-1][0]
-        logger.opt(colors=True).info(f"开始发送合并转发: <c>{st}</c> - <c>{ed}</c>")
-        start_soon(UniMessage.reference(*nodes).send)
+    async with anyio.create_task_group() as tg:
+        async for batch in abatched(data, 20):
+            nodes = [
+                CustomNode(
+                    uid=uid,
+                    name=f"P_{p}_{i}",
+                    content=UniMessage.image(raw=raw)
+                    if raw is not None
+                    else UniMessage.text("[图片下载失败]"),
+                )
+                for (p, i), raw in batch
+            ]
+            st, ed = batch[0][0], batch[-1][0]
+            logger.opt(colors=True).info(f"开始发送合并转发: <c>{st}</c> - <c>{ed}</c>")
+            tg.start_soon(UniMessage.reference(*nodes).send)
 
 
 async def send_album_forward(
@@ -89,22 +93,24 @@ async def send_album_forward(
     concurrency: int = 10,
 ) -> None:
     pending = await fetch_album_images(album)
-    running: list[tuple[tuple[int, int], DownloadTask]] = []
+    running: deque[tuple[tuple[int, int], DownloadTask]] = deque()
 
-    def put_task() -> None:
+    def put_task(client: httpx.AsyncClient) -> None:
         key, image = pending.pop(0)
         tg.start_soon(download_task, client, (task := DownloadTask()), image)
         running.append((key, task))
 
-    async def iter_images() -> AsyncIterable[tuple[tuple[int, int], bytes | None]]:
+    async def iter_images(
+        client: httpx.AsyncClient,
+    ) -> AsyncIterable[tuple[tuple[int, int], bytes | None]]:
         for _ in range(min(concurrency, len(pending))):
-            put_task()
+            put_task(client)
 
         while running:
-            key, task = running.pop(0)
-            yield (key, await task.wait())
+            key, task = running.popleft()
+            yield (key, await task)
             if pending:
-                put_task()
+                put_task(client)
 
     async def send_album_info() -> None:
         await UniMessage.text(
@@ -121,11 +127,12 @@ async def send_album_forward(
         anyio.create_task_group() as tg,
     ):
         tg.start_soon(send_album_info)
-        tg.start_soon(send_segs, uid, iter_images(), tg.start_soon)
+        await send_segs(uid, iter_images(client))
 
 
 async def _check_qq_client(target: MsgTarget) -> None:
     if target.scope != SupportScope.qq_client:
+        logger.warning(f"不支持的消息目标: {target.scope}")
         matcher.skip()
 
 
@@ -174,7 +181,7 @@ async def handle_qq_client(event: Event, album_id: int) -> None:
     try:
         async with anyio.create_task_group() as tg:
             tg.start_soon(wait_for_terminate)
-            tg.start_soon(send_forward)
+            await send_forward()
     except* MatcherException:
         raise
     except* ActionFailed as exc_group:
