@@ -1,8 +1,7 @@
 import asyncio
 import hashlib
-import random
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, assert_never
+from typing import TYPE_CHECKING
 
 from nonebot import get_driver, logger, on_message, require
 from nonebot.adapters import Bot, Event
@@ -12,7 +11,14 @@ from src.highlight import Highlight
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
-from nonebot_plugin_alconna import Image, UniMessage, UniMsg, image_fetch
+from nonebot_plugin_alconna import (
+    Image,
+    MsgTarget,
+    SupportScope,
+    UniMsg,
+    image_fetch,
+    message_reaction,
+)
 from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
@@ -108,7 +114,14 @@ async def _detect_one(event: Event, bot: Bot, image: Image) -> bool:
     return result
 
 
-async def _detect_screen_rule(event: Event, bot: Bot, msg: UniMsg) -> bool:
+async def _detect_screen_rule(
+    event: Event,
+    bot: Bot,
+    msg: UniMsg,
+    target: MsgTarget,
+) -> bool:
+    if target.scope != SupportScope.qq_client:
+        return False
     if not (images := msg[Image]):
         return False
     if len(images) == 1:
@@ -120,23 +133,6 @@ async def _detect_screen_rule(event: Event, bot: Bot, msg: UniMsg) -> bool:
 matcher = on_message(rule=_detect_screen_rule, permission=TrustedUser())
 
 
-reply_msgs: list[tuple[Literal["text", "image"], str]] = [
-    ("text", "还在拍屏还在拍屏"),
-    ("text", "拍屏几几小！"),
-    ("image", "images/1.jpg"),
-]
-
-
-def _get_reply_message() -> UniMessage:
-    match random.choice(reply_msgs):
-        case ("text", msg):
-            return UniMessage.text(msg)
-        case ("image", path):
-            return UniMessage.image(raw=(ROOT / path).read_bytes())
-        case x:
-            assert_never(x)
-
-
 @matcher.handle()
 async def handle_screen_photo() -> None:
-    await _get_reply_message().finish(reply_to=True)
+    await message_reaction("424")
