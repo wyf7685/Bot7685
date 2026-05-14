@@ -102,7 +102,7 @@ def _proxy_config() -> dict[str, str] | None:
 
 
 _proxies = _proxy_config()
-_SCRAPER_HEADERS = {
+_SCRAPER_HEADERS: dict[str, str | bytes] = {
     "User-Agent": USER_AGENT,
     "Sec-Ch-Ua": '"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"',
     "Sec-Ch-Ua-Mobile": "?0",
@@ -118,7 +118,7 @@ class InvalidCredentials(RequestFailed): ...
 
 
 @with_semaphore(8)
-@with_retry(TooManyRequests, InvalidCredentials, retries=3, delay=1)
+@with_retry(TooManyRequests, retries=3, delay=1)
 @run_sync
 def _fetch_with_cloudscraper[T](url: str, validate: ValidateFunc[T]) -> T:
     try:

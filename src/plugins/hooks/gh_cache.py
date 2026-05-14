@@ -29,5 +29,5 @@ def setup_github_cache() -> None:
             password=redis_config.password,
         )
         cache_strategy = AsyncRedisCacheStrategy(redis, prefix="bot7685:githubkit:")
-        kwds = bot.github.config.dict() | {"cache_strategy": cache_strategy}
+        kwds = {**bot.github.config.dict(), "cache_strategy": cache_strategy}
         bot.github.config = Config(**kwds)
