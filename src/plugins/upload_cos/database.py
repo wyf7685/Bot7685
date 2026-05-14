@@ -33,9 +33,9 @@ async def update_key(session: AsyncSession, key: str, expired: float) -> None:
 
 async def pop_expired_keys() -> AsyncGenerator[str]:
     now = datetime.now().timestamp()
-    select_ = select(CosUploadFile).where(CosUploadFile.expire_at <= now).limit(1)
+    stmt = select(CosUploadFile).where(CosUploadFile.expire_at <= now).limit(1)
     async with get_session() as session:
-        while data := await session.scalar(select_):
+        while data := await session.scalar(stmt):
             yield data.key
             await session.delete(data)
         await session.commit()
@@ -51,9 +51,9 @@ async def update_permission(
     session: AsyncSession, user_id: str, expired: float
 ) -> None:
     expire_at = datetime.now().timestamp() + expired
-    select_ = select(CosUploadPermission).where(CosUploadPermission.user_id == user_id)
+    stmt = select(CosUploadPermission).where(CosUploadPermission.user_id == user_id)
 
-    if item := await session.scalar(select_):
+    if item := await session.scalar(stmt):
         item.expire_at = expire_at
     else:
         item = CosUploadPermission(user_id=user_id, expire_at=expire_at)
