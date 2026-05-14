@@ -1,10 +1,9 @@
 import functools
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, cast
 
 from aiocache import BaseCache, RedisCache, SimpleMemoryCache
 from aiocache.serializers import PickleSerializer
-from common import Callable
 from nonebot import get_driver, get_plugin_config
 from pydantic import BaseModel
 
