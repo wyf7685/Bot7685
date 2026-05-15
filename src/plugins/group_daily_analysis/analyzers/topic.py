@@ -78,7 +78,13 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic]):
                 cleaned_text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", cleaned_text)
                 if 2 <= len(text) <= 500:
                     yield UnifiedMessage(
-                        **{**dataclasses.asdict(msg), "text_content": cleaned_text}
+                        **{
+                            **{
+                                field.name: getattr(msg, field.name)
+                                for field in dataclasses.fields(msg)
+                            },
+                            "text_content": cleaned_text,
+                        }
                     )
 
 
