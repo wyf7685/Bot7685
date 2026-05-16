@@ -8,6 +8,17 @@ from ..domain.models import QualityReview
 from ..domain.value_objects import UnifiedMessage
 from .base import BaseAnalyzer
 
+_COLORS = [
+    "#607d8b",
+    "#2196f3",
+    "#f44336",
+    "#e91e63",
+    "#ff9800",
+    "#4caf50",
+    "#009688",
+    "#9c27b0",
+]
+
 
 class ChatQualityAnalyzer(
     BaseAnalyzer[
@@ -54,30 +65,15 @@ class ChatQualityAnalyzer(
 
     @override
     def process_response(self, response: QualityReview) -> list[QualityReview]:
-        # 控制维度占比总和不超过100%
         total_percentage = sum(
             max(0.0, min(100.0, d.percentage)) for d in response.dimensions
         )
+        factor = 100.0 / total_percentage if total_percentage > 100 else 1.0
 
-        factor = 1.0
-        if total_percentage > 100:
-            factor = 100.0 / total_percentage
-        for d in response.dimensions:
-            d.percentage = round(max(0.0, min(100.0, d.percentage)) * factor, 1)
-
-        # 自动分配颜色
-        colors = [
-            "#607d8b",
-            "#2196f3",
-            "#f44336",
-            "#e91e63",
-            "#ff9800",
-            "#4caf50",
-            "#009688",
-            "#9c27b0",
-        ]
-        response.dimensions = [
-            d.with_color(colors[i % len(colors)])
+        response.dimensions[:] = [
+            d.shallow_copy_with(
+                percentage=round(max(0.0, min(100.0, d.percentage)) * factor, 1),
+            ).with_color(_COLORS[i % len(_COLORS)])
             for i, d in enumerate(response.dimensions)
         ]
 

@@ -1,15 +1,14 @@
 """群分析领域数据模型。"""
 
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import Any
 
 from src.service.llm import TokenUsage
 
-from .value_objects import UnifiedMember
+from .value_objects import FrozenModelBase, ModelBase, UnifiedMember, UnifiedMessage
 
 
-@dataclass
-class SummaryTopic:
+class SummaryTopic(FrozenModelBase):
     """话题总结"""
 
     topic: str
@@ -18,8 +17,7 @@ class SummaryTopic:
     contributor_ids: list[str] = field(default_factory=list)
 
 
-@dataclass
-class UserTitle:
+class UserTitle(FrozenModelBase):
     """用户称号"""
 
     name: str
@@ -29,8 +27,7 @@ class UserTitle:
     reason: str
 
 
-@dataclass
-class GoldenQuote:
+class GoldenQuote(FrozenModelBase):
     """群聊金句"""
 
     content: str
@@ -39,8 +36,7 @@ class GoldenQuote:
     user_id: str = ""
 
 
-@dataclass
-class QualityDimension:
+class QualityDimension(FrozenModelBase):
     """聊天质量维度"""
 
     name: str
@@ -48,21 +44,14 @@ class QualityDimension:
     comment: str
 
     def with_color(self, color: str) -> QualityDimensionWithColor:
-        return QualityDimensionWithColor(
-            name=self.name,
-            percentage=self.percentage,
-            comment=self.comment,
-            color=color,
-        )
+        return QualityDimensionWithColor(**self.shallow_dict(), color=color)
 
 
-@dataclass
 class QualityDimensionWithColor(QualityDimension):
     color: str
 
 
-@dataclass
-class QualityReview:
+class QualityReview(FrozenModelBase):
     """聊天质量锐评"""
 
     title: str
@@ -71,8 +60,7 @@ class QualityReview:
     summary: str
 
 
-@dataclass
-class UserActivity:
+class UserActivity(FrozenModelBase):
     """用户活跃数据"""
 
     user: UnifiedMember
@@ -91,7 +79,21 @@ class UserActivity:
     def nickname(self) -> str:
         return self.user.nickname
 
-    def __add__(self, other: UserActivity) -> UserActivity:
+    @classmethod
+    def from_message(cls, message: UnifiedMessage) -> UserActivity:
+        return UserActivity(
+            user=message.sender,
+            message_count=1,
+            char_count=message.get_text_length(),
+            emoji_count=message.get_emoji_count(),
+            reply_count=1 if message.reply_to_id else 0,
+            hours={message.get_datetime().hour: 1},
+            last_message_time=message.timestamp,
+        )
+
+    def __add__(self, other: UserActivity | UnifiedMessage) -> UserActivity:
+        if isinstance(other, UnifiedMessage):
+            other = self.from_message(other)
         if self.user_id != other.user_id:
             raise ValueError("只能合并同一用户的活跃数据")
         return UserActivity(
@@ -108,8 +110,7 @@ class UserActivity:
         )
 
 
-@dataclass
-class UserActivityRanking:
+class UserActivityRanking(FrozenModelBase):
     """用户活跃排名"""
 
     user_id: str
@@ -127,8 +128,7 @@ class UserActivityRanking:
         )
 
 
-@dataclass
-class EmojiStatistics:
+class EmojiStatistics(FrozenModelBase):
     """表情统计"""
 
     face_count: int = 0
@@ -162,8 +162,7 @@ class EmojiStatistics:
         )
 
 
-@dataclass
-class ActivityVisualization:
+class ActivityVisualization(FrozenModelBase):
     """活跃度可视化数据"""
 
     hourly_activity: dict[int, int] = field(default_factory=dict)
@@ -173,8 +172,7 @@ class ActivityVisualization:
     activity_heatmap_data: dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass
-class GroupStatistics:
+class GroupStatistics(ModelBase):
     """群聊统计"""
 
     message_count: int

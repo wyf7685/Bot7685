@@ -1,7 +1,7 @@
 """基础分析器 — 定义通用分析流程。"""
 
 from abc import ABC, abstractmethod
-from typing import cast
+from typing import ClassVar, LiteralString, cast
 
 from nonebot.log import logger
 
@@ -26,7 +26,7 @@ class BaseAnalyzer[
     - response_model: Pydantic 模型（用于结构化输出），默认 list[data_object_model]
     """
 
-    data_type: str = "unknown"
+    data_type: ClassVar[LiteralString] = "unknown"
 
     @abstractmethod
     def get_max_count(self) -> int: ...

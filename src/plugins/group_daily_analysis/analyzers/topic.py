@@ -1,6 +1,5 @@
 """话题分析器。"""
 
-import dataclasses
 import re
 from collections.abc import Iterable
 from string import Template
@@ -55,6 +54,7 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic]):
 
     @override
     def process_response(self, response: list[SummaryTopic]) -> list[SummaryTopic]:
+        processed: list[SummaryTopic] = []
         for topic in super().process_response(response):
             raw_ids = topic.contributors or topic.contributor_ids or []
             resolved = {
@@ -64,10 +64,14 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic]):
                 and (nickname := self._lookup_nickname(user_id))
             }
 
-            topic.contributor_ids = list(resolved.keys())
-            topic.contributors = list(resolved.values())
+            processed.append(
+                topic.shallow_copy_with(
+                    contributor_ids=list(resolved.keys()),
+                    contributors=list(resolved.values()),
+                )
+            )
 
-        return response
+        return processed
 
     def _extract_text_messages(
         self, messages: list[UnifiedMessage]
@@ -77,15 +81,7 @@ class TopicAnalyzer(BaseAnalyzer[SummaryTopic]):
                 cleaned_text = text.replace("\n", " ").replace("\r", " ")
                 cleaned_text = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", cleaned_text)
                 if 2 <= len(text) <= 500:
-                    yield UnifiedMessage(
-                        **{
-                            **{
-                                field.name: getattr(msg, field.name)
-                                for field in dataclasses.fields(msg)
-                            },
-                            "text_content": cleaned_text,
-                        }
-                    )
+                    yield msg.shallow_copy_with(text_content=cleaned_text)
 
 
 _DEFAULT_TOPIC_PROMPT = """\

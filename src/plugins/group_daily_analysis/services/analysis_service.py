@@ -376,18 +376,10 @@ def _compute_user_stats(messages: list[UnifiedMessage]) -> dict[str, UserActivit
     user_data: dict[str, UserActivity] = {}
     for msg in messages:
         uid = msg.sender_id
-        if uid not in user_data:
-            user_data[uid] = UserActivity(msg.sender)
-        entry = user_data[uid]
-        entry.message_count += 1
-        entry.char_count += msg.get_text_length()
-        entry.emoji_count += msg.get_emoji_count()
-        if msg.reply_to_id:
-            entry.reply_count += 1
-        hour = msg.get_datetime().hour
-        entry.hours[hour] = entry.hours.get(hour, 0) + 1
-        if msg.timestamp > entry.last_message_time:
-            entry.last_message_time = msg.timestamp
+        if uid in user_data:
+            user_data[uid] += msg
+        else:
+            user_data[uid] = UserActivity.from_message(msg)
     return user_data
 
 

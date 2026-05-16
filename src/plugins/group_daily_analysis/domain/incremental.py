@@ -12,7 +12,7 @@
 
 import time as time_mod
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import field
 from datetime import datetime, timedelta, timezone
 
 from src.service.llm import TokenUsage
@@ -27,13 +27,12 @@ from .models import (
     UserActivityRanking,
     UserTitle,
 )
-from .value_objects import UnifiedMember
+from .value_objects import ModelBase, UnifiedMember
 
 _UTC8 = timezone(timedelta(hours=8))
 
 
-@dataclass
-class IncrementalIndex:
+class IncrementalIndex(ModelBase):
     """增量分析批次索引项，用于批次列表存储。
 
     每当产生一个新的 IncrementalBatch 时，都会在对应群组的
@@ -45,8 +44,7 @@ class IncrementalIndex:
     timestamp: float = field(default_factory=time_mod.time)
 
 
-@dataclass
-class IncrementalBatch:
+class IncrementalBatch(ModelBase):
     """单次增量分析批次数据。
 
     每次增量分析执行完毕后产生一个 IncrementalBatch，
@@ -87,8 +85,7 @@ class IncrementalBatch:
     participant_ids: list[str] = field(default_factory=list)
 
 
-@dataclass
-class IncrementalState:
+class IncrementalState(ModelBase):
     """增量分析聚合视图（报告时使用）。
 
     由多个 IncrementalBatch 合并而成，不直接持久化。
@@ -219,8 +216,7 @@ class IncrementalState:
         return len(intersection) / len(union)
 
 
-@dataclass
-class IncrementalAnalysisResult:
+class IncrementalAnalysisResult(ModelBase):
     """增量分析结果数据结构"""
 
     statistics: GroupStatistics

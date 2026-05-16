@@ -1,8 +1,10 @@
 """统一消息值对象 — 适配 chatrecorder 记录。"""
 
+import dataclasses
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
+from typing import Any, Self, dataclass_transform
 
 
 class MessageContentType(Enum):
@@ -18,8 +20,32 @@ class MessageContentType(Enum):
     UNKNOWN = "unknown"
 
 
+@dataclass
+@dataclass_transform()
+class ModelBase:
+    def __init_subclass__(cls) -> None:
+        dataclass(cls)
+
+    def dict(self) -> dict[str, Any]:
+        return dataclasses.asdict(self)
+
+    def shallow_dict(self) -> dict[str, Any]:
+        return {
+            field.name: getattr(self, field.name) for field in dataclasses.fields(self)
+        }
+
+    def shallow_copy_with(self, **kwargs: Any) -> Self:
+        return self.__class__(**{**self.shallow_dict(), **kwargs})
+
+
 @dataclass(frozen=True, slots=True)
-class MessageContent:
+@dataclass_transform(frozen_default=True)
+class FrozenModelBase(ModelBase):
+    def __init_subclass__(cls) -> None:
+        dataclass(cls, frozen=True, slots=True)
+
+
+class MessageContent(FrozenModelBase):
     """消息内容片段"""
 
     type: MessageContentType
@@ -29,8 +55,7 @@ class MessageContent:
     at_user_id: str = ""
 
 
-@dataclass(frozen=True, slots=True)
-class UnifiedMember:
+class UnifiedMember(FrozenModelBase):
     """群成员信息"""
 
     user_id: str
@@ -46,8 +71,7 @@ class UnifiedMember:
         return hash(self.user_id)
 
 
-@dataclass(frozen=True, slots=True)
-class UnifiedMessage:
+class UnifiedMessage(FrozenModelBase):
     """统一消息格式
 
     chatrecorder 的 MessageRecord 经转换后填入此结构，

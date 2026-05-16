@@ -56,21 +56,21 @@ class GoldenQuoteAnalyzer(BaseAnalyzer[GoldenQuote]):
 
     @override
     def process_response(self, response: list[GoldenQuote]) -> list[GoldenQuote]:
+        processed: list[GoldenQuote] = []
         for quote in super().process_response(response):
             if (sender_id := quote.sender.strip().strip("[]")) and (
                 nickname := self._lookup_nickname(sender_id)
             ):
-                quote.sender = nickname
-                quote.user_id = sender_id
+                quote = quote.shallow_copy_with(sender=nickname, user_id=sender_id)
             elif (user_id := quote.user_id.strip().strip("[]")) and (
                 nickname := self._lookup_nickname(user_id)
             ):
-                quote.sender = nickname
-                quote.user_id = user_id
+                quote = quote.shallow_copy_with(sender=nickname, user_id=user_id)
             else:
                 logger.opt(colors=True).warning(
                     f"[金句分析] 无法匹配 User ID: <y>{escape_tag(quote.user_id)}</>"
                 )
+            processed.append(quote)
 
         return response
 
