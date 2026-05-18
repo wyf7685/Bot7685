@@ -1,14 +1,15 @@
 """群分析领域数据模型。"""
 
-from dataclasses import field
+from dataclasses import dataclass, field
 from typing import Any
 
 from src.service.llm import TokenUsage
 
-from .value_objects import FrozenModelBase, ModelBase, UnifiedMember, UnifiedMessage
+from .value_objects import ModelMixin, UnifiedMember, UnifiedMessage
 
 
-class SummaryTopic(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class SummaryTopic(ModelMixin):
     """话题总结"""
 
     topic: str
@@ -17,7 +18,8 @@ class SummaryTopic(FrozenModelBase):
     contributor_ids: list[str] = field(default_factory=list)
 
 
-class UserTitle(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class UserTitle(ModelMixin):
     """用户称号"""
 
     name: str
@@ -27,7 +29,8 @@ class UserTitle(FrozenModelBase):
     reason: str
 
 
-class GoldenQuote(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class GoldenQuote(ModelMixin):
     """群聊金句"""
 
     content: str
@@ -36,7 +39,8 @@ class GoldenQuote(FrozenModelBase):
     user_id: str = ""
 
 
-class QualityDimension(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class QualityDimension(ModelMixin):
     """聊天质量维度"""
 
     name: str
@@ -47,11 +51,13 @@ class QualityDimension(FrozenModelBase):
         return QualityDimensionWithColor(**self.shallow_dict(), color=color)
 
 
+@dataclass(frozen=True, slots=True)
 class QualityDimensionWithColor(QualityDimension):
     color: str
 
 
-class QualityReview(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class QualityReview(ModelMixin):
     """聊天质量锐评"""
 
     title: str
@@ -60,7 +66,8 @@ class QualityReview(FrozenModelBase):
     summary: str
 
 
-class UserActivity(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class UserActivity(ModelMixin):
     """用户活跃数据"""
 
     user: UnifiedMember
@@ -110,7 +117,8 @@ class UserActivity(FrozenModelBase):
         )
 
 
-class UserActivityRanking(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class UserActivityRanking(ModelMixin):
     """用户活跃排名"""
 
     user_id: str
@@ -128,7 +136,8 @@ class UserActivityRanking(FrozenModelBase):
         )
 
 
-class EmojiStatistics(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class EmojiStatistics(ModelMixin):
     """表情统计"""
 
     face_count: int = 0
@@ -162,7 +171,8 @@ class EmojiStatistics(FrozenModelBase):
         )
 
 
-class ActivityVisualization(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class ActivityVisualization(ModelMixin):
     """活跃度可视化数据"""
 
     hourly_activity: dict[int, int] = field(default_factory=dict)
@@ -172,7 +182,8 @@ class ActivityVisualization(FrozenModelBase):
     activity_heatmap_data: dict[str, Any] = field(default_factory=dict)
 
 
-class GroupStatistics(ModelBase):
+@dataclass
+class GroupStatistics(ModelMixin):
     """群聊统计"""
 
     message_count: int

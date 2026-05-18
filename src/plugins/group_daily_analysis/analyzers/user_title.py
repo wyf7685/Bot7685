@@ -1,16 +1,18 @@
 """用户称号分析器 — 基于预计算的用户活跃统计数据。"""
 
 import json
+from dataclasses import dataclass
 from string import Template
 from typing import override
 
 from ..config import PROMPT_DIR
 from ..domain.incremental import UserActivity
 from ..domain.models import UserTitle
-from ..domain.value_objects import FrozenModelBase
+from ..domain.value_objects import ModelMixin
 from .base import BaseAnalyzer
 
 
+@dataclass(frozen=True, slots=True)
 class UserActivityStats(UserActivity):
     """单个用户的活跃统计摘要，用于称号分析 prompt 生成。"""
 
@@ -62,7 +64,8 @@ class UserActivityStats(UserActivity):
         )
 
 
-class UserTitleInput(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class UserTitleInput(ModelMixin):
     """用户称号分析的输入数据 — 按消息数降序排列的 Top N 用户活跃统计。"""
 
     users: list[UserActivityStats]

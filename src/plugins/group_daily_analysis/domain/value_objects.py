@@ -4,7 +4,10 @@ import dataclasses
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Self, dataclass_transform
+from typing import TYPE_CHECKING, Any, Self, cast
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
 
 
 class MessageContentType(Enum):
@@ -20,18 +23,14 @@ class MessageContentType(Enum):
     UNKNOWN = "unknown"
 
 
-@dataclass
-@dataclass_transform()
-class ModelBase:
-    def __init_subclass__(cls) -> None:
-        dataclass(cls)
-
+class ModelMixin:
     def dict(self) -> dict[str, Any]:
-        return dataclasses.asdict(self)
+        return dataclasses.asdict(cast("DataclassInstance", self))
 
     def shallow_dict(self) -> dict[str, Any]:
         return {
-            field.name: getattr(self, field.name) for field in dataclasses.fields(self)
+            field.name: getattr(self, field.name)
+            for field in dataclasses.fields(cast("DataclassInstance", self))
         }
 
     def shallow_copy_with(self, **kwargs: Any) -> Self:
@@ -39,13 +38,7 @@ class ModelBase:
 
 
 @dataclass(frozen=True, slots=True)
-@dataclass_transform(frozen_default=True)
-class FrozenModelBase(ModelBase):
-    def __init_subclass__(cls) -> None:
-        dataclass(cls, frozen=True, slots=True)
-
-
-class MessageContent(FrozenModelBase):
+class MessageContent(ModelMixin):
     """消息内容片段"""
 
     type: MessageContentType
@@ -55,7 +48,8 @@ class MessageContent(FrozenModelBase):
     at_user_id: str = ""
 
 
-class UnifiedMember(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class UnifiedMember(ModelMixin):
     """群成员信息"""
 
     user_id: str
@@ -71,7 +65,8 @@ class UnifiedMember(FrozenModelBase):
         return hash(self.user_id)
 
 
-class UnifiedMessage(FrozenModelBase):
+@dataclass(frozen=True, slots=True)
+class UnifiedMessage(ModelMixin):
     """统一消息格式
 
     chatrecorder 的 MessageRecord 经转换后填入此结构，
