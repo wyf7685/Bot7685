@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import httpx
 from nonebot import get_driver
@@ -12,7 +12,7 @@ class DetectorClient:
     def __init__(self) -> None:
         self._client: httpx.AsyncClient | None = None
         self._api_available = False
-        self._last_health_check = 0
+        self._last_health_check = datetime.fromtimestamp(0, tz=UTC)
 
     def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -29,18 +29,21 @@ class DetectorClient:
             response = await self._get_client().get(
                 plugin_config.health_endpoint, timeout=5
             )
-            self._api_available = response.status_code == 200
         except _EXC_TYPES:
-            self._api_available = False
-        return self._api_available
+            return False
+        else:
+            return response.status_code == 200
+
+    def _mark_api_status(self, available: bool) -> None:
+        self._api_available = available
+        self._last_health_check = datetime.now(tz=UTC)
 
     async def check_health(self) -> bool:
         if not plugin_config.api_base_url:
             return False
-        now = datetime.now().timestamp()
-        if now - self._last_health_check > 60:
-            await self._check_health()
-            self._last_health_check = now
+        if (datetime.now(tz=UTC) - self._last_health_check).total_seconds() > 60:
+            available = await self._check_health()
+            self._mark_api_status(available)
         return self._api_available
 
     async def detect_screen(self, url: str) -> bool | None:
@@ -54,6 +57,7 @@ class DetectorClient:
             )
             response.raise_for_status()
             result: dict[str, bool] = response.json()
+            self._mark_api_status(True)
             return result.get("is_screen", False)
         except _EXC_TYPES:
             self._api_available = False
@@ -75,6 +79,7 @@ class DetectorClient:
             )
             response.raise_for_status()
             result: dict[str, bool] = response.json()
+            self._mark_api_status(True)
             return result.get("is_screen", False)
         except _EXC_TYPES:
             self._api_available = False
