@@ -1,13 +1,9 @@
 import asyncio
 import hashlib
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from nonebot import get_driver, logger, on_message, require
+from nonebot import logger, on_message, require
 from nonebot.adapters import Bot, Event
-from nonebot.utils import run_sync
-
-from src.highlight import Highlight
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
@@ -27,42 +23,14 @@ require("src.service.cache")
 from src.plugins.trusted import TrustedUser
 from src.service.cache import get_cache
 
-if TYPE_CHECKING:
-    from .detector import ScreenDetector
+from .api import detector_client
+from .config import plugin_config
 
 ROOT = Path(__file__).parent.resolve()
 CACHE_DIR = get_plugin_cache_dir()
 DETECTION_CACHE_TTL = 3600 * 24
 VALID_MIMES = {"image/jpeg", "image/png", "image/webp"}
-_cache = get_cache[bool]("screen_detector", pickle=True)
-_detector = None
-
-
-def _get_detector() -> ScreenDetector:
-    global _detector
-
-    if _detector is None:
-        from .detector import ScreenDetector
-
-        _detector = ScreenDetector()
-
-    return _detector
-
-
-@get_driver().on_shutdown
-def shutdown() -> None:
-    if _detector is not None:
-        _detector.get_executor().shutdown(wait=False, cancel_futures=True)
-
-
-@run_sync
-def _detect_image(path: Path) -> bool:
-    try:
-        result = _get_detector().detect(path)
-        logger.opt(colors=True).debug(f"检测结果: {Highlight.apply(result)}")
-        return result.get("result", "normal") == "screen_photo"
-    except Exception:
-        return False
+_cache = get_cache[bool]("screen_detector_v2")
 
 
 async def _cache_result_by_id(id: str | None, result: bool) -> None:
@@ -84,6 +52,16 @@ async def _detect_one(event: Event, bot: Bot, image: Image) -> bool:
     ):
         return cached
 
+    if not await detector_client.check_health():
+        return False
+
+    if image.url is not None:
+        result = await detector_client.detect_screen(image.url)
+        if result is None:
+            return False
+        await _cache_result_by_id(image.id, result)
+        return result
+
     raw = await image_fetch(event, bot, {}, image)
     if raw is None:
         await _cache_result_by_id(image.id, False)
@@ -102,12 +80,11 @@ async def _detect_one(event: Event, bot: Bot, image: Image) -> bool:
         await _cache_result_by_id(image.id, cached)
         return cached
 
-    image_path = CACHE_DIR / f"{raw_hash}.{info.extensions[0]}"
-    image_path.write_bytes(raw)
-    try:
-        result = await _detect_image(image_path)
-    finally:
-        image_path.unlink(missing_ok=True)
+    result = await detector_client.detect_screen_from_upload(
+        raw, info.extensions[0], info.mimes[0]
+    )
+    if result is None:
+        return False
 
     await _cache_result_by_id(image.id, result)
     await _cache_result_by_hash(raw_hash, result)
@@ -130,9 +107,17 @@ async def _detect_screen_rule(
     return any(await asyncio.gather(*coros))
 
 
-matcher = on_message(rule=_detect_screen_rule, permission=TrustedUser())
+if plugin_config.api_base_url:
+    logger.debug(
+        f"Screen Detector plugin loaded with API base URL: {plugin_config.api_base_url}"
+    )
+    matcher = on_message(rule=_detect_screen_rule, permission=TrustedUser())
 
-
-@matcher.handle()
-async def handle_screen_photo() -> None:
-    await message_reaction("424")
+    @matcher.handle()
+    async def handle_screen_photo() -> None:
+        await message_reaction("424")
+else:
+    logger.warning(
+        "Screen Detector plugin loaded without API base URL. "
+        "Detection will be disabled."
+    )
