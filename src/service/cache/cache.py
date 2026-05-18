@@ -25,44 +25,32 @@ class Config(BaseModel):
 redis_config = get_plugin_config(Config).redis
 
 
-def _get_cache(*, pickle: bool) -> BaseCache:
+def _get_cache(*, namespace: str, pickle: bool) -> BaseCache:
     serializer = PickleSerializer() if pickle else None
     return (
         RedisCache(
             serializer,
+            namespace=namespace,
             endpoint=redis_config.host,
             port=redis_config.port,
             db=redis_config.db,
             password=redis_config.password,
         )
         if redis_config is not None
-        else SimpleMemoryCache(serializer)
+        else SimpleMemoryCache(
+            serializer,
+            namespace=namespace,
+        )
     )
-
-
-_METHOD_WITH_NS = {
-    "add",
-    "get",
-    "multi_get",
-    "set",
-    "multi_set",
-    "delete",
-    "exists",
-    "increment",
-    "expire",
-}
 
 
 class CacheWrapper:
     def __init__(self, namespace: str, *, pickle: bool) -> None:
-        self.__namespace = f"bot7685:{namespace}:"
-        self.__cache = _get_cache(pickle=pickle)
+        self.__cache = _get_cache(namespace=f"bot7685:{namespace}:", pickle=pickle)
         get_driver().on_shutdown(self.__cache.close)
 
     def __getattr__(self, name: str, /) -> object:
         func = getattr(self.__cache, name)
-        if name in _METHOD_WITH_NS:
-            func = functools.partial(func, namespace=self.__namespace)
         setattr(self, name, func)
         return func
 
