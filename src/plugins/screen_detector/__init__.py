@@ -7,20 +7,13 @@ from nonebot.adapters import Bot, Event
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_localstore")
-from nonebot_plugin_alconna import (
-    Image,
-    MsgTarget,
-    SupportScope,
-    UniMsg,
-    image_fetch,
-    message_reaction,
-)
+require("nonebot_plugin_uninfo")
+from nonebot_plugin_alconna import Image, UniMsg, image_fetch, message_reaction
 from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_localstore import get_plugin_cache_dir
+from nonebot_plugin_uninfo import SupportScope, Uninfo
 
-require("src.plugins.trusted")
 require("src.service.cache")
-from src.plugins.trusted import TrustedUser
 from src.service.cache import get_cache
 
 from .api import detector_client
@@ -92,14 +85,19 @@ async def _detect_one(event: Event, bot: Bot, image: Image) -> bool:
 
 
 async def _detect_screen_rule(
-    event: Event,
     bot: Bot,
-    msg: UniMsg,
-    target: MsgTarget,
+    event: Event,
+    unimsg: UniMsg,
+    session: Uninfo,
 ) -> bool:
-    if target.scope != SupportScope.qq_client:
+    if session.scope != SupportScope.qq_client or session.scene.is_private:
         return False
-    if not (images := msg[Image]):
+    if (
+        not plugin_config.enabled_scenes
+        or session.scene.id not in plugin_config.enabled_scenes
+    ):
+        return False
+    if not (images := unimsg[Image]):
         return False
     if len(images) == 1:
         return await _detect_one(event, bot, images[0])
@@ -111,7 +109,7 @@ if plugin_config.api_base_url:
     logger.debug(
         f"Screen Detector plugin loaded with API base URL: {plugin_config.api_base_url}"
     )
-    matcher = on_message(rule=_detect_screen_rule, permission=TrustedUser())
+    matcher = on_message(rule=_detect_screen_rule)
 
     @matcher.handle()
     async def handle_screen_photo() -> None:

@@ -1,27 +1,30 @@
+import functools
+
 from nonebot import get_plugin_config
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PluginConfig(BaseModel):
-    api_base_url: str | None = None
+    enabled_scenes: set[str] = Field(default_factory=set)
+    api_base_url: str | None = Field(default=None)
 
     @property
+    def _base_url(self) -> str:
+        if self.api_base_url is None:
+            raise ValueError("API base URL is not set.")
+        return self.api_base_url.rstrip("/")
+
+    @functools.cached_property
     def health_endpoint(self) -> str:
-        if self.api_base_url is None:
-            raise ValueError("API base URL is not set.")
-        return f"{self.api_base_url}/health"
+        return f"{self._base_url}/health"
 
-    @property
+    @functools.cached_property
     def detect_endpoint(self) -> str:
-        if self.api_base_url is None:
-            raise ValueError("API base URL is not set.")
-        return f"{self.api_base_url}/detect"
+        return f"{self._base_url}/detect"
 
-    @property
+    @functools.cached_property
     def detect_upload_endpoint(self) -> str:
-        if self.api_base_url is None:
-            raise ValueError("API base URL is not set.")
-        return f"{self.api_base_url}/detect/upload"
+        return f"{self._base_url}/detect/upload"
 
 
 class Config(BaseModel):
