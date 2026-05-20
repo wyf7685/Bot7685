@@ -1,61 +1,88 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="zh-CN">
 <head>
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --text-size: 16px;
-      --spacing: 10px;
-      --image-height: 2em;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #111;
+      padding: 24px;
+    }
+    .card {
+      background: #1a1a2e;
+      border-radius: 16px;
+      padding: 28px 24px;
+      max-width: 600px;
+      color: #e0e0e0;
+    }
+    .card-header {
+      font-size: 22px;
+      font-weight: 700;
+      color: #e94560;
+      margin-bottom: 20px;
+      letter-spacing: 0.5px;
     }
 
-    .container {
-      font-size: var(--text-size);
-      padding: 20px;
-    }
-
-    .line {
+    .entry {
       display: flex;
       align-items: center;
-      margin-bottom: var(--spacing);
+      gap: 16px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
+    .entry:last-of-type { border-bottom: none; }
 
-    .text {
-      text-align: left;
-      min-width: 200px;
-      margin-right: var(--spacing);
+    .date-col { min-width: 130px; line-height: 1.4; }
+    .date-time { color: #aaa; font-size: 14px; }
+    .date-time .time { color: #fff; font-weight: 700; }
+    .relative { color: #666; font-size: 12px; }
+
+    .event {
+      font-size: 16px;
+      font-weight: 700;
+      flex: 1;
+      color: #4ecca3;
     }
-
-    .images-container {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing);
-    }
-
-    .image {
-      height: var(--image-height);
-      width: auto;
+    .emoji {
+      width: 22px;
+      height: 22px;
       vertical-align: middle;
-      object-fit: contain;
+      margin-left: 4px;
     }
+
+    .entry-offline { opacity: 0.45; }
+    .entry-offline .event { color: #888; }
   </style>
 </head>
-
 <body>
-  <div class="container">
-    {% for line in lines %}
-    <div class="line">
-      <span class="text">{{ line.text }}</span>
-      <div class="images-container">
-        {% if line.images %}
-        {% for image in line.images %}
-        <img class="image" src="{{ image.url }}" alt="{{ image.name or 'Schedule image' }}">
+  <div class="card">
+    <div class="card-header">Neuro Schedule</div>
+
+    {% for entry in entries %}
+    <div class="entry {% if entry.is_offline %}entry-offline{% endif %}">
+      <div class="date-col">
+        <span class="date-time">{{ entry.date_str }}{% if entry.time_str %} <span class="time">{{ entry.time_str }}</span>{% endif %}</span>
+        <br><span class="relative">{{ entry.relative_str }}</span>
+      </div>
+      <div class="event">
+        {# 
+        {{ entry.event or "—" }}
+        {%- for e in entry.emoji %}
+        <img class="emoji" src="{{ e.url }}" alt=":{{ e.name }}:">
+        {%- endfor %} 
+        #}
+        {% for item in entry.content %}
+          {% if item.type == "text" %}
+            {{ item.text }}
+          {% elif item.type == "emoji" %}
+            <img class="emoji" src="{{ item.url }}" alt=":{{ item.name }}:">
+          {% endif %}
         {% endfor %}
-        {% endif %}
       </div>
     </div>
     {% endfor %}
   </div>
 </body>
-
 </html>

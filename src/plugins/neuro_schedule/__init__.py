@@ -1,31 +1,32 @@
+import contextlib
 from copy import deepcopy
 from typing import Annotated, Any
 
 from nonebot import logger, on_message, require
-from nonebot.adapters import Bot, discord, milky
+from nonebot.adapters import Bot, discord
 from nonebot.params import Depends
-from nonebot.permission import SUPERUSER
+from nonebot.permission import SuperUser
+from nonebot.typing import T_State
 from pydantic import BaseModel
+
+from src.plugins.neuro_schedule.models import ScheduleData
+from src.utils import ConfigModelFile
 
 require("nonebot_plugin_alconna")
 require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import (
     Alconna,
-    Image,
     MsgTarget,
     Subcommand,
+    SupportScope,
     Target,
     UniMessage,
     on_alconna,
 )
-from nonebot_plugin_localstore import get_plugin_config_file
+from nonebot_plugin_localstore import get_plugin_config_file, get_plugin_data_file
 
-require("src.plugins.group_pipe")
-from src.plugins.group_pipe import get_sender
-from src.plugins.group_pipe.adapters.discord import MessageConverter
-from src.utils import ConfigModelFile
-
+from .parser import parse_schedule
 from .render import render_schedule
 
 
@@ -43,75 +44,94 @@ class Config(BaseModel):
 
 
 config_file = ConfigModelFile(get_plugin_config_file("config.json"), Config)
+schedule_data_file = get_plugin_data_file("schedule.json")
 
-setup_cmd = on_alconna(
+cmd = on_alconna(
     Alconna(
         "neuro_schedule",
         Subcommand("recv", help_text="设置当前会话为接收端"),
         Subcommand("send", help_text="设置当前会话为发送端"),
     ),
-    permission=SUPERUSER,
+    aliases={"neuro-schedule"},
 )
+IsSuperUser = Annotated[bool, Depends(SuperUser())]
 
 
-@setup_cmd.assign("~recv")
-async def assign_recv(target: MsgTarget, _: discord.Bot) -> None:
+@cmd.assign("~recv")
+async def assign_recv(bot: Bot, target: MsgTarget, is_superuser: IsSuperUser) -> None:
+    if not is_superuser:
+        await UniMessage.text("只有管理员可以设置接收端").finish()
+    if not isinstance(bot, discord.Bot):
+        await UniMessage.text("当前会话不支持设置为接收端").finish()
+
     config = config_file.load()
     config.recv_target = target.dump()
     config_file.save(config)
-    await setup_cmd.send("设置当前会话为接收端")
+    await UniMessage.text("设置当前会话为接收端").finish()
 
 
-@setup_cmd.assign("~send")
-async def assign_send(target: MsgTarget, _: milky.Bot) -> None:
+@cmd.assign("~send")
+async def assign_send(target: MsgTarget, is_superuser: IsSuperUser) -> None:
+    if not is_superuser:
+        await UniMessage.text("只有管理员可以设置发送端").finish()
+    if target.scope != SupportScope.qq_client:
+        await UniMessage.text("当前会话不支持设置为发送端").finish()
+
     config = config_file.load()
     config.send_target = target.dump()
     config_file.save(config)
-    await setup_cmd.send("设置当前会话为发送端")
+    await UniMessage.text("设置当前会话为发送端").finish()
+
+
+@cmd.handle()
+async def handle_cmd() -> None:
+    if not schedule_data_file.exists():
+        await UniMessage.text("当前没有存档的日程数据").finish()
+    try:
+        data = ScheduleData.model_validate_json(schedule_data_file.read_bytes())
+    except Exception:
+        logger.exception("读取日程数据失败")
+        await UniMessage.text("读取日程数据失败").finish()
+
+    rendered = await render_schedule(data)
+    unimsg = UniMessage.image(raw=rendered)
+    if data.schedule_image and data.schedule_image.exists():
+        unimsg.image(raw=data.schedule_image.read_bytes())
+    await unimsg.finish()
 
 
 @on_message
-def forward(target: MsgTarget) -> bool:
-    return (
-        (config := config_file.load()).send is not None
-        and (recv := config.recv) is not None
-        and recv.verify(target)
-    )
-
-
-async def _dst() -> tuple[Target, Bot]:
-    if (target := config_file.load().send) is None:
-        forward.skip()
+async def forward(target: MsgTarget, state: T_State) -> bool:
+    if (
+        (config := config_file.load()).send is None
+        or (recv := config.recv) is None
+        or recv.verify(target)
+    ):
+        return False
 
     try:
         bot = await target.select()
     except Exception:
         logger.opt(exception=True).warning("无法获取目标 Bot，跳过转发")
-        forward.skip()
+        return False
 
-    return target, bot
+    state["dst"] = (recv, bot)
+    return True
 
 
 @forward.handle()
-async def handle_forward(
-    src_bot: discord.Bot,
-    event: discord.MessageCreateEvent,
-    dst: Annotated[tuple[Target, Bot], Depends(_dst)],
-) -> None:
-    msg = await MessageConverter.get_message(event)
-    if not msg:
-        logger.warning("消息提取结果为空，跳过转发")
-        return
+async def handle_forward(event: discord.MessageCreateEvent, state: T_State) -> None:
+    data = await parse_schedule(event.get_message())
 
-    unimsg = await MessageConverter(src_bot).convert(msg)
-    if not unimsg:
-        logger.warning("消息转换结果为空，跳过转发")
-        return
+    if schedule_data_file.exists():  # TODO: merge?
+        with contextlib.suppress(Exception):
+            existing = ScheduleData.model_validate_json(schedule_data_file.read_bytes())
+            if existing.schedule_image:
+                existing.schedule_image.unlink(missing_ok=True)
+    schedule_data_file.write_text(data.model_dump_json(), encoding="utf-8")
+    rendered = await render_schedule(data)
 
-    schedule_img = unimsg[Image, -1]
-    unimsg.remove(schedule_img)
-    rendered = await render_schedule(unimsg.split("\n"))
-    unimsg = UniMessage.image(raw=rendered) + schedule_img
-
-    target, dst_bot = dst
-    await get_sender(dst_bot).send(dst_bot, target, unimsg)
+    unimsg = UniMessage.image(raw=rendered)
+    if data.schedule_image and data.schedule_image.exists():
+        unimsg.image(raw=data.schedule_image.read_bytes())
+    await unimsg.send(*state["dst"])
