@@ -20,6 +20,7 @@ from nonebot.adapters.milky.message import Message, MessageSegment
 from nonebot.adapters.milky.model.base import ModelBase
 from nonebot.adapters.milky.model.common import Friend, Group, Member
 from nonebot.adapters.milky.model.message import IncomingMessage
+from nonebot.utils import escape_tag
 
 from src.highlight import Highlight
 
@@ -128,7 +129,7 @@ class H(Highlight[MessageSegment, Message]):
     @override
     def segment(cls, segment: MessageSegment) -> str:
         if segment.is_text():
-            return segment.data["text"]
+            return escape_tag(segment.data["text"])
 
         shown_data = {k: v for k, v in segment.data.items() if not k.startswith("_")}
         return f"[{cls.style.le_u(segment.type)}: {cls.apply(shown_data)}]"
