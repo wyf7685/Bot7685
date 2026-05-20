@@ -1,11 +1,45 @@
+import functools
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from typing import Concatenate
 
 import httpx
-from nonebot import get_driver
+from nonebot import get_driver, logger
+from pydantic import BaseModel
 
 from .config import plugin_config
 
-_EXC_TYPES = (httpx.RequestError, httpx.HTTPStatusError)
+
+class DetectResult(BaseModel):
+    image_id: str
+    is_screen: bool | str
+
+
+def _check_api[**P, R](
+    method: Callable[Concatenate[DetectorClient, P], Awaitable[R]],
+) -> Callable[Concatenate[DetectorClient, P], Awaitable[R | None]]:
+    @functools.wraps(method)
+    async def wrapper(
+        self: DetectorClient,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> R | None:
+        if not await self.check_health():
+            return None
+        try:
+            result = await method(self, *args, **kwargs)
+        except httpx.RequestError:
+            self._mark_api_status(False)
+            return None
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                f"API request failed with {exc.response.status_code}: {exc!r}"
+            )
+            return None
+        self._mark_api_status(True)
+        return result
+
+    return wrapper
 
 
 class DetectorClient:
@@ -13,6 +47,10 @@ class DetectorClient:
         self._client: httpx.AsyncClient | None = None
         self._api_available = False
         self._last_health_check = datetime.fromtimestamp(0, tz=UTC)
+
+    @property
+    def is_available(self) -> bool:
+        return self._api_available
 
     def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -29,7 +67,7 @@ class DetectorClient:
             response = await self._get_client().get(
                 plugin_config.health_endpoint, timeout=5
             )
-        except _EXC_TYPES:
+        except httpx.RequestError, httpx.HTTPStatusError:
             return False
         else:
             return response.status_code == 200
@@ -44,46 +82,40 @@ class DetectorClient:
         if (datetime.now(tz=UTC) - self._last_health_check).total_seconds() > 60:
             available = await self._check_health()
             self._mark_api_status(available)
-        return self._api_available
+        return self.is_available
 
-    async def detect_screen(self, url: str) -> bool | None:
-        if not self._api_available:
-            return None
-        try:
-            response = await self._get_client().post(
-                plugin_config.detect_endpoint,
-                json={"url": url},
-                timeout=10,
-            )
-            response.raise_for_status()
-            result: dict[str, bool] = response.json()
-            self._mark_api_status(True)
-            return result.get("is_screen", False)
-        except _EXC_TYPES:
-            self._api_available = False
-            return None
+    @_check_api
+    async def detect_screen(self, url: str) -> DetectResult:
+        response = await self._get_client().post(
+            plugin_config.detect_endpoint,
+            json={"url": url},
+            timeout=10,
+        )
+        response.raise_for_status()
+        return DetectResult.model_validate_json(response.content)
 
+    @_check_api
     async def detect_screen_from_upload(
         self,
         file: bytes,
         extention: str,
         mime: str,
-    ) -> bool | None:
-        if not self._api_available:
-            return None
-        try:
-            response = await self._get_client().post(
-                plugin_config.detect_upload_endpoint,
-                files={"file": (f"image.{extention}", file, mime)},
-                timeout=30,
-            )
-            response.raise_for_status()
-            result: dict[str, bool] = response.json()
-            self._mark_api_status(True)
-            return result.get("is_screen", False)
-        except _EXC_TYPES:
-            self._api_available = False
-            return None
+    ) -> DetectResult:
+        response = await self._get_client().post(
+            plugin_config.detect_upload_endpoint,
+            files={"file": (f"image.{extention}", file, mime)},
+            timeout=30,
+        )
+        response.raise_for_status()
+        return DetectResult.model_validate_json(response.content)
+
+    @_check_api
+    async def update_class(self, image_id: str, is_screen: bool) -> None:
+        await self._get_client().post(
+            plugin_config.update_class_endpoint,
+            json={"image_id": image_id, "is_screen": is_screen},
+            timeout=5,
+        )
 
 
 detector_client = DetectorClient()

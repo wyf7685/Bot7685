@@ -26,6 +26,10 @@ class PluginConfig(BaseModel):
     def detect_upload_endpoint(self) -> str:
         return f"{self._base_url}/detect/upload"
 
+    @functools.cached_property
+    def update_class_endpoint(self) -> str:
+        return f"{self._base_url}/detect/update_class"
+
 
 class Config(BaseModel):
     screen: PluginConfig
