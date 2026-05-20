@@ -101,11 +101,15 @@ async def handle_cmd() -> None:
 
 
 @on_message
-async def forward(target: MsgTarget, state: T_State) -> bool:
+async def forward(
+    _: discord.MessageCreateEvent,
+    target: MsgTarget,
+    state: T_State,
+) -> bool:
     if (
         (config := config_file.load()).send is None
         or (recv := config.recv) is None
-        or recv.verify(target)
+        or not recv.verify(target)
     ):
         return False
 
