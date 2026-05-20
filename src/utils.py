@@ -186,12 +186,12 @@ def with_semaphore[**P, R](initial_value: int) -> Decorator[P, R]:
     return decorator
 
 
-def caller_loc_repr(depth: int = 2) -> str:
+def caller_loc_repr(depth: int = 1) -> str:
     if (frame := inspect.currentframe()) is None:
         return "<unknown>"
-    for _ in range(depth):
+    for _ in range(depth + 1):
         if frame.f_back is None:
-            break
+            return "<unknown>"
         frame = frame.f_back
     loc = f"{frame.f_code.co_filename}:{frame.f_lineno}"
     del frame
@@ -290,7 +290,7 @@ def attach_async_context[T, **P, R](
         ) -> Callable[P, Coro[R]]:
 
             @functools.wraps(func)
-            async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
+            async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
                 async with context() as ctx_val:
                     return await func(ctx_val, *args, **kwargs)
 
@@ -300,7 +300,7 @@ def attach_async_context[T, **P, R](
 
     def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Coro[R]]:
         @functools.wraps(func)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Any:
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             async with context():
                 return await func(*args, **kwargs)
 

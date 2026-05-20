@@ -278,7 +278,7 @@ requires-dist = [
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
     { name = "nonebot-plugin-orm", extras = ["asyncpg", "aiosqlite"], specifier = ">=0.8.3" },
     { name = "nonebot-plugin-rollpig", git = "https://github.com/wyf7685/nonebot-plugin-rollpig?rev=11fede74c405db12199d842b46805366db8f01e1" },
-    { name = "nonebot-plugin-skland", specifier = ">=0.6.8" },
+    { name = "nonebot-plugin-skland", specifier = ">=0.6.9" },
     { name = "nonebot-plugin-talk-stats", git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.9.0" },
     { name = "nonebot-plugin-user", specifier = ">=0.5.3" },
@@ -1600,7 +1600,7 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-skland"
-version = "0.6.8"
+version = "0.6.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arclet-alconna" },
@@ -1617,9 +1617,9 @@ dependencies = [
     { name = "qrcode", extra = ["pil"] },
     { name = "rich" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0d/c0/51e8dcf43eecf6cf485a735df4b8a2da68e3cfa089bdc53a58302ccd24ef/nonebot_plugin_skland-0.6.8.tar.gz", hash = "sha256:dbf6c336be09e77b90ce19d2ac09a6ad76f82596848c8f45dc1b55bb77a9191d", size = 19967766, upload-time = "2026-03-31T07:46:42.493Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/91/1fa6cf42a01f54df8396682bd301e77dee5fda0d745d92d69a52ef7a8b5b/nonebot_plugin_skland-0.6.9.tar.gz", hash = "sha256:c2bf842d4a711bd2f62cdbf1e3c01022108a50e131bcbed00e6844a24e3ff077", size = 19970538, upload-time = "2026-05-18T03:30:19.198Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6e/d9/7166fabcb2610c3fec14eb80da1c7fd0f62967db9a35fabcdc9579ec1007/nonebot_plugin_skland-0.6.8-py3-none-any.whl", hash = "sha256:ae214b28a46fa108d8793b5ad911d28f311268b5ea371544ed2645b1d11c63f3", size = 20035639, upload-time = "2026-03-31T07:46:40.032Z" },
+    { url = "https://files.pythonhosted.org/packages/6c/3c/71f4725258710a7d9d7850a1df006d0be45af39f7c68754d391fd872c308/nonebot_plugin_skland-0.6.9-py3-none-any.whl", hash = "sha256:927fbe06f34e9be89ce8c38cf3fe43fc720a205f2e3ab2191d9d5f370b9c2b8c", size = 20036169, upload-time = "2026-05-18T03:30:16.5Z" },
 ]
 
 [[package]]
