@@ -17,7 +17,7 @@ from .avatar_reuse import ReusableAvatarManager
 MAX_CONCURRENT_DOWNLOADS = 10
 
 # url -> base64 data uri
-_avatar_cache = get_cache[str]("group_daily_avatar", pickle=False)
+_avatar_cache = get_cache("group_daily_avatar", str)
 
 _download_semaphore = asyncio.Semaphore(MAX_CONCURRENT_DOWNLOADS)
 

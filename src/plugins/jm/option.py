@@ -10,7 +10,7 @@ from nonebot.log import logger
 from nonebot.utils import escape_tag, run_sync
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
-from src.service.cache import cache_with, get_cache
+from src.service.cache import get_cache
 from src.utils import with_semaphore
 
 logger = logger.opt(colors=True)
@@ -33,17 +33,16 @@ OPTION = {
 
 jmcomic.JmModuleConfig.EXECUTOR_LOG = jm_log  # pyright: ignore[reportAttributeAccessIssue]
 option = jmcomic.JmOption.construct(OPTION)
-photo_cache = get_cache[jmcomic.JmPhotoDetail]("jmcomic_option:photo", pickle=True)
+album_cache = get_cache("jmcomic_option:album", jmcomic.JmAlbumDetail, pickle=True)
+photo_cache = get_cache("jmcomic_option:photo", jmcomic.JmPhotoDetail, pickle=True)
 
 
-@cache_with(
-    int,
-    namespace="jmcomic_option:album",
-    key=lambda album_id: f"album_{album_id}",
-    pickle=True,
-)
 async def get_album_detail(album_id: int) -> jmcomic.JmAlbumDetail:
-    return await run_sync(option.new_jm_client().get_album_detail)(album_id)
+    if cached := await album_cache.get(f"album_{album_id}"):
+        return cached
+    detail = await run_sync(option.new_jm_client().get_album_detail)(album_id)
+    await album_cache.set(f"album_{album_id}", detail)
+    return detail
 
 
 def _decode_image(raw: bytes, num: int) -> bytes:

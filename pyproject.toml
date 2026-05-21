@@ -27,7 +27,6 @@ dependencies = [
   "nonebot-plugin-wakatime>=0.3.0",
   "nonebot-plugin-wordcloud>=0.9.0",
   # plugin deps
-  "aiocache[redis]>=0.12.3",
   "anyio>=4.12.1",
   "cloudscraper>=1.2.71",
   "githubkit[auth-app]>=0.14.7",
@@ -42,6 +41,7 @@ dependencies = [
   "pillow>=10.0.0",
   "playwright==1.58.0",
   "pydantic>=2.12.5",
+  "redis>=4.2.0",
   # plugins
   "nonebot-plugin-exe-code",
   "nonebot-plugin-talk-stats",

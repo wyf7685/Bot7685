@@ -8,7 +8,6 @@ require("nonebot_plugin_htmlrender")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_user")
 require("nonebot_plugin_waiter")
-require("src.service.cache")
 from nonebot_plugin_alconna import (
     Alconna,
     Args,

@@ -122,7 +122,7 @@ async def assign_list(target: MsgTarget) -> None:
     await UniMessage.text(msg.rstrip("\n")).finish(reply_to=True)
 
 
-cache = get_cache[dict[str, Any]]("pipe:link")
+cache = get_cache("pipe:link", dict[str, Any])
 
 
 @pipe_cmd.assign("create")

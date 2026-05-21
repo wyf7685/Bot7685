@@ -1,3 +1,5 @@
-from .cache import cache_with, get_cache, redis_config
+from .abstract import Cache
+from .cache import get_cache
+from .config import get_redis_config
 
-__all__ = ["cache_with", "get_cache", "redis_config"]
+__all__ = ["Cache", "get_cache", "get_redis_config"]

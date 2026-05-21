@@ -19,7 +19,7 @@ from .reaction import store_image_id
 
 DETECTION_CACHE_TTL = 3600 * 24
 VALID_MIMES = {"image/jpeg", "image/png", "image/webp"}
-_cache = get_cache[bool]("screen_detector:result")
+_cache = get_cache("screen_detector:result", bool)
 
 
 async def _cache_result(

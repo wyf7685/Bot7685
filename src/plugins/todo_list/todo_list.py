@@ -11,15 +11,6 @@ from nonebot_plugin_localstore import get_plugin_data_dir
 from nonebot_plugin_user import User
 from pydantic import BaseModel, Field
 
-from src.service.cache import cache_with
-
-render_markdown = cache_with(
-    str,
-    namespace="todo_list:md_render",
-    key=hash,
-    pickle=True,
-)(md_to_pic)
-
 
 class Todo(BaseModel):
     content: str
@@ -77,7 +68,7 @@ class TodoList:
         md = "### 📝 Todo List\n"
         for i, t in enumerate(todo or self.todo, 1):
             md += f"{t.show(i)}\n"
-        return await render_markdown(md)
+        return await md_to_pic(md)
 
     def checked(self) -> list[Todo]:
         return [todo for todo in self.todo if todo.checked]

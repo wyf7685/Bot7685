@@ -1,89 +1,63 @@
-import functools
-from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, cast
+# ruff: noqa: A002
 
-from aiocache import BaseCache, RedisCache, SimpleMemoryCache
-from aiocache.serializers import PickleSerializer
-from nonebot import get_driver, get_plugin_config
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Literal, overload
+
+from loguru import logger
+from nonebot.utils import escape_tag
 from pydantic import BaseModel
 
+from .abstract import Cache
+from .impl import CacheAdapter, get_cache_impl, get_serializer
+
 if TYPE_CHECKING:
-    from . import Cache  # type_check_only Protocol from ./__init__.pyi
+    from _typeshed import DataclassInstance
 
 
-class RedisConfig(BaseModel):
-    host: str = "localhost"
-    port: int = 6379
-    db: int = 0
-    password: str | None = None
+type _Serializable = (
+    str
+    | bytes
+    | int
+    | float
+    | bool
+    | None
+    | Sequence[_Serializable]
+    | dict[str, _Serializable]
+    | dict[int, _Serializable]
+    | tuple[_Serializable, ...]
+    | set[_Serializable]
+    | DataclassInstance
+    | BaseModel
+)
 
 
-class Config(BaseModel):
-    redis: RedisConfig | None = None
-
-
-redis_config = get_plugin_config(Config).redis
-
-
-def _get_cache(*, namespace: str, pickle: bool) -> BaseCache:
-    serializer = PickleSerializer() if pickle else None
-    return (
-        RedisCache(
-            serializer,
-            namespace=namespace,
-            endpoint=redis_config.host,
-            port=redis_config.port,
-            db=redis_config.db,
-            password=redis_config.password,
-        )
-        if redis_config is not None
-        else SimpleMemoryCache(
-            serializer,
-            namespace=namespace,
-        )
-    )
-
-
-class CacheWrapper:
-    def __init__(self, namespace: str, *, pickle: bool) -> None:
-        self.__cache = _get_cache(namespace=f"bot7685:{namespace}:", pickle=pickle)
-        get_driver().on_shutdown(self.__cache.close)
-
-    def __getattr__(self, name: str, /) -> object:
-        func = getattr(self.__cache, name)
-        setattr(self, name, func)
-        return func
-
-
-class _Cache[T]:
-    def __new__(cls, namespace: str, *, pickle: bool = False) -> Cache[T]:
-        return cast("Cache[T]", CacheWrapper(namespace, pickle=pickle))
-
-
-get_cache = _Cache
-
-
-def cache_with[R, *Ts](
-    *_: type,
+@overload
+def get_cache[T: _Serializable](
     namespace: str,
-    key: Callable[[*Ts], object],
+    type: type[T],
+    /,
+) -> Cache[T]: ...
+@overload
+def get_cache[T](
+    namespace: str,
+    type: type[T],
+    /,
+    *,
+    pickle: Literal[True],
+) -> Cache[T]: ...
+
+
+def get_cache[T](
+    namespace: str,
+    type: type[T],
+    /,
+    *,
     pickle: bool = False,
-    ttl: int = 10 * 60,
-) -> Callable[[Callable[[*Ts], Awaitable[R]]], Callable[[*Ts], Awaitable[R]]]:
-    cache = get_cache[R](namespace, pickle=pickle)
-
-    def decorator(
-        call: Callable[[*Ts], Awaitable[R]],
-    ) -> Callable[[*Ts], Awaitable[R]]:
-        @functools.wraps(call)
-        async def wrapper(*args: *Ts) -> R:
-            cache_key = str(key(*args))
-            if cached := await cache.get(cache_key):
-                return cached
-            result = await call(*args)
-            await cache.set(cache_key, result, ttl=ttl)
-            return result
-
-        return wrapper
-
-    return decorator
+) -> Cache[T]:
+    logger.opt(colors=True).debug(
+        f"Initializing cache for namespace '<y>{escape_tag(namespace)}</>' "
+        f"with type <g>{escape_tag(repr(type))}</> (pickle=<c>{pickle}</>)"
+    )
+    impl = get_cache_impl()
+    serializer = get_serializer(type, pickle)
+    return CacheAdapter(impl, namespace, serializer)
