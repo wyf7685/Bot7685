@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import hashlib
 
+from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.message import event_preprocessor
 from nonebot.typing import T_State
@@ -126,8 +127,14 @@ async def detect_screen_photo(
         return any(await asyncio.gather(*coros))
 
     async def detect_and_react() -> None:
-        with contextlib.suppress(Exception):
-            if await detect():
-                await message_reaction("424")
+        try:
+            is_screen = await detect()
+        except Exception:
+            logger.opt(exception=True).warning("Failed to detect screen")
+            return
+
+        if is_screen:
+            with contextlib.suppress(Exception):
+                await message_reaction("424", None, event, bot)
 
     call_soon(detect_and_react)
