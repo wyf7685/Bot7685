@@ -50,4 +50,18 @@ def call_soon[**P](
     *arg: P.args,
     **kwargs: P.kwargs,
 ) -> None:
-    call_later(0, call, *arg, **kwargs)
+    if not is_coroutine_callable(call):
+        call = run_sync(call)
+    call = cast("Callable[P, Awaitable[object]]", call)
+    loc = caller_loc_repr()
+
+    async def task() -> None:
+        try:
+            await call(*arg, **kwargs)
+        except Exception:
+            nonebot.logger.opt(colors=True).exception(
+                f"Uncaught exception when calling <y>{escape_tag(repr(call))}</>"
+                f" (from <c>{escape_tag(loc)}</>):"
+            )
+
+    driver.task_group.start_soon(task, name=f"Scheduled Task from {loc}")
