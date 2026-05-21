@@ -87,14 +87,13 @@ async def detect_screen_photo(
     unimsg: UniMsg,
     session: Uninfo,
 ) -> None:
-    if session.scope != SupportScope.qq_client or session.scene.is_private:
-        return
     if (
         not plugin_config.enabled_scenes
+        or session.scope != SupportScope.qq_client
+        or session.scene.is_private
         or session.scene.id not in plugin_config.enabled_scenes
+        or not (images := unimsg[Image])
     ):
-        return
-    if not (images := unimsg[Image]):
         return
 
     async def detect() -> bool:
