@@ -1,17 +1,15 @@
 import asyncio
+import contextlib
 import hashlib
 
-from nonebot import on_message, require
 from nonebot.adapters import Bot, Event
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_uninfo")
+from nonebot.message import event_preprocessor
 from nonebot_plugin_alconna import Image, UniMsg, image_fetch, message_reaction
 from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_uninfo import SupportScope, Uninfo
 
-require("src.service.cache")
 from src.service.cache import get_cache
+from src.service.task import call_soon
 
 from .api import DetectResult, detector_client
 from .config import plugin_config
@@ -40,7 +38,7 @@ async def _cache_result(
     return is_screen
 
 
-async def detect_one(event: Event, bot: Bot, image: Image) -> bool:
+async def detect_one(bot: Bot, event: Event, image: Image) -> bool:
     if image.sticker:
         return False
 
@@ -82,30 +80,32 @@ async def detect_one(event: Event, bot: Bot, image: Image) -> bool:
     return await _cache_result(event, result, image.id, raw_hash)
 
 
-async def _detect_screen_rule(
+@event_preprocessor
+async def detect_screen_photo(
     bot: Bot,
     event: Event,
     unimsg: UniMsg,
     session: Uninfo,
-) -> bool:
+) -> None:
     if session.scope != SupportScope.qq_client or session.scene.is_private:
-        return False
+        return
     if (
         not plugin_config.enabled_scenes
         or session.scene.id not in plugin_config.enabled_scenes
     ):
-        return False
+        return
     if not (images := unimsg[Image]):
-        return False
-    if len(images) == 1:
-        return await detect_one(event, bot, images[0])
-    coros = (detect_one(event, bot, image) for image in images)
-    return any(await asyncio.gather(*coros))
+        return
 
+    async def detect() -> bool:
+        if len(images) == 1:
+            return await detect_one(bot, event, images[0])
+        coros = (detect_one(bot, event, image) for image in images)
+        return any(await asyncio.gather(*coros))
 
-matcher = on_message(rule=_detect_screen_rule)
+    async def detect_and_react() -> None:
+        with contextlib.suppress(Exception):
+            if await detect():
+                await message_reaction("424")
 
-
-@matcher.handle()
-async def handle_screen_photo() -> None:
-    await message_reaction("424")
+    call_soon(detect_and_react)
