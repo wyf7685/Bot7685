@@ -17,6 +17,7 @@ from src.utils import Decorator, logger_wrapper
 
 from .config import BootstrapConfig, LogLevelMap, load_config
 from .logo import print_logo
+from .params import patch_pcs_params
 from .patch_lifespan import ExtendedLifespan, patch_require
 
 log = logger_wrapper("Bootstrap")
@@ -122,6 +123,7 @@ def init_nonebot() -> object:
     mount_plugin_loader_hook()
     register_htmlrender_patch()
     patch_require()
+    patch_pcs_params()
     create_driver(config)
     print_logo(log.success, mode="rich")
     load_adapters(bootstrap_config)

@@ -4,10 +4,13 @@ import hashlib
 
 from nonebot.adapters import Bot, Event
 from nonebot.message import event_preprocessor
-from nonebot_plugin_alconna import Image, UniMsg, image_fetch, message_reaction
+from nonebot.typing import T_State
+from nonebot_plugin_alconna import Image, image_fetch, message_reaction
+from nonebot_plugin_alconna.uniseg.params import _uni_msg as get_uni_msg
 from nonebot_plugin_alconna.uniseg.utils import fleep
-from nonebot_plugin_uninfo import SupportScope, Uninfo
+from nonebot_plugin_uninfo import SupportScope, get_session
 
+from src.bootstrap.params import T_DependencyCache, call_coro_as_dependent
 from src.service.cache import get_cache
 from src.service.task import call_soon
 
@@ -84,15 +87,35 @@ async def detect_one(bot: Bot, event: Event, image: Image) -> bool:
 async def detect_screen_photo(
     bot: Bot,
     event: Event,
-    unimsg: UniMsg,
-    session: Uninfo,
+    state: T_State,
+    dependency_cache: T_DependencyCache | None = None,
 ) -> None:
+    if not plugin_config.enabled_scenes:
+        return
+
+    unimsg = await call_coro_as_dependent(
+        get_uni_msg,
+        get_uni_msg(bot, event, state),
+        dependency_cache=dependency_cache,
+    )
+
+    if not (images := unimsg[Image]):
+        return
+
+    try:
+        session = await call_coro_as_dependent(
+            get_session,
+            get_session(bot, event),
+            dependency_cache=dependency_cache,
+        )
+    except Exception:
+        session = None
+
     if (
-        not plugin_config.enabled_scenes
+        session is None
         or session.scope != SupportScope.qq_client
         or session.scene.is_private
         or session.scene.id not in plugin_config.enabled_scenes
-        or not (images := unimsg[Image])
     ):
         return
 
