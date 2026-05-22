@@ -19,7 +19,7 @@ with contextlib.suppress(ImportError):
         GroupMessageReactionEvent,
     )
 
-    _cache = get_cache("screen_detector:image_id", list[tuple[str, bool]])
+    _cache = get_cache("screen:image_id", list[tuple[str, bool]])
 
     async def store_image_id(event: Event, image_id: str, is_screen: bool) -> None:
         if not isinstance(event, GroupMessageEvent):

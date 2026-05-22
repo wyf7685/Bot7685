@@ -1,5 +1,4 @@
 import asyncio
-import functools
 from collections.abc import Iterable
 from datetime import timedelta
 from typing import overload
@@ -13,12 +12,13 @@ CACHE_PREFIX = cache_config.cache_prefix
 class StatsTracker:
     def __init__(self, backend: BaseCacheBackend, namespace: str) -> None:
         self._backend = backend
-        self._namespace = namespace
+        self._key = f"{CACHE_PREFIX}:cache:stats::{namespace}"
         self._hits = 0
         self._misses = 0
         self._local_hits = 0
         self._local_misses = 0
         self._sync_task: asyncio.Task[None] | None = None
+        self._sync_stats()
 
     @property
     def hits(self) -> int:
@@ -31,35 +31,20 @@ class StatsTracker:
     def stats(self) -> CacheStats:
         return CacheStats.of(self.hits, self.misses)
 
-    @functools.cached_property
-    def _key_hits(self) -> str:
-        return f"{CACHE_PREFIX}:cache:stats:{self._namespace}::hits"
-
-    @functools.cached_property
-    def _key_misses(self) -> str:
-        return f"{CACHE_PREFIX}:cache:stats:{self._namespace}::misses"
-
     def _sync_stats(self) -> None:
         if self._sync_task is not None and not self._sync_task.done():
             return  # Sync already in progress
 
         async def sync() -> None:
             await asyncio.sleep(0)
-            hits, misses = (
-                int(x.decode()) if x is not None else 0
-                for x in await self._backend.multi_get(
-                    [self._key_hits, self._key_misses]
-                )
+            hits, misses = map(
+                int, (await self._backend.get(self._key) or b"0|0").decode().split("|")
             )
             self._hits = hits + self._local_hits
             self._misses = misses + self._local_misses
             self._local_hits = self._local_misses = 0
-            await self._backend.multi_set(
-                {
-                    self._key_hits: str(self._hits).encode(),
-                    self._key_misses: str(self._misses).encode(),
-                },
-                None,
+            await self._backend.set(
+                self._key, f"{self._hits}|{self._misses}".encode(), ttl=None
             )
 
         self._sync_task = asyncio.get_running_loop().create_task(sync())

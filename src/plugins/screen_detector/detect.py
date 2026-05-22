@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import functools
 import hashlib
 
 from nonebot import logger
@@ -21,7 +22,12 @@ from .reaction import store_image_id
 
 DETECTION_CACHE_TTL = 3600 * 24
 VALID_MIMES = {"image/jpeg", "image/png", "image/webp"}
-_cache = get_cache("screen_detector:result", bool)
+_cache = get_cache("screen:result", bool)
+
+
+@functools.lru_cache(maxsize=16)
+def _id_key(id: str) -> str:
+    return f"id:{hashlib.sha256(id.encode()).hexdigest()}"
 
 
 async def _cache_result(
@@ -32,7 +38,7 @@ async def _cache_result(
 ) -> bool:
     is_screen = result.is_screen is True if isinstance(result, DetectResult) else result
     coros = [
-        id and _cache.set(f"id:{id}", is_screen, ttl=DETECTION_CACHE_TTL),
+        id and _cache.set(_id_key(id), is_screen, ttl=DETECTION_CACHE_TTL),
         raw_hash and _cache.set(f"hash:{raw_hash}", is_screen, ttl=DETECTION_CACHE_TTL),
         store_image_id(event, result.image_id, is_screen)
         if isinstance(result, DetectResult)
@@ -48,7 +54,7 @@ async def detect_one(bot: Bot, event: Event, image: Image) -> bool:
 
     if (
         image.id is not None
-        and (cached := await _cache.get(f"id:{image.id}")) is not None
+        and (cached := await _cache.get(_id_key(image.id))) is not None
     ):
         return cached
 
