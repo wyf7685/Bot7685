@@ -133,14 +133,14 @@ async def _close_redis_client() -> None:
 @functools.cache
 def get_cache_backend() -> BaseCacheBackend:
     if (redis_config := get_redis_config()) is None:
-        logger.info("No Redis configuration found, using in-memory cache")
+        logger.debug("No Redis configuration found, using in-memory cache")
         return MemoryCacheBackend()
 
     global _redis_client
     if _redis_client is None:
         import redis.asyncio as redis
 
-        logger.opt(colors=True).info(
+        logger.opt(colors=True).debug(
             f"Creating Redis client with config: {Highlight.apply(redis_config)}"
         )
         connection_pool = redis.ConnectionPool(
