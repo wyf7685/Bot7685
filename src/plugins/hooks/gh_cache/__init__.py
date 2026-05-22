@@ -15,5 +15,5 @@ with contextlib.suppress(ImportError):
             object.__setattr__(
                 bot.github.config,
                 "cache_strategy",
-                AsyncBotCacheStrategy("githubkit"),
+                AsyncBotCacheStrategy(f"githubkit:{bot.self_id}"),
             )
