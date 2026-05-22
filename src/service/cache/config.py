@@ -5,6 +5,7 @@ from pydantic import BaseModel, SecretStr
 class CacheConfig(BaseModel):
     cache_prefix: str = "bot7685"
     cache_default_ttl: float = 3600.0
+    cache_pickle_protocol: int | None = None
 
 
 cache_config = get_plugin_config(CacheConfig)

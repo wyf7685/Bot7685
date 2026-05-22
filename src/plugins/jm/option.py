@@ -33,8 +33,8 @@ OPTION = {
 
 jmcomic.JmModuleConfig.EXECUTOR_LOG = jm_log  # pyright: ignore[reportAttributeAccessIssue]
 option = jmcomic.JmOption.construct(OPTION)
-album_cache = get_cache("jmcomic_option:album", jmcomic.JmAlbumDetail, pickle=True)
-photo_cache = get_cache("jmcomic_option:photo", jmcomic.JmPhotoDetail, pickle=True)
+album_cache = get_cache("jmcomic_option:album", jmcomic.JmAlbumDetail, mode="pickle")
+photo_cache = get_cache("jmcomic_option:photo", jmcomic.JmPhotoDetail, mode="pickle")
 
 
 async def get_album_detail(album_id: int) -> jmcomic.JmAlbumDetail:

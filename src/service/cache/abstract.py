@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 from datetime import timedelta
-from typing import Protocol, overload
+from typing import Literal, Protocol, overload
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -25,7 +25,13 @@ class BaseSerializer[T](abc.ABC):
     def loads(self, value: bytes) -> T: ...
 
 
-class BaseCache(abc.ABC):
+# -2: key does not exist
+# -1: key exists but has no expiration
+# non-negative float: remaining ttl in seconds
+type PTTL = Literal[-2, -1] | float
+
+
+class BaseCacheBackend(abc.ABC):
     @abc.abstractmethod
     async def get(self, key: str) -> bytes | None: ...
     @abc.abstractmethod
@@ -35,7 +41,7 @@ class BaseCache(abc.ABC):
     @abc.abstractmethod
     async def delete(self, key: str) -> bool: ...
     @abc.abstractmethod
-    async def pttl(self, key: str) -> float: ...
+    async def pttl(self, key: str) -> PTTL: ...
 
 
 class Cache[T](Protocol):
@@ -46,5 +52,5 @@ class Cache[T](Protocol):
     async def set(self, key: str, value: T, ttl: float | timedelta = ...) -> bool: ...
     async def exists(self, key: str) -> bool: ...
     async def delete(self, key: str) -> bool: ...
-    async def pttl(self, key: str) -> float: ...
+    async def pttl(self, key: str) -> PTTL: ...
     def stats(self) -> CacheStats: ...
