@@ -9,14 +9,14 @@ from typing import Literal, Protocol, overload
 class CacheStats:
     hits: int
     misses: int
+    total: int
+    hit_ratio: float
 
-    @property
-    def total(self) -> int:
-        return self.hits + self.misses
-
-    @property
-    def hit_ratio(self) -> float:
-        return self.hits / self.total if self.total > 0 else 0.0
+    @classmethod
+    def of(cls, hits: int, misses: int) -> CacheStats:
+        total = hits + misses
+        hit_ratio = hits / total if total > 0 else 0.0
+        return cls(hits, misses, total, hit_ratio)
 
 
 class BaseSerializer[T](abc.ABC):

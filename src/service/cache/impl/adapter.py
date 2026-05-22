@@ -29,7 +29,7 @@ class StatsTracker:
         return self._misses + self._local_misses
 
     def stats(self) -> CacheStats:
-        return CacheStats(hits=self.hits, misses=self.misses)
+        return CacheStats.of(self.hits, self.misses)
 
     @functools.cached_property
     def _key_hits(self) -> str:
