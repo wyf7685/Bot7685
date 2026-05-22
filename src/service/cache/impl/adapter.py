@@ -1,7 +1,9 @@
-import asyncio
 from collections.abc import Iterable
 from datetime import timedelta
 from typing import overload
+
+import anyio.lowlevel
+import nonebot
 
 from ..abstract import PTTL, BaseCacheBackend, BaseSerializer, CacheStats
 from ..config import cache_config
@@ -17,8 +19,8 @@ class StatsTracker:
         self._misses = 0
         self._local_hits = 0
         self._local_misses = 0
-        self._sync_task: asyncio.Task[None] | None = None
-        self._sync_stats()
+        self._sync = True
+        nonebot.get_driver().on_startup(self._do_sync)
 
     @property
     def hits(self) -> int:
@@ -31,14 +33,12 @@ class StatsTracker:
     def stats(self) -> CacheStats:
         return CacheStats.of(self.hits, self.misses)
 
-    def _sync_stats(self) -> None:
-        if self._sync_task is not None and not self._sync_task.done():
-            return  # Sync already in progress
-
-        async def sync() -> None:
-            await asyncio.sleep(0)
+    async def _do_sync(self) -> None:
+        try:
+            await anyio.lowlevel.checkpoint()
             hits, misses = map(
-                int, (await self._backend.get(self._key) or b"0|0").decode().split("|")
+                int,
+                (await self._backend.get(self._key) or b"0|0").decode().split("|"),
             )
             self._hits = hits + self._local_hits
             self._misses = misses + self._local_misses
@@ -46,12 +46,14 @@ class StatsTracker:
             await self._backend.set(
                 self._key, f"{self._hits}|{self._misses}".encode(), ttl=None
             )
+        finally:
+            self._sync = False
 
-        self._sync_task = asyncio.get_running_loop().create_task(sync())
-
-        @self._sync_task.add_done_callback
-        def _(_: object) -> None:
-            self._sync_task = None
+    def _sync_stats(self) -> None:
+        if self._sync:
+            return
+        self._sync = True
+        nonebot.get_driver().task_group.start_soon(self._do_sync)
 
     def record_hit(self, n: int = 1) -> None:
         self._local_hits += n
