@@ -96,7 +96,7 @@ class AsyncBotCacheStrategy(BaseCacheStrategy):
 
     @override
     def get_cache_storage(self) -> NoReturn:
-        raise CacheUnsupportedError
+        raise CacheUnsupportedError("AsyncBotCacheStrategy does not support sync usage")
 
     @override
     def get_async_cache_storage(self) -> AsyncBaseCache:
@@ -104,7 +104,7 @@ class AsyncBotCacheStrategy(BaseCacheStrategy):
 
     @override
     def get_hishel_storage(self) -> NoReturn:
-        raise CacheUnsupportedError
+        raise CacheUnsupportedError("AsyncBotCacheStrategy does not support sync usage")
 
     @override
     def get_async_hishel_storage(self) -> AsyncBaseStorage:
