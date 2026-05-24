@@ -86,8 +86,7 @@ async def call_coro_as_dependent[T](
     dependency_cache = dependency_cache or {}
     if call in dependency_cache:
         cache = dependency_cache[call]
-        await cache.wait()
-        return cache.result()
+        return await cache.wait()
 
     cache = dependency_cache[call] = DependencyCache()
     try:
