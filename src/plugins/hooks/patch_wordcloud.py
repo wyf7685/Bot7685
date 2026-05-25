@@ -1,23 +1,25 @@
-from bot7685_ext.nonebot import after_plugin_load
-from nonebot import logger
+from bot7685_ext.nonebot import on_plugin_load
+from nonebot import get_plugin_config, logger
 from nonebot.plugin import Plugin
+from pydantic import BaseModel
 
-filter_words = {"不支持该消息类型", "当前QQ版本不支持此应用"}
+
+class Config(BaseModel):
+    wordcloud_filter_words: set[str] = set()
 
 
-@after_plugin_load
-def patch_nbp_wordcloud(plugin: Plugin, exception: Exception | None) -> None:
-    if exception is not None or plugin.id_ != "nonebot_plugin_wordcloud":
-        return
+if filter_words := get_plugin_config(Config).wordcloud_filter_words:
 
-    import nonebot_plugin_wordcloud.data_source as ds
-    from nonebot_plugin_wordcloud.data_source import _get_wordcloud as original
+    @on_plugin_load("after", plugin_id="nonebot_plugin_wordcloud", skip_on_exc=True)
+    def patch_nbp_wordcloud(_: Plugin) -> None:
+        import nonebot_plugin_wordcloud.data_source as ds
+        from nonebot_plugin_wordcloud.data_source import _get_wordcloud as original
 
-    def _get_wordcloud(messages: list[str], mask_key: str) -> bytes | None:
-        gen = (m for m in messages if all(word not in m for word in filter_words))
-        return original(iter(gen), mask_key)  # pyright: ignore[reportArgumentType]
+        def _get_wordcloud(messages: list[str], mask_key: str) -> bytes | None:
+            gen = (m for m in messages if all(word not in m for word in filter_words))
+            return original(iter(gen), mask_key)  # pyright: ignore[reportArgumentType]
 
-    ds._get_wordcloud = _get_wordcloud  # noqa: SLF001
-    logger.opt(colors=True).success(
-        "Patched <g>nonebot_plugin_wordcloud</g>.<y>_get_wordcloud</y>"
-    )
+        ds._get_wordcloud = _get_wordcloud  # noqa: SLF001
+        logger.opt(colors=True).success(
+            "Patched <g>nonebot_plugin_wordcloud</g>.<y>_get_wordcloud</y>"
+        )
