@@ -1,5 +1,5 @@
 from bot7685_ext.nonebot import on_plugin_load
-from nonebot import get_plugin_config, logger
+from nonebot import get_plugin, get_plugin_config, logger
 from nonebot.plugin import Plugin
 from pydantic import BaseModel
 
@@ -23,3 +23,6 @@ if filter_words := get_plugin_config(Config).wordcloud_filter_words:
         logger.opt(colors=True).success(
             "Patched <g>nonebot_plugin_wordcloud</g>.<y>_get_wordcloud</y>"
         )
+
+    if plugin := get_plugin("nonebot_plugin_wordcloud"):
+        patch_nbp_wordcloud(plugin)
