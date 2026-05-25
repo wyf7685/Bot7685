@@ -51,7 +51,7 @@ with contextlib.suppress(ImportError):
         if ids and detector_client.is_available:
             await asyncio.gather(
                 *(
-                    detector_client.update_class(image_id, not is_screen)
+                    detector_client.classify(image_id, not is_screen)
                     for image_id, is_screen in ids
                 )
             )

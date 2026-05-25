@@ -10,9 +10,40 @@ from pydantic import BaseModel
 from .config import plugin_config
 
 
+class Endpoints:
+    def __init__(self) -> None:
+        self._base_url = plugin_config.api_base_url
+
+    @property
+    def available(self) -> bool:
+        return self._base_url is not None
+
+    @property
+    def _base(self) -> str:
+        if self._base_url is None:
+            raise ValueError("API base URL is not set.")
+        return self._base_url.rstrip("/")
+
+    @property
+    def health(self) -> str:
+        return f"{self._base}/health"
+
+    @property
+    def detect(self) -> str:
+        return f"{self._base}/detect"
+
+    @property
+    def detect_upload(self) -> str:
+        return f"{self._base}/detect/upload"
+
+    @property
+    def classify(self) -> str:
+        return f"{self._base}/classify"
+
+
 class DetectResult(BaseModel):
     image_id: str
-    is_screen: bool | str
+    is_screen: bool
 
 
 def _check_api[**P, R](
@@ -44,13 +75,14 @@ def _check_api[**P, R](
 
 class DetectorClient:
     def __init__(self) -> None:
+        self.endpoints = Endpoints()
         self._client: httpx.AsyncClient | None = None
         self._api_available = False
         self._last_health_check = datetime.fromtimestamp(0, tz=UTC)
 
     @property
     def is_available(self) -> bool:
-        return self._api_available
+        return self.endpoints.available and self._api_available
 
     def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:
@@ -64,9 +96,7 @@ class DetectorClient:
 
     async def _check_health(self) -> bool:
         try:
-            response = await self._get_client().get(
-                plugin_config.health_endpoint, timeout=5
-            )
+            response = await self._get_client().get(self.endpoints.health, timeout=5)
         except httpx.RequestError, httpx.HTTPStatusError:
             return False
         else:
@@ -77,7 +107,7 @@ class DetectorClient:
         self._last_health_check = datetime.now(tz=UTC)
 
     async def check_health(self) -> bool:
-        if not plugin_config.api_base_url:
+        if not self.endpoints.available:
             return False
         if (datetime.now(tz=UTC) - self._last_health_check).total_seconds() > 60:
             available = await self._check_health()
@@ -87,7 +117,7 @@ class DetectorClient:
     @_check_api
     async def detect_screen(self, url: str) -> DetectResult:
         response = await self._get_client().post(
-            plugin_config.detect_endpoint,
+            self.endpoints.detect,
             json={"url": url},
             timeout=10,
         )
@@ -102,7 +132,7 @@ class DetectorClient:
         mime: str,
     ) -> DetectResult:
         response = await self._get_client().post(
-            plugin_config.detect_upload_endpoint,
+            self.endpoints.detect_upload,
             files={"file": (f"image.{extention}", file, mime)},
             timeout=30,
         )
@@ -110,9 +140,9 @@ class DetectorClient:
         return DetectResult.model_validate_json(response.content)
 
     @_check_api
-    async def update_class(self, image_id: str, is_screen: bool) -> None:
+    async def classify(self, image_id: str, is_screen: bool) -> None:
         await self._get_client().post(
-            plugin_config.update_class_endpoint,
+            self.endpoints.classify,
             json={"image_id": image_id, "is_screen": is_screen},
             timeout=5,
         )

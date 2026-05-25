@@ -36,7 +36,7 @@ async def _cache_result(
     id: str | None,
     raw_hash: str | None = None,
 ) -> bool:
-    is_screen = result.is_screen is True if isinstance(result, DetectResult) else result
+    is_screen = result.is_screen if isinstance(result, DetectResult) else result
     coros = [
         id and _cache.set(_id_key(id), is_screen, ttl=DETECTION_CACHE_TTL),
         raw_hash and _cache.set(f"hash:{raw_hash}", is_screen, ttl=DETECTION_CACHE_TTL),
@@ -44,7 +44,7 @@ async def _cache_result(
         if isinstance(result, DetectResult)
         else None,
     ]
-    await asyncio.gather(*(coro for coro in coros if coro))
+    await asyncio.gather(*filter(bool, coros))
     return is_screen
 
 
@@ -52,11 +52,10 @@ async def detect_one(bot: Bot, event: Event, image: Image) -> bool:
     if image.sticker:
         return False
 
-    if (
-        image.id is not None
-        and (cached := await _cache.get(_id_key(image.id))) is not None
-    ):
-        return cached
+    if image.id is not None:
+        cached = await _cache.get(_id_key(image.id))
+        if cached is not None:
+            return cached
 
     if not await detector_client.check_health():
         return False
