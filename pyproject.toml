@@ -25,7 +25,7 @@ dependencies = [
   "nonebot-plugin-user>=0.5.3",
   "nonebot-plugin-waiter>=0.8.1",
   "nonebot-plugin-wakatime>=0.3.0",
-  "nonebot-plugin-wordcloud>=0.9.0",
+  "nonebot-plugin-wordcloud>=0.10.0",
   # plugin deps
   "anyio>=4.12.1",
   "cloudscraper>=1.2.71",
@@ -37,7 +37,6 @@ dependencies = [
   "jmcomic>=2.6.20",
   "mcstatus>=12.2.1,<13.0.0",
   "msgspec[toml,yaml]>=0.20.0",
-  "opencv-python-headless>=4.10.0",
   "pillow>=10.0.0",
   "playwright==1.58.0",
   "pydantic>=2.12.5",
