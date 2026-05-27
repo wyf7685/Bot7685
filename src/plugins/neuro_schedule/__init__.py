@@ -1,4 +1,3 @@
-import contextlib
 from copy import deepcopy
 from typing import Annotated, Any
 
@@ -26,7 +25,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_localstore import get_plugin_config_file, get_plugin_data_file
 
-from .parser import parse_schedule
+from .parser import merge_schedule_data, parse_schedule
 from .render import render_schedule
 
 
@@ -100,8 +99,7 @@ async def handle_cmd() -> None:
     await unimsg.finish()
 
 
-@on_message
-async def forward(
+async def _forward_rule(
     _: discord.MessageCreateEvent,
     target: MsgTarget,
     state: T_State,
@@ -123,15 +121,22 @@ async def forward(
     return True
 
 
+forward = on_message(_forward_rule, priority=5)
+
+
 @forward.handle()
 async def handle_forward(event: discord.MessageCreateEvent, state: T_State) -> None:
     data = await parse_schedule(event.get_message())
+    if not data.entries:
+        return
 
-    if schedule_data_file.exists():  # TODO: merge?
-        with contextlib.suppress(Exception):
+    if schedule_data_file.exists():
+        try:
             existing = ScheduleData.model_validate_json(schedule_data_file.read_bytes())
-            if existing.schedule_image:
-                existing.schedule_image.unlink(missing_ok=True)
+            data = merge_schedule_data(existing, data)
+        except Exception:
+            logger.opt(exception=True).warning("读取现有日程数据失败")
+
     schedule_data_file.write_text(data.model_dump_json(), encoding="utf-8")
     rendered = await render_schedule(data)
 

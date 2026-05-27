@@ -34,15 +34,19 @@ class ScheduleEntry(BaseModel):
     def is_offline(self) -> bool:
         return "offline" in self.plain_text.lower()
 
+    @functools.cached_property
+    def local_datetime(self) -> datetime:
+        return self.timestamp.astimezone(get_localzone())
+
     @property
     def date_str(self) -> str:
-        return self.timestamp.astimezone(get_localzone()).strftime("%m月%d日")
+        return self.local_datetime.strftime("%m月%d日")
 
     @property
     def time_str(self) -> str | None:
         if self.is_offline:
             return None
-        return self.timestamp.astimezone(get_localzone()).strftime("%H:%M")
+        return self.local_datetime.strftime("%H:%M")
 
     @property
     def relative_str(self) -> str:

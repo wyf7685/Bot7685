@@ -26,7 +26,7 @@ _TSS_TYPE_MAP: dict[TimeStampStyle, SegType] = {
 }
 
 
-def _clean_segs(msg: Message) -> list[tuple[SegType, Any]]:
+def _extract_segs(msg: Message) -> list[tuple[SegType, Any]]:
     segs: list[tuple[SegType, Any]] = []
     for seg in msg:
         match seg:
@@ -60,7 +60,7 @@ async def _download_image(url: str) -> Path:
 
 class ScheduleParser:
     def __init__(self, msg: Message) -> None:
-        self.segs = _clean_segs(msg)
+        self.segs = _extract_segs(msg)
         self.idx = 0
 
     @property
