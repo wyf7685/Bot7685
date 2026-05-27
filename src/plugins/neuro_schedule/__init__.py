@@ -107,19 +107,19 @@ async def forward(
     state: T_State,
 ) -> bool:
     if (
-        (config := config_file.load()).send is None
+        (send := (config := config_file.load()).send) is None
         or (recv := config.recv) is None
         or not recv.verify(target)
     ):
         return False
 
     try:
-        bot = await target.select()
+        bot = await send.select()
     except Exception:
         logger.opt(exception=True).warning("无法获取目标 Bot，跳过转发")
         return False
 
-    state["dst"] = (recv, bot)
+    state["dst"] = (send, bot)
     return True
 
 

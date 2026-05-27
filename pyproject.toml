@@ -40,6 +40,7 @@ dependencies = [
   "pillow>=10.0.0",
   "playwright==1.58.0",
   "pydantic>=2.12.5",
+  "rapidfuzz>=3.14.5",
   "redis>=4.2.0",
   # plugins
   "nonebot-plugin-exe-code",

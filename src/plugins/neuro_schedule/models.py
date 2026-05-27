@@ -1,3 +1,4 @@
+import functools
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -23,27 +24,25 @@ class Emoji(BaseModel):
 
 class ScheduleEntry(BaseModel):
     timestamp: datetime
-    content: list[Text | Emoji]
+    content: tuple[Text | Emoji, ...]
 
-    @property
+    @functools.cached_property
+    def plain_text(self) -> str:
+        return "".join(item.text for item in self.content if item.type == "text")
+
+    @functools.cached_property
     def is_offline(self) -> bool:
-        return bool(self.content) and any(
-            "offline" in item.text.lower()
-            for item in self.content
-            if item.type == "text"
-        )
+        return "offline" in self.plain_text.lower()
 
     @property
     def date_str(self) -> str:
-        local_dt = self.timestamp.astimezone(get_localzone())
-        return local_dt.strftime("%m月%d日")
+        return self.timestamp.astimezone(get_localzone()).strftime("%m月%d日")
 
     @property
     def time_str(self) -> str | None:
         if self.is_offline:
             return None
-        local_dt = self.timestamp.astimezone(get_localzone())
-        return local_dt.strftime("%H:%M")
+        return self.timestamp.astimezone(get_localzone()).strftime("%H:%M")
 
     @property
     def relative_str(self) -> str:
