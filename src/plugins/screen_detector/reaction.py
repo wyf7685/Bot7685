@@ -5,6 +5,7 @@ from nonebot import on_type
 from nonebot.adapters import Event
 
 from src.service.cache import get_cache
+from src.utils import with_semaphore
 
 from .api import detector_client
 from .config import plugin_config
@@ -21,6 +22,7 @@ with contextlib.suppress(ImportError):
 
     _cache = get_cache("screen:image_id", list[tuple[str, bool]])
 
+    @with_semaphore(1)
     async def store_image_id(event: Event, image_id: str, is_screen: bool) -> None:
         if not isinstance(event, GroupMessageEvent):
             return
