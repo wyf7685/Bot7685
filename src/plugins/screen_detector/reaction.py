@@ -29,7 +29,7 @@ with contextlib.suppress(ImportError):
         ids = await _cache.get(key, [])
         if image_id not in ids:
             ids.append((image_id, is_screen))
-        await _cache.set(key, ids, ttl=3600)
+        await _cache.set(key, ids, ttl=60 * 60 * 12)
 
     async def _reaction_rule(event: GroupMessageReactionEvent) -> bool:
         if (
