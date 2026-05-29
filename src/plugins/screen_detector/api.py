@@ -155,7 +155,7 @@ class DetectorClient:
     async def package(self, after: datetime) -> bytes:
         response = await self._get_client().post(
             self.endpoints.package,
-            json={"after": after.isoformat()},
+            json={"after_timestamp": after.isoformat()},
             timeout=30,
         )
         response.raise_for_status()
