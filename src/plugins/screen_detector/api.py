@@ -40,6 +40,10 @@ class Endpoints:
     def classify(self) -> str:
         return f"{self._base}/classify"
 
+    @property
+    def package(self) -> str:
+        return f"{self._base}/package"
+
 
 class DetectResult(BaseModel):
     image_id: str
@@ -146,6 +150,16 @@ class DetectorClient:
             json={"image_id": image_id, "is_screen": is_screen},
             timeout=5,
         )
+
+    @_check_api
+    async def package(self, after: datetime) -> bytes:
+        response = await self._get_client().post(
+            self.endpoints.package,
+            json={"after": after.isoformat()},
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.content
 
 
 detector_client = DetectorClient()

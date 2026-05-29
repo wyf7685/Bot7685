@@ -10,6 +10,7 @@ if plugin_config.api_base_url:
     require("nonebot_plugin_uninfo")
     require("src.service.cache")
     require("src.service.task")
+    from . import command as command
     from . import detect as detect
     from . import reaction as reaction
 else:
