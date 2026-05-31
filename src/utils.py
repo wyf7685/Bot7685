@@ -35,10 +35,7 @@ type AsyncDecorator[
     InputR,
     **OutputP = InputP,
     OutputR = InputR,
-] = Callable[
-    [Callable[InputP, Awaitable[InputR]]],
-    Callable[OutputP, Coro[OutputR]],
-]
+] = Decorator[InputP, Awaitable[InputR], OutputP, Coro[OutputR]]
 
 type _ValidLogLevel = Literal[
     "TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"
