@@ -1,7 +1,7 @@
 import asyncio
 import functools
-from collections.abc import Awaitable, Iterable
-from typing import TYPE_CHECKING, cast, final, override
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, final, override
 
 from nonebot import get_driver, logger
 
@@ -86,20 +86,22 @@ class RedisCacheBackend(BaseCacheBackend):
 
     @override
     async def get(self, key: str) -> bytes | None:
-        return await self._redis.get(key)
+        res = await self._redis.get(key)
+        return res.encode() if isinstance(res, str) else res
 
     @override
     async def multi_get(self, keys: Iterable[str]) -> list[bytes | None]:
-        return await self._redis.mget(keys)
+        res = await self._redis.mget(keys)
+        return [item.encode() if isinstance(item, str) else item for item in res]
 
     @override
     async def set(self, key: str, value: bytes, ttl: float | None) -> bool:
-        return await self._redis.set(key, value, px=self._ttl_to_px(ttl))
+        res = await self._redis.set(key, value, px=self._ttl_to_px(ttl))
+        return res is True
 
     @override
     async def multi_set(self, mapping: dict[str, bytes], ttl: float | None) -> int:
-        coro = self._redis.msetex(mapping, px=self._ttl_to_px(ttl))
-        return await cast("Awaitable[int]", coro)
+        return await self._redis.msetex(mapping, px=self._ttl_to_px(ttl))
 
     @override
     async def exists(self, key: str) -> bool:

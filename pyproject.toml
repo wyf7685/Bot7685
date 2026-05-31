@@ -24,7 +24,7 @@ dependencies = [
   "nonebot-plugin-uninfo>=0.9.0",
   "nonebot-plugin-user>=0.5.3",
   "nonebot-plugin-waiter>=0.8.1",
-  "nonebot-plugin-wakatime>=0.3.0",
+  "nonebot-plugin-wakatime>=0.3.1",
   "nonebot-plugin-wordcloud>=0.10.0",
   # plugin deps
   "anyio>=4.12.1",
@@ -75,7 +75,6 @@ nonebot-plugin-werewolf = { git = "https://github.com/wyf7685/nonebot-plugin-wer
 nonebot-plugin-zssm = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git" }
 nonebot-plugin-chatrecorder = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" }
 nonebot-plugin-rollpig = { git = "https://github.com/Bearlele/nonebot-plugin-rollpig.git", rev = "9f7580854e3f12e76d425088f6f78c8bd3800d39" }
-nonebot-plugin-wakatime = { git = "https://github.com/FrostN0v0/nonebot-plugin-wakatime.git", rev = "11968c44b3069fab68c3814071067b980f24cc93" }
 
 [tool.pyright]
 pythonVersion = "3.14"
