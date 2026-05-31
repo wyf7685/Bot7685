@@ -1,8 +1,18 @@
+import contextlib
 from datetime import UTC, datetime, timedelta
 
 from nonebot import logger
 from nonebot.exception import NetworkError
-from nonebot_plugin_alconna import Alconna, Args, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_alconna import (
+    Alconna,
+    Args,
+    MsgTarget,
+    Subcommand,
+    SupportScope,
+    UniMessage,
+    message_reaction,
+    on_alconna,
+)
 
 from .api import detector_client
 
@@ -11,7 +21,7 @@ matcher = on_alconna(alc)
 
 
 @matcher.assign("~package")
-async def assign_package(duration: str) -> None:
+async def assign_package(duration: str, target: MsgTarget) -> None:
     mode = duration[-1]
     num = int(duration[:-1])
     kwd = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days"}[mode]
@@ -22,6 +32,10 @@ async def assign_package(duration: str) -> None:
     if raw is None:
         await UniMessage.text("打包检测结果失败").finish()
     logger.opt(colors=True).info(f"文件大小: <c>{len(raw) / 1024 / 1024:.3f}</> MB")
+
+    if target.scope == SupportScope.qq_client:
+        with contextlib.suppress(Exception):
+            await message_reaction("124")  # OK
 
     filename = f"detector_package_{datetime.now():%Y-%m-%d_%H-%M-%S}.zip"
     try:
