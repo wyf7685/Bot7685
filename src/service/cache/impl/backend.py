@@ -20,13 +20,19 @@ class MemoryCacheBackend(BaseCacheBackend):
         self._cache: dict[str, bytes] = {}
         self._handlers: dict[str, asyncio.TimerHandle] = {}
 
+    def _set(self, key: str, value: bytes, ttl: float | None) -> None:
+        self._cache[key] = value
+        if key in self._handlers:
+            self._handlers[key].cancel()
+        if ttl is not None:
+            loop = asyncio.get_running_loop()
+            self._handlers[key] = loop.call_later(ttl, self._delete, key)
+
     def _delete(self, key: str) -> bool:
         if self._cache.pop(key, None) is not None:
-            handle = self._handlers.pop(key, None)
-            if handle:
+            if handle := self._handlers.pop(key, None):
                 handle.cancel()
             return True
-
         return False
 
     @override
@@ -36,14 +42,6 @@ class MemoryCacheBackend(BaseCacheBackend):
     @override
     async def multi_get(self, keys: Iterable[str]) -> list[bytes | None]:
         return [self._cache.get(key) for key in keys]
-
-    def _set(self, key: str, value: bytes, ttl: float | None) -> None:
-        self._cache[key] = value
-        if key in self._handlers:
-            self._handlers[key].cancel()
-        if ttl is not None:
-            loop = asyncio.get_running_loop()
-            self._handlers[key] = loop.call_later(ttl, self._delete, key)
 
     @override
     async def set(self, key: str, value: bytes, ttl: float | None) -> bool:
