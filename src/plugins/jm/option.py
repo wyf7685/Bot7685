@@ -80,19 +80,18 @@ async def download_image(
 ) -> bytes:
     num = jmcomic.JmImageTool.get_num_by_detail(image)
     url = image.download_url
-    for try_count in range(5):
+    for attempt in range(5):
         try:
             response = (await client.get(url)).raise_for_status()
-        except Exception as err:
+            return _decode_image(response.content, num)
+        except Exception as exc:
             logger.opt(colors=True).warning(
-                f"下载失败 [<y>{try_count + 1}</y>/<y>5</y>]:"
-                f" <c>{url}</c> - <r>{escape_tag(repr(err))}</r>"
+                f"下载失败 [<y>{attempt + 1}</y>/<y>5</y>]:"
+                f" <c>{escape_tag(url)}</c> - <r>{escape_tag(repr(exc))}</r>"
             )
-            if try_count == 4:
+            if attempt == 4:
                 raise
             await anyio.sleep(0.5)
-        else:
-            return _decode_image(response.content, num)
     raise RuntimeError("下载失败")
 
 

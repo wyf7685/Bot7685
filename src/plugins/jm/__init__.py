@@ -57,7 +57,8 @@ async def download_task(
     image: jmcomic.JmImageDetail,
 ) -> None:
     try:
-        task.set_result(await download_image(client, image))
+        raw = await download_image(client, image)
+        task.set_result(raw)
     except Exception as exc:
         logger.opt(colors=True, exception=exc).warning(
             f"下载失败: <i><c>{escape_tag(image.img_url)}</></>"
