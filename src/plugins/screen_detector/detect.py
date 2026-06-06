@@ -12,7 +12,7 @@ from nonebot_plugin_alconna.uniseg.params import _uni_msg as get_uni_msg
 from nonebot_plugin_alconna.uniseg.utils import fleep
 from nonebot_plugin_uninfo import SupportScope, get_session
 
-from src.bootstrap.params import T_DependencyCache, call_coro_as_dependent
+from src.bootstrap.params import T_DependencyCache, call_as_dependent
 from src.service.cache import get_cache
 from src.service.task import call_soon
 
@@ -94,25 +94,22 @@ async def detect_screen_photo(
     bot: Bot,
     event: Event,
     state: T_State,
+    stack: contextlib.AsyncExitStack | None = None,
     dependency_cache: T_DependencyCache | None = None,
 ) -> None:
     if not plugin_config.enabled_scenes:
         return
 
-    unimsg = await call_coro_as_dependent(
-        get_uni_msg,
-        get_uni_msg(bot, event, state),
-        dependency_cache=dependency_cache,
+    unimsg = await call_as_dependent(
+        get_uni_msg, stack, dependency_cache, bot, event, state
     )
 
     if not (images := unimsg[Image]):
         return
 
     try:
-        session = await call_coro_as_dependent(
-            get_session,
-            get_session(bot, event),
-            dependency_cache=dependency_cache,
+        session = await call_as_dependent(
+            get_session, stack, dependency_cache, bot, event
         )
     except Exception:
         session = None

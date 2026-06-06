@@ -1,20 +1,27 @@
 import inspect
-from collections.abc import Awaitable
-from contextlib import AsyncExitStack
-from typing import Any, Optional, Self, override
+from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
+from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
+from typing import Any, Optional, Self, cast, override
 
 from nonebot.dependencies import Param
 from nonebot.internal.params import DependencyCache
-from nonebot.typing import _DependentCallable
-from nonebot.utils import generic_check_issubclass
+from nonebot.typing import _DependentCallable as DependentCallable
+from nonebot.utils import (
+    generic_check_issubclass,
+    is_async_gen_callable,
+    is_coroutine_callable,
+    is_gen_callable,
+    run_sync,
+    run_sync_ctx_manager,
+)
 from tarina.generic import is_optional
 
-T_DependencyCache = dict[_DependentCallable[Any], DependencyCache]
+T_DependencyCache = dict[DependentCallable[Any], DependencyCache]
 
 
 class StackParam(Param):
     def __repr__(self) -> str:
-        return "_StackParam()"
+        return "bot7685.StackParam()"
 
     @classmethod
     @override
@@ -38,29 +45,27 @@ class StackParam(Param):
 
 class DependencyCacheParam(Param):
     def __repr__(self) -> str:
-        return "_DependencyCacheParam()"
+        return "bot7685.DependencyCacheParam()"
 
     @classmethod
     @override
     def _check_param(
         cls, param: inspect.Parameter, allow_types: tuple[type[Param], ...]
     ) -> Self | None:
-        if param.annotation == dict[_DependentCallable[Any], DependencyCache]:
-            return cls(..., type=dict[_DependentCallable[Any], DependencyCache])
-        if param.annotation == dict[_DependentCallable[Any], DependencyCache] | None:
-            return cls(None, type=dict[_DependentCallable[Any], DependencyCache])
-        if param.annotation == Optional[dict[_DependentCallable[Any], DependencyCache]]:  # noqa: UP045
-            return cls(None, type=dict[_DependentCallable[Any], DependencyCache])
-        if is_optional(
-            param.annotation, dict[_DependentCallable[Any], DependencyCache]
-        ):
-            return cls(None, type=dict[_DependentCallable[Any], DependencyCache])
+        if param.annotation == dict[DependentCallable[Any], DependencyCache]:
+            return cls(..., type=dict[DependentCallable[Any], DependencyCache])
+        if param.annotation == dict[DependentCallable[Any], DependencyCache] | None:
+            return cls(None, type=dict[DependentCallable[Any], DependencyCache])
+        if param.annotation == Optional[dict[DependentCallable[Any], DependencyCache]]:  # noqa: UP045
+            return cls(None, type=dict[DependentCallable[Any], DependencyCache])
+        if is_optional(param.annotation, dict[DependentCallable[Any], DependencyCache]):
+            return cls(None, type=dict[DependentCallable[Any], DependencyCache])
         return None
 
     @override
     async def _solve(
         self,
-        dependency_cache: dict[_DependentCallable[Any], DependencyCache] | None = None,
+        dependency_cache: dict[DependentCallable[Any], DependencyCache] | None = None,
         **kwargs: Any,
     ) -> Any:
         return dependency_cache
@@ -78,19 +83,40 @@ def patch_pcs_params() -> None:
         setattr(mod, name, tuple(params))
 
 
-async def call_coro_as_dependent[T](
-    call: _DependentCallable[T],
-    coro: Awaitable[T],
+async def call_as_dependent[**P, T](
+    call: Callable[P, T] | Callable[P, Awaitable[T]],
+    stack: AsyncExitStack | None = None,
     dependency_cache: T_DependencyCache | None = None,
+    /,
+    *args: P.args,
+    **kwargs: P.kwargs,
 ) -> T:
     dependency_cache = dependency_cache or {}
     if call in dependency_cache:
-        cache = dependency_cache[call]
-        return await cache.wait()
+        return await dependency_cache[call].wait()
+
+    if is_gen_callable(call) or is_async_gen_callable(call):
+        assert isinstance(stack, AsyncExitStack), (
+            "Generator dependency should be called in context"
+        )
+        if is_gen_callable(call):
+            cm = run_sync_ctx_manager(
+                contextmanager(cast("Callable[P, Generator[T]]", call))(*args, **kwargs)
+            )
+        else:
+            cm = asynccontextmanager(cast("Callable[P, AsyncGenerator[T]]", call))(
+                *args, **kwargs
+            )
+
+        target = stack.enter_async_context(cm)
+    elif is_coroutine_callable(call):
+        target = call(*args, **kwargs)
+    else:
+        target = run_sync(call)(*args, **kwargs)
 
     cache = dependency_cache[call] = DependencyCache()
     try:
-        result = await coro
+        result = await cast("Awaitable[T]", target)
     except Exception as e:
         cache.set_exception(e)
         raise
