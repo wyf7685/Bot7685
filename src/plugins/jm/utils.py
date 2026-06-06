@@ -58,4 +58,4 @@ class Task[T]:
         yield from self.wait().__await__()
 
 
-DownloadTask = Task[bytes | None]
+DownloadTask = Task[bytes | str]

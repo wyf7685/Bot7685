@@ -63,12 +63,12 @@ async def download_task(
         logger.opt(colors=True, exception=exc).warning(
             f"下载失败: <i><c>{escape_tag(image.img_url)}</></>"
         )
-        task.set_result(None)
+        task.set_result(repr(exc))
 
 
 async def send_segs(
     uid: str,
-    data: AsyncIterable[tuple[tuple[int, int], bytes | None]],
+    data: AsyncIterable[tuple[tuple[int, int], bytes | str]],
 ) -> None:
     async with anyio.create_task_group() as tg:
         async for batch in abatched(data, 20):
@@ -77,8 +77,8 @@ async def send_segs(
                     uid=uid,
                     name=f"P_{p}_{i}",
                     content=UniMessage.image(raw=raw)
-                    if raw is not None
-                    else UniMessage.text("[图片下载失败]"),
+                    if isinstance(raw, bytes)
+                    else UniMessage.text(f"[图片下载失败: {raw}]"),
                 )
                 for (p, i), raw in batch
             ]
@@ -103,7 +103,7 @@ async def send_album_forward(
 
     async def iter_images(
         client: httpx.AsyncClient,
-    ) -> AsyncIterable[tuple[tuple[int, int], bytes | None]]:
+    ) -> AsyncIterable[tuple[tuple[int, int], bytes | str]]:
         for _ in range(min(concurrency, len(pending))):
             put_task(client)
 
