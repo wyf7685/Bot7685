@@ -55,7 +55,7 @@ class Task[T]:
         return self.result
 
     def __await__(self) -> Generator[None, None, T]:
-        yield from self.wait().__await__()
+        return self.wait().__await__()
 
 
 DownloadTask = Task[bytes | str]
