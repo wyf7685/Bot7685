@@ -1,5 +1,7 @@
 import io
 import math
+import random
+import string
 from collections.abc import Iterable
 
 import anyio
@@ -69,6 +71,7 @@ def _decode_image(raw: bytes, num: int) -> bytes:
             (0, y_dst, w, y_dst + move),
         )
 
+    decoded.info["comment"] = "".join(random.choices(string.ascii_letters, k=16))
     with io.BytesIO() as output:
         decoded.save(output, format="JPEG")
         return output.getvalue()
