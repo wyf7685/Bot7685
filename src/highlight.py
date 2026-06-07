@@ -45,10 +45,13 @@ class _Style:
                 lru[text] = f"{prefix}{text}{suffix}"
             return lru[text]
 
-        fn = cast("_StyleCall", fn)
+        def cache_clear() -> None:
+            lru.clear()
+
+        fn: _StyleCall = cast("_StyleCall", fn)
         fn.__name__ = tag
         fn.__qualname__ = f"Style.{tag}"
-        fn.cache_clear = lambda: lru.clear()
+        fn.cache_clear = cache_clear  # ty:ignore[invalid-assignment]
         setattr(self, tag, fn)
         return fn
 
@@ -77,7 +80,7 @@ def with_struct_depth[F: Callable](fn: F) -> F:
     return cast("F", wrapper)
 
 
-class Highlight[TMS: MessageSegment, TM: Message = Message[TMS], TE: Event = Event]:
+class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
     style: ClassVar[_Style] = style
     exclude_value: ClassVar[tuple[object, ...]] = ()
 

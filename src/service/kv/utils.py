@@ -11,9 +11,10 @@ def get_caller_plugin() -> Plugin | None:
     # find plugin
     frame = current_frame
     while frame := frame.f_back:
-        module_name = (module := inspect.getmodule(frame)) and module.__name__
-        if module_name is None:
+        module = inspect.getmodule(frame)
+        if module is None:
             return None
+        module_name = module.__name__
 
         # skip nonebot_plugin_localstore it self
         if module_name.split(".", maxsplit=1)[0] == "nonebot_plugin_localstore":

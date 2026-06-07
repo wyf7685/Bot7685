@@ -1,7 +1,7 @@
 import inspect
 from collections.abc import AsyncGenerator, Awaitable, Callable, Generator
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-from typing import Any, Optional, Self, cast, override
+from typing import Any, Optional, Self, cast, overload, override
 
 from nonebot.dependencies import Param
 from nonebot.internal.params import DependencyCache
@@ -83,8 +83,28 @@ def patch_pcs_params() -> None:
         setattr(mod, name, tuple(params))
 
 
+@overload
 async def call_as_dependent[**P, T](
-    call: Callable[P, T] | Callable[P, Awaitable[T]],
+    call: Callable[P, Awaitable[T]],
+    stack: AsyncExitStack | None = None,
+    dependency_cache: T_DependencyCache | None = None,
+    /,
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> T: ...
+@overload
+async def call_as_dependent[**P, T](
+    call: Callable[P, T],
+    stack: AsyncExitStack | None = None,
+    dependency_cache: T_DependencyCache | None = None,
+    /,
+    *args: P.args,
+    **kwargs: P.kwargs,
+) -> T: ...
+
+
+async def call_as_dependent[**P, T](
+    call: Callable[P, Awaitable[T]] | Callable[P, T],
     stack: AsyncExitStack | None = None,
     dependency_cache: T_DependencyCache | None = None,
     /,
@@ -100,9 +120,10 @@ async def call_as_dependent[**P, T](
             "Generator dependency should be called in context"
         )
         if is_gen_callable(call):
-            cm = run_sync_ctx_manager(
-                contextmanager(cast("Callable[P, Generator[T]]", call))(*args, **kwargs)
+            sync_cm = contextmanager(cast("Callable[P, Generator[T]]", call))(
+                *args, **kwargs
             )
+            cm = run_sync_ctx_manager(sync_cm)  # ty:ignore[invalid-argument-type]
         else:
             cm = asynccontextmanager(cast("Callable[P, AsyncGenerator[T]]", call))(
                 *args, **kwargs

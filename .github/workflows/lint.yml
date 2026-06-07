@@ -8,10 +8,12 @@ on:
       - ".github/workflows/lint.yml"
       - "pyproject.toml"
       - "uv.lock"
+      - "ruff.toml"
+      - "ty.toml"
 
 jobs:
   ruff:
-    name: Ruff Lint
+    name: ruff Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,12 +25,12 @@ jobs:
             src/
             bot.py
 
-  basedpyright:
-    name: BasedPyright Lint
+  ty:
+    name: ty Lint
     runs-on: ubuntu-latest
     needs: ruff
     concurrency:
-      group: basedpyright-${{ github.ref }}
+      group: ty-${{ github.ref }}
       cancel-in-progress: true
 
     steps:
@@ -37,5 +39,5 @@ jobs:
       - name: Setup Python
         uses: ./.github/actions/setup-python
 
-      - name: Run BasedPyright
-        run: uv run basedpyright .
+      - name: Run ty
+        run: uv run ty check .

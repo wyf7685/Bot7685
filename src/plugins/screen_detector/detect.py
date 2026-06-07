@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 import functools
 import hashlib
+from collections.abc import Awaitable
 
 from nonebot import logger
 from nonebot.adapters import Bot, Event
@@ -10,7 +11,7 @@ from nonebot.typing import T_State
 from nonebot_plugin_alconna import Image, image_fetch, message_reaction
 from nonebot_plugin_alconna.uniseg.params import _uni_msg as get_uni_msg
 from nonebot_plugin_alconna.uniseg.utils import fleep
-from nonebot_plugin_uninfo import SupportScope, get_session
+from nonebot_plugin_uninfo import Session, SupportScope, get_session
 
 from src.bootstrap.params import T_DependencyCache, call_as_dependent
 from src.service.cache import get_cache
@@ -37,14 +38,15 @@ async def _cache_result(
     raw_hash: str | None = None,
 ) -> bool:
     is_screen = result.is_screen if isinstance(result, DetectResult) else result
-    coros = [
-        id and _cache.set(_id_key(id), is_screen, ttl=DETECTION_CACHE_TTL),
-        raw_hash and _cache.set(f"hash:{raw_hash}", is_screen, ttl=DETECTION_CACHE_TTL),
-        store_image_id(event, result.image_id, is_screen)
-        if isinstance(result, DetectResult)
-        else None,
-    ]
-    await asyncio.gather(*filter(bool, coros))
+    coros: list[Awaitable[object]] = []
+    if id:
+        coros.append(_cache.set(_id_key(id), is_screen, ttl=DETECTION_CACHE_TTL))
+    if raw_hash:
+        coros.append(_cache.set(f"hash:{raw_hash}", is_screen, ttl=DETECTION_CACHE_TTL))
+    if isinstance(result, DetectResult):
+        coros.append(store_image_id(event, result.image_id, is_screen))
+    if coros:
+        await asyncio.gather(*coros)
     return is_screen
 
 
@@ -107,6 +109,7 @@ async def detect_screen_photo(
     if not (images := unimsg[Image]):
         return
 
+    session: Session | None
     try:
         session = await call_as_dependent(
             get_session, stack, dependency_cache, bot, event

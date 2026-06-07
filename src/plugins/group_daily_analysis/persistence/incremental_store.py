@@ -171,8 +171,8 @@ class IncrementalStore:
         if not index:
             return 0
 
-        expired = []
-        retained = []
+        expired: list[IncrementalIndex] = []
+        retained: list[IncrementalIndex] = []
         for entry in index:
             if entry.timestamp < before_timestamp:
                 expired.append(entry)
@@ -184,7 +184,7 @@ class IncrementalStore:
 
         deleted_count = 0
         for entry in expired:
-            batch_id = entry.get("batch_id", "")
+            batch_id = entry.batch_id
             if not batch_id:
                 continue
             batch_key = self._batch_key(group_id, batch_id)

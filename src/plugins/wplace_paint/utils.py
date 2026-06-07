@@ -132,7 +132,7 @@ class WplacePixelCoords:
         (x1, y1), (x2, y2) = coord1.to_abs(), coord2.to_abs()
         return x2 - x1 + 1, y2 - y1 + 1
 
-    def tuple(self) -> tuple[int, int, int, int]:
+    def as_tuple(self) -> tuple[int, int, int, int]:
         return self.tlx, self.tly, self.pxx, self.pxy
 
 
@@ -229,7 +229,7 @@ def with_retry[**P, R](
                     return await func(*args, **kwargs)
                 except exc_types as e:
                     logger.debug(
-                        f"函数 {func.__name__} "
+                        f"函数 {getattr(func, '__name__', repr(func))} "
                         f"第 {attempt + 1}/{retries} 次调用失败: {e!r}"
                     )
                     caught.append(e)

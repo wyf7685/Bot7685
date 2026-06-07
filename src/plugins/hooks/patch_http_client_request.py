@@ -40,11 +40,11 @@ def patch_request[T](original: _RequestCall[T]) -> _RequestCall[T]:
 if "aiohttp" in driver.type:
     from nonebot.drivers.aiohttp import Session as AIOHTTPSession
 
-    AIOHTTPSession.request = patch_request(AIOHTTPSession.request)
+    AIOHTTPSession.request = patch_request(AIOHTTPSession.request)  # ty:ignore[invalid-assignment]
     logger.success("Patched <g>AIOHTTPSession</g>.<y>request</y>")
 
 if "httpx" in driver.type:
     from nonebot.drivers.httpx import Session as HTTPXSession
 
-    HTTPXSession.request = patch_request(HTTPXSession.request)
+    HTTPXSession.request = patch_request(HTTPXSession.request)  # ty:ignore[invalid-assignment]
     logger.success("Patched <g>HTTPXSession</g>.<y>request</y>")

@@ -55,20 +55,21 @@ async def get_reply_id(
 ) -> str | None: ...
 
 
-@attach_async_context(get_session)
 async def get_reply_id(
-    session: AsyncSession,
     src_adapter: str,
     dst_adapter: str,
     src_id: str | None = None,
     dst_id: str | None = None,
 ) -> str | None:
-    statement = (
-        select(MsgIdCache.dst_id if src_id else MsgIdCache.src_id)
-        .where(MsgIdCache.src_adapter == src_adapter)
-        .where(MsgIdCache.dst_adapter == dst_adapter)
-        .where(
-            (MsgIdCache.src_id == src_id) if src_id else (MsgIdCache.dst_id == dst_id)
+    async with get_session() as session:
+        statement = (
+            select(MsgIdCache.dst_id if src_id else MsgIdCache.src_id)
+            .where(MsgIdCache.src_adapter == src_adapter)
+            .where(MsgIdCache.dst_adapter == dst_adapter)
+            .where(
+                (MsgIdCache.src_id == src_id)
+                if src_id
+                else (MsgIdCache.dst_id == dst_id)
+            )
         )
-    )
-    return await session.scalar(statement)
+        return await session.scalar(statement)

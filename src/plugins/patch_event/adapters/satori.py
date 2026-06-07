@@ -30,7 +30,9 @@ class H(Highlight[MessageSegment]):
 
     @classmethod
     def user(cls, user: User, member: Member | None = None) -> str:
-        return cls.name(user.id, (member and member.nick) or user.name or user.nick)
+        return cls.name(
+            user.id, (member.nick if member else None) or user.name or user.nick
+        )
 
     @classmethod
     def scene(cls, scene: Channel | Guild) -> str:

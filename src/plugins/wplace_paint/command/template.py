@@ -88,7 +88,7 @@ async def prompt_image() -> bytes:
     await matcher.send("请发送模板图片\n(回复其他内容以取消操作)")
 
     @waiter(["message"], matcher, keep_session=True)
-    async def wait(bot: Bot, event: Event) -> tuple[Bot, Event]:
+    def wait(bot: Bot, event: Event) -> tuple[Bot, Event]:
         return bot, event
 
     res = await wait.wait(timeout=120)

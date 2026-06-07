@@ -43,9 +43,9 @@ class BaseAnalyzer[
         return cast("type[Response]", list[self.data_object_model])
 
     def process_response(self, response: Response) -> list[DataObject]:
-        return (
-            list(response)[: self.get_max_count()] if isinstance(response, list) else []
-        )
+        if not isinstance(response, list):
+            return []
+        return cast("list[DataObject]", list(response))[: self.get_max_count()]
 
     def _build_nickname_mapping(self, messages: list[UnifiedMessage]) -> None:
         self._id_to_nickname = {

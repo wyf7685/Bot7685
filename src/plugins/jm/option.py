@@ -33,7 +33,7 @@ OPTION = {
 }
 
 
-jmcomic.JmModuleConfig.EXECUTOR_LOG = jm_log  # pyright: ignore[reportAttributeAccessIssue]
+jmcomic.JmModuleConfig.EXECUTOR_LOG = jm_log  # pyright: ignore[reportAttributeAccessIssue]  # ty:ignore[invalid-assignment]
 option = jmcomic.JmOption.construct(OPTION)
 album_cache = get_cache("jmcomic_option:album", jmcomic.JmAlbumDetail, mode="pickle")
 photo_cache = get_cache("jmcomic_option:photo", jmcomic.JmPhotoDetail, mode="pickle")

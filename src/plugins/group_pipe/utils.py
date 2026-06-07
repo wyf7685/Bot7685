@@ -135,12 +135,17 @@ async def solve_url_302(client: httpx.AsyncClient, url: str) -> str:
 def webm_to_gif(raw: bytes) -> bytes:
     import imageio
 
-    reader = imageio.get_reader(io.BytesIO(raw), format="webm")  # pyright: ignore[reportArgumentType]
+    reader = imageio.get_reader(io.BytesIO(raw), format="webm")  # pyright: ignore[reportArgumentType]  # ty:ignore[invalid-argument-type]
     fps = reader.get_meta_data().get("fps", 10)
     duration = reader.get_meta_data().get("duration", 0)
-    writer_kwds = {"format": "gif", "fps": fps, "duration": duration, "loop": 0}
     with io.BytesIO() as output:
-        writer = imageio.get_writer(output, **writer_kwds)
+        writer = imageio.get_writer(
+            output,
+            format="gif",  # ty:ignore[invalid-argument-type]
+            fps=fps,
+            duration=duration,
+            loop=0,
+        )
         for frame in reader.iter_data():
             writer.append_data(frame)
         writer.close()

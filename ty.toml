@@ -1,0 +1,18 @@
+[environment]
+python-version = "3.14"
+python-platform = "all"
+
+[src]
+exclude = [
+  ".venv",
+  "data",       # nbp-orm migration scripts
+  "**/scripts",
+]
+
+[[overrides]]
+include = [
+  "src/plugins/kuro/matchers/*.py",
+  "src/plugins/group_daily_analysis/analyzers/*.py",
+]
+[overrides.rules]
+invalid-type-form = "ignore"

@@ -3,13 +3,13 @@ import functools
 import importlib
 import inspect
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from itertools import pairwise
 from types import ModuleType, TracebackType
 from typing import Any, override
 
 import anyio
-from nonebot.internal.driver._lifespan import LIFESPAN_FUNC, Lifespan
+from nonebot.internal.driver._lifespan import Lifespan
 from nonebot.plugin import Plugin
 from nonebot.plugin import _current_plugin as current_plugin
 from nonebot.plugin import require as original_require
@@ -18,6 +18,7 @@ from nonebot.utils import escape_tag, run_sync
 from src.utils import logger_wrapper
 
 HOOK_PLUGIN_ID_ATTR = "__bot7685_hook_plugin_id__"
+type LIFESPAN_FUNC = Callable[[], Any] | Callable[[], Awaitable[Any]]
 
 
 def _attach_plugin_id(func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
@@ -41,8 +42,8 @@ def _attach_plugin_id(func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
 
     # nonebot_plugin_alconna.matcher:AlconnaMatcher._run_tests
     if (
-        func.__module__ == "nonebot_plugin_alconna.matcher"
-        and func.__qualname__ == "AlconnaMatcher._run_tests"
+        getattr(func, "__module__", None) == "nonebot_plugin_alconna.matcher"
+        and getattr(func, "__qualname__", None) == "AlconnaMatcher._run_tests"
     ):
 
         @functools.wraps(func)
@@ -64,7 +65,12 @@ def _debug_print_layers(seq: list[list[LIFESPAN_FUNC]]) -> None:
     for idx, layer in enumerate(seq, 1):
         _debug_log(f"Layer {idx}:")
         for func in layer:
-            func_name = f"{func.__module__}:{func.__qualname__}"
+            qualname: str = (
+                getattr(func, "__qualname__", None)
+                or getattr(func, "__name__", None)
+                or repr(func)
+            )
+            func_name = f"{func.__module__}:{qualname}"
             plugin_id = getattr(func, HOOK_PLUGIN_ID_ATTR, None) or "unknown"
             _debug_log(f"  {escape_tag(func_name)} (from {escape_tag(plugin_id)})")
 

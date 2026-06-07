@@ -59,7 +59,7 @@ def timer[**P, R](info: str, /) -> Decorator[P, R]:
 
 
 def _create_driver_class(combine_expr: str) -> type[Driver]:
-    class Driver(_resolve_combine_expr(combine_expr)):
+    class Driver(_resolve_combine_expr(combine_expr)):  # ty:ignore[unsupported-base]
         @override
         def __init__(self, env: Env, config: Config) -> None:
             super().__init__(env, config)

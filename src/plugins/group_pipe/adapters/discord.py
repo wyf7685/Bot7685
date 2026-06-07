@@ -130,13 +130,15 @@ class MessageConverter(
                 "name": attachment.filename,
                 "mimetype": mime,
             }
-            if mime and mime.startswith("image/"):
-                return u.Image(**media_kwds)
-            if mime and mime.startswith("video/"):
-                return u.Video(**media_kwds)
-            if mime and mime.startswith("audio/"):
-                return u.Audio(**media_kwds)
-            return u.File(**media_kwds)
+            media = u.File
+            if mime:
+                if mime.startswith("image/"):
+                    media = u.Image
+                elif mime.startswith("video/"):
+                    media = u.Video
+                elif mime.startswith("audio/"):
+                    media = u.Audio
+            return media(**media_kwds)  # ty:ignore[invalid-argument-type]
         return u.Text(f"[image:{attachment.filename}]")
 
     @converts(ReferenceSegment)

@@ -54,11 +54,11 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
 
     def __init_subclass__(cls, adapter: str | None, **kwargs: object) -> None:
         super().__init_subclass__(**kwargs)
-        CONVERTERS[adapter] = cls  # pyright:ignore[reportArgumentType]
+        CONVERTERS[adapter] = cls  # pyright:ignore[reportArgumentType]  # ty:ignore[invalid-assignment]
 
         # DO NOT use `|=` which updates the original dict
         # create a new dict for subclass with `|`
-        cls._converter_ = cls._converter_ | {
+        cls._converter_ = cls._converter_ | {  # ty:ignore[invalid-assignment]
             cast("ConverterCall[Self, MessageSegment]", call): preds
             for name in dir(cls)
             if (call := getattr(cls, name, None)) is not None
@@ -66,7 +66,7 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
             and (preds := getattr(call, "__predicates__", None)) is not None
         }
 
-        cls.convert = with_client_ctx(cls.convert)
+        cls.convert = with_client_ctx(cls.convert)  # ty:ignore[invalid-assignment]
 
     async def __default(self, seg: MessageSegment) -> Segment | list[Segment] | None:
         return (fn := get_builder(self.src_bot)) and fn.convert(seg)
@@ -74,7 +74,7 @@ class MessageConverter[TB: Bot, TM: Message](abc.ABC):
     def _find_fn[TMS: MessageSegment](self, seg: TMS) -> BoundConverterCall[TMS]:
         for call, preds in self._converter_.items():
             if any(pred(seg) for pred in preds):
-                return functools.partial(call, self)
+                return functools.partial(call, self)  # ty:ignore[invalid-argument-type]
         return self.__default
 
 
@@ -92,7 +92,7 @@ class MessageSender[TB: Bot](abc.ABC):
 
     def __init_subclass__(cls, adapter: str | None) -> None:
         super().__init_subclass__()
-        SENDERS[adapter] = cls  # pyright:ignore[reportArgumentType]
+        SENDERS[adapter] = cls  # pyright:ignore[reportArgumentType]  # ty:ignore[invalid-assignment]
 
 
 def _make_pred(t: str | type[MessageSegment]) -> ConverterPred:
@@ -106,7 +106,7 @@ def _make_pred(t: str | type[MessageSegment]) -> ConverterPred:
 def converts[C: ConverterCall](*target: str | type[MessageSegment]) -> Callable[[C], C]:
     def decorator(call: C) -> C:
         preds = tuple(_make_pred(t) for t in target)
-        call.__predicates__ = preds  # pyright:ignore[reportFunctionMemberAccess]
+        call.__predicates__ = preds  # pyright:ignore[reportFunctionMemberAccess]  # ty:ignore[unresolved-attribute]
         return call
 
     return decorator

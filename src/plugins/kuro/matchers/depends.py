@@ -29,7 +29,7 @@ def _get_current_state() -> T_State | None:
 
 
 def as_dependent[**P, R](func: Callable[P, Awaitable[R]]) -> type[R]:
-    name = func.__name__
+    name = getattr(func, "__name__", repr(func))
     key = f"##state_cache##{name}##"
 
     @functools.wraps(func)

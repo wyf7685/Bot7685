@@ -198,7 +198,7 @@ class H(Highlight[MessageSegment, Message]):
 
     @classmethod
     def group(cls, group: int) -> str:
-        name = (info := group_info_cache.get(group)) and info.group_name
+        name = info.group_name if (info := group_info_cache.get(group)) else None
         return f"[Group:{cls.name(group, name)}]"
 
 

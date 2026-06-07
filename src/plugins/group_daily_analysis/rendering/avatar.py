@@ -53,11 +53,11 @@ class AvatarManager:
 
     def _get_avatar_url(self, uid: str) -> str | None:
         user = self._members.get(uid)
-        return user and user.avatar_url
+        return user.avatar_url if user else None
 
     def get_nickname(self, uid: str) -> str | None:
         user = self._members.get(uid)
-        return user and user.display_name
+        return user.display_name if user else None
 
     def _get_client(self) -> httpx.AsyncClient:
         if self._client is None:

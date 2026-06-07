@@ -24,8 +24,8 @@ class MessageContentType(Enum):
 
 
 class ModelMixin:
-    def dict(self) -> dict[str, Any]:
-        return dataclasses.asdict(cast("DataclassInstance", self))
+    # def dict(self) -> dict[str, Any]:
+    #     return dataclasses.asdict(cast("DataclassInstance", self))
 
     def shallow_dict(self) -> dict[str, Any]:
         return {

@@ -46,8 +46,9 @@ class WuwaCalc:
     @functools.cached_property
     def phantom_equip(self) -> list[Phantom | None] | None:
         return (
-            self.role_detail.phantomData
-            and self.role_detail.phantomData.equipPhantomList
+            self.role_detail.phantomData.equipPhantomList
+            if self.role_detail.phantomData
+            else None
         )
 
     def sum_phantom_value(self, phantom: Phantom) -> None:
@@ -88,5 +89,5 @@ class WuwaCalc:
 
         calc = PhantomCalc.get(self.role_detail.role.roleId, self.ctx)
         return RolePhantomCalcResult(
-            [p and calc.calc_phantom_score(p) for p in self.phantom_equip]
+            [calc.calc_phantom_score(p) if p else None for p in self.phantom_equip]
         )

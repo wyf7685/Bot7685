@@ -1,5 +1,3 @@
-from typing import NoReturn
-
 from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
@@ -154,7 +152,7 @@ async def handle_todo_clear(user_todo: UserTodo) -> None:
 
 
 @todo.handle()
-async def send_todo_list(user_todo: UserTodo) -> NoReturn:
+async def send_todo_list(user_todo: UserTodo) -> None:
     await user_todo.save()
     await (
         UniMessage.image(raw=await user_todo.render())

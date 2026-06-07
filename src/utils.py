@@ -148,7 +148,7 @@ class ConfigModelFile[T: BaseModel](ConfigFile[T]):
 
 class ConfigListFile[T: BaseModel](ConfigFile[list[T]]):
     def __init__(self, file: Path, type_: type[T], /) -> None:
-        super().__init__(file, list[type_], default=list)
+        super().__init__(file, list[type_], default=list)  # ty:ignore[invalid-type-form]
 
     def add(self, item: T) -> None:
         self.save([*self.load(), item])
@@ -226,7 +226,7 @@ def ParamOrPrompt(  # noqa: N802
         nonebot.require("nonebot_plugin_waiter")
         prompt_msg = UniMessage.text(prompt) if isinstance(prompt, str) else prompt
 
-        async def waiter_handler(event: Event) -> str:
+        def waiter_handler(event: Event) -> str:
             return event.get_message().extract_plain_text().strip()
 
         async def prompt_fn() -> str:
@@ -242,6 +242,8 @@ def ParamOrPrompt(  # noqa: N802
             return resp
 
         prompt = prompt_fn
+    else:
+        prompt = cast("Callable[[], Awaitable[str]]", prompt)
 
     sem_key = "ParamOrPrompt#semaphore"
 

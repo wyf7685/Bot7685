@@ -93,7 +93,9 @@ matcher.shortcut("wpt", {"command": "wplace template progress"})
 
 
 async def finish(msg: str | UniMessage) -> NoReturn:
-    await (UniMessage.text(msg) if isinstance(msg, str) else msg).finish(reply_to=True)
+    return await (UniMessage.text(msg) if isinstance(msg, str) else msg).finish(
+        reply_to=True
+    )
 
 
 async def prompt(msg: str) -> str:

@@ -78,8 +78,8 @@ def _patcher_impl[TE: Event, TMS: MessageSegment, TM: Message](
 
     handle = cast("PatcherHandle[TE]", call)
     handle.original = original
-    handle.patch = patch
-    handle.restore = restore
+    handle.patch = patch  # ty:ignore[invalid-assignment]
+    handle.restore = restore  # ty:ignore[invalid-assignment]
     _PATCHER_HANDLES.add(handle)
     return handle
 
@@ -93,7 +93,7 @@ def _make_patcher() -> Patcher:
 
         patcher = cast("Patcher", patcher_wrapper)
         patcher.__patcher__ = True
-        patcher.bind = bind
+        patcher.bind = bind  # ty:ignore[invalid-assignment]
         return patcher
 
     def bind[TH: type[Highlight]](highlight_cls: TH, /) -> TH:
