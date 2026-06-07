@@ -29,6 +29,7 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
+from nonebot_plugin_alconna.uniseg import Receipt
 
 require("src.service.cache")
 require("src.plugins.trusted")
@@ -95,26 +96,32 @@ async def iter_images[K](
 
 
 async def send_nodes(nodes: list[CustomNode]) -> None:
-    with contextlib.suppress(NetworkError):
+    try:
         await UniMessage.reference(*nodes).send()
+    except NetworkError as exc:
+        logger.warning(f"发送合并转发时发生网络错误: {exc!r}")
 
 
-async def send_album_info(album: jmcomic.JmAlbumDetail) -> None:
+async def send_album_info(album: jmcomic.JmAlbumDetail, page_count: int) -> None:
     await UniMessage.text(
         f"ID: {album.id}\n"
         f"标题: {album.title}\n"
         f"作者: {album.author}\n"
         f"标签: {', '.join(album.tags)}\n"
-        f"页数: {album.page_count}"
+        f"页数: {page_count}"
     ).send(reply_to=True)
 
 
 async def send_album_forward(
     uid: str,
     album: jmcomic.JmAlbumDetail,
+    receipt: Receipt,
     concurrency: int = 10,
 ) -> None:
     pending = await fetch_album_images(album)
+
+    await send_album_info(album, len(pending))
+    schedule_recall(receipt)
 
     async with (
         contextlib.aclosing(iter_images(pending, concurrency)) as agen,
@@ -174,12 +181,9 @@ async def handle_qq_client(event: Event, album_id: int) -> None:
     except Exception as err:
         await UniMessage.text(f"获取信息失败: 未知错误\n{err!r}").finish()
 
-    await send_album_info(album)
-    schedule_recall(receipt)
-
     async def send_forward() -> None:
         try:
-            await send_album_forward(event.get_user_id(), album)
+            await send_album_forward(event.get_user_id(), album, receipt)
         finally:
             tg.cancel_scope.cancel()
 
