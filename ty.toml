@@ -1,8 +1,10 @@
 [environment]
+root = ["."]
 python-version = "3.14"
 python-platform = "all"
 
 [src]
+include = ["src/**/*.py"]
 exclude = [
   ".venv",
   "data",       # nbp-orm migration scripts

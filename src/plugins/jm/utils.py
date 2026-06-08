@@ -1,3 +1,5 @@
+import random
+import string
 from collections.abc import AsyncGenerator, AsyncIterable, Generator, Sequence
 from types import EllipsisType
 
@@ -14,6 +16,15 @@ async def abatched[T](ait: AsyncIterable[T], n: int) -> AsyncGenerator[Sequence[
             batch = []
     if batch:
         yield tuple(batch)
+
+
+async def aenumerate[T](
+    ait: AsyncIterable[T], start: int = 0
+) -> AsyncGenerator[tuple[int, T]]:
+    index = start
+    async for item in aiter(ait):
+        yield index, item
+        index += 1
 
 
 def flatten_exception_group[E: BaseException](
@@ -38,7 +49,11 @@ def format_exc_msg(msg: str, exc: BaseException) -> str:
     )
 
 
-class Task[T]:
+def generate_random_ascii_string(length: int) -> str:
+    return "".join(random.choices(string.ascii_letters + string.digits, k=length))
+
+
+class Future[T]:
     event: anyio.Event
     result: T | EllipsisType = ...
 
@@ -58,4 +73,4 @@ class Task[T]:
         return self.wait().__await__()
 
 
-DownloadTask = Task[bytes | str]
+DownloadTask = Future[bytes | str]

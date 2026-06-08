@@ -81,7 +81,7 @@ ignore = [
 ]
 
 [lint.flake8-builtins]
-builtins-ignorelist = ["id", "dir"]
+builtins-ignorelist = ["id", "dir", "input"]
 
 [lint.flake8-pytest-style]
 fixture-parentheses = false

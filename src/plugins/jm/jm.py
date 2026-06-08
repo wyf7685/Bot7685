@@ -1,8 +1,7 @@
 import io
 import math
-import random
-import string
-from collections.abc import Iterable
+from collections.abc import AsyncGenerator, Iterable
+from typing import override
 
 import anyio
 import httpx
@@ -14,6 +13,9 @@ from nonebot_plugin_localstore import get_plugin_cache_dir
 
 from src.service.cache import get_cache
 from src.utils import with_semaphore
+
+from .common import Downloader
+from .utils import generate_random_ascii_string
 
 logger = logger.opt(colors=True)
 
@@ -71,7 +73,7 @@ def _decode_image(raw: bytes, num: int) -> bytes:
             (0, y_dst, w, y_dst + move),
         )
 
-    decoded.info["comment"] = "".join(random.choices(string.ascii_letters, k=16))
+    decoded.info["comment"] = generate_random_ascii_string(16)
     with io.BytesIO() as output:
         decoded.save(output, format="JPEG")
         return output.getvalue()
@@ -133,3 +135,35 @@ async def fetch_album_images(
         for p, photo in await check_album(album)
         for i, image in enumerate(photo, 1)
     ]
+
+
+class JmDownloader(Downloader[jmcomic.JmAlbumDetail, jmcomic.JmImageDetail]):
+    @override
+    def create_httpx_client(self) -> httpx.AsyncClient:
+        transport = httpx.AsyncHTTPTransport(retries=3, http2=True)
+        return httpx.AsyncClient(transport=transport)
+
+    @override
+    async def fetch_index(self, album_id: int) -> jmcomic.JmAlbumDetail:
+        return await get_album_detail(album_id)
+
+    @override
+    async def format_summary(self, album: jmcomic.JmAlbumDetail) -> str:
+        images = await fetch_album_images(album)
+        return (
+            f"ID: {album.album_id}\n"
+            f"标题: {album.title}\n"
+            f"作者: {album.author}\n"
+            f"标签: {', '.join(album.tags)}\n"
+            f"页数: {len(images)}"
+        )
+
+    @override
+    async def generate_task(
+        self, album: jmcomic.JmAlbumDetail
+    ) -> AsyncGenerator[tuple[str, jmcomic.JmImageDetail]]:
+        for (p, i), image in await fetch_album_images(album):
+            yield f"P_{p}_{i}", image
+
+    async def execute_task(self, task: jmcomic.JmImageDetail) -> bytes:
+        return await download_image(await self.get_httpx_client(), task)
