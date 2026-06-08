@@ -325,7 +325,7 @@ class PixivDownloader(Downloader[Illust, str]):
     @override
     async def execute_task(self, url: str) -> bytes:
         raw = await self.pixiv_client.download_image(url, await self.get_httpx_client())
-        im = PIL.Image.open(io.BytesIO(raw))
+        im = PIL.Image.open(io.BytesIO(raw)).convert("RGB")
         im.info["comment"] = generate_random_ascii_string(16)
         with io.BytesIO() as output:
             im.save(output, format="JPEG")
