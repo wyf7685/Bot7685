@@ -51,6 +51,7 @@ class AsyncCosClient:
             f"{bucket}.cos{'-internal' if is_internal else ''}.{region}.myqcloud.com"
         )
         self._base_url = f"{scheme}://{self._host}"
+        self._presign_base_url = f"{scheme}://{bucket}.cos.{region}.myqcloud.com"
         self._token = token
         self._timeout = timeout
         self._client: httpx.AsyncClient | None = None
@@ -200,7 +201,7 @@ class AsyncCosClient:
         sign_query = urlencode(
             dict(item.split("=", 1) for item in authorization.split("&"))
         )
-        return f"{self._base_url}{self._build_request_path(key)}?{sign_query}"
+        return f"{self._presign_base_url}{self._build_request_path(key)}?{sign_query}"
 
     async def create_multipart_upload(self, key: str) -> str:
         response = await self._request(
