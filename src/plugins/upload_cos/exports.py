@@ -1,7 +1,7 @@
+import os
 import pathlib
+from collections.abc import Buffer
 from typing import assert_never, overload
-
-import anyio
 
 from .cos_ops import (
     DEFAULT_TTL_SECS,
@@ -15,7 +15,7 @@ from .database import update_key
 
 @overload
 async def upload_cos(
-    data: bytes,
+    data: Buffer,
     /,
     key: str,
     ttl: int = ...,
@@ -29,7 +29,7 @@ async def upload_cos(
 ) -> str: ...
 @overload
 async def upload_cos(
-    path: pathlib.Path | anyio.Path,
+    path: os.PathLike,
     /,
     key: str,
     ttl: int = ...,
@@ -37,18 +37,16 @@ async def upload_cos(
 
 
 async def upload_cos(
-    source: bytes | str | pathlib.Path | anyio.Path,
+    source: Buffer | str | os.PathLike,
     key: str,
     ttl: int = DEFAULT_TTL_SECS,
 ) -> str:
     match source:
-        case bytes():
+        case Buffer():
             await put_file_from_buffer(source, key)
         case str():
             await put_file_from_url(source, key)
-        case pathlib.Path():
-            await put_file_from_local(source, key)
-        case anyio.Path():
+        case os.PathLike():
             await put_file_from_local(pathlib.Path(source), key)
         case _:
             assert_never(source)

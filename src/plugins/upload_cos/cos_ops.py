@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterable, AsyncIterator
+from collections.abc import AsyncIterable, AsyncIterator, Buffer
 from pathlib import Path, PurePosixPath
 from typing import Self
 
@@ -172,11 +172,13 @@ async def put_file_from_aiterable(aiterable: AsyncIterable[bytes], key: str) -> 
             raise
 
 
-async def put_file_from_buffer(data: bytes, key: str) -> None:
+async def put_file_from_buffer(data: Buffer, key: str) -> None:
+    buf = memoryview(data).toreadonly()
+
     async def aiterable() -> AsyncIterable[bytes]:
         ptr = 0
-        while ptr < len(data):
-            yield data[ptr : ptr + DEFAULT_CHUNK_SIZE]
+        while ptr < len(buf):
+            yield buf[ptr : ptr + DEFAULT_CHUNK_SIZE]
             ptr += DEFAULT_CHUNK_SIZE
 
     await put_file_from_aiterable(aiterable(), key)
