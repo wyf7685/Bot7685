@@ -19,8 +19,8 @@ class CosUploadFile(Model):
 
 
 @attach_async_context(get_session)
-async def update_key(session: AsyncSession, key: str, expired: float) -> None:
-    expire_at = datetime.now().timestamp() + expired
+async def update_key(session: AsyncSession, key: str, ttl: float) -> None:
+    expire_at = datetime.now().timestamp() + ttl
     if item := await session.scalar(
         select(CosUploadFile).where(CosUploadFile.key == key)
     ):

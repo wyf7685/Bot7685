@@ -4,7 +4,7 @@ from typing import assert_never, overload
 import anyio
 
 from .cos_ops import (
-    DEFAULT_EXPIRE_SECS,
+    DEFAULT_TTL_SECS,
     presign,
     put_file_from_buffer,
     put_file_from_local,
@@ -18,28 +18,28 @@ async def upload_cos(
     data: bytes,
     /,
     key: str,
-    expired: int = ...,
+    ttl: int = ...,
 ) -> str: ...
 @overload
 async def upload_cos(
     url: str,
     /,
     key: str,
-    expired: int = ...,
+    ttl: int = ...,
 ) -> str: ...
 @overload
 async def upload_cos(
     path: pathlib.Path | anyio.Path,
     /,
     key: str,
-    expired: int = ...,
+    ttl: int = ...,
 ) -> str: ...
 
 
 async def upload_cos(
     source: bytes | str | pathlib.Path | anyio.Path,
     key: str,
-    expired: int = DEFAULT_EXPIRE_SECS,
+    ttl: int = DEFAULT_TTL_SECS,
 ) -> str:
     match source:
         case bytes():
@@ -53,5 +53,5 @@ async def upload_cos(
         case _:
             assert_never(source)
 
-    await update_key(key, expired)
-    return await presign(key, expired)
+    await update_key(key, ttl)
+    return await presign(key, ttl)

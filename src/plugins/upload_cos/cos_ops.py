@@ -15,7 +15,7 @@ from .cos_client import AsyncCosClient, MultipartUploadPart
 
 ROOT = PurePosixPath("qbot/upload")
 DEFAULT_CHUNK_SIZE = 4 * 1024 * 1024  # 4MB
-DEFAULT_EXPIRE_SECS = 3600  # 1 hour
+DEFAULT_TTL_SECS = 3600  # 1 hour
 
 
 def _create_client() -> AsyncCosClient:
@@ -202,12 +202,12 @@ async def delete_file(client: AsyncCosClient, key: str) -> None:
 async def presign(
     client: AsyncCosClient,
     key: str,
-    expired: int = DEFAULT_EXPIRE_SECS,
+    ttl: int = DEFAULT_TTL_SECS,
 ) -> str:
     return await client.get_presigned_url(
         key=(ROOT / key).as_posix(),
         method="GET",
-        expired=expired,
+        expired=ttl,
     )
 
 

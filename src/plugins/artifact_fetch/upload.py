@@ -12,7 +12,7 @@ async def upload_artifacts(
     reply_to: bool | None = None,
 ) -> None:
     async def upload(name: str, file: Path) -> None:
-        url = await upload_cos(file, key=f"artifacts/{name}", expired=60 * 60 * 24 * 7)
+        url = await upload_cos(file, key=f"artifacts/{name}", ttl=60 * 60 * 24 * 7)
         urls[name] = url
 
     urls: dict[str, str] = {}
