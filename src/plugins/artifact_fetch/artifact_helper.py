@@ -241,7 +241,7 @@ class ArtifactHelper:
                 )
             else:
                 name = artifact.name
-            saved[name] = save_path
+            saved[f"{name}.zip"] = save_path
 
         await anyio.Path(save_dir).mkdir(parents=True, exist_ok=True)
         async with (
