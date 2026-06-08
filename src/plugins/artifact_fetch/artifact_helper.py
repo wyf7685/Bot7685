@@ -1,12 +1,14 @@
 import hashlib
 from collections.abc import Buffer
-from typing import TYPE_CHECKING, Annotated, Self
+from pathlib import Path
+from typing import TYPE_CHECKING, Annotated, Any, Self
 
 import anyio
 import anyio.lowlevel
+import ayafileio
 import httpx
 from githubkit.exception import RequestFailed
-from githubkit.versions.latest.models import Artifact
+from githubkit.versions.latest.models import Artifact, Workflow, WorkflowRun
 from nonebot import logger
 from nonebot.params import Depends
 from nonebot.utils import escape_tag
@@ -15,18 +17,17 @@ from nonebot_plugin_alconna import UniMessage
 from src.utils import with_semaphore
 
 from .config import AppGitHub, plugin_config
-from .data_source import WorkflowID
+from .data_source import ArtifactConfig, WorkflowID
 from .depends import Repository
 
 if TYPE_CHECKING:
     from githubkit import AppAuthStrategy, AppInstallationAuthStrategy, GitHub
-    from githubkit.versions.latest.models import Workflow, WorkflowRun
 
 
 async def download_artifact(
     client: httpx.AsyncClient,
     artifact: Artifact,
-    save_path: anyio.Path,
+    save_path: Path,
     concurrency_limit: int = plugin_config.download.concurrency_limit,
 ) -> None:
     chunk_send, chunk_recv = anyio.create_memory_object_stream[tuple[int, Buffer]]()
@@ -49,13 +50,13 @@ async def download_artifact(
             f" | eta: <c>{time_remaining:.2f}</> seconds"
         )
 
-    async def file_writer(file: anyio.AsyncFile) -> None:
+    async def file_writer(file: ayafileio.AsyncFile[bytes]) -> None:
         await file.truncate(total_size)  # pre-allocate file size
 
         chunk_count = 0
-        async for start, chunk in chunk_recv:
-            await file.seek(start)
-            await file.write(chunk)
+        async for offset, chunk in chunk_recv:
+            await file.seek(offset)
+            await file.write(memoryview(chunk))
             chunk_count += 1
             if chunk_count % 10 == 0 or chunk_count == total_chunks:
                 logger.opt(colors=True).debug(
@@ -109,7 +110,7 @@ async def download_artifact(
                 await anyio.lowlevel.checkpoint()
 
     time_start = anyio.current_time()
-    async with await save_path.open("wb") as file, anyio.create_task_group() as tg:
+    async with ayafileio.open(save_path, "wb") as file, anyio.create_task_group() as tg:
         tg.start_soon(file_writer, file)
         tg.start_soon(fetch_chunks)
 
@@ -122,12 +123,21 @@ async def download_artifact(
 
     if artifact.digest and artifact.digest.startswith("sha256:"):
         sha = hashlib.sha256()
-        async with await save_path.open("rb") as f:
+        async with ayafileio.open(save_path, "rb") as f:
             while chunk := await f.read(10 * 1024 * 1024):  # read in 10 MB chunks
                 sha.update(chunk)
         if sha.hexdigest() != artifact.digest.removeprefix("sha256:"):
-            await save_path.unlink()
+            await anyio.Path(save_path).unlink()
             raise ValueError("Downloaded artifact digest does not match expected value")
+
+
+def prepare_format_data(config: ArtifactConfig, artifact: Artifact) -> dict[str, Any]:
+    match = config.match_regex(artifact.name)
+    data: dict[str, Any] = {"artifact": artifact, "match": match}
+    if match is not None:
+        data["$0"] = match.group(0)
+        data.update({f"${i}": g for i, g in enumerate(match.groups(), start=1)})
+    return data
 
 
 class ArtifactHelper:
@@ -205,25 +215,41 @@ class ArtifactHelper:
     async def download_artifacts(
         self,
         *artifacts: Artifact,
-        save_dir: anyio.Path,
-    ) -> dict[str, anyio.Path]:
-        saved: dict[str, anyio.Path] = {}
+        save_dir: Path,
+        run: WorkflowRun | None = None,
+        config: ArtifactConfig | None = None,
+    ) -> dict[str, Path]:
+        saved: dict[str, Path] = {}
+        format_data = (
+            {"run": run, "head_sha": run.head_sha, "head_sha_short": run.head_sha[:7]}
+            if run
+            else {}
+        )
 
-        async def download(artifact: Artifact) -> None:
+        async def download(client: httpx.AsyncClient, artifact: Artifact) -> None:
             save_path = save_dir / f"{artifact.name}.zip"
             try:
                 await download_artifact(client, artifact, save_path)
-                saved[artifact.name] = save_path
             except Exception:
                 logger.exception(f"Failed to download artifact {artifact.name}")
+                return
 
-        await save_dir.mkdir(parents=True, exist_ok=True)
+            if config is not None:
+                name = config.rename(
+                    artifact.name,
+                    {**format_data, **prepare_format_data(config, artifact)},
+                )
+            else:
+                name = artifact.name
+            saved[name] = save_path
+
+        await anyio.Path(save_dir).mkdir(parents=True, exist_ok=True)
         async with (
             self.github.get_async_client() as client,
             anyio.create_task_group() as tg,
         ):
             for artifact in artifacts:
-                tg.start_soon(download, artifact)
+                tg.start_soon(download, client, artifact)
 
         return saved
 
@@ -252,12 +278,25 @@ async def _artifact_helper(
 Helper = Annotated[ArtifactHelper, Depends(_artifact_helper)]
 
 
-async def _requested_artifacts(
+async def _requested_run(
     helper: Helper,
     workflow_id: WorkflowID | None = None,
+) -> WorkflowRun:
+    try:
+        return await helper.fetch_latest_run(workflow_id)
+    except Exception as exc:
+        logger.exception("Failed to fetch latest workflow run")
+        await UniMessage.text(f"获取最新工作流运行失败: {exc}").finish(reply_to=True)
+
+
+RequestedRun = Annotated[WorkflowRun, Depends(_requested_run)]
+
+
+async def _requested_artifacts(
+    helper: Helper,
+    run: RequestedRun,
 ) -> list[Artifact]:
     try:
-        run = await helper.fetch_latest_run(workflow_id)
         artifacts = await helper.fetch_artifacts(run.id)
     except Exception as exc:
         logger.exception("Failed to fetch artifacts")

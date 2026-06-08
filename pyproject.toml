@@ -51,6 +51,7 @@ dependencies = [
   "nonebot-plugin-zssm",
   # Bot7685 Extensions
   "bot7685-ext[htmlrender,nonebot]==0.5.1",
+  "ayafileio>=1.4.4",
 ]
 
 [dependency-groups]

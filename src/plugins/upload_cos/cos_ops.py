@@ -3,6 +3,7 @@ from pathlib import Path, PurePosixPath
 from typing import Self
 
 import anyio
+import ayafileio
 import httpx
 from nonebot import logger
 from nonebot.utils import escape_tag
@@ -183,11 +184,11 @@ async def put_file_from_buffer(data: bytes, key: str) -> None:
 
 async def put_file_from_local(path: Path, key: str) -> None:
     async def aiterable() -> AsyncIterable[bytes]:
-        while data := await file.read(DEFAULT_CHUNK_SIZE):
-            yield data
+        async with ayafileio.open(path) as file:
+            while data := await file.read(DEFAULT_CHUNK_SIZE):
+                yield data
 
-    async with await anyio.Path(path).open("rb") as file:
-        await put_file_from_aiterable(aiterable(), key)
+    await put_file_from_aiterable(aiterable(), key)
 
 
 @attach_async_context(_create_client)

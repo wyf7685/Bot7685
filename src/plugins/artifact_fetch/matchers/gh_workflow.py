@@ -1,9 +1,8 @@
-from typing import Annotated, Any, Protocol
+from typing import Annotated, Protocol
 
 import anyio
 import anyio.lowlevel
 from githubkit.typing import Missing
-from githubkit.versions.latest.models import Artifact
 from nonebot import get_driver, logger, on_type
 from nonebot.adapters.github.event import WorkflowRunCompleted, WorkflowRunRequested
 from nonebot.matcher import Matcher
@@ -20,7 +19,7 @@ from ..data_source import (
     get_cache_directory,
     subscriptions,
 )
-from ..upload import get_upload_provider
+from ..upload import upload_artifacts
 
 
 async def _workflow_run_repos(
@@ -214,7 +213,6 @@ async def upload_artifacts_for_run(
     target = sub.target
     assert sub.artifact_upload_config is not None
     cfg = sub.artifact_upload_config
-    uploader_extra = cfg.extra
 
     artifacts = await helper.fetch_artifacts(run_id)
     if not artifacts:
@@ -228,40 +226,20 @@ async def upload_artifacts_for_run(
     if not filtered_artifacts:
         await UniMessage.text("没有 artifact 符合过滤条件").send(target)
 
+    run_resp = await helper.github.rest.actions.async_get_workflow_run(
+        owner=sub.repos.owner, repo=sub.repos.repo, run_id=run_id
+    )
+
     saved = await helper.download_artifacts(
         *filtered_artifacts.values(),
         save_dir=cache_dir,
+        run=run_resp.parsed_data,
+        config=cfg,
     )
     if not saved:
         await UniMessage.text("未能成功下载任何 artifact").send(target)
 
-    run_resp = await helper.github.rest.actions.async_get_workflow_run(
-        owner=sub.repos.owner, repo=sub.repos.repo, run_id=run_id
-    )
-    run_data = run_resp.parsed_data
-    format_data = {
-        "run": run_data,
-        "head_sha": run_data.head_sha,
-        "head_sha_short": run_data.head_sha[:7],
-    }
-
-    def prepare_format_data(artifact: Artifact) -> dict[str, Any]:
-        match = cfg.match_regex(artifact.name)
-        data = {**format_data, "artifact": artifact, "match": match}
-        if match is not None:
-            data["$0"] = match.group(0)
-            data.update({f"${i}": g for i, g in enumerate(match.groups(), start=1)})
-        return data
-
-    saved = {
-        cfg.rename(name, prepare_format_data(filtered_artifacts[name])): path
-        for name, path in saved.items()
-    }
-
-    uploader = await get_upload_provider(target)
-    async with anyio.create_task_group() as tg:
-        for name, file in saved.items():
-            tg.start_soon(uploader.upload, file, name, target, uploader_extra)
+    await upload_artifacts(saved, target)
 
 
 @on_completed.handle()

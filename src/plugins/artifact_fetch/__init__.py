@@ -6,6 +6,7 @@ require("nonebot_plugin_apscheduler")
 require("nonebot_plugin_localstore")
 require("nonebot_plugin_uninfo")
 require("nonebot_plugin_waiter")
+require("src.plugins.upload_cos")
 from . import matchers as matchers
 from .config import Config
 

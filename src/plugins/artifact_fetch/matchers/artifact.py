@@ -1,6 +1,5 @@
 from typing import Annotated
 
-import anyio
 from nonebot import logger
 from nonebot.adapters import Bot
 from nonebot.params import Depends
@@ -25,7 +24,7 @@ from ..data_source import (
     subscriptions,
 )
 from ..depends import Repository
-from ..upload import Uploader, UploaderExtra
+from ..upload import upload_artifacts
 
 alc = Alconna(
     "artifact",
@@ -64,20 +63,15 @@ matcher = on_alconna(alc)
 
 @matcher.assign("~fetch")
 async def assign_fetch(
-    target: MsgTarget,
     helper: Helper,
     artifacts: RequestedArtifacts,
     cache_dir: CacheDirectory,
-    uploader: Uploader,
-    uploader_extra: UploaderExtra,
 ) -> None:
     saved = await helper.download_artifacts(*artifacts, save_dir=cache_dir)
     if not saved:
         await UniMessage.text("未能成功下载任何 artifact").finish(reply_to=True)
 
-    async with anyio.create_task_group() as tg:
-        for name, file in saved.items():
-            tg.start_soon(uploader.upload, file, name, target, uploader_extra)
+    await upload_artifacts(saved, target=None, reply_to=True)
 
 
 async def _extract_sub(
@@ -115,16 +109,13 @@ async def _verify_new_sub(
 @matcher.assign("~subscribe.add.upload_artifact")
 async def assign_subscribe_add_upload(
     sub: Annotated[Subscription, Depends(_verify_new_sub)],
-    uploader_extra: UploaderExtra,
     filter_regex: str | None = None,
     rename_template: str | None = None,
 ) -> None:
     sub.artifact_upload_config = ArtifactConfig(
         filter_regex=filter_regex,
         rename_template=rename_template,
-        extra=uploader_extra,
     )
-    logger.debug(f"Extracted extra for subscription: {uploader_extra!r}")
 
 
 @matcher.assign("~subscribe.add")

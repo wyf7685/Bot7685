@@ -162,6 +162,29 @@ wheels = [
 ]
 
 [[package]]
+name = "ayafileio"
+version = "1.4.4"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b9/36/833eb4f3a82f07e30960e71796e8b435f6623ecf4ad34c0edb67d4b25205/ayafileio-1.4.4-cp314-cp314-macosx_13_0_arm64.whl", hash = "sha256:8e14f4ec86fd0024ec66d3a4ea0c38c9980e49ea936534ef483a90e96d197dc6", size = 81086, upload-time = "2026-06-02T11:43:11.495Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/58/608e1090d2db51b5f83a730d29a57c6fb4718386a7823635bd655d30babf/ayafileio-1.4.4-cp314-cp314-macosx_13_0_universal2.whl", hash = "sha256:7f031d2c8689ffa621de51c4ada57489713f2ed0df34004e53d10dfd6aea79c8", size = 148667, upload-time = "2026-06-02T11:43:12.667Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/3e/fa6800f9d4dd09f2c61ed12b1f2f1daa2d677e00dbf45332f1273c57a76e/ayafileio-1.4.4-cp314-cp314-macosx_13_0_x86_64.whl", hash = "sha256:2cd0a862efe566265ab74fbf6134e294c696bad0aba8e8841eb92601a2d4ce9c", size = 85743, upload-time = "2026-06-02T11:43:13.897Z" },
+    { url = "https://files.pythonhosted.org/packages/28/99/06a914baa87f1b9aea58e9356b03890359952257ecb8a66c98f26649f599/ayafileio-1.4.4-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:cb71a8332f1ae6a6011f70b8df93bb256b4929f659445a6e63f5acb875e2cc17", size = 111492, upload-time = "2026-06-02T11:43:14.918Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/02/90019f78d869733356f4255b3276d8726e877a105ee65387d8f3b251b6ff/ayafileio-1.4.4-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4eed6e4870077c5caddcdc28c07e18adddfbdf69856e570569e78507de6e4a9f", size = 118034, upload-time = "2026-06-02T11:43:15.978Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/18/c417b74cd2532ad819f2ad9b1496ddedd2d3f5f74972cfb35a17d5444005/ayafileio-1.4.4-cp314-cp314-manylinux_2_39_riscv64.whl", hash = "sha256:21c0b8d52b2053c2ade58dcc726116752c77bd0872cedf8c6a5e043ae997aa11", size = 121233, upload-time = "2026-06-02T11:43:17.196Z" },
+    { url = "https://files.pythonhosted.org/packages/50/28/135ccfda1b722123e862cfe18ebbd389ad14876e78afb2801c1b4b07dc29/ayafileio-1.4.4-cp314-cp314-win32.whl", hash = "sha256:7b5aae466ecbed162dc8a43d195f13d8c393d5c5828b8098a2f57df88aa18edd", size = 91199, upload-time = "2026-06-02T11:43:18.475Z" },
+    { url = "https://files.pythonhosted.org/packages/35/90/50a358dec3001bcba33d690654173813ff03ae7c8faf3a28068efd9dfcfc/ayafileio-1.4.4-cp314-cp314-win_amd64.whl", hash = "sha256:1b86015d5b9537490326febf5e5ef6492ca47371c122e30226ac176d048b0d4c", size = 100754, upload-time = "2026-06-02T11:43:19.677Z" },
+    { url = "https://files.pythonhosted.org/packages/ce/f1/03f56437d8347d555aedb0c299052f2d445d09cbdad065c160f9ac8a4c1f/ayafileio-1.4.4-cp314-cp314t-macosx_13_0_arm64.whl", hash = "sha256:e0c3e9c888bcf3d7717e99536b19e2430dcda59bcfcc472f8cdeee0f2192641b", size = 82950, upload-time = "2026-06-02T11:43:20.881Z" },
+    { url = "https://files.pythonhosted.org/packages/ee/07/eb8535357449f2bd1759dac1cf9a5ed64efb3d88020ce982687b5667b109/ayafileio-1.4.4-cp314-cp314t-macosx_13_0_universal2.whl", hash = "sha256:f425e59824432a0dea05119dfd99ced100c5ca9f5584f8b9f83546a82bc08486", size = 152481, upload-time = "2026-06-02T11:43:21.97Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/e7/9b1dbf5c972508d20d6966c70c2246d61a0b267af564a6cefa1e003d1281/ayafileio-1.4.4-cp314-cp314t-macosx_13_0_x86_64.whl", hash = "sha256:49b380a4a4c285ef5e9da6143df96bd1cd656a831ff070040fb5f324756e1be1", size = 87370, upload-time = "2026-06-02T11:43:23.082Z" },
+    { url = "https://files.pythonhosted.org/packages/de/e8/e935a59e807da716e6f4ae8163262ea9d4d413ee398d2b7961fa47d5bad2/ayafileio-1.4.4-cp314-cp314t-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:de4a48fc600bea740d3a75a0d47db736232e900056565d2f529771f6ca88bce7", size = 113665, upload-time = "2026-06-02T11:43:24.171Z" },
+    { url = "https://files.pythonhosted.org/packages/20/98/627fd559fcd30179804dbc80fd838a3103c129d1f2d46d40af5328525ef6/ayafileio-1.4.4-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:5e49f68e3ab137d96afa2308065c56b81d57ea786d6b33dc264dd2c868c82c98", size = 119958, upload-time = "2026-06-02T11:43:25.4Z" },
+    { url = "https://files.pythonhosted.org/packages/bc/80/8c52217e5bf52b2436e18dd7449fa339e914f81ec099b0a1f6d82077259a/ayafileio-1.4.4-cp314-cp314t-manylinux_2_39_riscv64.whl", hash = "sha256:25d3bc0fe687a814393f9633828d936f6d8779cba02028b8b56d9da195c101fb", size = 123665, upload-time = "2026-06-02T11:43:26.584Z" },
+    { url = "https://files.pythonhosted.org/packages/52/6c/088ef1ee83ffa3fecafda916697b199ab9d126c8528c39379bf62d8dcfba/ayafileio-1.4.4-cp314-cp314t-win32.whl", hash = "sha256:0169477727ae6929545eee51dbdb2fd5130d2a168c26f4d9def534a98a77f297", size = 92176, upload-time = "2026-06-02T11:43:27.684Z" },
+    { url = "https://files.pythonhosted.org/packages/93/5b/f64570a2dd2afa5915ed4669ecc7fb10200668ce9f297f2bf84de8973080/ayafileio-1.4.4-cp314-cp314t-win_amd64.whl", hash = "sha256:a63f339533d922ded03c625fab4dc3b16c4a5ed3bb3815c31e6401abcd422894", size = 105404, upload-time = "2026-06-02T11:43:28.756Z" },
+]
+
+[[package]]
 name = "basedpyright"
 version = "1.39.6"
 source = { registry = "https://pypi.org/simple" }
@@ -179,6 +202,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "anyio" },
+    { name = "ayafileio" },
     { name = "bot7685-ext", extra = ["htmlrender", "nonebot"] },
     { name = "cloudscraper" },
     { name = "githubkit", extra = ["auth-app"] },
@@ -248,6 +272,7 @@ lint = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", specifier = ">=4.12.1" },
+    { name = "ayafileio", specifier = ">=1.4.4" },
     { name = "bot7685-ext", extras = ["htmlrender", "nonebot"], specifier = "==0.5.1" },
     { name = "cloudscraper", specifier = ">=1.2.71" },
     { name = "githubkit", extras = ["auth-app"], specifier = ">=0.14.7" },

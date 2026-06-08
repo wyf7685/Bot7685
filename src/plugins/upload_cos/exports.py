@@ -1,5 +1,7 @@
-from pathlib import Path
+import pathlib
 from typing import assert_never, overload
+
+import anyio
 
 from .cos_ops import (
     DEFAULT_EXPIRE_SECS,
@@ -27,7 +29,7 @@ async def upload_cos(
 ) -> str: ...
 @overload
 async def upload_cos(
-    path: Path,
+    path: pathlib.Path | anyio.Path,
     /,
     key: str,
     expired: int = ...,
@@ -35,7 +37,7 @@ async def upload_cos(
 
 
 async def upload_cos(
-    source: bytes | str | Path,
+    source: bytes | str | pathlib.Path | anyio.Path,
     key: str,
     expired: int = DEFAULT_EXPIRE_SECS,
 ) -> str:
@@ -44,8 +46,10 @@ async def upload_cos(
             await put_file_from_buffer(source, key)
         case str():
             await put_file_from_url(source, key)
-        case Path():
+        case pathlib.Path():
             await put_file_from_local(source, key)
+        case anyio.Path():
+            await put_file_from_local(pathlib.Path(source), key)
         case _:
             assert_never(source)
 
