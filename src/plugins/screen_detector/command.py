@@ -2,7 +2,6 @@ import contextlib
 from datetime import UTC, datetime, timedelta
 
 from nonebot import logger
-from nonebot.exception import NetworkError
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -13,6 +12,8 @@ from nonebot_plugin_alconna import (
     message_reaction,
     on_alconna,
 )
+
+from src.plugins.upload_cos import upload_cos
 
 from .api import detector_client
 
@@ -37,8 +38,11 @@ async def assign_package(duration: str, target: MsgTarget) -> None:
         with contextlib.suppress(Exception):
             await message_reaction("124")  # OK
 
-    filename = f"detector_package_{datetime.now():%Y-%m-%d_%H-%M-%S}.zip"
+    cos_key = f"detector/package-{datetime.now():%Y-%m-%d_%H-%M-%S}.zip"
     try:
-        await UniMessage.file(raw=raw, name=filename).send()
-    except NetworkError:
-        logger.warning("发送等待超时")
+        url = await upload_cos(raw, key=cos_key)
+    except Exception:
+        logger.exception("上传打包结果失败")
+        await UniMessage.text("上传打包结果失败").finish()
+
+    await UniMessage.text(f"打包完成:\n{url}").finish()

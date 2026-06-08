@@ -8,6 +8,7 @@ if plugin_config.api_base_url:
     )
     require("nonebot_plugin_alconna")
     require("nonebot_plugin_uninfo")
+    require("src.plugins.upload_cos")
     require("src.service.cache")
     require("src.service.task")
     from . import command as command
