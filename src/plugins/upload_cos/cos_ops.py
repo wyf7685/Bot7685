@@ -5,6 +5,7 @@ from typing import Self
 import anyio
 import httpx
 from nonebot import logger
+from nonebot.utils import escape_tag
 
 from src.utils import attach_async_context
 
@@ -20,6 +21,7 @@ def _create_client() -> AsyncCosClient:
     return AsyncCosClient(
         region=config.region,
         bucket=config.bucket,
+        is_internal=config.is_internal,
         secret_id=config.secret_id.get_secret_value(),
         secret_key=config.secret_key.get_secret_value(),
     )
@@ -40,7 +42,6 @@ class MultipartUploadTask:
         self.upload_id = ""
         self.parts = []
         self._next_part_number = 1
-        self._part_number_lock = anyio.Lock()
         self._parts_lock = anyio.Lock()
 
     @classmethod
@@ -49,17 +50,40 @@ class MultipartUploadTask:
         self.upload_id = await client.create_multipart_upload(self.key)
         return self
 
-    async def put_chunk(self, chunk: bytes) -> None:
-        async with self._part_number_lock:
-            part_number = self._next_part_number
-            self._next_part_number += 1
+    def next_part_number(self) -> int:
+        value = self._next_part_number
+        self._next_part_number += 1
+        return value
 
-        etag = await self.client.upload_part(
-            key=self.key,
-            data=chunk,
-            part_number=part_number,
-            upload_id=self.upload_id,
+    async def put_chunk(self, part_number: int, chunk: bytes) -> None:
+        logger.opt(colors=True).debug(
+            f"Uploading part <y>{part_number}</> for key=<c>{escape_tag(self.key)}</>"
         )
+
+        last_exc = None
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                etag = await self.client.upload_part(
+                    key=self.key,
+                    data=chunk,
+                    part_number=part_number,
+                    upload_id=self.upload_id,
+                )
+            except httpx.RequestError as exc:
+                last_exc = exc
+                logger.opt(colors=True).warning(
+                    f"Attempt <g>{attempt + 1}</> to upload part <y>{part_number}</> "
+                    f"for key=<c>{escape_tag(self.key)}</> failed: "
+                    f"<r>{escape_tag(repr(exc))}</>"
+                )
+            else:
+                break
+        else:
+            raise RuntimeError(
+                f"Failed to upload part {part_number} for key={self.key} "
+                f"after {max_attempts} attempts: {last_exc!r}"
+            ) from last_exc
 
         part: MultipartUploadPart = {
             "PartNumber": part_number,
@@ -83,21 +107,19 @@ class MultipartUploadTask:
         aiterable: AsyncIterable[bytes],
         max_workers: int = 8,
     ) -> None:
-        @attach_async_context(lambda: send, as_param=False)
-        async def producer() -> None:
-            async for chunk in aiterable:
-                await send.send(chunk)
+        async def consumer(ait: AsyncIterable[tuple[int, bytes]]) -> None:
+            async for part_number, chunk in ait:
+                await self.put_chunk(part_number, chunk)
 
-        async def consumer(aiterable_: AsyncIterable[bytes]) -> None:
-            async for chunk in aiterable_:
-                await self.put_chunk(chunk)
-
-        send, recv = anyio.create_memory_object_stream[bytes](max(max_workers * 2, 1))
-        async with anyio.create_task_group() as tg:
-            tg.start_soon(producer)
+        send, recv = anyio.create_memory_object_stream[tuple[int, bytes]](
+            max(max_workers * 2, 1)
+        )
+        async with anyio.create_task_group() as tg, send:
             for _ in range(max_workers):
                 tg.start_soon(consumer, recv.clone())
             recv.close()
+            async for chunk in aiterable:
+                await send.send((self.next_part_number(), chunk))
 
 
 async def _coalesce_chunks(
@@ -135,10 +157,9 @@ async def put_file_from_aiterable(aiterable: AsyncIterable[bytes], key: str) -> 
 
         task = await MultipartUploadTask.create(client, object_key)
         try:
-            async with anyio.create_task_group() as tg:
-                tg.start_soon(task.put_chunk, first_chunk)
-                tg.start_soon(task.put_chunk, second_chunk)
-                tg.start_soon(task.upload_from, chunk_iter)
+            await task.put_chunk(task.next_part_number(), first_chunk)
+            await task.put_chunk(task.next_part_number(), second_chunk)
+            await task.upload_from(chunk_iter)
             await task.complete()
         except Exception:
             try:

@@ -7,6 +7,7 @@ class UploadCosConfig(BaseModel):
     secret_key: SecretStr
     region: str
     bucket: str
+    is_internal: bool
 
 
 class Config(BaseModel):

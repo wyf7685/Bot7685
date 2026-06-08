@@ -42,11 +42,14 @@ class AsyncCosClient:
         bucket: str,
         secret_id: str,
         secret_key: str,
+        is_internal: bool = False,
         token: str | None = None,
         scheme: str = "https",
         timeout: float = 30,
     ) -> None:
-        self._host = f"{bucket}.cos.{region}.myqcloud.com"
+        self._host = (
+            f"{bucket}.cos{'-internal' if is_internal else ''}.{region}.myqcloud.com"
+        )
         self._base_url = f"{scheme}://{self._host}"
         self._token = token
         self._timeout = timeout
@@ -55,9 +58,11 @@ class AsyncCosClient:
 
     async def __aenter__(self) -> Self:
         if self._client is None:
+            transport = httpx.AsyncHTTPTransport(retries=3, http2=True)
             self._client = httpx.AsyncClient(
                 base_url=self._base_url,
                 timeout=self._timeout,
+                transport=transport,
             )
         return self
 
