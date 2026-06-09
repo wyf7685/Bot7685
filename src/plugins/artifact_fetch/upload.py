@@ -5,6 +5,8 @@ from nonebot_plugin_alconna import Target, UniMessage
 
 from src.plugins.upload_cos import upload_cos
 
+ARTIFACT_TTL_SECS = 60 * 60 * 24 * 7  # 7 days
+
 
 async def upload_artifacts(
     saved: dict[str, Path],
@@ -12,7 +14,7 @@ async def upload_artifacts(
     reply_to: bool | None = None,
 ) -> None:
     async def upload(name: str, file: Path) -> None:
-        url = await upload_cos(file, key=f"artifacts/{name}", ttl=60 * 60 * 24 * 7)
+        url = await upload_cos(file, key=f"artifacts/{name}", ttl=ARTIFACT_TTL_SECS)
         urls[name] = url
 
     urls: dict[str, str] = {}

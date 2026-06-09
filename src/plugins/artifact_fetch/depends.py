@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from typing import Annotated
 
 import nonebot_plugin_waiter.unimsg as waiter
@@ -43,7 +43,7 @@ async def _request_admin_approval(
     def wait(event: Event) -> bool:
         return event.get_plaintext().strip().lower() in approval_words
 
-    result = await wait.wait(default=False, timeout=30)
+    result: bool = await wait.wait(default=False, timeout=30)
     schedule_recall(receipt)
     return result
 
@@ -89,7 +89,7 @@ async def _extract_repository(
     session: Uninfo,
     target: MsgTarget,
     repos: Annotated[Repos, Depends(_select_repos)],
-) -> AsyncIterator[Repos]:
+) -> AsyncGenerator[Repos]:
     if (
         # 在群组中, 且 uninfo 支持获取成员信息
         (member := session.member)
