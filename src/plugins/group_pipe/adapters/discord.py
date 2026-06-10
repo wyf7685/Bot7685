@@ -124,12 +124,6 @@ class MessageConverter(
                 url = await upload_cos(url, self.get_cos_key(attachment.filename))
             except Exception as err:
                 self.logger.opt(exception=err).debug("上传文件失败，使用原始链接")
-            media_kwds = {
-                "url": url,
-                "id": attachment.filename,
-                "name": attachment.filename,
-                "mimetype": mime,
-            }
             media = u.File
             if mime:
                 if mime.startswith("image/"):
@@ -138,7 +132,12 @@ class MessageConverter(
                     media = u.Video
                 elif mime.startswith("audio/"):
                     media = u.Audio
-            return media(**media_kwds)  # ty:ignore[invalid-argument-type]
+            return media(
+                url=url,
+                id=attachment.filename,
+                name=attachment.filename,
+                mimetype=mime,
+            )
         return u.Text(f"[image:{attachment.filename}]")
 
     @converts(ReferenceSegment)

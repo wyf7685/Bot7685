@@ -27,9 +27,9 @@ async def aenumerate[T](
         index += 1
 
 
-def flatten_exception_group[E: BaseException](
-    exc_group: BaseExceptionGroup[E],
-) -> Generator[E]:
+def flatten_exception_group(
+    exc_group: BaseExceptionGroup[BaseException],
+) -> Generator[BaseException]:
     for exc in exc_group.exceptions:
         if isinstance(exc, BaseExceptionGroup):
             yield from flatten_exception_group(exc)

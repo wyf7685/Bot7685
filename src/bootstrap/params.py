@@ -123,7 +123,7 @@ async def call_as_dependent[**P, T](
             sync_cm = contextmanager(cast("Callable[P, Generator[T]]", call))(
                 *args, **kwargs
             )
-            cm = run_sync_ctx_manager(sync_cm)  # ty:ignore[invalid-argument-type]
+            cm = run_sync_ctx_manager(sync_cm)
         else:
             cm = asynccontextmanager(cast("Callable[P, AsyncGenerator[T]]", call))(
                 *args, **kwargs

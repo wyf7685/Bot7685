@@ -48,12 +48,12 @@ class _Style:
         def cache_clear() -> None:
             lru.clear()
 
-        fn: _StyleCall = cast("_StyleCall", fn)
-        fn.__name__ = tag
-        fn.__qualname__ = f"Style.{tag}"
-        fn.cache_clear = cache_clear  # ty:ignore[invalid-assignment]
-        setattr(self, tag, fn)
-        return fn
+        call: _StyleCall = cast("_StyleCall", fn)
+        call.__name__ = tag
+        call.__qualname__ = f"Style.{tag}"
+        call.cache_clear = cache_clear  # ty:ignore[invalid-assignment]
+        setattr(self, tag, call)
+        return call
 
 
 style = _Style()

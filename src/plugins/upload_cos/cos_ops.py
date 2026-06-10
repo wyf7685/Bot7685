@@ -1,8 +1,9 @@
-from collections.abc import AsyncIterable, AsyncIterator, Buffer
+from collections.abc import AsyncIterable, AsyncIterator, Buffer, Iterable
 from pathlib import Path, PurePosixPath
 from typing import Self
 
 import anyio
+import anyio.lowlevel
 import ayafileio
 import httpx
 from nonebot import logger
@@ -14,7 +15,7 @@ from .config import config
 from .cos_client import AsyncCosClient, MultipartUploadPart
 
 ROOT = PurePosixPath("qbot/upload")
-DEFAULT_CHUNK_SIZE = 4 * 1024 * 1024  # 4MB
+CHUNK_SIZE = 4 * 1024 * 1024  # 4MB
 DEFAULT_TTL_SECS = 3600  # 1 hour
 
 
@@ -124,8 +125,8 @@ class MultipartUploadTask:
 
 
 async def _coalesce_chunks(
-    aiterable: AsyncIterable[bytes],
-    chunk_size: int = DEFAULT_CHUNK_SIZE,
+    aiterable: AsyncIterable[Iterable[int]],
+    chunk_size: int = CHUNK_SIZE,
 ) -> AsyncIterator[bytes]:
     buffer = bytearray()
 
@@ -142,7 +143,9 @@ async def _coalesce_chunks(
         yield bytes(buffer)
 
 
-async def put_file_from_aiterable(aiterable: AsyncIterable[bytes], key: str) -> None:
+async def put_file_from_aiterable(
+    aiterable: AsyncIterable[Iterable[int]], key: str
+) -> None:
     chunk_iter = aiter(_coalesce_chunks(aiterable))
     object_key = (ROOT / key).as_posix()
 
@@ -175,11 +178,12 @@ async def put_file_from_aiterable(aiterable: AsyncIterable[bytes], key: str) -> 
 async def put_file_from_buffer(data: Buffer, key: str) -> None:
     buf = memoryview(data).toreadonly()
 
-    async def aiterable() -> AsyncIterable[bytes]:
+    async def aiterable() -> AsyncIterable[memoryview[int]]:
         ptr = 0
         while ptr < len(buf):
-            yield buf[ptr : ptr + DEFAULT_CHUNK_SIZE]
-            ptr += DEFAULT_CHUNK_SIZE
+            yield buf[ptr : ptr + CHUNK_SIZE]
+            ptr += CHUNK_SIZE
+            await anyio.lowlevel.checkpoint()
 
     await put_file_from_aiterable(aiterable(), key)
 
@@ -187,7 +191,7 @@ async def put_file_from_buffer(data: Buffer, key: str) -> None:
 async def put_file_from_local(path: Path, key: str) -> None:
     async def aiterable() -> AsyncIterable[bytes]:
         async with ayafileio.open(path) as file:
-            while data := await file.read(DEFAULT_CHUNK_SIZE):
+            while data := await file.read(CHUNK_SIZE):
                 yield data
 
     await put_file_from_aiterable(aiterable(), key)
@@ -216,5 +220,5 @@ async def presign(
 async def put_file_from_url(url: str, key: str) -> None:
     async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
         resp.raise_for_status()
-        aiterable = resp.aiter_bytes(DEFAULT_CHUNK_SIZE)
+        aiterable = resp.aiter_bytes(CHUNK_SIZE)
         await put_file_from_aiterable(aiterable, key)
