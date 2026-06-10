@@ -28,6 +28,7 @@ dependencies = [
   "nonebot-plugin-wordcloud>=0.10.0",
   # plugin deps
   "anyio>=4.12.1",
+  "ayafileio>=1.4.4",
   "cloudscraper>=1.2.71",
   "githubkit[auth-app]>=0.14.7",
   "gunicorn>=25.1.0",
@@ -42,6 +43,7 @@ dependencies = [
   "pydantic>=2.12.5",
   "rapidfuzz>=3.14.5",
   "redis>=4.2.0",
+  "ruamel-yaml>=0.19.1",
   # plugins
   "nonebot-plugin-exe-code",
   "nonebot-plugin-talk-stats",
@@ -51,7 +53,6 @@ dependencies = [
   "nonebot-plugin-zssm",
   # Bot7685 Extensions
   "bot7685-ext[htmlrender,nonebot]==0.5.1",
-  "ayafileio>=1.4.4",
 ]
 
 [dependency-groups]
