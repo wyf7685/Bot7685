@@ -6,13 +6,12 @@ app = init_nonebot()
 if __name__ == "__main__":
     import sys
 
-    if "orm-upgrade" not in sys.argv:
+    if len(sys.argv) == 1:
         import nonebot
 
-        nonebot.run()
-    else:
-        import asyncio
+        sys.exit(nonebot.run())
+    elif sys.argv[1] == "orm":
+        from nonebot_plugin_orm.__main__ import main
 
-        from src.orm import orm_upgrade
-
-        asyncio.run(orm_upgrade())
+        sys.argv.pop(1)  # "orm"
+        main(prog_name="bot.py orm")
