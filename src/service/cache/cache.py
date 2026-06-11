@@ -38,6 +38,12 @@ if TYPE_CHECKING:
     )
 
     @overload
+    def get_cache[T: (bytes, str, bool)](
+        namespace: str,
+        type: type[T],
+        /,
+    ) -> Cache[T]: ...
+    @overload
     def get_cache[T: JsonSerializable](
         namespace: str,
         type: type[T],

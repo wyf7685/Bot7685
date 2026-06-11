@@ -1,4 +1,3 @@
-import functools
 import json
 import pickle
 from collections.abc import Callable
@@ -98,10 +97,7 @@ class JsonSerializer[T](BaseSerializer[T]):
 class PydanticSerializer[T](BaseSerializer[T]):
     def __init__(self, type: type[T]) -> None:  # noqa: A002
         self._type = type
-
-    @functools.cached_property
-    def _adapter(self) -> TypeAdapter[T]:
-        return TypeAdapter(self._type)
+        self._adapter = TypeAdapter(type)
 
     @override
     def dumps(self, value: T) -> bytes:
