@@ -17,11 +17,23 @@ from nonebot.utils import escape_tag, run_sync
 
 from src.utils import logger_wrapper
 
+log = logger_wrapper("Lifespan")
+
 HOOK_PLUGIN_ID_ATTR = "__bot7685_hook_plugin_id__"
-type LIFESPAN_FUNC = Callable[[], Any] | Callable[[], Awaitable[Any]]
+type LifespanFunc = Callable[[], Any] | Callable[[], Awaitable[Any]]
+
+# (module_prefix, qualname): plugin_id
+KNOWN_HOOKS = {
+    (
+        "nonebot_plugin_alconna.matcher",
+        "AlconnaMatcher._run_tests",
+    ): "nonebot_plugin_alconna",
+    ("nonebot.adapters", None): "<nonebot.adapters>",
+    ("src.service.cache.impl.adapter", "StatsTracker._do_sync"): "src.service.cache",
+}
 
 
-def _attach_plugin_id(func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
+def _attach_plugin_id(func: LifespanFunc) -> LifespanFunc:
     if inspect.iscoroutinefunction(func):
 
         @functools.wraps(func)
@@ -40,56 +52,64 @@ def _attach_plugin_id(func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
     plugin = current_plugin.get()
     plugin_id = plugin.id_ if plugin else None
 
-    # nonebot_plugin_alconna.matcher:AlconnaMatcher._run_tests
-    if (
-        getattr(func, "__module__", None) == "nonebot_plugin_alconna.matcher"
-        and getattr(func, "__qualname__", None) == "AlconnaMatcher._run_tests"
-    ):
+    func_module: str = getattr(func, "__module__", None) or "<unknown>"
+    func_qualname: str = getattr(func, "__qualname__", None) or "<unknown>"
 
-        @functools.wraps(func)
-        async def _wrapper() -> Any:
-            return func()
-
-        wrapper = _wrapper
-        plugin_id = "nonebot_plugin_alconna"
+    for (mod_prefix, qual), id in KNOWN_HOOKS.items():
+        if func_module.startswith(mod_prefix) and (
+            qual is None or func_qualname == qual
+        ):
+            plugin_id = id
+            break
 
     with contextlib.suppress(Exception):
         setattr(wrapper, HOOK_PLUGIN_ID_ATTR, plugin_id)
     return wrapper
 
 
-_debug_log = logger_wrapper("Lifespan").debug
-
-
-def _debug_print_layers(seq: list[list[LIFESPAN_FUNC]]) -> None:
+def _debug_print_layers(seq: list[list[LifespanFunc]]) -> None:
     for idx, layer in enumerate(seq, 1):
-        _debug_log(f"Layer {idx}:")
+        log.info(f"<u>Layer <y>{idx}</> </>├" + "─" * (75 - len(str(idx))))
+        known_hooks: defaultdict[tuple[str, str], int] = defaultdict(int)
         for func in layer:
-            qualname: str = (
-                getattr(func, "__qualname__", None)
-                or getattr(func, "__name__", None)
-                or repr(func)
+            func_key: tuple[str, str] = (
+                getattr(func, "__module__", None) or "<unknown>",
+                getattr(func, "__qualname__", None) or "<unknown>",
             )
-            func_name = f"{func.__module__}:{qualname}"
-            plugin_id = getattr(func, HOOK_PLUGIN_ID_ATTR, None) or "unknown"
-            _debug_log(f"  {escape_tag(func_name)} (from {escape_tag(plugin_id)})")
+            if func_key in KNOWN_HOOKS:
+                known_hooks[func_key] += 1
+            else:
+                module = escape_tag(getattr(func, "__module__", None) or "<unknown>")
+                qualname = escape_tag(
+                    getattr(func, "__qualname__", None)
+                    or getattr(func, "__name__", None)
+                    or repr(func)
+                )
+                id = escape_tag(getattr(func, HOOK_PLUGIN_ID_ATTR, None) or "<unknown>")
+                log.info(f' │ <lm>{module}</>:<lg>{qualname}</> (from "<y>{id}</>")')
+        for (mod, qual), count in known_hooks.items():
+            id = escape_tag(KNOWN_HOOKS[(mod, qual)])
+            log.info(
+                f' │ ...(<le>{count}</>) <lm>{mod}</>:<lg>{qual}</> (from "<y>{id}</>")'
+            )
+        log.info(" ╘" + "═" * 81)
 
 
 class ExtendedLifespan(Lifespan):
     @override
-    def on_startup(self, func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
+    def on_startup(self, func: LifespanFunc) -> LifespanFunc:
         return super().on_startup(_attach_plugin_id(func))
 
     @override
-    def on_ready(self, func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
+    def on_ready(self, func: LifespanFunc) -> LifespanFunc:
         return super().on_ready(_attach_plugin_id(func))
 
     @override
-    def on_shutdown(self, func: LIFESPAN_FUNC) -> LIFESPAN_FUNC:
+    def on_shutdown(self, func: LifespanFunc) -> LifespanFunc:
         return super().on_shutdown(_attach_plugin_id(func))
 
     async def _concurrent_run_lifespan_func(
-        self, funcs: Sequence[LIFESPAN_FUNC], reverse: bool = False
+        self, funcs: Sequence[LifespanFunc], reverse: bool = False
     ) -> None:
         layers = resolve_hook_execution_sequence(funcs, reverse=reverse)
         _debug_print_layers(layers)
@@ -109,12 +129,12 @@ class ExtendedLifespan(Lifespan):
 
         # run startup funcs
         if self._startup_funcs:
-            _debug_log("Running startup hooks...")
+            log.info("Running <ly>startup</> hooks...")
             await self._concurrent_run_lifespan_func(self._startup_funcs)
 
         # run ready funcs
         if self._ready_funcs:
-            _debug_log("Running ready hooks...")
+            log.info("Running <ly>ready</> hooks...")
             await self._concurrent_run_lifespan_func(self._ready_funcs)
 
     @override
@@ -126,7 +146,7 @@ class ExtendedLifespan(Lifespan):
         exc_tb: TracebackType | None = None,
     ) -> None:
         if self._shutdown_funcs:
-            _debug_log("Running shutdown hooks...")
+            log.info("Running <ly>shutdown</> hooks...")
             # reverse shutdown funcs to ensure stack order
             await self._concurrent_run_lifespan_func(self._shutdown_funcs, reverse=True)
 
@@ -153,9 +173,9 @@ def _patched_require(name: str) -> ModuleType:
 
 
 def resolve_hook_execution_sequence(
-    funcs: Sequence[LIFESPAN_FUNC],
+    funcs: Sequence[LifespanFunc],
     reverse: bool = False,
-) -> list[list[LIFESPAN_FUNC]]:
+) -> list[list[LifespanFunc]]:
     if not funcs:
         return []
 
@@ -184,11 +204,9 @@ def resolve_hook_execution_sequence(
     for plugin_id, deps in _plugin_deps.items():
         if plugin_id not in plugins_in_funcs:
             continue
-
         for dep_id in deps:
             if dep_id not in plugins_in_funcs:
                 continue
-
             if reverse:
                 add_edge(last_index[plugin_id], first_index[dep_id])
             else:
@@ -201,7 +219,7 @@ def resolve_hook_execution_sequence(
 
     remaining = set(range(len(funcs)))
     ready = [index for index, degree in enumerate(in_degree) if degree == 0]
-    layers: list[list[LIFESPAN_FUNC]] = []
+    layers: list[list[LifespanFunc]] = []
 
     while ready:
         layer_indices = sorted(ready)

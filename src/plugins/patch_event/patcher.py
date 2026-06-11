@@ -45,7 +45,6 @@ def apply_debug_wrapper[T: Event](call: PatcherCall[T]) -> PatcherCall[T]:
     if not plugin_config.patch_event_debug:
         return call
 
-    @functools.wraps(call)
     def wrapper(self: T) -> str:
         logger.debug(Highlight.apply(self))
         return call(self)
@@ -61,7 +60,6 @@ def _patcher_impl[TE: Event, TMS: MessageSegment, TM: Message](
     assert issubclass(cls, Event)
     original = cls.get_log_string
 
-    @functools.wraps(call)
     def call_with_event_type(self: TE) -> str:
         return f"[{highlight_cls.event_type(self)}]: {call(self)}"
 
@@ -93,19 +91,15 @@ def _make_patcher() -> Patcher:
 
         patcher = cast("Patcher", patcher_wrapper)
         patcher.__patcher__ = True
-        patcher.bind = bind  # ty:ignore[invalid-assignment]
+        patcher.bind = functools.partial(bind, patcher)  # ty:ignore[invalid-assignment]
         return patcher
 
-    def bind[TH: type[Highlight]](highlight_cls: TH, /) -> TH:
+    def bind[TH: type[Highlight]](self: Patcher, highlight_cls: TH, /) -> TH:
         if (current_frame := inspect.currentframe()) is None:
             raise RuntimeError("Failed to get current frame")
         if (caller_frame := current_frame.f_back) is None:
             raise RuntimeError("Failed to get caller frame")
-        gen = (
-            name
-            for name, value in caller_frame.f_globals.items()
-            if getattr(value, "__patcher__", False)
-        )
+        gen = (name for name, value in caller_frame.f_globals.items() if value is self)
         if (patcher_name := next(gen, None)) is None:
             raise RuntimeError("Failed to find patcher in caller frame")
 

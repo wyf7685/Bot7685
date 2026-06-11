@@ -237,7 +237,7 @@ def patch_event(self: Event) -> str:
 def patch_message_event(self: MessageEvent) -> str:
     return (
         f"Message {H.id(self.message_id)} from {H.source(self.data)}: "
-        f"{H.apply(self.get_message())}"
+        f"{H.apply(self.original_message)}"
     )
 
 
@@ -245,7 +245,7 @@ def patch_message_event(self: MessageEvent) -> str:
 def patch_friend_message_event(self: FriendMessageEvent) -> str:
     return (
         f"Message {H.id(self.message_id)} from {H.source(self.data)}: "
-        f"{H.apply(self.get_message())}"
+        f"{H.apply(self.original_message)}"
     )
 
 
