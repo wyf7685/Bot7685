@@ -63,6 +63,11 @@ class StatsTracker:
         self._local_misses += n
         self._sync_stats()
 
+    def record(self, hits: int, misses: int) -> None:
+        self._local_hits += hits
+        self._local_misses += misses
+        self._sync_stats()
+
 
 class CacheAdapter[T]:
     def __init__(
@@ -96,8 +101,7 @@ class CacheAdapter[T]:
         result = await self._backend.multi_get(map(self._format_key, keys))
         misses = sum(1 for x in result if x is None)
         hits = len(result) - misses
-        self._tracker.record_hit(hits)
-        self._tracker.record_miss(misses)
+        self._tracker.record(hits, misses)
         return result
 
     async def set(
@@ -116,11 +120,12 @@ class CacheAdapter[T]:
             else float(ttl),
         )
 
-    async def multi_set(self, mapping: dict[str, bytes], ttl: float | None) -> int:
-        return await self._backend.multi_set(
-            {self._format_key(key): value for key, value in mapping.items()},
-            ttl,
-        )
+    async def multi_set(self, mapping: dict[str, T], ttl: float | None) -> int:
+        serialized = {
+            self._format_key(key): self._serializer.dumps(value)
+            for key, value in mapping.items()
+        }
+        return await self._backend.multi_set(serialized, ttl)
 
     async def exists(self, key: str) -> bool:
         return await self._backend.exists(self._format_key(key))
