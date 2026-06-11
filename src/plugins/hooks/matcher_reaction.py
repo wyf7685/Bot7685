@@ -22,6 +22,7 @@ require("src.service.cache")
 from src.service.cache import get_cache
 
 driver = get_driver()
+in_progess: dict[str, int] = {}
 exc_cache = get_cache("matcher_exception", dict[str, tuple[str, str]])
 exc_cache_lock = anyio.Lock()
 
@@ -31,13 +32,22 @@ def should_react(bot: Bot, event: Event) -> bool:
         target = get_target(event, bot)
     except NotImplementedError:
         return False
+    try:
+        get_message_id(event, bot)
+    except Exception:
+        return False
 
     return not target.private and target.scope == SupportScope.qq_client
 
 
-async def safe_reaction(bot: Bot, event: Event, emoji: str) -> None:
+async def safe_reaction(
+    bot: Bot,
+    event: Event,
+    emoji: str,
+    delete: bool = False,
+) -> None:
     with contextlib.suppress(Exception):
-        await message_reaction(emoji=emoji, event=event, bot=bot)
+        await message_reaction(emoji=emoji, event=event, bot=bot, delete=delete)
 
 
 async def cache_exception(event: Event, matcher: Matcher, exc: Exception) -> None:
@@ -46,7 +56,7 @@ async def cache_exception(event: Event, matcher: Matcher, exc: Exception) -> Non
         source = (
             "<unknown>"
             if (_source := matcher._source) is None  # noqa: SLF001
-            else f"{_source.module_name}:{_source.lineno}"
+            else f"{_source.file}:{_source.lineno}"
         )
         trace = "".join(traceback.format_exception(exc))
 
@@ -59,6 +69,8 @@ async def cache_exception(event: Event, matcher: Matcher, exc: Exception) -> Non
 @run_preprocessor
 async def reaction_before_matcher(bot: Bot, event: Event) -> None:
     if should_react(bot, event):
+        message_id = get_message_id(event)
+        in_progess[message_id] = in_progess.get(message_id, 0) + 1
         driver.task_group.start_soon(safe_reaction, bot, event, "60")  # coffee
 
 
@@ -74,6 +86,12 @@ async def reaction_after_matcher(
         driver.task_group.start_soon(safe_reaction, bot, event, emoji)
         if exception is not None:
             driver.task_group.start_soon(cache_exception, event, matcher, exception)
+
+        message_id = get_message_id(event)
+        in_progess[message_id] = in_progess.get(message_id, 1) - 1
+        if in_progess[message_id] <= 0:
+            del in_progess[message_id]
+            await safe_reaction(bot, event, "60", delete=True)  # coffee
 
 
 with contextlib.suppress(ImportError):
@@ -124,7 +142,7 @@ with contextlib.suppress(ImportError):
                 CustomNode(
                     uid=user_id,
                     name=f"{matcher} at {source}",
-                    content=f"Exception in matcher {matcher} at {source}:\n\n{trace}",
+                    content=f"Exception in matcher {matcher} at {source}\n\n{trace}",
                 )
                 for source, (matcher, trace) in cached.items()
             )
