@@ -23,7 +23,7 @@ from src.service.cache import get_cache
 
 driver = get_driver()
 in_progess: dict[str, int] = {}
-exc_cache = get_cache("matcher_exception", dict[str, tuple[str, str]])
+exc_cache = get_cache("matcher_exception", dict[str, tuple[str, str, str]])
 exc_cache_lock = anyio.Lock()
 
 
@@ -56,13 +56,13 @@ async def cache_exception(event: Event, matcher: Matcher, exc: Exception) -> Non
         source = (
             "<unknown>"
             if (_source := matcher._source) is None  # noqa: SLF001
-            else f"{_source.file}:{_source.lineno}"
+            else f"File {str(_source.file)!r}, line {_source.lineno}"
         )
         trace = "".join(traceback.format_exception(exc))
 
         async with exc_cache_lock:
             cached = await exc_cache.get(message_id, {})
-            cached[source] = repr(matcher), trace
+            cached[source] = repr(matcher), repr(exc), trace
             await exc_cache.set(message_id, cached)
 
 
@@ -142,8 +142,11 @@ with contextlib.suppress(ImportError):
                 CustomNode(
                     uid=user_id,
                     name=f"{matcher} at {source}",
-                    content=f"Exception in matcher {matcher} at {source}\n\n{trace}",
+                    content=f"Exception: {exc}\n"
+                    f"Matcher: {matcher}\n"
+                    f"Source: {source}\n"
+                    f"\n\n{trace}",
                 )
-                for source, (matcher, trace) in cached.items()
+                for source, (matcher, exc, trace) in cached.items()
             )
         ).send()
