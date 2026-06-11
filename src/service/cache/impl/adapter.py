@@ -5,7 +5,7 @@ from typing import overload
 import anyio.lowlevel
 import nonebot
 
-from ..abstract import PTTL, BaseCacheBackend, BaseSerializer, CacheStats
+from ..abstract import PTTL, TTL, BaseCacheBackend, BaseSerializer, CacheStats
 from ..config import cache_config
 
 CACHE_PREFIX = cache_config.cache_prefix
@@ -84,6 +84,14 @@ class CacheAdapter[T]:
     def _format_key(self, key: str) -> str:
         return f"{CACHE_PREFIX}:{self._namespace}::{key}"
 
+    @staticmethod
+    def _normalize_ttl(ttl: TTL) -> float | None:
+        if ttl is None:
+            return None
+        if isinstance(ttl, timedelta):
+            return ttl.total_seconds()
+        return float(ttl)
+
     @overload
     async def get(self, key: str) -> T | None: ...
     @overload
@@ -108,24 +116,24 @@ class CacheAdapter[T]:
         self,
         key: str,
         value: T,
-        ttl: int | float | timedelta | None = cache_config.cache_default_ttl,
+        ttl: TTL = cache_config.cache_default_ttl,
     ) -> bool:
         return await self._backend.set(
             self._format_key(key),
             self._serializer.dumps(value),
-            None
-            if ttl is None
-            else ttl.total_seconds()
-            if isinstance(ttl, timedelta)
-            else float(ttl),
+            self._normalize_ttl(ttl),
         )
 
-    async def multi_set(self, mapping: dict[str, T], ttl: float | None) -> int:
+    async def multi_set(
+        self,
+        mapping: dict[str, T],
+        ttl: TTL = cache_config.cache_default_ttl,
+    ) -> int:
         serialized = {
             self._format_key(key): self._serializer.dumps(value)
             for key, value in mapping.items()
         }
-        return await self._backend.multi_set(serialized, ttl)
+        return await self._backend.multi_set(serialized, self._normalize_ttl(ttl))
 
     async def exists(self, key: str) -> bool:
         return await self._backend.exists(self._format_key(key))
