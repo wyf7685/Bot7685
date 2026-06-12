@@ -2,7 +2,7 @@ import contextlib
 import functools
 import importlib
 import inspect
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Awaitable, Callable, Sequence
 from itertools import pairwise
 from types import ModuleType, TracebackType
@@ -22,7 +22,7 @@ log = logger_wrapper("Lifespan")
 HOOK_PLUGIN_ID_ATTR = "__bot7685_hook_plugin_id__"
 type LifespanFunc = Callable[[], Any] | Callable[[], Awaitable[Any]]
 
-# (module_prefix, qualname): plugin_id
+# (module, qualname): plugin_id
 KNOWN_HOOKS = {
     (
         "nonebot_plugin_alconna.matcher",
@@ -33,59 +33,57 @@ KNOWN_HOOKS = {
 }
 
 
+def _get_func_attr(func: Callable[..., object], attr: str) -> str:
+    return getattr(func, attr, None) or "<unknown>"
+
+
 def _attach_plugin_id(func: LifespanFunc) -> LifespanFunc:
-    if inspect.iscoroutinefunction(func):
-
-        @functools.wraps(func)
-        async def wrapper_async() -> Any:
-            return await func()
-
-        wrapper = wrapper_async
-    else:
-
-        @functools.wraps(func)
-        def wrapper_sync() -> Any:
-            return func()
-
-        wrapper = wrapper_sync
-
     plugin = current_plugin.get()
     plugin_id = plugin.id_ if plugin else None
 
-    func_module: str = getattr(func, "__module__", None) or "<unknown>"
-    func_qualname: str = getattr(func, "__qualname__", None) or "<unknown>"
-
-    for (mod_prefix, qual), id in KNOWN_HOOKS.items():
-        if func_module.startswith(mod_prefix) and (
-            qual is None or func_qualname == qual
-        ):
+    func_module = _get_func_attr(func, "__module__")
+    func_qualname = _get_func_attr(func, "__qualname__")
+    for (mod, qual), id in KNOWN_HOOKS.items():
+        if func_module.startswith(mod) and (qual is None or func_qualname == qual):
             plugin_id = id
             break
 
-    with contextlib.suppress(Exception):
-        setattr(wrapper, HOOK_PLUGIN_ID_ATTR, plugin_id)
+    if inspect.iscoroutinefunction(func):
+
+        async def wrapper() -> Any:
+            return await func()
+
+    else:
+
+        def wrapper() -> Any:
+            return func()
+
+    functools.update_wrapper(wrapper, func)
+    setattr(wrapper, HOOK_PLUGIN_ID_ATTR, plugin_id)
     return wrapper
 
 
 def _debug_print_layers(seq: list[list[LifespanFunc]]) -> None:
     for idx, layer in enumerate(seq, 1):
         log.info(f"<u>Layer <y>{idx}</> </>├" + "─" * (75 - len(str(idx))))
-        known_hooks: defaultdict[tuple[str, str], int] = defaultdict(int)
+        known_hooks: Counter[tuple[str, str]] = Counter()
         for func in layer:
-            func_key: tuple[str, str] = (
-                getattr(func, "__module__", None) or "<unknown>",
-                getattr(func, "__qualname__", None) or "<unknown>",
+            func_key = (
+                _get_func_attr(func, "__module__"),
+                _get_func_attr(func, "__qualname__"),
             )
             if func_key in KNOWN_HOOKS:
                 known_hooks[func_key] += 1
             else:
-                module = escape_tag(getattr(func, "__module__", None) or "<unknown>")
+                module = escape_tag(_get_func_attr(func, "__module__"))
                 qualname = escape_tag(
                     getattr(func, "__qualname__", None)
                     or getattr(func, "__name__", None)
                     or repr(func)
                 )
-                id = escape_tag(getattr(func, HOOK_PLUGIN_ID_ATTR, None) or "<unknown>")
+                id = escape_tag(
+                    _get_func_attr(func, HOOK_PLUGIN_ID_ATTR) or "<unknown>"
+                )
                 log.info(f' │ <lm>{module}</>:<lg>{qualname}</> (from "<y>{id}</>")')
         for (mod, qual), count in known_hooks.items():
             id = escape_tag(KNOWN_HOOKS[(mod, qual)])
