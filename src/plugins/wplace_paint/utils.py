@@ -229,7 +229,7 @@ def with_retry[**P, R](
                     return await func(*args, **kwargs)
                 except exc_types as e:
                     logger.debug(
-                        f"函数 {getattr(func, '__name__', repr(func))} "
+                        f"函数 {getattr(func, "__name__", repr(func))} "
                         f"第 {attempt + 1}/{retries} 次调用失败: {e!r}"
                     )
                     caught.append(e)

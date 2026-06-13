@@ -233,7 +233,7 @@ class AIWordSelector:
 
             logger.success("\n✅ AI 选词完成:")
             for i, word_data in enumerate(selected, 1):
-                logger.success(f"   {i}. {word_data['word']} ({word_data['freq']}次)")
+                logger.success(f"   {i}. {word_data["word"]} ({word_data["freq"]}次)")
 
         except Exception:
             logger.exception("❌ AI 选词失败")

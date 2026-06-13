@@ -108,7 +108,7 @@ async def assign_subscribe(
     add_subscription(sub)
     await UniMessage.text(
         f"已订阅每日 {hour:02d}:{minute:02d} 的群聊分析"
-        f" (增量模式: {'启用' if incremental else '关闭'})\n"
+        f" (增量模式: {"启用" if incremental else "关闭"})\n"
         f"当前共 {len(subscriptions.load())} 个订阅"
     ).finish()
 

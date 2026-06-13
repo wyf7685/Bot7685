@@ -19,7 +19,7 @@ class H(Highlight[MessageSegment, Message, Event]):
     @classmethod
     @override
     def event_type(cls, event: Event, /) -> str:
-        return f"{cls.style.lg('EventType')}.{cls.style.b_e(event.__type__.value)}"
+        return f"{cls.style.lg("EventType")}.{cls.style.b_e(event.__type__.value)}"
 
 
 @patcher
@@ -50,6 +50,6 @@ def patch_group_at_message_create_event(self: GroupAtMessageCreateEvent) -> str:
 def patch_ready_event(self: ReadyEvent) -> str:
     return (
         f"Bot {H.name(self.user.id, self.user.username)} ready: "
-        f"session={H.repr(self.session_id, 'b', 'e')}, "
-        f"shard={H.repr(self.shard, 'b', 'e')}"
+        f"session={H.repr(self.session_id, "b", "e")}, "
+        f"shard={H.repr(self.shard, "b", "e")}"
     )

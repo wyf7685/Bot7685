@@ -182,7 +182,7 @@ class MessageConverter(
             url = await solve_url_302(detail["qqdocurl"])
 
             return [
-                u.Text(f"[哔哩哔哩] {detail['desc']}\n{url}"),
+                u.Text(f"[哔哩哔哩] {detail["desc"]}\n{url}"),
                 u.Image(url=detail["preview"]),
             ]
 
@@ -201,7 +201,7 @@ class MessageConverter(
 
     @converts("at")
     async def at(self, segment: MessageSegment) -> u.Segment:
-        return u.Text(f"[at:{segment.data['qq']}]")
+        return u.Text(f"[at:{segment.data["qq"]}]")
 
     @converts("image")
     async def image(self, segment: MessageSegment) -> u.Segment | None:
@@ -227,7 +227,7 @@ class MessageConverter(
             text := raw.get("faceText")
         ):
             return u.Text(text)
-        return u.Text(f"[face:{segment.data['id']}]")
+        return u.Text(f"[face:{segment.data["id"]}]")
 
     @converts("forward")
     async def forward(self, segment: MessageSegment) -> list[u.Segment]:

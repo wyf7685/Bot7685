@@ -23,9 +23,9 @@ class H(Highlight[MessageSegment]):
     def segment(cls, segment: MessageSegment) -> str:
         return (
             f"{cls.style.lg(segment.__class__.__name__, escape=True)}"
-            f"({cls.style.i_y('type')}={cls.apply(segment.type)},"
-            f" {cls.style.i_y('data')}={cls.apply(segment.data)},"
-            f" {cls.style.i_y('children')}={cls.apply(segment.children)})"
+            f"({cls.style.i_y("type")}={cls.apply(segment.type)},"
+            f" {cls.style.i_y("data")}={cls.apply(segment.data)},"
+            f" {cls.style.i_y("children")}={cls.apply(segment.children)})"
         )
 
     @classmethod

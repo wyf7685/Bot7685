@@ -1,10 +1,13 @@
+fix = true
 line-length = 88
+indent-width = 4
 target-version = "py314"
 
 [format]
 quote-style = "double"
 indent-style = "space"
 line-ending = "lf"
+nested-string-quote-style = "preferred"
 
 [lint]
 select = [
@@ -80,15 +83,18 @@ ignore = [
   "TC003",  # typing-only-standard-library-import
 ]
 
+[lint.flake8-annotations]
+suppress-none-returning = true
+
+[lint.flake8-bugbear]
+extend-immutable-calls = ["nonebot_plugin_alconna.Query"]
+
 [lint.flake8-builtins]
-builtins-ignorelist = ["id", "dir", "input"]
+ignorelist = ["id", "dir", "input"]
 
 [lint.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false
-
-[lint.flake8-bugbear]
-extend-immutable-calls = ["nonebot_plugin_alconna.Query"]
 
 [lint.isort]
 known-first-party = ["src", "tests/*"]

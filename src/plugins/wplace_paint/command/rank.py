@@ -46,7 +46,7 @@ async def _bind_regions(
     ranks.save(cfg)
     await finish(
         f"成功绑定 {len(regions)} 个 region ID 到当前会话\n"
-        f"{'\n'.join(f'{r.id}: {r.name} #{r.number}' for r in regions.values())}"
+        f"{"\n".join(f"{r.id}: {r.name} #{r.number}" for r in regions.values())}"
     )
 
 

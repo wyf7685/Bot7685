@@ -312,7 +312,7 @@ class PixivDownloader(Downloader[Illust, str]):
             f"ID: {illust.id}\n"
             f"标题: {illust.title}\n"
             f"作者: {illust.user.name}\n"
-            f"标签: {', '.join(tag.name for tag in illust.tags)}\n"
+            f"标签: {", ".join(tag.name for tag in illust.tags)}\n"
             f"页数: {illust.page_count}"
         )
 

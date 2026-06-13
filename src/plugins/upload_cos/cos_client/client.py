@@ -48,7 +48,7 @@ class AsyncCosClient:
         timeout: float = 30,
     ) -> None:
         self._host = (
-            f"{bucket}.cos{'-internal' if is_internal else ''}.{region}.myqcloud.com"
+            f"{bucket}.cos{"-internal" if is_internal else ""}.{region}.myqcloud.com"
         )
         self._base_url = f"{scheme}://{self._host}"
         self._presign_base_url = f"{scheme}://{bucket}.cos.{region}.myqcloud.com"

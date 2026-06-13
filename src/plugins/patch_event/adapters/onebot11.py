@@ -257,14 +257,14 @@ def poke_napcat(self: PokeNotifyEvent, raw_info: list[dict[str, str]]) -> str:
         if item["type"] == "qq":
             text += f"{H.user(user.pop(0), self.group_id)} "
         elif item["type"] == "nor":
-            text += f"{item['txt']} "
+            text += f"{item["txt"]} "
 
     return text
 
 
 def poke_lagrange(self: PokeNotifyEvent, action: str, suffix: str) -> str:
     return (
-        f"{f'{H.group(self.group_id)} ' if self.group_id else ''}"
+        f"{f"{H.group(self.group_id)} " if self.group_id else ""}"
         f"{H.user(self.user_id, self.group_id)} {action} "
         f"{H.user(self.target_id, self.group_id)} {suffix}"
     )

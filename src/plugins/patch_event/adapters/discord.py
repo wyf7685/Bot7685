@@ -94,7 +94,7 @@ def patch_direct_message_update_event(self: DirectMessageUpdateEvent) -> str:
     return (
         f"Message {H.id(self.id)} "
         f"from {H.user(self.author)} "
-        f"updated{f' to {H.apply(message)}' if message else ''}"
+        f"updated{f" to {H.apply(message)}" if message else ""}"
     )
 
 
@@ -125,7 +125,7 @@ def patch_guild_message_update_event(self: GuildMessageUpdateEvent) -> str:
     return (
         f"Message {H.id(self.id)} "
         f"from {H.user(self.author)}@{H.channel(self)} "
-        f"updated{f' to {H.apply(message)}' if message else ''}"
+        f"updated{f" to {H.apply(message)}" if message else ""}"
     )
 
 

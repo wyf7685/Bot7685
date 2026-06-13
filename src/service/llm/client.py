@@ -170,7 +170,7 @@ class LLMClient:
                 async with GlobalRateLimiter.get_instance().semaphore:
                     client = await self._get_client()
                     resp = await client.post(
-                        f"{config.base_url.rstrip('/')}/chat/completions",
+                        f"{config.base_url.rstrip("/")}/chat/completions",
                         json=payload,
                         headers=headers,
                     )

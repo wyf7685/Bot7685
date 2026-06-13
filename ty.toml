@@ -4,11 +4,11 @@ python-version = "3.14"
 python-platform = "all"
 
 [src]
-include = ["src/**/*.py"]
+include = ["bot.py", "src/**/*.py"]
 exclude = [
   ".venv",
-  "data",       # nbp-orm migration scripts
-  "**/scripts",
+  "data",    # nbp-orm migration scripts
+  "scripts",
 ]
 
 [[overrides]]

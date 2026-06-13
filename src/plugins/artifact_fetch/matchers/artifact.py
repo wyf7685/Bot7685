@@ -126,13 +126,13 @@ async def assign_subscribe_add(
     logger.info(f"Added subscription: {sub!r}")
     msg = (
         f"已订阅仓库 {sub.owner}/{sub.repo} 的工作流"
-        f"{f'（ID: {sub.workflow_id}）' if sub.workflow_id else ''}"
+        f"{f"（ID: {sub.workflow_id}）" if sub.workflow_id else ""}"
         "的运行状态更新"
     )
     if cfg := sub.artifact_upload_config:
         msg += "\n\nArtifact 上传配置:\n"
-        msg += f"- 过滤正则: {cfg.filter_regex or '<未配置>'}\n"
-        msg += f"- 重命名模板: {cfg.rename_template or '<未配置>'}\n"
+        msg += f"- 过滤正则: {cfg.filter_regex or "<未配置>"}\n"
+        msg += f"- 重命名模板: {cfg.rename_template or "<未配置>"}\n"
     await UniMessage.text(msg).finish(reply_to=True)
 
 
@@ -164,12 +164,12 @@ async def assign_subscribe_list(bot: Bot, target: MsgTarget) -> None:
     for sub in filter(lambda sub: target.verify(sub.target), subs):
         msg = (
             f"- 仓库: {sub.owner}/{sub.repo}\n"
-            f"  工作流{f' ID: {sub.workflow_id}' if sub.workflow_id else ': 全部'}\n"
+            f"  工作流{f" ID: {sub.workflow_id}" if sub.workflow_id else ": 全部"}\n"
         )
         if cfg := sub.artifact_upload_config:
             msg += "  Artifact 上传配置:\n"
-            msg += f"    - 过滤正则: {cfg.filter_regex or '<未配置>'}\n"
-            msg += f"    - 重命名模板: {cfg.rename_template or '<未配置>'}\n"
+            msg += f"    - 过滤正则: {cfg.filter_regex or "<未配置>"}\n"
+            msg += f"    - 重命名模板: {cfg.rename_template or "<未配置>"}\n"
         msgs.append(msg.strip())
 
     if not msgs:

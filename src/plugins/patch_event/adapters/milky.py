@@ -256,9 +256,9 @@ def patch_message_recall_event(self: MessageRecallEvent) -> str:
         f"from {H.source(self.data)} "
         f"deleted by {H.user(self.data.operator_id)}"
         f"{
-            f' suffix={H.style.le(self.data.display_suffix)}'
+            f" suffix={H.style.le(self.data.display_suffix)}"
             if self.data.display_suffix
-            else ''
+            else ""
         }"
     )
 
@@ -292,7 +292,7 @@ def patch_group_nudge_event(self: GroupNudgeEvent) -> str:
 def patch_group_message_reaction_event(self: GroupMessageReactionEvent) -> str:
     return (
         f"Reaction {H.style.y(self.data.face_id)} "
-        f"{'added to' if self.data.is_add else 'removed from'} "
+        f"{"added to" if self.data.is_add else "removed from"} "
         f"{H.id(self.data.message_seq)} "
         f"by {H.group_member(self.data.group_id, self.data.user_id)}]"
     )
@@ -302,12 +302,12 @@ def patch_group_message_reaction_event(self: GroupMessageReactionEvent) -> str:
 def patch_group_mute_event(self: GroupMuteEvent) -> str:
     return (
         f"{H.group_member(self.data.group_id, self.data.user_id)} "
-        f"{'muted' if self.data.duration > 0 else 'unmuted'} "
+        f"{"muted" if self.data.duration > 0 else "unmuted"} "
         f"by {H.user(self.data.operator_id, self.data.group_id)}"
         f"{
-            f' for {H.style.y(self.data.duration)} seconds'
+            f" for {H.style.y(self.data.duration)} seconds"
             if self.data.duration > 0
-            else ''
+            else ""
         }"
     )
 
@@ -316,6 +316,6 @@ def patch_group_mute_event(self: GroupMuteEvent) -> str:
 def patch_group_whole_mute_event(self: GroupWholeMuteEvent) -> str:
     return (
         f"{H.group(self.data.group_id)} "
-        f"{'muted' if self.data.is_mute else 'unmuted'} "
+        f"{"muted" if self.data.is_mute else "unmuted"} "
         f"by {H.user(self.data.operator_id, self.data.group_id)}"
     )

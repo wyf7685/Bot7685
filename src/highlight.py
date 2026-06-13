@@ -169,7 +169,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
 
         indent = _struct_indent.get()
         if indent is None:
-            return f"{st}{', '.join(seq)}{ed}"
+            return f"{st}{", ".join(seq)}{ed}"
 
         seq = list(seq)
         if not seq:
@@ -179,7 +179,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
         space = " " * indent * (depth + 1)
 
         if len(seq) <= 3:
-            single_line = f"{st} {', '.join(seq)} {ed}"
+            single_line = f"{st} {", ".join(seq)} {ed}"
             if (
                 len(space) + len(single_line) <= _line_length.get()
                 and "\n" not in single_line
@@ -188,8 +188,8 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
 
         return (
             f"{st}\n"
-            f"{',\n'.join(f'{space}{i}' for i in seq)}\n"
-            f"{' ' * indent * depth}{ed}"
+            f"{",\n".join(f"{space}{i}" for i in seq)}\n"
+            f"{" " * indent * depth}{ed}"
         )
 
     @register(dict)
@@ -224,7 +224,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
         attrs = [cls.apply(getattr(data, name)) for name in DATETIME_FIELDS]
         if data.tzinfo is not None:
             attrs.append(style.ly(data.tzinfo))
-        return f"{style.g('datetime')}({', '.join(attrs)})"
+        return f"{style.g("datetime")}({", ".join(attrs)})"
 
     @register(BaseModel)
     @classmethod
@@ -234,7 +234,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
         items = ((name, getattr(data, name)) for name in model.model_fields)
         return (
             f"{style.lg(model.__name__)}"
-            f"{cls._seq(cls._kv(items, '=', style.i_y), '()')}"
+            f"{cls._seq(cls._kv(items, "=", style.i_y), "()")}"
         )
 
     @register(MessageSegment)
@@ -262,20 +262,20 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
         )
         return (
             f"{style.lg(type(data).__name__)}"
-            f"{cls._seq(cls._kv(items, '=', style.i_y), '()')}"
+            f"{cls._seq(cls._kv(items, "=", style.i_y), "()")}"
         )
 
     @classmethod
     def segment(cls, segment: TMS) -> str:
         return (
             f"<g>{segment.__class__.__name__}</g>"
-            f"({style.i_y('type')}={cls.apply(segment.type)},"
-            f" {style.i_y('data')}={cls.apply(segment.data)})"
+            f"({style.i_y("type")}={cls.apply(segment.type)},"
+            f" {style.i_y("data")}={cls.apply(segment.data)})"
         )
 
     @classmethod
     def message(cls, message: TM) -> str:
-        return f"[{', '.join(map(cls.segment, message))}]"
+        return f"[{", ".join(map(cls.segment, message))}]"
 
     @classmethod
     def id(cls, id: str | int, /) -> str:

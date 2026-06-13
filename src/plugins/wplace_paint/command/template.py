@@ -200,7 +200,7 @@ async def assign_template_progress(cfg: SceneTemplate) -> None:
         "各颜色进度:",
     ]
     msg_lines.extend(
-        f"{'★' if entry.is_paid else ''}{entry.name}: "
+        f"{"★" if entry.is_paid else ""}{entry.name}: "
         f"{entry.drawn} / {entry.total} "
         f"({entry.progress:.2f}%)"
         for entry in progress_data
@@ -216,7 +216,7 @@ async def assign_template_color(
 ) -> None:
     fixed_colors = parse_color_names(color_name)
     if not fixed_colors:
-        await finish(f"无效的颜色名称:\n{' '.join(color_name)}")
+        await finish(f"无效的颜色名称:\n{" ".join(color_name)}")
 
     try:
         img_bytes = await render_template_with_color(cfg, fixed_colors, background)

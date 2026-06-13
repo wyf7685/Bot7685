@@ -108,7 +108,7 @@ async def _(arp: Arparma) -> None:
         f"作者: {img_data.author}\n"
         f"R18: {img_data.r18}\n"
         f"AI: {AI_TYPE_CONVERT[img_data.ai_type]}\n"
-        f"标签: {', '.join(img_data.tags)}\n"
+        f"标签: {", ".join(img_data.tags)}\n"
     )
 
     try:

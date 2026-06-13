@@ -154,7 +154,7 @@ class JmDownloader(Downloader[jmcomic.JmAlbumDetail, jmcomic.JmImageDetail]):
             f"ID: {album.album_id}\n"
             f"标题: {album.title}\n"
             f"作者: {album.author}\n"
-            f"标签: {', '.join(album.tags)}\n"
+            f"标签: {", ".join(album.tags)}\n"
             f"页数: {len(images)}"
         )
 

@@ -46,11 +46,11 @@ async def add_token(
                 note = kuro_token.note
             await ktd.update(kuro_token)
             await UniMessage.text(
-                f"账号信息更新成功\n{info}\n备注: {note or '无'}"
+                f"账号信息更新成功\n{info}\n备注: {note or "无"}"
             ).finish()
 
     await ktd.add(mine.userId, api.token, note)
-    await UniMessage.text(f"账号添加成功\n{info}\n备注: {note or '无'}").finish()
+    await UniMessage.text(f"账号添加成功\n{info}\n备注: {note or "无"}").finish()
 
 
 @matcher_token.assign("~add")
@@ -100,7 +100,7 @@ async def assign_list(
     msg = UniMessage.text("库洛账号绑定列表:\n\n")
     for kuro_token in tokens:
         msg.text(f"库洛 ID: {kuro_token.kuro_id}\n").text(
-            f"备注: {kuro_token.note or '无'}\n\n"
+            f"备注: {kuro_token.note or "无"}\n\n"
         )
 
     await msg.finish()
@@ -133,7 +133,7 @@ async def assign_update(
     await (
         UniMessage.text("库洛账号信息已更新\n\n")
         .text(f"库洛 ID: {kuro_id}\n")
-        .text(f"备注: {note or '无'}")
+        .text(f"备注: {note or "无"}")
         .finish()
     )
 

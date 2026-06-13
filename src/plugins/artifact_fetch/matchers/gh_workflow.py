@@ -194,7 +194,7 @@ async def notify_workflow_run_completed(
     sub: Subscription,
 ) -> None:
     msg = (
-        f"{'✅' if run.conclusion == 'success' else '❌'} Workflow 已完成\n"
+        f"{"✅" if run.conclusion == "success" else "❌"} Workflow 已完成\n"
         f"📦 仓库: {repo_name}\n"
         f"⚙️ 工作流: {run.name}\n"
         f"🌿 分支: {run.head_branch}\n"

@@ -74,7 +74,7 @@ class P2PChatEnteredEvent(NoticeEvent):
     def get_log_string(self) -> str:
         return (
             f"{H.id(self.get_user_id())}"
-            f"@[{H.style.y('p2p')}:{H.id(self.event.chat_id)}] entered chat, "
+            f"@[{H.style.y("p2p")}:{H.id(self.event.chat_id)}] entered chat, "
             f"last message: {H.id(self.event.last_message_id)} "
             f"at {H.time(self.last_message_create_time)}"
         )
