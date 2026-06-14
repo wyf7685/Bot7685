@@ -16,6 +16,7 @@ from nonebot.utils import escape_tag, resolve_dot_notation
 from src.utils import Decorator, logger_wrapper
 
 from .config import BootstrapConfig, LogLevelMap, load_config
+from .log import LOGGING_CONFIG, set_log_level
 from .logo import print_logo
 from .params import patch_pcs_params
 from .patch_lifespan import ExtendedLifespan, patch_require
@@ -24,23 +25,24 @@ log = logger_wrapper("Bootstrap")
 
 
 def setup_logger(logging_override: LogLevelMap | None = None) -> None:
+    nonebot.logger.configure(patcher=_log_patcher)
     if logging_override is not None:
         for name, level in logging_override.items():
             logging.getLogger(name).setLevel(level)
 
-    nonebot.logger.configure(patcher=_log_patcher)
+    # Force uvicorn to use our logging configuration
+    try:
+        from uvicorn.config import Config
+    except ImportError:
+        return
 
-    log_format = (
-        "<g>{time:HH:mm:ss}</g> [<lvl>{level}</lvl>] <c><u>{name}</u></c> | {message}"
-    )
-    nonebot.logger.add(
-        "./logs/{time:YYYY-MM-DD}.log",
-        rotation="00:00",
-        level="DEBUG",
-        colorize=True,
-        diagnose=True,
-        format=log_format,
-    )
+    original = Config.configure_logging
+
+    def configure_logging(self: Config) -> None:
+        self.log_config = LOGGING_CONFIG
+        original(self)
+
+    Config.configure_logging = configure_logging  # ty:ignore[invalid-assignment]
 
 
 def timer[**P, R](info: str, /) -> Decorator[P, R]:
@@ -120,6 +122,7 @@ def init_nonebot() -> object:
     bootstrap_config = BootstrapConfig.from_config(config)
 
     setup_logger(bootstrap_config.logging_override)
+    set_log_level(str(config.get("log_level", "INFO")))
     mount_plugin_loader_hook()
     register_htmlrender_patch()
     patch_require()
