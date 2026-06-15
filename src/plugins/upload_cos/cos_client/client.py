@@ -51,7 +51,8 @@ class AsyncCosClient:
             f"{bucket}.cos{"-internal" if is_internal else ""}.{region}.myqcloud.com"
         )
         self._base_url = f"{scheme}://{self._host}"
-        self._presign_base_url = f"{scheme}://{bucket}.cos.{region}.myqcloud.com"
+        self._public_host = f"{bucket}.cos.{region}.myqcloud.com"
+        self._presign_base_url = f"{scheme}://{self._public_host}"
         self._token = token
         self._timeout = timeout
         self._client: httpx.AsyncClient | None = None
@@ -124,10 +125,12 @@ class AsyncCosClient:
         params: Mapping[str, str],
         headers: Mapping[str, str] | None,
         expired: int,
+        internal: bool = True,
     ) -> dict[str, str]:
+        host = self._host if internal else self._public_host
         sign_headers = self._normalize_headers(headers)
         if not self._has_header(sign_headers, "Host"):
-            sign_headers["Host"] = self._host
+            sign_headers["Host"] = host
         if self._token and not self._has_header(sign_headers, "x-cos-security-token"):
             sign_headers["x-cos-security-token"] = self._token
 
@@ -137,7 +140,7 @@ class AsyncCosClient:
             params=params,
             headers=sign_headers,
             expired=expired,
-            host=self._host,
+            host=host,
         )
         sign_headers["Authorization"] = authorization
         return sign_headers
@@ -196,6 +199,7 @@ class AsyncCosClient:
             params=query,
             headers=None,
             expired=expired,
+            internal=False,
         )
         authorization = headers["Authorization"]
         sign_query = urlencode(
