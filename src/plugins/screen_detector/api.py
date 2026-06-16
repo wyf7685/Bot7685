@@ -1,10 +1,14 @@
 import functools
+import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Concatenate
 
+import ayafileio
 import httpx
 from nonebot import get_driver, logger
+from nonebot_plugin_localstore import get_plugin_cache_file
 from pydantic import BaseModel
 
 from .config import plugin_config
@@ -152,14 +156,21 @@ class DetectorClient:
         )
 
     @_check_api
-    async def package(self, after: datetime) -> bytes:
-        response = await self._get_client().post(
-            self.endpoints.package,
-            json={"after_timestamp": after.isoformat()},
-            timeout=30,
-        )
-        response.raise_for_status()
-        return response.content
+    async def package(self, after: datetime) -> Path:
+        path = get_plugin_cache_file(f"{uuid.uuid4()}.zip")
+        async with (
+            self._get_client().stream(
+                "POST",
+                self.endpoints.package,
+                json={"after_timestamp": after.isoformat()},
+                timeout=30,
+            ) as response,
+            ayafileio.open(path, "wb") as file,
+        ):
+            response.raise_for_status()
+            async for chunk in response.aiter_bytes():
+                await file.write(chunk)
+        return path
 
 
 detector_client = DetectorClient()

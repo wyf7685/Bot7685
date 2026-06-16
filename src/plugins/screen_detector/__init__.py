@@ -7,6 +7,8 @@ if plugin_config.api_base_url:
         f"Screen Detector plugin loaded with API base URL: {plugin_config.api_base_url}"
     )
     require("nonebot_plugin_alconna")
+    require("nonebot_plugin_apscheduler")
+    require("nonebot_plugin_localstore")
     require("nonebot_plugin_uninfo")
     require("src.plugins.upload_cos")
     require("src.service.cache")
