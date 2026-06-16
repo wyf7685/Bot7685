@@ -1,7 +1,7 @@
 import xml.etree.ElementTree as ET
 from collections.abc import Mapping, Sequence
 from types import TracebackType
-from typing import Self
+from typing import Literal, Self
 from urllib.parse import quote, urlencode
 
 import httpx
@@ -148,7 +148,7 @@ class AsyncCosClient:
     async def _request(
         self,
         *,
-        method: str,
+        method: Literal["GET", "POST", "PUT", "DELETE"],
         key: str,
         params: Mapping[str, str | int] | None = None,
         headers: Mapping[str, str] | None = None,

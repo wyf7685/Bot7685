@@ -1,4 +1,11 @@
-from collections.abc import AsyncIterable, AsyncIterator, Buffer, Iterable
+import contextlib
+from collections.abc import (
+    AsyncGenerator,
+    AsyncIterable,
+    AsyncIterator,
+    Buffer,
+    Iterable,
+)
 from pathlib import Path, PurePosixPath
 from typing import Self
 
@@ -34,9 +41,6 @@ class MultipartUploadTask:
     key: str
     upload_id: str
     parts: list[MultipartUploadPart]
-    _next_part_number: int
-    _part_number_lock: anyio.Lock
-    _parts_lock: anyio.Lock
 
     def __init__(self, client: AsyncCosClient, key: str) -> None:
         self.client = client
@@ -47,10 +51,22 @@ class MultipartUploadTask:
         self._parts_lock = anyio.Lock()
 
     @classmethod
-    async def create(cls, client: AsyncCosClient, key: str) -> Self:
+    @contextlib.asynccontextmanager
+    async def create(cls, client: AsyncCosClient, key: str) -> AsyncGenerator[Self]:
         self = cls(client, key)
         self.upload_id = await client.create_multipart_upload(self.key)
-        return self
+
+        try:
+            yield self
+            await self.complete()
+        except Exception:
+            try:
+                await self.abort()
+            except Exception as abort_exc:
+                logger.opt(exception=abort_exc).warning(
+                    f"Failed to abort multipart upload for key={self.key}"
+                )
+            raise
 
     def next_part_number(self) -> int:
         value = self._next_part_number
@@ -159,20 +175,14 @@ async def put_file_from_aiterable(
             await client.put_object(key=object_key, data=first_chunk)
             return
 
-        task = await MultipartUploadTask.create(client, object_key)
-        try:
-            await task.put_chunk(task.next_part_number(), first_chunk)
-            await task.put_chunk(task.next_part_number(), second_chunk)
+        async with (
+            MultipartUploadTask.create(client, object_key) as task,
+            anyio.create_task_group() as tg,
+        ):
+            tg.start_soon(task.put_chunk, task.next_part_number(), first_chunk)
+            tg.start_soon(task.put_chunk, task.next_part_number(), second_chunk)
+            await anyio.lowlevel.checkpoint()
             await task.upload_from(chunk_iter)
-            await task.complete()
-        except Exception:
-            try:
-                await task.abort()
-            except Exception as abort_err:
-                logger.opt(exception=abort_err).warning(
-                    f"Failed to abort multipart upload for key={task.key}"
-                )
-            raise
 
 
 async def put_file_from_buffer(data: Buffer, key: str) -> None:
@@ -197,6 +207,13 @@ async def put_file_from_local(path: Path, key: str) -> None:
     await put_file_from_aiterable(aiterable(), key)
 
 
+async def put_file_from_url(url: str, key: str) -> None:
+    async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
+        resp.raise_for_status()
+        aiterable = resp.aiter_bytes(CHUNK_SIZE)
+        await put_file_from_aiterable(aiterable, key)
+
+
 @attach_async_context(_create_client)
 async def delete_file(client: AsyncCosClient, key: str) -> None:
     await client.delete_object(
@@ -215,10 +232,3 @@ async def presign(
         method="GET",
         expired=ttl,
     )
-
-
-async def put_file_from_url(url: str, key: str) -> None:
-    async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
-        resp.raise_for_status()
-        aiterable = resp.aiter_bytes(CHUNK_SIZE)
-        await put_file_from_aiterable(aiterable, key)
