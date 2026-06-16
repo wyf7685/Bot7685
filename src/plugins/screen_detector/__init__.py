@@ -16,6 +16,7 @@ if plugin_config.api_base_url:
     from . import command as command
     from . import detect as detect
     from . import reaction as reaction
+    from . import scheduler as scheduler
 else:
     logger.warning(
         "Screen Detector plugin loaded without API base URL. "

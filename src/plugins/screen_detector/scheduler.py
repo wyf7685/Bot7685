@@ -31,6 +31,7 @@ async def daily_package() -> None:
         url = await upload_cos(
             path, f"detector/daily-package-{dt:%Y-%m-%d}.zip", ttl=DAILY_PACKAGE_TTL
         )
+        logger.opt(colors=True).info(f"每日打包完成: <c>{url}</>")
     except Exception:
         logger.exception("上传打包结果失败")
         return
