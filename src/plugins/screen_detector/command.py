@@ -52,6 +52,9 @@ async def assign_package(duration: str, target: MsgTarget) -> None:
     except Exception:
         logger.exception("上传打包结果失败")
         await UniMessage.text("上传打包结果失败").finish()
+    finally:
+        with contextlib.suppress(Exception):
+            path.unlink()
 
     await UniMessage.text(f"打包完成:\n{url}").finish()
 
