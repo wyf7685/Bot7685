@@ -110,13 +110,36 @@ class ExtendedLifespan(Lifespan):
     ) -> None:
         layers = resolve_hook_execution_sequence(funcs, reverse=reverse)
         _debug_print_layers(layers)
+
+        async def run_one(func: Callable[[], Awaitable[object]]) -> None:
+            name = escape_tag(_get_func_attr(func, "__qualname__"))
+
+            async def warn_on_timeout() -> None:
+                await anyio.sleep(5)
+                log.warning(
+                    f"Lifespan hook <y>{name}</> is taking too long to complete."
+                )
+
+            async with anyio.create_task_group() as tg:
+                tg.start_soon(warn_on_timeout)
+                try:
+                    await func()
+                except Exception as exc:
+                    log.warning(
+                        f"Uncaught exception in lifespan hook <y>{name}</>:"
+                        f"<r>{escape_tag(repr(exc))}</>"
+                    )
+                    raise
+                finally:
+                    tg.cancel_scope.cancel()
+
         for layer in layers:
             async with anyio.create_task_group() as tg:
                 for func in layer:
                     if inspect.iscoroutinefunction(func):
-                        tg.start_soon(func)
+                        tg.start_soon(run_one, func)
                     else:
-                        tg.start_soon(run_sync(func))
+                        tg.start_soon(run_one, run_sync(func))
 
     @override
     async def startup(self) -> None:

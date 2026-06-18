@@ -49,6 +49,7 @@ _valid_log_levels: set[_ValidLogLevel] = {
     "ERROR",
     "CRITICAL",
 }
+type _LogException = Exception | bool | None
 
 
 class LoggerWrapper:
@@ -57,7 +58,10 @@ class LoggerWrapper:
         self.logger_name = escape_tag(logger_name)
 
     def log(
-        self, level: _ValidLogLevel, message: str, exception: Exception | None = None
+        self,
+        level: _ValidLogLevel,
+        message: str,
+        exception: _LogException = None,
     ) -> None:
         self.logger.opt(colors=True, exception=exception).log(
             level, f"<m>{self.logger_name}</m> | {message}"
@@ -67,15 +71,13 @@ class LoggerWrapper:
 
     if TYPE_CHECKING:
 
-        def trace(self, message: str, exception: Exception | None = None) -> None: ...
-        def debug(self, message: str, exception: Exception | None = None) -> None: ...
-        def info(self, message: str, exception: Exception | None = None) -> None: ...
-        def success(self, message: str, exception: Exception | None = None) -> None: ...
-        def warning(self, message: str, exception: Exception | None = None) -> None: ...
-        def error(self, message: str, exception: Exception | None = None) -> None: ...
-        def critical(
-            self, message: str, exception: Exception | None = None
-        ) -> None: ...
+        def trace(self, message: str, exception: _LogException = None) -> None: ...
+        def debug(self, message: str, exception: _LogException = None) -> None: ...
+        def info(self, message: str, exception: _LogException = None) -> None: ...
+        def success(self, message: str, exception: _LogException = None) -> None: ...
+        def warning(self, message: str, exception: _LogException = None) -> None: ...
+        def error(self, message: str, exception: _LogException = None) -> None: ...
+        def critical(self, message: str, exception: _LogException = None) -> None: ...
     else:
 
         def __getattr__(self, item: str) -> Callable[[str, Exception | None], None]:
@@ -83,11 +85,14 @@ class LoggerWrapper:
             if level not in _valid_log_levels:
                 raise AttributeError(f"Invalid log level: {item}")
 
-            def method(message: str, exception: Exception | None = None) -> None:
+            def method(message: str, exception: _LogException = None) -> None:
                 self.log(level, message, exception)
 
             setattr(self, item, method)
             return method
+
+    def exception(self, message: str) -> None:
+        self.log("ERROR", message, exception=True)
 
 
 def logger_wrapper(logger_name: str, /) -> LoggerWrapper:
