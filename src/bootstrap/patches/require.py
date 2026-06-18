@@ -50,9 +50,10 @@ class _ImportCollector(ast.NodeVisitor):
 
     @classmethod
     def collect(cls, file: Path) -> set[str]:
+        filename = str(file)
         try:
-            lines = linecache.getlines(str(file))
-            module = ast.parse("".join(lines), filename=str(file))
+            lines = linecache.getlines(filename)
+            module = ast.parse("".join(lines), filename, mode="exec")
         except Exception:
             return set()
         collector = cls()
@@ -60,36 +61,32 @@ class _ImportCollector(ast.NodeVisitor):
         return collector.imports
 
 
-def _resolve_requires(source_file: Path, *, seen: set[Path] | None = None) -> set[str]:
+def _resolve_requires(path: Path, *, seen: set[Path] | None = None) -> set[str]:
     if seen is None:
         seen = set()
-    if source_file in seen:
+    elif path in seen:
         return set()
-    seen.add(source_file)
-    if not source_file.exists():
+    seen.add(path)
+    if not path.exists():
         return set()
-    if source_file.is_dir():
+    if path.is_dir():
         return set(
             itertools.chain.from_iterable(
-                _resolve_requires(item, seen=seen) for item in source_file.iterdir()
+                _resolve_requires(item, seen=seen) for item in path.iterdir()
             )
         )
-    if source_file.suffix != ".py" or not source_file.is_file():
+    if path.suffix != ".py" or not path.is_file():
         return set()
 
     requires: set[str] = set()
-    for name in _ImportCollector.collect(source_file):
+    for name in _ImportCollector.collect(path):
         if name.startswith("nonebot_plugin_"):
             requires.add(name.split(".")[0])
         elif name.startswith(("src.plugins.", "src.service.")):
             requires.add(".".join(name.split(".")[:3]))
 
-    if source_file.stem == "__init__":
-        parent = source_file.parent
-        if parent not in seen:
-            seen.add(parent)
-            for item in parent.iterdir():
-                requires.update(_resolve_requires(item, seen=seen))
+    if path.stem == "__init__":
+        requires.update(_resolve_requires(path.parent, seen=seen))
 
     return requires
 
