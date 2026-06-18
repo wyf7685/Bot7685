@@ -1,5 +1,6 @@
 from nonebot import logger, require
 
+require("nonebot_plugin_localstore")
 from .config import plugin_config
 
 if plugin_config.api_base_url:
@@ -8,7 +9,6 @@ if plugin_config.api_base_url:
     )
     require("nonebot_plugin_alconna")
     require("nonebot_plugin_apscheduler")
-    require("nonebot_plugin_localstore")
     require("nonebot_plugin_uninfo")
     require("src.plugins.upload_cos")
     require("src.service.cache")
