@@ -13,10 +13,6 @@ from nonebot.plugin import Plugin
 from nonebot.plugin import _current_plugin as current_plugin
 from nonebot.plugin import require as original_require
 
-from src.utils import logger_wrapper
-
-log = logger_wrapper("Lifespan")
-
 _plugin_deps: dict[str, set[str]] = defaultdict(set)
 
 
