@@ -10,6 +10,8 @@ from nonebot.log import logger
 from nonebot.utils import escape_tag
 from pydantic import TypeAdapter
 
+from src.highlight import Highlight
+
 from .config import LLMConfig
 from .exceptions import (
     CircuitBreakerOpenError,
@@ -19,6 +21,8 @@ from .exceptions import (
 )
 from .resilience import CircuitBreaker, GlobalRateLimiter
 from .schema import Message, TokenUsage, dump_messages
+
+_token_usage_ta = TypeAdapter(TokenUsage)
 
 
 class LLMClient:
@@ -51,7 +55,6 @@ class LLMClient:
             yield lambda: self._token_usage.get()[0]
 
     def _update_token_usage(self, usage: TokenUsage) -> None:
-        container = self._token_usage.get(None)
         if container := self._token_usage.get(None):
             container[0] += usage
 
@@ -85,14 +88,15 @@ class LLMClient:
         text: str = (
             content.get("choices", [{}])[0].get("message", {}).get("content", "")
         )
-        usage_info: dict[str, int] = content.get("usage", {})
-        self._update_token_usage(
-            TokenUsage(
-                prompt_tokens=usage_info.get("prompt_tokens", 0),
-                completion_tokens=usage_info.get("completion_tokens", 0),
-                total_tokens=usage_info.get("total_tokens", 0),
+        usage_info = content.get("usage", {})
+        try:
+            usage = _token_usage_ta.validate_python(usage_info)
+        except Exception:
+            logger.opt(colors=True).warning(
+                f"无法解析 token usage: {Highlight.apply(usage_info)}"
             )
-        )
+        else:
+            self._update_token_usage(usage)
         return text.strip()
 
     async def chat_completion_json[T](
