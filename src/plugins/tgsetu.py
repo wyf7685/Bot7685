@@ -1,14 +1,10 @@
 from enum import Enum
 
 import httpx
-from nonebot import require
 from nonebot.adapters import Bot
 from nonebot.compat import type_validate_json
 from nonebot.exception import ActionFailed
 from nonebot.plugin import PluginMetadata
-from pydantic import BaseModel, Field
-
-require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import (
     Alconna,
     Arparma,
@@ -17,6 +13,7 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
+from pydantic import BaseModel, Field
 
 __plugin_meta__ = PluginMetadata(
     name="tgsetu",

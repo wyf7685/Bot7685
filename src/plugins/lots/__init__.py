@@ -1,9 +1,6 @@
 import contextlib
 
-from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-
-require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import Alconna, Args, on_alconna
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 from nonebot_plugin_alconna.uniseg import At, message_reaction

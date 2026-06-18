@@ -3,12 +3,10 @@ import traceback
 from collections.abc import Generator, Iterable
 
 import anyio
-from nonebot import get_driver, on_type, require
+from nonebot import get_driver, on_type
 from nonebot.adapters import Bot, Event
 from nonebot.matcher import Matcher
 from nonebot.message import run_postprocessor, run_preprocessor
-
-require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import (
     CustomNode,
     SupportScope,
@@ -18,7 +16,6 @@ from nonebot_plugin_alconna import (
     message_reaction,
 )
 
-require("src.service.cache")
 from src.service.cache import get_cache
 
 driver = get_driver()

@@ -1,19 +1,11 @@
 from copy import deepcopy
 from typing import Annotated, Any
 
-from nonebot import logger, on_message, require
+from nonebot import logger, on_message
 from nonebot.adapters import Bot, discord
 from nonebot.params import Depends
 from nonebot.permission import SuperUser
 from nonebot.typing import T_State
-from pydantic import BaseModel
-
-from src.plugins.neuro_schedule.models import ScheduleData
-from src.utils import ConfigModelFile
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_htmlrender")
-require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import (
     Alconna,
     MsgTarget,
@@ -24,6 +16,10 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 from nonebot_plugin_localstore import get_plugin_config_file, get_plugin_data_file
+from pydantic import BaseModel
+
+from src.plugins.neuro_schedule.models import ScheduleData
+from src.utils import ConfigModelFile
 
 from .parser import merge_schedule_data, parse_schedule
 from .render import render_schedule

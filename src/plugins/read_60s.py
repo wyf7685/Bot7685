@@ -5,14 +5,8 @@ from datetime import datetime
 from typing import Any
 
 import httpx
-from nonebot import require
-from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-from pydantic import BaseModel, Field
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_apscheduler")
-require("nonebot_plugin_localstore")
 from apscheduler.triggers.cron import CronTrigger
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -25,8 +19,8 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_apscheduler import scheduler
 from nonebot_plugin_localstore import get_plugin_data_file
+from pydantic import BaseModel, Field
 
-require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 from src.utils import ConfigListFile
 

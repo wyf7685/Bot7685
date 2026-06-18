@@ -1,13 +1,10 @@
 from typing import Annotated
 
-from nonebot import on_startswith, require
+from nonebot import on_startswith
 from nonebot.params import EventPlainText
 from nonebot.plugin import PluginMetadata
-
-require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import UniMessage
 
-require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 
 __plugin_meta__ = PluginMetadata(

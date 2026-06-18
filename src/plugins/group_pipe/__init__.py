@@ -1,13 +1,4 @@
-from nonebot import require
 from nonebot.plugin import PluginMetadata
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_apscheduler")
-require("nonebot_plugin_orm")
-require("nonebot_plugin_uninfo")
-require("src.service.cache")
-require("src.service.task")
-require("src.plugins.upload_cos")
 
 from . import adapters, hooks, matchers
 

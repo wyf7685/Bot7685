@@ -1,12 +1,7 @@
 from typing import override
 
-from nonebot import require
 from nonebot.adapters import Bot, Event, Message
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-from pydantic import BaseModel
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -18,6 +13,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna.extension import Extension, add_global_extension
 from nonebot_plugin_localstore import get_plugin_config_file
+from pydantic import BaseModel
 
 from src.utils import ConfigModelFile
 

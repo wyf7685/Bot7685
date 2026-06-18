@@ -1,18 +1,14 @@
 from typing import Literal
 
 import anyio
-from nonebot import logger, require
+import nonebot_plugin_waiter.unimsg as waiter
+from nonebot import logger
 from nonebot.adapters import Event
 from nonebot.exception import ActionFailed, MatcherException, NetworkError
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
 from nonebot.permission import SUPERUSER, User
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_localstore")
-require("nonebot_plugin_waiter")
-import nonebot_plugin_waiter.unimsg as waiter
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
@@ -22,8 +18,6 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 
-require("src.service.cache")
-require("src.plugins.trusted")
 from src.plugins.trusted import TrustedUser
 
 from .common import Downloader

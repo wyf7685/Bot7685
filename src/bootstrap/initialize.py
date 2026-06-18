@@ -2,11 +2,11 @@ import functools
 import logging
 import time
 from collections.abc import Callable
-from typing import Any, override
+from typing import Any
 
 import nonebot
 from bot7685_ext.nonebot import mount_plugin_loader_hook, register_htmlrender_patch
-from nonebot import _log_patcher, _resolve_combine_expr
+from nonebot import _log_patcher
 from nonebot.adapters import Adapter
 from nonebot.compat import model_dump
 from nonebot.config import Config, Env
@@ -19,7 +19,7 @@ from .config import BootstrapConfig, LogLevelMap, load_config
 from .log import LOGGING_CONFIG, set_log_level
 from .logo import print_logo
 from .params import patch_pcs_params
-from .patch_lifespan import ExtendedLifespan, patch_require
+from .patches import create_patched_driver_class, patch_require
 
 log = logger_wrapper("Bootstrap")
 
@@ -60,16 +60,6 @@ def timer[**P, R](info: str, /) -> Decorator[P, R]:
     return decorator
 
 
-def _create_driver_class(combine_expr: str) -> type[Driver]:
-    class Driver(_resolve_combine_expr(combine_expr)):  # ty:ignore[unsupported-base]
-        @override
-        def __init__(self, env: Env, config: Config) -> None:
-            super().__init__(env, config)
-            self._lifespan = ExtendedLifespan()
-
-    return Driver
-
-
 def create_driver(config_dict: dict[str, Any]) -> Driver:
     log.success("NoneBot is initializing...")
     env = Env(environment=config_dict.get("environment", "prod"))
@@ -79,7 +69,7 @@ def create_driver(config_dict: dict[str, Any]) -> Driver:
     log.info(f"Current <y><b>Env: {escape_tag(env.environment)}</b></y>")
     log.debug(f"Loaded <y><b>Config</b></y>: {escape_tag(str(model_dump(config)))}")
 
-    driver = _create_driver_class(config.driver)(env, config)
+    driver = create_patched_driver_class(config.driver)(env, config)
     nonebot._driver = driver  # noqa: SLF001
     return driver
 

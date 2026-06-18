@@ -1,13 +1,4 @@
-from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_apscheduler")
-require("nonebot_plugin_localstore")
-require("nonebot_plugin_orm")
-require("nonebot_plugin_uninfo")
-require("nonebot_plugin_waiter")
-require("src.service.cache")
 
 from .config import Config
 

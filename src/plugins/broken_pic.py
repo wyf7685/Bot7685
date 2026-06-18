@@ -1,11 +1,7 @@
 import random
 from typing import ClassVar, override
 
-from nonebot import require
 from nonebot.adapters import Bot, Event, Message
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_localstore")
 from nonebot_plugin_alconna import Image, UniMessage
 from nonebot_plugin_alconna.extension import Extension, add_global_extension
 from nonebot_plugin_localstore import get_plugin_data_dir

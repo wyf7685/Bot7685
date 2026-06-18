@@ -1,8 +1,4 @@
-from nonebot import require
 from nonebot.plugin import PluginMetadata
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_uninfo")
 
 __plugin_meta__ = PluginMetadata(
     name="Plugin Manager",

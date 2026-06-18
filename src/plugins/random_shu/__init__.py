@@ -2,10 +2,7 @@ import random
 from pathlib import Path
 from typing import NoReturn
 
-from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-
-require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import Command, UniMessage
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
 

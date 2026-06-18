@@ -9,20 +9,7 @@
 基础设施层替换为 NoneBot2 生态组件（chatrecorder / alconna / uninfo / htmlrender / orm）
 """
 
-from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_chatrecorder")
-require("nonebot_plugin_htmlrender")
-require("nonebot_plugin_apscheduler")
-require("nonebot_plugin_localstore")
-require("nonebot_plugin_orm")
-require("nonebot_plugin_uninfo")
-require("src.service.cache")
-require("src.service.llm")
-require("src.service.kv")
-require("src.plugins.trusted")
 
 from . import matchers as matchers
 from .config import Config

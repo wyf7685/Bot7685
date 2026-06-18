@@ -66,7 +66,7 @@ stdout_log_id = None
 if sys.stdout:
     stdout_log_id = logger.add(
         sys.stdout,
-        level="DEBUG",
+        level="TRACE",
         diagnose=False,
         enqueue=True,
         format=log_format,

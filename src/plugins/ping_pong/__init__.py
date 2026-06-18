@@ -2,10 +2,7 @@ import pathlib
 import secrets
 from typing import Any
 
-from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-
-require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import (
     Alconna,
     Args,

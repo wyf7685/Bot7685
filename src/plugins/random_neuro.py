@@ -1,10 +1,7 @@
 import random
 from pathlib import Path
 
-from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-
-require("nonebot_plugin_alconna")
 from nonebot_plugin_alconna import Command, UniMessage
 
 __plugin_meta__ = PluginMetadata(

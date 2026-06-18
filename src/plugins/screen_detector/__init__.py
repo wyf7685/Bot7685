@@ -1,6 +1,5 @@
 from nonebot import logger, require
 
-require("nonebot_plugin_localstore")
 from .config import plugin_config
 
 if plugin_config.api_base_url:

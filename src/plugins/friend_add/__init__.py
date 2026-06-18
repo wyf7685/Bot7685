@@ -1,11 +1,7 @@
 import importlib
 
-from nonebot import get_adapters, require
+from nonebot import get_adapters
 from nonebot.plugin import PluginMetadata
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_uninfo")
-require("nonebot_plugin_waiter")
 
 __plugin_meta__ = PluginMetadata(
     name="friend_add",

@@ -1,21 +1,23 @@
 import contextlib
 import functools
-import importlib
 import inspect
 from collections import Counter, defaultdict
 from collections.abc import Awaitable, Callable, Sequence
 from itertools import pairwise
-from types import ModuleType, TracebackType
+from types import TracebackType
 from typing import Any, override
 
 import anyio
+from nonebot import _resolve_combine_expr
+from nonebot.config import Config, Env
+from nonebot.drivers import Driver
 from nonebot.internal.driver._lifespan import Lifespan
-from nonebot.plugin import Plugin
 from nonebot.plugin import _current_plugin as current_plugin
-from nonebot.plugin import require as original_require
 from nonebot.utils import escape_tag, run_sync
 
 from src.utils import logger_wrapper
+
+from .require import get_plugin_deps
 
 log = logger_wrapper("Lifespan")
 
@@ -154,19 +156,6 @@ class ExtendedLifespan(Lifespan):
         self._task_group = None
 
 
-_plugin_deps: dict[str, set[str]] = defaultdict(set)
-
-
-@functools.wraps(original_require)
-def _patched_require(name: str) -> ModuleType:
-    module = original_require(name)
-    plugin: Plugin | None = getattr(module, "__plugin__", None)
-    current = current_plugin.get()
-    if plugin and current and plugin.id_ != current.id_:
-        _plugin_deps[current.id_].add(plugin.id_)
-    return module
-
-
 def resolve_hook_execution_sequence(
     funcs: Sequence[LifespanFunc],
     reverse: bool = False,
@@ -196,7 +185,7 @@ def resolve_hook_execution_sequence(
     last_index = {id: indices[-1] for id, indices in plugin_func_indices.items()}
     plugins_in_funcs = set(plugin_func_indices)
 
-    for plugin_id, deps in _plugin_deps.items():
+    for plugin_id, deps in get_plugin_deps().items():
         if plugin_id not in plugins_in_funcs:
             continue
         for dep_id in deps:
@@ -238,7 +227,11 @@ def resolve_hook_execution_sequence(
     return layers
 
 
-def patch_require() -> None:
-    for name in ("nonebot", "nonebot.plugin", "nonebot.plugin.load"):
-        module = importlib.import_module(name)
-        setattr(module, "require", _patched_require)  # noqa: B010
+def create_patched_driver_class(combine_expr: str) -> type[Driver]:
+    class Driver(_resolve_combine_expr(combine_expr)):  # ty:ignore[unsupported-base]
+        @override
+        def __init__(self, env: Env, config: Config) -> None:
+            super().__init__(env, config)
+            self._lifespan = ExtendedLifespan()
+
+    return Driver
