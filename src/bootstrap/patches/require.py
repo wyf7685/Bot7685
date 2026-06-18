@@ -52,6 +52,17 @@ class _ImportCollector(ast.NodeVisitor):
         if node.module and not node.level:
             self.imports.add(node.module)
 
+    @classmethod
+    def collect(cls, file: Path) -> set[str]:
+        try:
+            lines = linecache.getlines(str(file))
+            module = ast.parse("".join(lines), filename=str(file))
+        except Exception:
+            return set()
+        collector = cls()
+        collector.visit(module)
+        return collector.imports
+
 
 def _resolve_requires(source_file: Path, *, seen: set[Path] | None = None) -> set[str]:
     if seen is None:
@@ -70,13 +81,8 @@ def _resolve_requires(source_file: Path, *, seen: set[Path] | None = None) -> se
     if source_file.suffix != ".py" or not source_file.is_file():
         return set()
 
-    lines = linecache.getlines(str(source_file))
-    module = ast.parse("".join(lines), filename=str(source_file))
-    collector = _ImportCollector()
-    collector.visit(module)
-
     requires: set[str] = set()
-    for name in collector.imports:
+    for name in _ImportCollector.collect(source_file):
         if name.startswith("nonebot_plugin_"):
             requires.add(name.split(".")[0])
         elif name.startswith(("src.plugins.", "src.service.")):
