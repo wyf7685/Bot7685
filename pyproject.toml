@@ -75,7 +75,7 @@ nonebot-plugin-talk-stats = { git = "https://github.com/wyf7685/nonebot-plugin-t
 nonebot-plugin-werewolf = { git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" }
 nonebot-plugin-zssm = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git" }
 nonebot-plugin-chatrecorder = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" }
-nonebot-plugin-rollpig = { git = "https://github.com/Bearlele/nonebot-plugin-rollpig.git", rev = "9f7580854e3f12e76d425088f6f78c8bd3800d39" }
+nonebot-plugin-rollpig = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git", rev = "6681f238af51de3fb958b3bcbb54bc173b3d8aff" }
 
 [tool.pyright]
 pythonVersion = "3.14"

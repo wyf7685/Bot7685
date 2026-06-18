@@ -282,7 +282,7 @@ requires-dist = [
     { name = "nonebot-plugin-kawaii-status", specifier = ">=0.2.0" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
     { name = "nonebot-plugin-orm", extras = ["asyncpg", "aiosqlite"], specifier = ">=0.8.3" },
-    { name = "nonebot-plugin-rollpig", git = "https://github.com/Bearlele/nonebot-plugin-rollpig.git?rev=9f7580854e3f12e76d425088f6f78c8bd3800d39" },
+    { name = "nonebot-plugin-rollpig", git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git?rev=6681f238af51de3fb958b3bcbb54bc173b3d8aff" },
     { name = "nonebot-plugin-skland", specifier = ">=0.6.9" },
     { name = "nonebot-plugin-talk-stats", git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git" },
     { name = "nonebot-plugin-uninfo", specifier = ">=0.9.0" },
@@ -1557,7 +1557,7 @@ asyncpg = [
 [[package]]
 name = "nonebot-plugin-rollpig"
 version = "0.2.9"
-source = { git = "https://github.com/Bearlele/nonebot-plugin-rollpig.git?rev=9f7580854e3f12e76d425088f6f78c8bd3800d39#9f7580854e3f12e76d425088f6f78c8bd3800d39" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git?rev=6681f238af51de3fb958b3bcbb54bc173b3d8aff#6681f238af51de3fb958b3bcbb54bc173b3d8aff" }
 dependencies = [
     { name = "httpx" },
     { name = "nonebot-plugin-alconna" },
