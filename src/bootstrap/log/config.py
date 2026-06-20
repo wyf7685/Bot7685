@@ -20,7 +20,7 @@ def escape_tag(s: str) -> str:
 
 
 log_format = (
-    "<g>{time:HH:mm:ss}</g> [<lvl>{level}</lvl>] <c><u>{name}</u></c> | {message}"
+    "<g>{time:MM-DD HH:mm:ss}</g> [<lvl>{level}</lvl>] <c><u>{name}</u></c> | {message}"
 )
 _log_level = "DEBUG"
 
