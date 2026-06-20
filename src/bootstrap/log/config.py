@@ -80,6 +80,8 @@ file_log_id = logger.add(
     colorize=True,
     diagnose=True,
     enqueue=True,
-    format=log_format,
+    format=(
+        "<g>{time:HH:mm:ss}</g> [<lvl>{level}</lvl>] <c><u>{name}</u></c> | {message}"
+    ),
     encoding="utf-8",
 )
