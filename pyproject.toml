@@ -40,7 +40,7 @@ dependencies = [
   "mcstatus>=12.2.1,<13.0.0",
   "msgspec[toml,yaml]>=0.20.0",
   "pillow>=10.0.0",
-  "playwright==1.58.0",
+  "playwright==1.60.0",
   "pydantic>=2.12.5",
   "rapidfuzz>=3.14.5",
   "redis>=4.2.0",
@@ -75,7 +75,7 @@ nonebot-plugin-talk-stats = { git = "https://github.com/wyf7685/nonebot-plugin-t
 nonebot-plugin-werewolf = { git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" }
 nonebot-plugin-zssm = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git" }
 nonebot-plugin-chatrecorder = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" }
-nonebot-plugin-rollpig = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git", rev = "6681f238af51de3fb958b3bcbb54bc173b3d8aff" }
+nonebot-plugin-rollpig = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git" }
 
 [tool.pyright]
 pythonVersion = "3.14"
