@@ -21,3 +21,10 @@ name = "ty check"
 entry = "uv run ty check ."
 language = "python"
 types_or = ["python", "pyi"]
+
+[[repos.hooks]]
+id = "resolve-plugin-requires"
+name = "resolve plugin requires"
+entry = "uv run --script scripts/resolve_plugin_requires.py"
+language = "python"
+types_or = ["python"]

@@ -4,7 +4,7 @@ python-version = "3.14"
 python-platform = "all"
 
 [src]
-include = ["bot.py", "src/**/*.py"]
+include = ["bot.py", "src/**/*.py", "scripts/**/*.py"]
 exclude = [
   ".venv",
   "data",    # nbp-orm migration scripts

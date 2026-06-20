@@ -1,9 +1,7 @@
-import ast
 import functools
 import importlib
 import importlib.metadata
-import itertools
-import linecache
+import json
 from collections import defaultdict
 from pathlib import Path
 from types import ModuleType
@@ -36,71 +34,16 @@ def patch_require() -> None:
         setattr(module, "require", _patched_require)  # noqa: B010
 
 
-class _ImportCollector(ast.NodeVisitor):
-    def __init__(self) -> None:
-        self.imports: set[str] = set()
-
-    def visit_Import(self, node: ast.Import) -> None:
-        for alias in node.names:
-            self.imports.add(alias.name)
-
-    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        if node.module and not node.level:
-            self.imports.add(node.module)
-
-    @classmethod
-    def collect(cls, file: Path) -> set[str]:
-        filename = str(file)
-        try:
-            lines = linecache.getlines(filename)
-            module = ast.parse("".join(lines), filename, mode="exec")
-        except Exception:
-            return set()
-        collector = cls()
-        collector.visit(module)
-        return collector.imports
-
-
-def _resolve_requires(path: Path, *, seen: set[Path] | None = None) -> set[str]:
-    if seen is None:
-        seen = set()
-    elif path in seen:
-        return set()
-    seen.add(path)
-    if not path.exists():
-        return set()
-    if path.is_dir():
-        return set(
-            itertools.chain.from_iterable(
-                _resolve_requires(item, seen=seen) for item in path.iterdir()
-            )
-        )
-    if path.suffix != ".py" or not path.is_file():
-        return set()
-
-    requires: set[str] = set()
-    for name in _ImportCollector.collect(path):
-        if name.startswith("nonebot_plugin_"):
-            requires.add(name.split(".")[0])
-        elif name.startswith(("src.plugins.", "src.service.")):
-            requires.add(".".join(name.split(".")[:3]))
-
-    if path.stem == "__init__":
-        requires.update(_resolve_requires(path.parent, seen=seen))
-
-    return requires
+_requires_file = Path(__file__).resolve().parent.parent / "plugin_requires.json"
+if not _requires_file.exists():
+    raise FileNotFoundError(f"Required file not found: {_requires_file}")
+_requires: dict[str, list[str]] = json.loads(_requires_file.read_text(encoding="utf-8"))
 
 
 @on_plugin_load("before")
 def _auto_requires(plugin: Plugin) -> None:
-    file = plugin.module.__file__
-    if not file:
+    if plugin.id_ not in _requires:
         return
 
-    for req in sorted(_resolve_requires(Path(file))):
-        if req.startswith("nonebot_plugin_"):
-            try:
-                importlib.metadata.distribution(req)
-            except importlib.metadata.PackageNotFoundError:
-                continue
+    for req in _requires[plugin.id_]:
         _patched_require(req)

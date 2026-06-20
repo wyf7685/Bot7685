@@ -36,6 +36,18 @@ def _get_func_attr(func: Callable[..., object], attr: str) -> str:
     return getattr(func, attr, None) or "<unknown>"
 
 
+@functools.cache
+def _colorize_hook(func: Callable[..., object]) -> str:
+    module = escape_tag(_get_func_attr(func, "__module__"))
+    qualname = escape_tag(
+        getattr(func, "__qualname__", None)
+        or getattr(func, "__name__", None)
+        or repr(func)
+    )
+    plugin_id = escape_tag(_get_func_attr(func, HOOK_PLUGIN_ID_ATTR) or "<unknown>")
+    return f'<lm>{module}</>:<lg>{qualname}</> (from "<y>{plugin_id}</>")'
+
+
 def _attach_plugin_id(func: LifespanFunc) -> LifespanFunc:
     plugin = current_plugin.get()
     plugin_id = plugin.id_ if plugin else None
@@ -74,16 +86,7 @@ def _debug_print_layers(seq: list[list[LifespanFunc]]) -> None:
             if func_key in KNOWN_HOOKS:
                 known_hooks[func_key] += 1
             else:
-                module = escape_tag(_get_func_attr(func, "__module__"))
-                qualname = escape_tag(
-                    getattr(func, "__qualname__", None)
-                    or getattr(func, "__name__", None)
-                    or repr(func)
-                )
-                id = escape_tag(
-                    _get_func_attr(func, HOOK_PLUGIN_ID_ATTR) or "<unknown>"
-                )
-                log.info(f' │ <lm>{module}</>:<lg>{qualname}</> (from "<y>{id}</>")')
+                log.info(f" │ {_colorize_hook(func)}")
         for (mod, qual), count in known_hooks.items():
             id = escape_tag(KNOWN_HOOKS[(mod, qual)])
             log.info(
@@ -112,12 +115,10 @@ class ExtendedLifespan(Lifespan):
         _debug_print_layers(layers)
 
         async def run_one(func: Callable[[], Awaitable[object]]) -> None:
-            name = escape_tag(_get_func_attr(func, "__qualname__"))
-
             async def warn_on_timeout() -> None:
                 await anyio.sleep(5)
                 log.warning(
-                    f"Lifespan hook <y>{name}</> is taking too long to complete."
+                    f"Lifespan hook taking too long to complete: {_colorize_hook(func)}"
                 )
 
             async with anyio.create_task_group() as tg:
@@ -126,7 +127,7 @@ class ExtendedLifespan(Lifespan):
                     await func()
                 except Exception as exc:
                     log.warning(
-                        f"Uncaught exception in lifespan hook <y>{name}</>:"
+                        f"Uncaught exception in lifespan hook {_colorize_hook(func)}: "
                         f"<r>{escape_tag(repr(exc))}</>"
                     )
                     raise
