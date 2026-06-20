@@ -146,7 +146,7 @@ class ExtendedLifespan(Lifespan):
                     tg.cancel_scope.cancel()
                     duration = anyio.current_time() - start
                     (log.warning if timeout_occurred else log.trace)(
-                        f"{_colorize_hook(func)} completed in {duration:.2f} seconds"
+                        f"{_colorize_hook(func)} completed in <c>{duration:.2f}</>s"
                     )
 
         for layer in layers:
