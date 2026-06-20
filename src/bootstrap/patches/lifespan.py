@@ -115,24 +115,39 @@ class ExtendedLifespan(Lifespan):
         _debug_print_layers(layers)
 
         async def run_one(func: Callable[[], Awaitable[object]]) -> None:
+            timeout_occurred = False
+
             async def warn_on_timeout() -> None:
-                await anyio.sleep(5)
-                log.warning(
-                    f"Lifespan hook taking too long to complete: {_colorize_hook(func)}"
-                )
+                nonlocal timeout_occurred
+
+                delay = 5
+                while True:
+                    await anyio.sleep(delay)
+                    duration = anyio.current_time() - start
+                    log.warning(
+                        f"{_colorize_hook(func)} taking too long to complete "
+                        f"(<c>{duration:.2f}</>s)"
+                    )
+                    timeout_occurred = True
+                    delay = min(delay * 2, 60)
 
             async with anyio.create_task_group() as tg:
                 tg.start_soon(warn_on_timeout)
+                start = anyio.current_time()
                 try:
                     await func()
                 except Exception as exc:
                     log.warning(
-                        f"Uncaught exception in lifespan hook {_colorize_hook(func)}: "
+                        f"Uncaught exception in {_colorize_hook(func)}: "
                         f"<r>{escape_tag(repr(exc))}</>"
                     )
                     raise
                 finally:
                     tg.cancel_scope.cancel()
+                    duration = anyio.current_time() - start
+                    (log.warning if timeout_occurred else log.trace)(
+                        f"{_colorize_hook(func)} completed in {duration:.2f} seconds"
+                    )
 
         for layer in layers:
             async with anyio.create_task_group() as tg:
