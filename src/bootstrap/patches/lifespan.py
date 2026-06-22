@@ -5,7 +5,7 @@ from collections import Counter, defaultdict
 from collections.abc import Awaitable, Callable, Sequence
 from itertools import pairwise
 from types import TracebackType
-from typing import Any, override
+from typing import override
 
 import anyio
 from nonebot import _resolve_combine_expr
@@ -22,7 +22,7 @@ from .require import get_plugin_deps
 log = logger_wrapper("Lifespan")
 
 HOOK_PLUGIN_ID_ATTR = "__bot7685_hook_plugin_id__"
-type LifespanFunc = Callable[[], Any] | Callable[[], Awaitable[Any]]
+type LifespanFunc = Callable[[], object] | Callable[[], Awaitable[object]]
 
 # (module, qualname): plugin_id
 KNOWN_HOOKS = {
@@ -61,12 +61,12 @@ def _attach_plugin_id(func: LifespanFunc) -> LifespanFunc:
 
     if inspect.iscoroutinefunction(func):
 
-        async def wrapper() -> Any:
+        async def wrapper() -> object:
             return await func()
 
     else:
 
-        def wrapper() -> Any:
+        def wrapper() -> object:
             return func()
 
     functools.update_wrapper(wrapper, func)
@@ -74,8 +74,9 @@ def _attach_plugin_id(func: LifespanFunc) -> LifespanFunc:
     return wrapper
 
 
-def _debug_print_layers(seq: list[list[LifespanFunc]]) -> None:
-    for idx, layer in enumerate(seq, 1):
+def _log_layers(layers: list[list[LifespanFunc]]) -> None:
+    for idx, layer in enumerate(layers, 1):
+        # 75("─") = 2(" ╘") + 81("═") - 6("Layer ") - 2(" ├")
         log.info(f"<u>Layer <y>{idx}</> </>├" + "─" * (75 - len(str(idx))))
         known_hooks: Counter[tuple[str, str]] = Counter()
         for func in layer:
@@ -95,6 +96,55 @@ def _debug_print_layers(seq: list[list[LifespanFunc]]) -> None:
         log.info(" ╘" + "═" * 81)
 
 
+async def _run_hook(func: LifespanFunc) -> None:
+    if not inspect.iscoroutinefunction(func):
+        func = run_sync(func)
+
+    timeout_occurred = False
+
+    async def warn_on_timeout() -> None:
+        nonlocal timeout_occurred
+
+        delay = 5
+        while True:
+            await anyio.sleep(delay)
+            duration = anyio.current_time() - start
+            log.warning(
+                f"{_colorize_hook(func)} taking too long to complete "
+                f"(<c>{duration:.2f}</>s)"
+            )
+            timeout_occurred = True
+            delay = min(delay * 2, 60)
+
+    async with anyio.create_task_group() as tg:
+        tg.start_soon(warn_on_timeout)
+        start = anyio.current_time()
+        try:
+            await func()
+        except Exception as exc:
+            log.warning(
+                f"Uncaught exception in {_colorize_hook(func)}: "
+                f"<r>{escape_tag(repr(exc))}</>"
+            )
+            raise
+        finally:
+            tg.cancel_scope.cancel()
+            duration = anyio.current_time() - start
+            (log.warning if timeout_occurred else log.trace)(
+                f"{_colorize_hook(func)} completed in <c>{duration:.2f}</>s"
+            )
+
+
+async def _run_hooks(funcs: Sequence[LifespanFunc], reverse: bool = False) -> None:
+    layers = resolve_hook_execution_sequence(funcs, reverse=reverse)
+    _log_layers(layers)
+
+    for layer in layers:
+        async with anyio.create_task_group() as tg:
+            for func in layer:
+                tg.start_soon(_run_hook, func)
+
+
 class ExtendedLifespan(Lifespan):
     @override
     def on_startup(self, func: LifespanFunc) -> LifespanFunc:
@@ -108,55 +158,6 @@ class ExtendedLifespan(Lifespan):
     def on_shutdown(self, func: LifespanFunc) -> LifespanFunc:
         return super().on_shutdown(_attach_plugin_id(func))
 
-    async def _concurrent_run_lifespan_func(
-        self, funcs: Sequence[LifespanFunc], reverse: bool = False
-    ) -> None:
-        layers = resolve_hook_execution_sequence(funcs, reverse=reverse)
-        _debug_print_layers(layers)
-
-        async def run_one(func: Callable[[], Awaitable[object]]) -> None:
-            timeout_occurred = False
-
-            async def warn_on_timeout() -> None:
-                nonlocal timeout_occurred
-
-                delay = 5
-                while True:
-                    await anyio.sleep(delay)
-                    duration = anyio.current_time() - start
-                    log.warning(
-                        f"{_colorize_hook(func)} taking too long to complete "
-                        f"(<c>{duration:.2f}</>s)"
-                    )
-                    timeout_occurred = True
-                    delay = min(delay * 2, 60)
-
-            async with anyio.create_task_group() as tg:
-                tg.start_soon(warn_on_timeout)
-                start = anyio.current_time()
-                try:
-                    await func()
-                except Exception as exc:
-                    log.warning(
-                        f"Uncaught exception in {_colorize_hook(func)}: "
-                        f"<r>{escape_tag(repr(exc))}</>"
-                    )
-                    raise
-                finally:
-                    tg.cancel_scope.cancel()
-                    duration = anyio.current_time() - start
-                    (log.warning if timeout_occurred else log.trace)(
-                        f"{_colorize_hook(func)} completed in <c>{duration:.2f}</>s"
-                    )
-
-        for layer in layers:
-            async with anyio.create_task_group() as tg:
-                for func in layer:
-                    if inspect.iscoroutinefunction(func):
-                        tg.start_soon(run_one, func)
-                    else:
-                        tg.start_soon(run_one, run_sync(func))
-
     @override
     async def startup(self) -> None:
         # create background task group
@@ -166,12 +167,12 @@ class ExtendedLifespan(Lifespan):
         # run startup funcs
         if self._startup_funcs:
             log.info("Running <ly>startup</> hooks...")
-            await self._concurrent_run_lifespan_func(self._startup_funcs)
+            await _run_hooks(self._startup_funcs)
 
         # run ready funcs
         if self._ready_funcs:
             log.info("Running <ly>ready</> hooks...")
-            await self._concurrent_run_lifespan_func(self._ready_funcs)
+            await _run_hooks(self._ready_funcs)
 
     @override
     async def shutdown(
@@ -184,7 +185,7 @@ class ExtendedLifespan(Lifespan):
         if self._shutdown_funcs:
             log.info("Running <ly>shutdown</> hooks...")
             # reverse shutdown funcs to ensure stack order
-            await self._concurrent_run_lifespan_func(self._shutdown_funcs, reverse=True)
+            await _run_hooks(self._shutdown_funcs, reverse=True)
 
         # shutdown background task group
         self.task_group.cancel_scope.cancel()

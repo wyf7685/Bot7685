@@ -34,7 +34,7 @@ def patch_require() -> None:
         setattr(module, "require", _patched_require)  # noqa: B010
 
 
-_requires_file = Path(__file__).resolve().parent.parent / "plugin_requires.json"
+_requires_file = Path(__file__).resolve().parent / "plugin_requires.json"
 if not _requires_file.exists():
     raise FileNotFoundError(f"Required file not found: {_requires_file}")
 _requires: dict[str, list[str]] = json.loads(_requires_file.read_text(encoding="utf-8"))

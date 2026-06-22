@@ -1,9 +1,11 @@
+# ruff: noqa: T201, S603
 import ast
 import contextlib
 import importlib
 import importlib.metadata
 import itertools
 import json
+import shutil
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
@@ -24,9 +26,9 @@ class ImportCollector(ast.NodeVisitor):
             self.imports.add(node.module)
 
     @classmethod
-    def collect(cls, file: Path) -> set[str]:
+    def collect(cls, path: Path) -> set[str]:
         try:
-            module = ast.parse(file.read_text(encoding="utf-8"), str(file), mode="exec")
+            module = ast.parse(path.read_text(encoding="utf-8"), str(path), mode="exec")
         except Exception:
             return set()
         collector = cls()
@@ -90,21 +92,25 @@ def filter_requires(requires: set[str]) -> Iterable[str]:
 
 
 def main():
+    git = shutil.which("git")
+    assert git is not None, "Git is required to run this script."
+
     plugin_requires = {
         path.stem if path.is_file() else path.name: sorted(
             filter_requires(resolve_requires(path))
         )
         for path in sorted(iter_plugins())
     }
-    deps_json = json.dumps(plugin_requires, ensure_ascii=False)
-    deps_json_file = SRC / "bootstrap" / "plugin_requires.json"
-    existing = (
-        deps_json_file.read_text(encoding="utf-8") if deps_json_file.exists() else None
-    )
-    if existing != deps_json:
+    deps_json = json.dumps(plugin_requires, ensure_ascii=False, separators=(",", ":"))
+    deps_json_file = SRC / "bootstrap" / "patches" / "plugin_requires.json"
+
+    if (
+        not deps_json_file.exists()
+        or deps_json_file.read_text(encoding="utf-8") != deps_json
+    ):
         deps_json_file.write_text(deps_json, encoding="utf-8")
-        print("Plugin dependencies updated.")  # noqa: T201
-        subprocess.run(["git", "add", str(deps_json_file)], check=True)  # noqa: S603, S607
+        print("Plugin dependencies updated.")
+        subprocess.run([git, "add", str(deps_json_file)], check=True)
 
 
 if __name__ == "__main__":
