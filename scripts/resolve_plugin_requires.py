@@ -1,13 +1,11 @@
 # ruff: noqa: T201, S603
 import ast
-import contextlib
-import importlib
-import importlib.metadata
 import itertools
 import json
 import shutil
 import subprocess
 from collections.abc import Iterable
+from importlib.util import find_spec
 from pathlib import Path
 
 SRC = Path(__file__).parent.parent.joinpath("src")
@@ -84,11 +82,9 @@ def filter_requires(requires: set[str]) -> Iterable[str]:
     for req in requires:
         if req in known_plugins or not req.startswith("nonebot_plugin_"):
             yield req
-        else:
-            with contextlib.suppress(importlib.metadata.PackageNotFoundError):
-                importlib.metadata.distribution(req)
-                yield req
-                known_plugins.add(req)
+        elif find_spec(req) is not None:
+            yield req
+            known_plugins.add(req)
 
 
 def main():

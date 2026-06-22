@@ -30,6 +30,7 @@ KNOWN_HOOKS = {
     ("nonebot.adapters", None): "<nonebot.adapters>",
     ("src.service.cache.impl.adapter", "StatsTracker._do_sync"): "src.service.cache",
 }
+_HOOK_DISPLAY = "<lk><u>{plugin_id}</></>::<lm>{module}</>:<lg>{qualname}</>"
 
 
 def _get_func_attr(func: Callable[..., object], attr: str) -> str:
@@ -45,7 +46,16 @@ def _colorize_hook(func: Callable[..., object]) -> str:
         or repr(func)
     )
     plugin_id = escape_tag(_get_func_attr(func, HOOK_PLUGIN_ID_ATTR) or "<unknown>")
-    return f'<lm>{module}</>:<lg>{qualname}</> (from "<y>{plugin_id}</>")'
+    return _HOOK_DISPLAY.format(module=module, qualname=qualname, plugin_id=plugin_id)
+
+
+@functools.cache
+def _colorize_known_hook(mod: str, qual: str) -> str:
+    return _HOOK_DISPLAY.format(
+        module=escape_tag(mod),
+        qualname=escape_tag(qual),
+        plugin_id=escape_tag(KNOWN_HOOKS[(mod, qual)]),
+    )
 
 
 def _attach_plugin_id(func: LifespanFunc) -> LifespanFunc:
@@ -89,10 +99,7 @@ def _log_layers(layers: list[list[LifespanFunc]]) -> None:
             else:
                 log.info(f" │ {_colorize_hook(func)}")
         for (mod, qual), count in known_hooks.items():
-            id = escape_tag(KNOWN_HOOKS[(mod, qual)])
-            log.info(
-                f' │ ...(<le>{count}</>) <lm>{mod}</>:<lg>{qual}</> (from "<y>{id}</>")'
-            )
+            log.info(f" │ ...(<le>{count}</>) {_colorize_known_hook(mod, qual)}")
         log.info(" ╘" + "═" * 81)
 
 

@@ -40,10 +40,7 @@ if not _requires_file.exists():
 _requires: dict[str, list[str]] = json.loads(_requires_file.read_text(encoding="utf-8"))
 
 
-@on_plugin_load("before")
+@on_plugin_load("before", plugin_id=set(_requires.keys()))
 def _auto_requires(plugin: Plugin) -> None:
-    if plugin.id_ not in _requires:
-        return
-
     for req in _requires[plugin.id_]:
         _patched_require(req)
