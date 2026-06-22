@@ -24,6 +24,7 @@ alc = Alconna(
     Subcommand("unsubscribe"),
 )
 matcher = on_alconna(alc)
+PACKAGE_TTL = 60 * 60  # 1 hour
 
 
 @matcher.assign("~package")
@@ -37,7 +38,7 @@ async def assign_package(duration: str) -> None:
     cos_key = f"detector/package-{datetime.now():%Y-%m-%d_%H-%M-%S}.zip"
     async with calc_stream_size(detector_client.package(since)) as (stream, get_size):
         try:
-            url = await upload_cos(stream, key=cos_key)
+            url = await upload_cos(stream, key=cos_key, ttl=PACKAGE_TTL)
         except Exception:
             logger.exception("上传打包结果失败")
             await UniMessage.text("上传打包结果失败").finish()
@@ -50,7 +51,13 @@ async def assign_package(duration: str) -> None:
                 f"| URL: <y><i>{escape_tag(url)}</></>"
             )
 
-    await UniMessage.text(f"打包完成\n文件大小: {size:.3f} MB\n\n{url}").finish()
+    url_exp = datetime.now() + timedelta(seconds=PACKAGE_TTL)
+    await UniMessage.text(
+        f"打包完成\n"
+        f"链接过期时间: {url_exp:%Y-%m-%d %H:%M:%S}\n"
+        f"文件大小: {size:.3f} MB\n"
+        f"\n{url}"
+    ).finish(reply_to=True)
 
 
 @matcher.assign("~subscribe")
