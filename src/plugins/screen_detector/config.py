@@ -13,7 +13,7 @@ class PluginConfig(BaseModel):
 
 
 class Config(BaseModel):
-    screen: PluginConfig
+    screen: PluginConfig = Field(default_factory=PluginConfig)
 
 
 plugin_config = get_plugin_config(Config).screen

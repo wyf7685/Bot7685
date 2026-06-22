@@ -1,14 +1,11 @@
+import contextlib
 import functools
-import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Concatenate
 
-import ayafileio
 import httpx
 from nonebot import get_driver, logger
-from nonebot_plugin_localstore import get_plugin_cache_file
 from pydantic import BaseModel
 
 from .config import plugin_config
@@ -77,6 +74,33 @@ def _check_api[**P, R](
             return None
         self._mark_api_status(True)
         return result
+
+    return wrapper
+
+
+def _check_api_gen[**P, R](
+    method: Callable[Concatenate[DetectorClient, P], AsyncGenerator[R]],
+) -> Callable[Concatenate[DetectorClient, P], AsyncGenerator[R]]:
+    @functools.wraps(method)
+    async def wrapper(
+        self: DetectorClient,
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> AsyncGenerator[R]:
+        if not await self.check_health():
+            return
+        try:
+            async for item in method(self, *args, **kwargs):
+                yield item
+        except httpx.RequestError:
+            self._mark_api_status(False)
+            raise
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                f"API request failed with {exc.response.status_code}: {exc!r}"
+            )
+            raise
+        self._mark_api_status(True)
 
     return wrapper
 
@@ -155,23 +179,36 @@ class DetectorClient:
             timeout=5,
         )
 
-    @_check_api
-    async def package(self, after: datetime) -> Path:
-        path = get_plugin_cache_file(f"{uuid.uuid4()}.zip")
-        async with (
-            self._get_client().stream(
-                "POST",
-                self.endpoints.package,
-                json={"after_timestamp": after.isoformat()},
-                timeout=30,
-            ) as response,
-            ayafileio.open(path, "wb") as file,
-        ):
+    @_check_api_gen
+    async def package(self, after: datetime) -> AsyncGenerator[bytes]:
+        async with self._get_client().stream(
+            "POST",
+            self.endpoints.package,
+            json={"after_timestamp": after.isoformat()},
+            timeout=30,
+        ) as response:
             response.raise_for_status()
             async for chunk in response.aiter_bytes():
-                await file.write(chunk)
-        return path
+                yield chunk
 
 
 detector_client = DetectorClient()
 get_driver().on_shutdown(detector_client.close)
+
+
+@contextlib.asynccontextmanager
+async def calc_stream_size(
+    stream: AsyncIterable[bytes],
+) -> AsyncGenerator[tuple[AsyncGenerator[bytes], Callable[[], int]]]:
+    size = 0
+
+    def get_size() -> int:
+        return size
+
+    async def wrapper() -> AsyncGenerator[bytes]:
+        nonlocal size
+        async for chunk in stream:
+            size += len(chunk)
+            yield chunk
+
+    yield wrapper(), get_size

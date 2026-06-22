@@ -109,9 +109,8 @@ async def detect_screen_photo(
     if not (images := unimsg[Image]):
         return
 
-    session: Session | None
     try:
-        session = await call_as_dependent(
+        session: Session | None = await call_as_dependent(
             get_session, stack, dependency_cache, bot, event
         )
     except Exception:

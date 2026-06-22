@@ -1,22 +1,20 @@
-import contextlib
 from datetime import UTC, datetime, timedelta
 
 from nonebot import logger
+from nonebot.utils import escape_tag
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
     MsgTarget,
     Subcommand,
-    SupportScope,
     Target,
     UniMessage,
-    message_reaction,
     on_alconna,
 )
 
 from src.plugins.upload_cos import upload_cos
 
-from .api import detector_client
+from .api import calc_stream_size, detector_client
 from .config import pkg_subs
 
 alc = Alconna(
@@ -29,34 +27,30 @@ matcher = on_alconna(alc)
 
 
 @matcher.assign("~package")
-async def assign_package(duration: str, target: MsgTarget) -> None:
-    mode = duration[-1]
+async def assign_package(duration: str) -> None:
+    time_unit = duration[-1]
     num = int(duration[:-1])
-    kwd = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days"}[mode]
+    kwd = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days"}[time_unit]
     delta = timedelta(**{kwd: num})
 
     since = (datetime.now() - delta).astimezone(UTC)
-    path = await detector_client.package(since)
-    if path is None:
-        await UniMessage.text("打包检测结果失败").finish()
-    size = path.stat().st_size / 1024 / 1024
-    logger.opt(colors=True).info(f"文件大小: <c>{size:.3f}</> MB")
-
-    if target.scope == SupportScope.qq_client:
-        with contextlib.suppress(Exception):
-            await message_reaction("124")  # OK
-
     cos_key = f"detector/package-{datetime.now():%Y-%m-%d_%H-%M-%S}.zip"
-    try:
-        url = await upload_cos(path, key=cos_key)
-    except Exception:
-        logger.exception("上传打包结果失败")
-        await UniMessage.text("上传打包结果失败").finish()
-    finally:
-        with contextlib.suppress(Exception):
-            path.unlink()
+    async with calc_stream_size(detector_client.package(since)) as (stream, get_size):
+        try:
+            url = await upload_cos(stream, key=cos_key)
+        except Exception:
+            logger.exception("上传打包结果失败")
+            await UniMessage.text("上传打包结果失败").finish()
+        else:
+            size = get_size() / 1024 / 1024
+            logger.opt(colors=True).success(
+                f"打包完成(<c>{num}</>{time_unit}) "
+                f"| 起始时间: <lg>{since.astimezone():%Y-%m-%d %H:%M:%S}</> "
+                f"| 文件大小: <c>{size:.3f}</>MB "
+                f"| URL: <y><i>{escape_tag(url)}</></>"
+            )
 
-    await UniMessage.text(f"打包完成:\n{url}").finish()
+    await UniMessage.text(f"打包完成\n文件大小: {size:.3f} MB\n\n{url}").finish()
 
 
 @matcher.assign("~subscribe")
