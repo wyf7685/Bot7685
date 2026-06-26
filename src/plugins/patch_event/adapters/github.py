@@ -1,6 +1,7 @@
 from collections.abc import Callable, Iterable
 from typing import Any, override
 
+from githubkit.utils import UNSET
 from nonebot.adapters.github import Event
 
 from src.highlight import Highlight
@@ -10,6 +11,8 @@ from ..patcher import patcher
 
 @patcher.bind
 class H(Highlight):
+    exclude_value = (UNSET,)
+
     @override
     @classmethod
     def _kv(
