@@ -272,9 +272,9 @@ requires-dist = [
     { name = "nonebot-adapter-discord", specifier = ">=1.1.7" },
     { name = "nonebot-adapter-github", specifier = ">=0.6.0" },
     { name = "nonebot-adapter-milky", specifier = ">=1.2.0" },
-    { name = "nonebot-adapter-qq", specifier = ">=1.7.1" },
+    { name = "nonebot-adapter-qq", git = "https://github.com/nonebot/adapter-qq.git?rev=7bb87b74857406d0785a65bbaac82eec80436ca3" },
     { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20" },
-    { name = "nonebot-plugin-alconna", specifier = ">=0.62.0" },
+    { name = "nonebot-plugin-alconna", git = "https://github.com/nonebot/plugin-alconna.git?rev=e0f2a3dc81906cf2147b94595b7b5f5145235821" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" },
     { name = "nonebot-plugin-exe-code", git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" },
@@ -1365,17 +1365,13 @@ wheels = [
 [[package]]
 name = "nonebot-adapter-qq"
 version = "1.7.1"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/nonebot/adapter-qq.git?rev=7bb87b74857406d0785a65bbaac82eec80436ca3#7bb87b74857406d0785a65bbaac82eec80436ca3" }
 dependencies = [
     { name = "cryptography" },
     { name = "nonebot2" },
     { name = "pydantic" },
     { name = "typing-extensions" },
     { name = "yarl" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/55/22/c2063502050372297c532f76d414582ae185545a842f4829056f7a73f9e7/nonebot_adapter_qq-1.7.1.tar.gz", hash = "sha256:cc7891fda36155ea9c7524273bbe8b4f6a4637340668c04503aad80f451ca9c5", size = 33126, upload-time = "2026-05-22T02:56:20.312Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/ba/e9eb92190889c23126e902da7b5f393548429781fa4faef54aab98d4409e/nonebot_adapter_qq-1.7.1-py3-none-any.whl", hash = "sha256:9cd41d4ae56bc31b15681e3fdb63c599770dddf35fce381c232b9ec1b68f53f8", size = 37947, upload-time = "2026-05-22T02:56:19.336Z" },
 ]
 
 [[package]]
@@ -1407,7 +1403,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-alconna"
 version = "0.62.0"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/nonebot/plugin-alconna.git?rev=e0f2a3dc81906cf2147b94595b7b5f5145235821#e0f2a3dc81906cf2147b94595b7b5f5145235821" }
 dependencies = [
     { name = "arclet-alconna" },
     { name = "arclet-alconna-tools" },
@@ -1416,10 +1412,6 @@ dependencies = [
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot2" },
     { name = "tarina" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/05/18/478f1915898399a96506398b079ddef3303b12a2c2888859ad9d4a0bc739/nonebot_plugin_alconna-0.62.0.tar.gz", hash = "sha256:24fc3bc0cff09febb22bfadb3146c147c092c4156444b274ac1b8d2cd77f1a9d", size = 162640, upload-time = "2026-04-07T02:10:02.765Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/e9/3d4bdb54950da7c8dff3264b58c0c96a9a2dcb7535c89dec28fcf6bc5f9c/nonebot_plugin_alconna-0.62.0-py3-none-any.whl", hash = "sha256:a8b644f05f0a9e57c307e26296ae1bc58a3f91ef24733d7c0f00a06bd2036b8c", size = 225305, upload-time = "2026-04-07T02:10:01.145Z" },
 ]
 
 [[package]]

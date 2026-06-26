@@ -76,6 +76,9 @@ nonebot-plugin-werewolf = { git = "https://github.com/wyf7685/nonebot-plugin-wer
 nonebot-plugin-zssm = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.git" }
 nonebot-plugin-chatrecorder = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" }
 nonebot-plugin-rollpig = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git" }
+# For adapter-qq - remove when released
+nonebot-plugin-alconna = { git = "https://github.com/nonebot/plugin-alconna.git", rev = "e0f2a3dc81906cf2147b94595b7b5f5145235821" }
+nonebot-adapter-qq = { git = "https://github.com/nonebot/adapter-qq.git", rev = "7bb87b74857406d0785a65bbaac82eec80436ca3" }
 
 [tool.pyright]
 pythonVersion = "3.14"
