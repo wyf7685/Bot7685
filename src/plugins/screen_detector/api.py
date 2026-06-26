@@ -68,9 +68,15 @@ def _check_api[**P, R](
             self._mark_api_status(False)
             return None
         except httpx.HTTPStatusError as exc:
+            try:
+                detail = exc.response.json().get("detail")
+            except Exception:
+                detail = None
             logger.warning(
                 f"API request failed with {exc.response.status_code}: {exc!r}"
+                f"{f"\nDetail: {detail}" if detail else ""}"
             )
+
             return None
         self._mark_api_status(True)
         return result
@@ -96,8 +102,13 @@ def _check_api_gen[**P, R](
             self._mark_api_status(False)
             raise
         except httpx.HTTPStatusError as exc:
+            try:
+                detail = exc.response.json().get("detail")
+            except Exception:
+                detail = None
             logger.warning(
                 f"API request failed with {exc.response.status_code}: {exc!r}"
+                f"{f"\nDetail: {detail}" if detail else ""}"
             )
             raise
         self._mark_api_status(True)
