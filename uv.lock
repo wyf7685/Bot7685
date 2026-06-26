@@ -285,8 +285,8 @@ requires-dist = [
     { name = "nonebot-plugin-rollpig", git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git" },
     { name = "nonebot-plugin-skland", specifier = ">=0.6.9" },
     { name = "nonebot-plugin-talk-stats", git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git" },
-    { name = "nonebot-plugin-uninfo", specifier = ">=0.9.0" },
-    { name = "nonebot-plugin-user", specifier = ">=0.5.3" },
+    { name = "nonebot-plugin-uninfo", specifier = ">=0.11.1" },
+    { name = "nonebot-plugin-user", specifier = ">=0.6.0" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.1" },
     { name = "nonebot-plugin-wakatime", specifier = ">=0.3.1" },
     { name = "nonebot-plugin-werewolf", git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" },
@@ -1612,15 +1612,16 @@ dependencies = [
 
 [[package]]
 name = "nonebot-plugin-uninfo"
-version = "0.11.0"
+version = "0.11.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "importlib-metadata" },
+    { name = "nonebot-adapter-qq" },
     { name = "nonebot2" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/51/99/bb5c2c8a5feaec786c03bbeddf79b07afab4936282ff1fd63d1467154810/nonebot_plugin_uninfo-0.11.0.tar.gz", hash = "sha256:3c1f35b72affa0eab0d27e578157e31c9b15706476fcf98e3437d958c4b573fe", size = 42439, upload-time = "2026-03-13T10:04:05.02Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/29/02/7a6b5a35014b408d599b2e2904932fe7c10b56c15c7c5d32f6b84ad0c9bd/nonebot_plugin_uninfo-0.11.1.tar.gz", hash = "sha256:fe421ad3aebaf2138ec3922cbb2da1cb0f4fb4c98fe63016d0355a5a8c5041b0", size = 42468, upload-time = "2026-06-22T06:59:57.663Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d7/24/538c4681a5f1d1ede4e9094b07aaec52eb706668caa8235835a259d61c9c/nonebot_plugin_uninfo-0.11.0-py3-none-any.whl", hash = "sha256:6caaa73a4b8403143ab736ff647c5155439915e97997b1416ea6c1c5bd0d3702", size = 68177, upload-time = "2026-03-13T10:04:03.82Z" },
+    { url = "https://files.pythonhosted.org/packages/45/fc/12b8968b9d780fa09c1c9771aa674336ce94fda6501922b3e4821fa62cf5/nonebot_plugin_uninfo-0.11.1-py3-none-any.whl", hash = "sha256:73c915d74a91ac13fe75a9fe048722622a8219c3aece35e974564d9ff77a0b3c", size = 68197, upload-time = "2026-06-22T06:59:56.613Z" },
 ]
 
 [[package]]
