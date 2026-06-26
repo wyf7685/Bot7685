@@ -1459,7 +1459,7 @@ dependencies = [
 [[package]]
 name = "nonebot-plugin-exe-code"
 version = "1.2.0"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git#553b995075e3d8a4ff6378ce00e5200c1a58560c" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git#5d19247927553d72fef7546e1af661ce95898a56" }
 dependencies = [
     { name = "anyio" },
     { name = "nonebot-plugin-alconna" },
