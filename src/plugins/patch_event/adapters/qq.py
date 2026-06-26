@@ -4,6 +4,7 @@ from nonebot.adapters.qq.event import (
     C2CMessageCreateEvent,
     Event,
     GroupAtMessageCreateEvent,
+    GroupMessageCreateEvent,
     ReadyEvent,
 )
 from nonebot.adapters.qq.message import Message, MessageSegment
@@ -31,7 +32,17 @@ def patch_event(self: Event) -> str:
 def patch_c2c_message_create_event(self: C2CMessageCreateEvent) -> str:
     return (
         f"Message {H.id(escape_tag(self.id))} "
-        f"from {H.id(self.author.id)}: "
+        f"from {H.name(self.author.id, self.author.username)}: "
+        f"{H.apply(self.get_message())}"
+    )
+
+
+@patcher
+def patch_group_message_create_event(self: GroupMessageCreateEvent) -> str:
+    return (
+        f"Message {H.id(escape_tag(self.id))} "
+        f"from {H.name(self.author.member_openid, self.author.username)}"
+        f"@[Group:{H.id(self.group_openid)}]: "
         f"{H.apply(self.get_message())}"
     )
 
@@ -40,7 +51,7 @@ def patch_c2c_message_create_event(self: C2CMessageCreateEvent) -> str:
 def patch_group_at_message_create_event(self: GroupAtMessageCreateEvent) -> str:
     return (
         f"Message {H.id(escape_tag(self.id))} "
-        f"from {H.id(self.author.member_openid)}"
+        f"from {H.name(self.author.member_openid, self.author.username)}"
         f"@[Group:{H.id(self.group_openid)}]: "
         f"{H.apply(self.get_message())}"
     )
