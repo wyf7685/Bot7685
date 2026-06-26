@@ -22,8 +22,11 @@ class H(Highlight):
         format_key: Callable[[str], str],
         /,
     ) -> Iterable[str]:
-        filtered = filter(lambda item: not item[0].endswith("_url"), items)
-        yield from super()._kv(filtered, separator, format_key)
+        yield from super()._kv(
+            ((key, value) for key, value in items if not key.endswith("_url")),
+            separator,
+            format_key,
+        )
 
 
 @patcher
