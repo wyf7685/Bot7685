@@ -1,6 +1,10 @@
 from .client import AsyncCosClient
 from .errors import CosClientError, CosHttpStatusError, CosResponseParseError
-from .models import CompleteMultipartUploadPayload, MultipartUploadPart
+from .models import (
+    CompleteMultipartUploadPayload,
+    MultipartUploadPart,
+    ObjectHeadResponse,
+)
 
 __all__ = [
     "AsyncCosClient",
@@ -9,4 +13,5 @@ __all__ = [
     "CosHttpStatusError",
     "CosResponseParseError",
     "MultipartUploadPart",
+    "ObjectHeadResponse",
 ]

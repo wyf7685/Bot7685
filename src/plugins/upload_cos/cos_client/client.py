@@ -8,7 +8,7 @@ import httpx
 
 from .auth import CosV5Signer
 from .errors import CosClientError, CosHttpStatusError, CosResponseParseError
-from .models import MultipartUploadPart
+from .models import MultipartUploadPart, ObjectHeadResponse
 
 
 def _parse_xml(content: bytes) -> ET.Element:
@@ -148,7 +148,7 @@ class AsyncCosClient:
     async def _request(
         self,
         *,
-        method: Literal["GET", "POST", "PUT", "DELETE"],
+        method: Literal["GET", "POST", "PUT", "DELETE", "HEAD"],
         key: str,
         params: Mapping[str, str | int] | None = None,
         headers: Mapping[str, str] | None = None,
@@ -184,6 +184,31 @@ class AsyncCosClient:
             )
 
         return response
+
+    async def head_object(self, key: str) -> ObjectHeadResponse:
+        response = await self._request(method="HEAD", key=key)
+        content_length_str = response.headers.get("Content-Length")
+        if content_length_str is None or content_length_str == "":
+            raise CosResponseParseError(
+                "Missing Content-Length in head_object response"
+            )
+        try:
+            content_length = int(content_length_str)
+        except ValueError as err:
+            raise CosResponseParseError(
+                "Invalid Content-Length in head_object response"
+            ) from err
+        etag = response.headers.get("ETag")
+        if etag is None or etag == "":
+            raise CosResponseParseError("Missing ETag in head_object response")
+        return ObjectHeadResponse(content_length=content_length, etag=etag)
+
+    async def get_object(self, key: str, range: tuple[int, int] | None = None) -> bytes:  # noqa: A002
+        headers: dict[str, str] = {}
+        if range is not None:
+            headers["Range"] = f"bytes={range[0]}-{range[1]}"
+        response = await self._request(method="GET", key=key, headers=headers)
+        return response.content
 
     async def put_object(self, key: str, data: bytes) -> None:
         await self._request(method="PUT", key=key, content=data)

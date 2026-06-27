@@ -19,10 +19,11 @@ from nonebot.utils import escape_tag
 from src.utils import attach_async_context
 
 from .config import config
-from .cos_client import AsyncCosClient, MultipartUploadPart
+from .cos_client import AsyncCosClient, MultipartUploadPart, ObjectHeadResponse
 
 ROOT = PurePosixPath("qbot/upload")
-CHUNK_SIZE = 4 * 1024 * 1024  # 4MB
+UPLOAD_CHUNK_SIZE = 4 * 1024 * 1024  # 4MB
+DOWNLOAD_CHUNK_SIZE = 1024 * 1024  # 1MB
 DEFAULT_TTL_SECS = 3600  # 1 hour
 
 
@@ -142,7 +143,7 @@ class MultipartUploadTask:
 
 async def _coalesce_chunks(
     aiterable: AsyncIterable[Iterable[int]],
-    chunk_size: int = CHUNK_SIZE,
+    chunk_size: int = UPLOAD_CHUNK_SIZE,
 ) -> AsyncIterator[bytes]:
     buffer = bytearray()
 
@@ -191,8 +192,8 @@ async def put_file_from_buffer(data: Buffer, key: str) -> None:
     async def aiterable() -> AsyncIterable[memoryview[int]]:
         ptr = 0
         while ptr < len(buf):
-            yield buf[ptr : ptr + CHUNK_SIZE]
-            ptr += CHUNK_SIZE
+            yield buf[ptr : ptr + UPLOAD_CHUNK_SIZE]
+            ptr += UPLOAD_CHUNK_SIZE
             await anyio.lowlevel.checkpoint()
 
     await put_file_from_aiterable(aiterable(), key)
@@ -201,7 +202,7 @@ async def put_file_from_buffer(data: Buffer, key: str) -> None:
 async def put_file_from_local(path: Path, key: str) -> None:
     async def aiterable() -> AsyncIterable[bytes]:
         async with ayafileio.open(path) as file:
-            while data := await file.read(CHUNK_SIZE):
+            while data := await file.read(UPLOAD_CHUNK_SIZE):
                 yield data
 
     await put_file_from_aiterable(aiterable(), key)
@@ -210,15 +211,13 @@ async def put_file_from_local(path: Path, key: str) -> None:
 async def put_file_from_url(url: str, key: str) -> None:
     async with httpx.AsyncClient() as client, client.stream("GET", url) as resp:
         resp.raise_for_status()
-        aiterable = resp.aiter_bytes(CHUNK_SIZE)
+        aiterable = resp.aiter_bytes(UPLOAD_CHUNK_SIZE)
         await put_file_from_aiterable(aiterable, key)
 
 
 @attach_async_context(_create_client)
 async def delete_file(client: AsyncCosClient, key: str) -> None:
-    await client.delete_object(
-        key=(ROOT / key).as_posix(),
-    )
+    await client.delete_object(key=(ROOT / key).as_posix())
 
 
 @attach_async_context(_create_client)
@@ -232,3 +231,31 @@ async def presign(
         method="GET",
         expired=ttl,
     )
+
+
+@attach_async_context(_create_client)
+async def head_file(client: AsyncCosClient, key: str) -> ObjectHeadResponse:
+    return await client.head_object(key=(ROOT / key).as_posix())
+
+
+@attach_async_context(_create_client)
+async def get_file(client: AsyncCosClient, key: str) -> bytes:
+    return await client.get_object(key=(ROOT / key).as_posix())
+
+
+async def get_file_stream(
+    key: str,
+    chunk_size: int = DOWNLOAD_CHUNK_SIZE,
+) -> AsyncGenerator[tuple[bytes, int, int]]:
+    async with _create_client() as client:
+        head = await client.head_object(key=(ROOT / key).as_posix())
+        total_size = head.content_length
+        num_chunks = (total_size + chunk_size - 1) // chunk_size
+
+        for idx in range(num_chunks):
+            start_byte = idx * chunk_size
+            end_byte = min(start_byte + chunk_size - 1, total_size - 1)
+            data = await client.get_object(
+                key=(ROOT / key).as_posix(), range=(start_byte, end_byte)
+            )
+            yield data, start_byte, end_byte
