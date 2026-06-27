@@ -51,7 +51,7 @@ dependencies = [
   "nonebot-plugin-werewolf",
   # forked plugins
   "nonebot-plugin-chatrecorder",
-  "nonebot-plugin-picmenu-next[recommended]",
+  "nonebot-plugin-picmenu-next[yaml,toml,rjieba]",
   "nonebot-plugin-zssm",
   # Bot7685 Extensions
   "bot7685-ext[htmlrender,nonebot]==0.5.2",
