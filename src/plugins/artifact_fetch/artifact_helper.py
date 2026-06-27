@@ -1,3 +1,4 @@
+import contextlib
 import hashlib
 from collections.abc import Buffer
 from pathlib import Path
@@ -28,24 +29,31 @@ async def download_artifact(
     client: httpx.AsyncClient,
     artifact: Artifact,
     save_path: Path,
+    chunk_size: int = plugin_config.download.chunk_size,
     concurrency_limit: int = plugin_config.download.concurrency_limit,
+    chunk_max_retry: int = plugin_config.download.chunk_max_retry,
 ) -> None:
-    chunk_send, chunk_recv = anyio.create_memory_object_stream[tuple[int, Buffer]]()
-    chunk_size = plugin_config.download.chunk_size
+    chunk_send, chunk_recv = anyio.create_memory_object_stream[tuple[int, Buffer]](
+        max_buffer_size=concurrency_limit * 2
+    )
     total_size = artifact.size_in_bytes
     total_chunks = (total_size + chunk_size - 1) // chunk_size
-    max_attempts = 5
+    colored_name = f"<le>{escape_tag(artifact.name)}</>"
 
-    def render_progress_log(chunk_count: int, current_time: float) -> str:
-        progress_percentage = chunk_count / total_chunks * 100
+    def format_progress(
+        bytes_written: int,
+        chunk_count: int,
+        current_time: float,
+    ) -> str:
+        progress_percentage = bytes_written / total_size * 100
         time_elapsed = current_time - time_start
-        avg_speed = chunk_count * chunk_size / time_elapsed if time_elapsed > 0 else 0
-        remaining_bytes = total_size - chunk_count * chunk_size
+        avg_speed = bytes_written / time_elapsed if time_elapsed > 0 else 0
+        remaining_bytes = total_size - bytes_written
         time_remaining = remaining_bytes / avg_speed if avg_speed > 0 else float("inf")
         return (
-            f"<le>{escape_tag(artifact.name)}</>: "
+            f"{colored_name}: "
             f"Wrote chunk <c>{chunk_count}</>/<c>{total_chunks}</>"
-            f" (<g>{progress_percentage:.2f}</>%)"
+            f" (<c>{bytes_written}</> bytes, <g>{progress_percentage:.2f}</>%)"
             f" | avg: <c>{avg_speed / (1024 * 1024):.2f}</> MB/s"
             f" | eta: <c>{time_remaining:.2f}</> seconds"
         )
@@ -53,14 +61,17 @@ async def download_artifact(
     async def file_writer(file: ayafileio.AsyncFile[bytes]) -> None:
         await file.truncate(total_size)  # pre-allocate file size
 
-        chunk_count = 0
+        chunk_count = bytes_written = 0
         async for offset, chunk in chunk_recv:
+            data = memoryview(chunk)
             await file.seek(offset)
-            await file.write(memoryview(chunk))
+            await file.write(data)
             chunk_count += 1
+            bytes_written += len(data)
+
             if chunk_count % 10 == 0 or chunk_count == total_chunks:
                 logger.opt(colors=True).debug(
-                    render_progress_log(chunk_count, anyio.current_time())
+                    format_progress(bytes_written, chunk_count, anyio.current_time())
                 )
 
     @with_semaphore(concurrency_limit)
@@ -82,21 +93,24 @@ async def download_artifact(
         chunk_range = f"{start}-{end}"
 
         excs: list[Exception] = []
-        for attempt in range(1, max_attempts + 1):
+        for attempt in range(1, chunk_max_retry + 1):
             try:
                 buffer = await request_chunk(chunk_range)
             except Exception as e:
-                logger.opt(exception=not isinstance(e, httpx.HTTPError)).warning(
-                    f"{artifact.name}: Error downloading chunk:"
-                    f" seq={chunk_seq}, range={chunk_range}"
-                    f" (attempt {attempt}/{max_attempts})"
-                    f" - {e!r}"
+                logger.opt(
+                    colors=True,
+                    exception=not isinstance(e, httpx.HTTPError),
+                ).warning(
+                    f"{colored_name}: Error downloading chunk:"
+                    f" seq=<c>{chunk_seq}</>, range=<c>{chunk_range}</>"
+                    f" (attempt <y>{attempt}</>/<g>{chunk_max_retry}</>)"
+                    f" - <r>{escape_tag(repr(e))}</>"
                 )
                 excs.append(e)
-                if attempt == max_attempts:
+                if attempt == chunk_max_retry:
                     raise ExceptionGroup(
                         f"Failed to download chunk seq={chunk_seq}"
-                        f" after {max_attempts} attempts",
+                        f" after {chunk_max_retry} attempts",
                         excs,
                     ) from None
             else:
@@ -109,6 +123,11 @@ async def download_artifact(
                 tg.start_soon(fetch_chunk_with_retry, seq)
                 await anyio.lowlevel.checkpoint()
 
+    logger.opt(colors=True).info(
+        f"{colored_name}: "
+        f"Starting download of <y>{total_size}</> bytes (<g>{total_chunks}</> chunks) "
+        f"from <c><u>{artifact.archive_download_url}</></>"
+    )
     time_start = anyio.current_time()
     async with ayafileio.open(save_path, "wb") as file, anyio.create_task_group() as tg:
         tg.start_soon(file_writer, file)
@@ -118,16 +137,26 @@ async def download_artifact(
     time_elapsed = time_end - time_start
     speed_mb = total_size / time_elapsed / (1024 * 1024)
 
-    logger.info(f"{artifact.name}: Download completed in {time_elapsed:.2f} seconds")
-    logger.info(f"{artifact.name}: Average speed: {speed_mb:.2f} MB/s")
+    logger.opt(colors=True).info(
+        f"{colored_name}: Download completed in <g>{time_elapsed:.2f}</> seconds"
+    )
+    logger.opt(colors=True).info(
+        f"{colored_name}: Average speed: <c>{speed_mb:.2f}</>MB/s"
+    )
 
     if artifact.digest and artifact.digest.startswith("sha256:"):
+        expected_hash = artifact.digest.removeprefix("sha256:")
         sha = hashlib.sha256()
         async with ayafileio.open(save_path, "rb") as f:
             while chunk := await f.read(10 * 1024 * 1024):  # read in 10 MB chunks
                 sha.update(chunk)
-        if sha.hexdigest() != artifact.digest.removeprefix("sha256:"):
-            await anyio.Path(save_path).unlink()
+        actual_hash = sha.hexdigest()
+        logger.opt(colors=True).debug(
+            f"{colored_name}: "
+            f"Expected SHA256: <c>{expected_hash}</>, "
+            f"Actual SHA256: <c>{actual_hash}</>"
+        )
+        if actual_hash != expected_hash:
             raise ValueError("Downloaded artifact digest does not match expected value")
 
 
@@ -232,6 +261,8 @@ class ArtifactHelper:
                 await download_artifact(client, artifact, save_path)
             except Exception:
                 logger.exception(f"Failed to download artifact {artifact.name}")
+                with contextlib.suppress(Exception):
+                    await anyio.Path(save_path).unlink(missing_ok=True)
                 return
 
             if config is not None:
