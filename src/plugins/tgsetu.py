@@ -4,7 +4,6 @@ import httpx
 from nonebot.adapters import Bot
 from nonebot.compat import type_validate_json
 from nonebot.exception import ActionFailed
-from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import (
     Alconna,
     Arparma,
@@ -14,13 +13,6 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 from pydantic import BaseModel, Field
-
-__plugin_meta__ = PluginMetadata(
-    name="tgsetu",
-    description="涩图插件",
-    usage="setu [r18] [noai]",
-    type="application",
-)
 
 
 class AiType(int, Enum):
