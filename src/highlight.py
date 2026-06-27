@@ -279,7 +279,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
 
     @classmethod
     def id(cls, id: str | int, /) -> str:
-        return style.c(id, escape=True)
+        return style.c_i(id, escape=True)
 
     @classmethod
     def time(cls, datetime: datetime.datetime, /) -> str:
