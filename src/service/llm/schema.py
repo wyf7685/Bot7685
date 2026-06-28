@@ -137,6 +137,3 @@ class TokenUsage:
             prompt_tokens_details=self.prompt_tokens_details
             + other.prompt_tokens_details,
         )
-
-
-UserMessage.text("Hello") + UserMessage.image("http://example.com/image.png")
