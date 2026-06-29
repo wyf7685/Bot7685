@@ -62,7 +62,7 @@ dev = [
   { include-group = "lint" },
   { include-group = "dev-runtime" },
 ]
-lint = ["ruff>=0.15.14", "prek>=0.4.1", "ty>=0.0.51"]
+lint = ["ruff>=0.15.20", "prek>=0.4.5", "ty>=0.0.55"]
 dev-runtime = [
   "nonebot-adapter-feishu>=2.7.1",
   "nonebot-adapter-onebot>=2.4.6",

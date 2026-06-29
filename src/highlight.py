@@ -100,7 +100,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
             return cls.__dataclass(data)
         return cls.repr(data)
 
-    register = _handle.register  # pyright:ignore[reportUnannotatedClassAttribute]
+    register = _handle.register
 
     @classmethod
     def apply(

@@ -1,7 +1,10 @@
 from bot7685_ext.nonebot import on_plugin_load
 from nonebot.plugin import Plugin, get_loaded_plugins
 
+from src.utils import copy_signature
 
+
+@copy_signature(get_loaded_plugins)
 def get_filtered_plugins() -> set[Plugin]:
     return {
         plugin
@@ -14,4 +17,4 @@ def get_filtered_plugins() -> set[Plugin]:
 def _patch_pmn(_: Plugin) -> None:
     from nonebot_plugin_picmenu_next import data_source as ds_mod
 
-    ds_mod._get_loaded_plugins = get_filtered_plugins  # noqa: SLF001  # ty:ignore[invalid-assignment]
+    ds_mod._get_loaded_plugins = get_filtered_plugins  # noqa: SLF001

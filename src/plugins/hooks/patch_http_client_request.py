@@ -4,6 +4,8 @@ import nonebot
 from nonebot.drivers import Request, Response
 from pydantic import BaseModel
 
+from src.utils import copy_signature
+
 
 class Config(BaseModel):
     proxy: str | None = None
@@ -15,11 +17,7 @@ logger = nonebot.logger.opt(colors=True)
 
 
 class _RequestCall[T](Protocol):
-    async def __call__(  # sourcery skip: instance-method-first-arg-name
-        self_,  # noqa: N805  # pyright: ignore[reportSelfClsParameterName]
-        self: T,
-        setup: Request,
-    ) -> Response: ...
+    async def __call__(__self, self: T, setup: Request) -> Response: ...  # noqa: N805
 
 
 def patch_request[T](original: _RequestCall[T]) -> _RequestCall[T]:
@@ -40,11 +38,17 @@ def patch_request[T](original: _RequestCall[T]) -> _RequestCall[T]:
 if "aiohttp" in driver.type:
     from nonebot.drivers.aiohttp import Session as AIOHTTPSession
 
-    AIOHTTPSession.request = patch_request(AIOHTTPSession.request)  # ty:ignore[invalid-assignment]
+    AIOHTTPSession.request = copy_signature(
+        AIOHTTPSession.request,
+        patch_request(AIOHTTPSession.request),
+    )
     logger.success("Patched <g>AIOHTTPSession</g>.<y>request</y>")
 
 if "httpx" in driver.type:
     from nonebot.drivers.httpx import Session as HTTPXSession
 
-    HTTPXSession.request = patch_request(HTTPXSession.request)  # ty:ignore[invalid-assignment]
+    HTTPXSession.request = copy_signature(
+        HTTPXSession.request,
+        patch_request(HTTPXSession.request),
+    )
     logger.success("Patched <g>HTTPXSession</g>.<y>request</y>")

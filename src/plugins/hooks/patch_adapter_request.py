@@ -114,4 +114,4 @@ async def request(self: Adapter, setup: Request) -> Response:
 
 
 for adapter in Adapter.__subclasses__():
-    adapter.request = request  # ty:ignore[invalid-assignment]
+    adapter.request = request

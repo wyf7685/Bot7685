@@ -1,3 +1,4 @@
+import dataclasses
 import functools
 import inspect
 from collections.abc import Callable
@@ -7,18 +8,22 @@ import nonebot
 from nonebot.adapters import Event, Message, MessageSegment
 
 from src.highlight import Highlight
+from src.utils import copy_signature
 
 from .config import plugin_config
 
 type PatcherCall[T: Event] = Callable[[T], str]
 
 
-class PatcherHandle[T: Event](Protocol):
-    __call__: PatcherCall[T]
+@dataclasses.dataclass(frozen=True)
+class PatcherHandle[T: Event]:
+    call: PatcherCall[T]
     original: PatcherCall[T]
+    patch: Callable[[], None]
+    restore: Callable[[], None]
 
-    def patch(self) -> None: ...
-    def restore(self) -> None: ...
+    def __call__(self, event: T, /) -> str:
+        return self.call(event)
 
 
 class Patcher(Protocol):
@@ -35,10 +40,6 @@ class Patcher(Protocol):
 
 logger = nonebot.logger.opt(colors=True)
 _PATCHER_HANDLES: set[PatcherHandle] = set()
-
-
-def copy_signature[F: Callable](source: F, target: Callable[..., object], /) -> F:
-    return cast("F", functools.update_wrapper(target, source))
 
 
 def apply_debug_wrapper[T: Event](call: PatcherCall[T]) -> PatcherCall[T]:
@@ -74,12 +75,9 @@ def _patcher_impl[TE: Event, TMS: MessageSegment, TM: Message](
         cls.get_log_string = original
         logger.debug(f"Restore <m>{module_name}</m>.<g>{cls.__name__}</g>")
 
-    handle = cast("PatcherHandle[TE]", call)
-    handle.original = original
-    handle.patch = patch  # ty:ignore[invalid-assignment]
-    handle.restore = restore  # ty:ignore[invalid-assignment]
+    handle = PatcherHandle(wrapper, original, patch, restore)
     _PATCHER_HANDLES.add(handle)
-    return handle
+    return cast("PatcherHandle[TE]", handle)
 
 
 def _make_patcher() -> Patcher:

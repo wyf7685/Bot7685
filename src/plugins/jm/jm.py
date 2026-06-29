@@ -12,7 +12,7 @@ from nonebot.utils import escape_tag, run_sync
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
 from src.service.cache import get_cache
-from src.utils import with_semaphore
+from src.utils import copy_signature, with_semaphore
 
 from .common import Downloader
 from .utils import generate_random_ascii_string
@@ -20,6 +20,7 @@ from .utils import generate_random_ascii_string
 logger = logger.opt(colors=True)
 
 
+@copy_signature(jmcomic.JmModuleConfig.EXECUTOR_LOG)
 def jm_log(topic: str, msg: str, exc: Exception | None = None) -> None:
     log = logger.info if exc is None else logger.opt(exception=exc).warning
     log(f"[<m>{topic}</m>] {escape_tag(str(msg))}")
@@ -35,7 +36,7 @@ OPTION = {
 }
 
 
-jmcomic.JmModuleConfig.EXECUTOR_LOG = jm_log  # pyright: ignore[reportAttributeAccessIssue]  # ty:ignore[invalid-assignment]
+jmcomic.JmModuleConfig.EXECUTOR_LOG = jm_log
 option = jmcomic.JmOption.construct(OPTION)
 album_cache = get_cache("jmcomic_option:album", jmcomic.JmAlbumDetail, mode="pickle")
 photo_cache = get_cache("jmcomic_option:photo", jmcomic.JmPhotoDetail, mode="pickle")

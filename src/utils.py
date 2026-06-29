@@ -188,6 +188,22 @@ def with_semaphore[**P, R](initial_value: int) -> Decorator[P, R]:
     return decorator
 
 
+@overload
+def copy_signature[F: Callable](source: F, target: Callable[..., object], /) -> F: ...
+@overload
+def copy_signature[F: Callable](source: F, /) -> Callable[[Callable], F]: ...
+
+
+def copy_signature[F: Callable](
+    source: F,
+    target: Callable[..., object] | None = None,
+) -> F | Callable[[Callable], F]:
+    def decorator(target: Callable[..., object]) -> F:
+        return cast("F", functools.update_wrapper(target, source))
+
+    return decorator(target) if target is not None else decorator
+
+
 def caller_loc_repr(depth: int = 1) -> str:
     if (frame := inspect.currentframe()) is None:
         return "<unknown>"

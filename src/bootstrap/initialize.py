@@ -42,7 +42,7 @@ def setup_logger(logging_override: LogLevelMap | None = None) -> None:
         self.log_config = LOGGING_CONFIG
         original(self)
 
-    Config.configure_logging = configure_logging  # ty:ignore[invalid-assignment]
+    Config.configure_logging = configure_logging
 
 
 def timer[**P, R](info: str, /) -> Decorator[P, R]:
