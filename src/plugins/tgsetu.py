@@ -20,12 +20,9 @@ class AiType(int, Enum):
     NO = 1
     YES = 2
 
-
-AI_TYPE_CONVERT = {
-    0: "未知",
-    1: "否",
-    2: "是",
-}
+    @property
+    def description(self) -> str:
+        return ["未知", "否", "是"][self.value]
 
 
 class RespDataModel(BaseModel):
@@ -96,7 +93,7 @@ async def _(arp: Arparma) -> None:
         f"标题: {img_data.title}\n"
         f"作者: {img_data.author}\n"
         f"R18: {img_data.r18}\n"
-        f"AI: {AI_TYPE_CONVERT[img_data.ai_type]}\n"
+        f"AI: {img_data.ai_type.description}\n"
         f"标签: {", ".join(img_data.tags)}\n"
     )
 

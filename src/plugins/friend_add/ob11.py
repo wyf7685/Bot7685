@@ -27,7 +27,7 @@ async def handle(
             continue
 
         with contextlib.suppress(Exception):
-            receipts[user_id] = await Target.user(user).send(message)
+            receipts[user] = await message.send(Target.user(user))
 
     if not receipts:
         return
