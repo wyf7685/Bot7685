@@ -107,7 +107,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
         cls,
         data: object,
         /,
-        indent: int | None | Unset = UNSET,
+        indent: int | Unset | None = UNSET,
         line_length: int | Unset = UNSET,
     ) -> str:
         if indent is UNSET and line_length is UNSET:

@@ -18,9 +18,9 @@ if TYPE_CHECKING:
         | int
         | float
         | bool
-        | None
         | Sequence["JsonSerializable"]
         | Mapping[str, "JsonSerializable"]
+        | None
     )
     type Serializable = (
         str
@@ -28,13 +28,13 @@ if TYPE_CHECKING:
         | int
         | float
         | bool
-        | None
         | Sequence[Serializable]
         | Mapping[str, Serializable]
         | Mapping[int, Serializable]
         | set[Serializable]
         | DataclassInstance
         | BaseModel
+        | None
     )
 
     @overload

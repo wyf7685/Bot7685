@@ -69,6 +69,7 @@ ignore = [
   "EM101",  # raw-string-in-exception
   "TID252", # relative-imports
   "ISC001", # single-line-implicit-string-concatenation
+  "ISC004", # implicit-string-concatenation-in-collection-literal
   "DTZ005", # call-datetime-now-without-tzinfo
   "S311",   # suspicious-non-cryptographic-random-usage
   "PGH003", # blanket-type-ignore

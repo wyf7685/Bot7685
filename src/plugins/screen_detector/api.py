@@ -1,8 +1,14 @@
 import contextlib
 import functools
-from collections.abc import AsyncGenerator, AsyncIterable, Awaitable, Callable
+from collections.abc import (
+    AsyncGenerator,
+    AsyncIterable,
+    Awaitable,
+    Callable,
+    Coroutine,
+)
 from datetime import UTC, datetime
-from typing import Concatenate
+from typing import Any, Concatenate
 
 import httpx
 from nonebot import get_driver, logger
@@ -53,7 +59,7 @@ class DetectResult(BaseModel):
 
 def _check_api[**P, R](
     method: Callable[Concatenate[DetectorClient, P], Awaitable[R]],
-) -> Callable[Concatenate[DetectorClient, P], Awaitable[R | None]]:
+) -> Callable[Concatenate[DetectorClient, P], Coroutine[Any, Any, R | None]]:
     @functools.wraps(method)
     async def wrapper(
         self: DetectorClient,
