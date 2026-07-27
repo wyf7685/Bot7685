@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <style>
+    {{ style_defs }}
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #14161b;
+      padding: 20px;
+      /* 错误上报不应依赖 CDN, 只用本地已安装的等宽字体 */
+      font-family: 'Cascadia Code', Consolas, 'DejaVu Sans Mono', 'Noto Sans Mono',
+        'Liberation Mono', 'Courier New', monospace;
+    }
+
+    #card {
+      display: inline-block;
+      min-width: 100%;
+      background: {{ background }};
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .header {
+      padding: 14px 20px;
+      background: rgba(224, 108, 117, 0.12);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .exception {
+      color: #e06c75;
+      font-size: 17px;
+      font-weight: 700;
+      line-height: 1.45;
+      word-break: break-all;
+    }
+
+    .meta {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 3px 10px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .meta dt {
+      color: #6b7280;
+    }
+
+    .meta dd {
+      color: #98c379;
+      word-break: break-all;
+    }
+
+    .traceback {
+      padding: 16px 20px;
+    }
+
+    .traceback pre {
+      /* 覆盖 UA 样式表的 pre { font-family: monospace } */
+      font-family: inherit;
+      color: #abb2bf;
+      font-size: 14px;
+      line-height: 1.55;
+      white-space: pre;
+      tab-size: 4;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="card">
+    <div class="header">
+      <div class="exception">{{ exception }}</div>
+      <dl class="meta">
+        <dt>Matcher</dt>
+        <dd>{{ matcher }}</dd>
+        <dt>Source</dt>
+        <dd>{{ source }}</dd>
+      </dl>
+    </div>
+    <div class="traceback">
+      <pre>{{ traceback }}</pre>
+    </div>
+  </div>
+</body>
+
+</html>
