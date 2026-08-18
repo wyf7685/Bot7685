@@ -21,7 +21,7 @@ dependencies = [
   "nonebot-plugin-localstore>=0.7.4",
   "nonebot-plugin-orm[asyncpg,aiosqlite]>=0.8.3",
   "nonebot-plugin-rollpig>=0.2.9",
-  "nonebot-plugin-skland>=0.6.9",
+  "nonebot-plugin-skland>=0.7.1",
   "nonebot-plugin-uninfo>=0.11.1",
   "nonebot-plugin-user>=0.6.0",
   "nonebot-plugin-waiter>=0.8.1",
@@ -36,7 +36,7 @@ dependencies = [
   "httpx>=0.28.1",
   "humanize>=4.15.0,<5.0",
   "imageio[ffmpeg]>=2.37.3",
-  "jmcomic>=2.6.20",
+  "jmcomic>=2.7.4",
   "mcstatus>=12.2.1,<13.0.0",
   "msgspec[toml,yaml]>=0.20.0",
   "pillow>=10.0.0",
@@ -62,7 +62,7 @@ dev = [
   { include-group = "lint" },
   { include-group = "dev-runtime" },
 ]
-lint = ["ruff>=0.16.0", "prek>=0.4.11", "ty>=0.0.63"]
+lint = ["ruff>=0.16.3", "prek>=0.4.14", "ty>=0.0.72"]
 dev-runtime = [
   "nonebot-adapter-feishu>=2.7.1",
   "nonebot-adapter-onebot>=2.4.6",

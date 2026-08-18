@@ -18,7 +18,7 @@ MAX_TRACEBACK_LINES = 200
 
 
 @functools.cache
-def _formatter() -> HtmlFormatter[str]:
+def _formatter() -> HtmlFormatter:
     return HtmlFormatter(style=STYLE, nowrap=True)
 
 
