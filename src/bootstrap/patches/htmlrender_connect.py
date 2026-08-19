@@ -25,16 +25,14 @@ async def _patched_connect(browser_type: str, **kwargs: Any) -> Browser:
     return await browser.connect(endpoint, **kwargs)
 
 
-def patch_htmlrender_connect() -> None:
+@on_plugin_load("after", plugin_id="nonebot_plugin_htmlrender", skip_on_exc=True)
+def _patch_htmlrender_connect(_: object) -> None:
     from importlib.metadata import version
 
     htmlrender_version = version("nonebot_plugin_htmlrender")
     if htmlrender_version != "0.6.7":
         return
 
-
-@on_plugin_load("after", plugin_id="nonebot_plugin_htmlrender", skip_on_exc=True)
-def _patch_htmlrender_connect(_: object) -> None:
     from nonebot_plugin_htmlrender import browser as browser_mod
 
     browser_mod._connect = copy_signature(browser_mod._connect)(_patched_connect)  # noqa: SLF001
