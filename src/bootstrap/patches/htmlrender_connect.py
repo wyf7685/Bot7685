@@ -17,6 +17,8 @@ async def _patched_connect(browser_type: str, **kwargs: Any) -> Browser:
         raise RuntimeError("Playwright 未初始化")
     if (endpoint := plugin_config.htmlrender_connect) is None:
         raise RuntimeError("未配置 htmlrender_connect")
+    kwargs.pop("endpoint", None)
+    kwargs.pop("ws_endpoint", None)
 
     browser: BrowserType = getattr(_playwright, browser_type)
     logger.opt(depth=1).info(
@@ -27,10 +29,9 @@ async def _patched_connect(browser_type: str, **kwargs: Any) -> Browser:
 
 @on_plugin_load("after", plugin_id="nonebot_plugin_htmlrender", skip_on_exc=True)
 def _patch_htmlrender_connect(_: object) -> None:
-    from importlib.metadata import version
+    import importlib.metadata
 
-    htmlrender_version = version("nonebot_plugin_htmlrender")
-    if htmlrender_version != "0.6.7":
+    if importlib.metadata.version("nonebot_plugin_htmlrender") != "0.6.7":
         return
 
     from nonebot_plugin_htmlrender import browser as browser_mod
