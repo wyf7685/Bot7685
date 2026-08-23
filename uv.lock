@@ -191,7 +191,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "anyio" },
     { name = "ayafileio" },
-    { name = "bot7685-ext", extra = ["htmlrender", "nonebot"] },
+    { name = "bot7685-ext", extra = ["nonebot"] },
     { name = "cloudscraper" },
     { name = "githubkit", extra = ["auth-app"] },
     { name = "gunicorn" },
@@ -210,7 +210,7 @@ dependencies = [
     { name = "nonebot-plugin-apscheduler" },
     { name = "nonebot-plugin-chatrecorder" },
     { name = "nonebot-plugin-exe-code" },
-    { name = "nonebot-plugin-htmlrender" },
+    { name = "nonebot-plugin-htmlrender", extra = ["playwright"] },
     { name = "nonebot-plugin-kawaii-status" },
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm", extra = ["aiosqlite", "asyncpg"] },
@@ -260,7 +260,7 @@ lint = [
 requires-dist = [
     { name = "anyio", specifier = ">=4.12.1" },
     { name = "ayafileio", specifier = ">=1.4.4" },
-    { name = "bot7685-ext", extras = ["htmlrender", "nonebot"], specifier = "==0.5.3" },
+    { name = "bot7685-ext", extras = ["nonebot"], specifier = "==0.5.3" },
     { name = "cloudscraper", specifier = ">=1.2.71" },
     { name = "githubkit", extras = ["auth-app"], specifier = ">=0.14.7" },
     { name = "gunicorn", specifier = ">=25.1.0" },
@@ -279,7 +279,7 @@ requires-dist = [
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" },
     { name = "nonebot-plugin-exe-code", git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" },
-    { name = "nonebot-plugin-htmlrender", specifier = "==0.6.7" },
+    { name = "nonebot-plugin-htmlrender", extras = ["playwright"], specifier = ">=0.8.0,<0.9" },
     { name = "nonebot-plugin-kawaii-status", specifier = ">=0.2.0" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
     { name = "nonebot-plugin-orm", extras = ["asyncpg", "aiosqlite"], specifier = ">=0.8.3" },
@@ -337,11 +337,6 @@ wheels = [
 ]
 
 [package.optional-dependencies]
-htmlrender = [
-    { name = "httpx", extra = ["http2"] },
-    { name = "nonebot-plugin-htmlrender" },
-    { name = "nonebot2" },
-]
 nonebot = [
     { name = "nonebot2" },
 ]
@@ -1552,21 +1547,28 @@ dependencies = [
 
 [[package]]
 name = "nonebot-plugin-htmlrender"
-version = "0.6.7"
+version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "aiofiles" },
+    { name = "anyio" },
+    { name = "exceptiongroup" },
     { name = "jinja2" },
     { name = "markdown" },
+    { name = "nonebot-plugin-localstore" },
     { name = "nonebot2" },
-    { name = "playwright" },
     { name = "pygments" },
     { name = "pymdown-extensions" },
     { name = "python-markdown-math" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/69/b4/bb23fa23ff5a554a64dbfa849fd505f7270f25d9a178f153e9f685e9ee73/nonebot_plugin_htmlrender-0.6.7.tar.gz", hash = "sha256:968b06bdfef10e06ad64c9d945c89000b1eaa82a89d5bae71a0647a3a6271c38", size = 1392554, upload-time = "2025-08-19T03:41:09.054Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/50/23c063924aba438cc426fffb443d8079060a38c5707435eb75d088069972/nonebot_plugin_htmlrender-0.8.1.tar.gz", hash = "sha256:314c75357d8843573d337e0cf698f747eef551b4ffcdc624588eaf13ac22b3a5", size = 2960961, upload-time = "2026-07-30T05:03:29.782Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/30/e307374ef0b83fe8dc36004d94332255ff746698af0adb47b3337a7e8305/nonebot_plugin_htmlrender-0.6.7-py3-none-any.whl", hash = "sha256:d782f20dbfd7573944ccd3e4dff2c69daaee8aa5e6f78443ef94057d4126e252", size = 1064240, upload-time = "2025-08-19T03:41:07.025Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/e4/050e5ea0ffbc05667d0cd5e0afc93d80571723d1da842a10aeb46a53b363/nonebot_plugin_htmlrender-0.8.1-py3-none-any.whl", hash = "sha256:ebf503834c9b0c6e397a1c0a172c4b71dbce2b4e8dad7c8b893b92c04b9193e8", size = 1261799, upload-time = "2026-07-30T05:03:27.794Z" },
+]
+
+[package.optional-dependencies]
+playwright = [
+    { name = "playwright" },
 ]
 
 [[package]]

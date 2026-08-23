@@ -10,7 +10,10 @@ import httpx
 from bot7685_ext.wplace import ColorEntry, compose_tiles
 from nonebot import logger
 from nonebot.utils import run_sync
-from nonebot_plugin_htmlrender import get_new_page, template_to_html
+from nonebot_plugin_htmlrender import (
+    get_default_application,
+    render_template_html,
+)
 from PIL import Image
 
 from src.utils import with_semaphore
@@ -138,16 +141,16 @@ async def render_progress(progress_data: list[ColorEntry]) -> bytes:
         "update_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
-    html = await template_to_html(
-        template_path=str(TEMPLATE_DIR),
+    rendered = await render_template_html(
+        template_path=TEMPLATE_DIR,
         template_name="progress.html.jinja2",
-        filters=None,
-        **template_data,
+        variables=template_data,
     )
-
-    viewport = {"width": 600, "height": 144 + len(progress_data) * 58}
-    async with get_new_page(viewport=viewport) as page:
-        await page.set_content(html, wait_until="networkidle")
+    async with get_default_application().extensions.playwright.page(
+        viewport={"width": 600, "height": 144 + len(progress_data) * 58},
+        device_scale_factor=2,
+    ) as page:
+        await page.set_content(rendered.content, wait_until="networkidle")
         if container := await page.query_selector("#progress-container"):
             return await container.screenshot(type="png")
         return await page.screenshot(full_page=True, type="png")

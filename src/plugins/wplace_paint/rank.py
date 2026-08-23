@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import anyio
 from nonebot import logger
-from nonebot_plugin_htmlrender import get_new_page, template_to_html
+from nonebot_plugin_htmlrender import get_default_application, render_template_html
 
 from src.utils import with_semaphore
 
@@ -213,15 +213,16 @@ async def render_rank(
         "container_height": view_height - 50,  # 容器高度略小于视图
     }
 
-    html = await template_to_html(
-        template_path=str(TEMPLATE_DIR),
+    rendered = await render_template_html(
+        template_path=TEMPLATE_DIR,
         template_name="rank.html.jinja2",
-        filters=None,
-        **template_data,
+        variables=template_data,
     )
-
-    async with get_new_page(viewport={"width": 600, "height": view_height}) as page:
-        await page.set_content(html, wait_until="networkidle")
+    async with get_default_application().extensions.playwright.page(
+        viewport={"width": 600, "height": view_height},
+        device_scale_factor=2,
+    ) as page:
+        await page.set_content(rendered.content, wait_until="networkidle")
         if container := await page.query_selector("#chart-container"):
             return await container.screenshot(type="png")
         return await page.screenshot(full_page=True, type="png")

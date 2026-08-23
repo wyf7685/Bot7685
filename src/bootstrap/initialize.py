@@ -5,7 +5,7 @@ from collections.abc import Callable
 from typing import Any
 
 import nonebot
-from bot7685_ext.nonebot import mount_plugin_loader_hook, register_htmlrender_patch
+from bot7685_ext.nonebot import mount_plugin_loader_hook
 from nonebot import _log_patcher
 from nonebot.adapters import Adapter
 from nonebot.compat import model_dump
@@ -114,7 +114,6 @@ def init_nonebot() -> object:
     setup_logger(bootstrap_config.logging_override)
     set_log_level(str(config.get("log_level", "INFO")))
     mount_plugin_loader_hook()
-    register_htmlrender_patch()
     patch_require()
     patch_pcs_params()
     create_driver(config)

@@ -6,7 +6,7 @@ import anyio
 from nonebot.compat import type_validate_json
 from nonebot.params import Depends
 from nonebot_plugin_alconna.uniseg import UniMessage
-from nonebot_plugin_htmlrender import md_to_pic
+from nonebot_plugin_htmlrender import render_markdown
 from nonebot_plugin_localstore import get_plugin_data_dir
 from nonebot_plugin_user import User
 from pydantic import BaseModel, Field
@@ -68,7 +68,8 @@ class TodoList:
         md = "### 📝 Todo List\n"
         for i, t in enumerate(todo or self.todo, 1):
             md += f"{t.show(i)}\n"
-        return await md_to_pic(md)
+        rendered = await render_markdown(md)
+        return rendered.data
 
     def checked(self) -> list[Todo]:
         return [todo for todo in self.todo if todo.checked]

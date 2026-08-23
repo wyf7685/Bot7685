@@ -14,7 +14,7 @@ from typing import Any
 
 import httpx
 from nonebot import logger
-from nonebot_plugin_htmlrender import get_new_page, template_to_html
+from nonebot_plugin_htmlrender import render_template
 
 from .analyzer import ChatAnalyzer
 from .config import TEMPLATE_FILE, config
@@ -502,27 +502,19 @@ class ImageGenerator:
         )
 
     async def _render_report(self) -> bytes | None:
-        html = await template_to_html(
+        rendered = await render_template(
             template_path=str(TEMPLATE_FILE.parent),
             template_name=TEMPLATE_FILE.name,
+            variables=self._prepare_template_data(),
             filters={
                 "format_number": format_number,
                 "truncate_text": truncate_text,
                 "avatar_url": get_avatar_url,
             },
-            **self._prepare_template_data(),
+            width=450,
+            device_pixel_ratio=3,
         )
-
-        async with get_new_page(
-            viewport={"width": 450, "height": 800},
-            device_scale_factor=3,
-        ) as page:
-            await page.set_content(html)
-            await page.wait_for_timeout(2000)
-            height: int = await page.evaluate("document.body.scrollHeight")
-            await page.set_viewport_size({"width": 450, "height": height + 50})
-            await page.wait_for_timeout(500)
-            return await page.screenshot(full_page=True)
+        return rendered.data
 
     async def generate(self) -> bytes | None:
         """生成报告

@@ -16,7 +16,7 @@ dependencies = [
   # plugins
   "nonebot-plugin-alconna>=0.62.0",
   "nonebot-plugin-apscheduler>=0.5.0",
-  "nonebot-plugin-htmlrender==0.6.7",
+  "nonebot-plugin-htmlrender[playwright]>=0.8.0,<0.9",
   "nonebot-plugin-kawaii-status>=0.2.0",
   "nonebot-plugin-localstore>=0.7.4",
   "nonebot-plugin-orm[asyncpg,aiosqlite]>=0.8.3",
@@ -54,7 +54,7 @@ dependencies = [
   "nonebot-plugin-picmenu-next[yaml,toml,rjieba]",
   "nonebot-plugin-zssm",
   # Bot7685 Extensions
-  "bot7685-ext[htmlrender,nonebot]==0.5.3",
+  "bot7685-ext[nonebot]==0.5.3",
 ]
 
 [dependency-groups]

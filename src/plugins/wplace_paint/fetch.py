@@ -1,11 +1,9 @@
 from collections.abc import Callable
 
 import cloudscraper
+import requests
 from nonebot import logger
 from nonebot.utils import flatten_exception_group, run_sync
-from nonebot_plugin_htmlrender import get_browser
-from playwright._impl._api_structures import SetCookieParam
-from playwright._impl._errors import TimeoutError as PlaywrightTimeoutError
 from pydantic import TypeAdapter
 
 from src.utils import with_semaphore
@@ -27,29 +25,6 @@ def construct_requests_cookies(token: str, cf_clearance: str) -> dict[str, str]:
     return {"j": token, "cf_clearance": cf_clearance}
 
 
-def construct_pw_cookies(token: str, cf_clearance: str) -> list[SetCookieParam]:
-    return [
-        {
-            "name": "j",
-            "value": token,
-            "domain": "backend.wplace.live",
-            "path": "/",
-            "httpOnly": False,
-            "secure": True,
-            "sameSite": "Lax",
-        },
-        {
-            "name": "cf_clearance",
-            "value": cf_clearance,
-            "domain": "backend.wplace.live",
-            "path": "/",
-            "httpOnly": False,
-            "secure": True,
-            "sameSite": "None",
-        },
-    ]
-
-
 class RequestFailed(Exception):
     msg: str
     status_code: int | None = None
@@ -62,37 +37,6 @@ class RequestFailed(Exception):
 
 def flatten_request_failed_msg(exc_group: ExceptionGroup[RequestFailed]) -> str:
     return "\n".join(e.msg for e in flatten_exception_group(exc_group))
-
-
-async def _fetch_with_playwright[T](url: str, validate: ValidateFunc[T]) -> T:
-    browser = await get_browser()
-    async with await browser.new_context(
-        user_agent=USER_AGENT,
-        viewport={"width": 1920, "height": 1080},
-        java_script_enabled=True,
-    ) as ctx:
-        await ctx.add_init_script(PW_INIT_SCRIPT)
-
-        async with await ctx.new_page() as page:
-            try:
-                resp = await page.goto(url, wait_until="networkidle", timeout=20000)
-            except PlaywrightTimeoutError as e:
-                raise RequestFailed("Request timed out") from e
-            except Exception as e:
-                raise RequestFailed(f"Request failed: {e!r}") from e
-
-            if resp is None:
-                raise RequestFailed("Failed to get response")
-            if resp.status != 200:
-                raise RequestFailed(
-                    f"Request failed with status code: {resp.status}",
-                    status_code=resp.status,
-                )
-
-            try:
-                return validate(await resp.text())
-            except Exception as e:
-                raise RequestFailed("Failed to parse JSON response") from e
 
 
 def _proxy_config() -> dict[str, str] | None:
@@ -122,7 +66,7 @@ class InvalidCredentials(RequestFailed): ...
 @run_sync
 def _fetch_with_cloudscraper[T](url: str, validate: ValidateFunc[T]) -> T:
     try:
-        resp = cloudscraper.create_scraper().get(
+        resp: requests.Response = cloudscraper.create_scraper().get(
             url,
             headers=_SCRAPER_HEADERS,
             proxies=_proxies,
@@ -160,20 +104,7 @@ async def _fetch_with_auto_fallback[T](url: str, validate: ValidateFunc[T]) -> T
         if any(e.status_code in {401, 500} for e in flatten_exception_group(exc_group)):
             logger.warning("cloudscraper got status code 401/500, not falling back")
             raise
-
-        logger.warning(f"cloudscraper failed ({exc_group!r}), trying playwright...")
-        cs_exc = exc_group
-
-    try:
-        return await _fetch_with_playwright(url, validate)
-    except RequestFailed as exc:
-        logger.warning(f"playwright also failed ({exc!r})")
-        pw_exc = exc
-
-    raise ExceptionGroup(
-        "Both cloudscraper and playwright requests failed",
-        [*flatten_exception_group(cs_exc), pw_exc],
-    )
+        raise
 
 
 PIXEL_INFO_URL = "https://backend.wplace.live/s0/pixel/{coord.tlx}/{coord.tly}?x={coord.pxx}&y={coord.pxy}"

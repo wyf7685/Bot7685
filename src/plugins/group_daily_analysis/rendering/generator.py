@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from nonebot.log import logger
-from nonebot_plugin_htmlrender import get_new_page
+from nonebot_plugin_htmlrender import render_html
 
 from ..config import config
 from ..services.analysis_service import AnalysisResult
@@ -75,16 +75,15 @@ async def render_image(result: AnalysisResult) -> bytes | None:
     # ── 3. 渲染主模板 + 截图 ───────────────────────────────
     full_html = await template.render("image_template.html.jinja2", **render_data)
     full_html = avatar_manager.apply_reuse(full_html)
-    return await _render_to_image(full_html)
 
-
-async def _render_to_image(html: str) -> bytes | None:
     try:
-        async with get_new_page(
-            device_scale_factor=config.render.device_scale_factor
-        ) as page:
-            await page.set_content(html, wait_until="networkidle")
-            return await page.screenshot(full_page=True, type="png")
+        rendered = await render_html(
+            html=full_html,
+            width=1280,
+            device_pixel_ratio=config.render.device_scale_factor,
+        )
     except Exception:
         logger.exception("图片渲染失败")
         return None
+    else:
+        return rendered.data

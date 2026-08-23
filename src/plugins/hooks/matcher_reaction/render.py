@@ -4,7 +4,7 @@ from pathlib import Path
 
 from nonebot import logger
 from nonebot.utils import escape_tag, run_sync
-from nonebot_plugin_htmlrender import get_new_page, template_to_html
+from nonebot_plugin_htmlrender import get_default_application, render_template_html
 from pygments import highlight
 from pygments.formatters.html import HtmlFormatter
 from pygments.lexers.python import PythonTracebackLexer
@@ -49,19 +49,24 @@ def _highlight(trace: str) -> str:
 
 async def render_traceback(record: ExceptionRecord) -> bytes:
     """将单条异常记录渲染为图片。"""
-    html = await template_to_html(
-        template_path=str(TEMPLATE_DIR),
+    data = {
+        "style_defs": _style_defs(),
+        "background": _background(),
+        "exception": html_escape(record.exception),
+        "matcher": html_escape(record.matcher),
+        "source": html_escape(record.source),
+        "traceback": await _highlight(record.traceback),
+    }
+    rendered = await render_template_html(
+        template_path=TEMPLATE_DIR,
         template_name="traceback.html.jinja2",
-        style_defs=_style_defs(),
-        background=_background(),
-        exception=html_escape(record.exception),
-        matcher=html_escape(record.matcher),
-        source=html_escape(record.source),
-        traceback=await _highlight(record.traceback),
+        variables=data,
     )
-
-    async with get_new_page(viewport={"width": 960, "height": 10}) as page:
-        await page.set_content(html, wait_until="networkidle")
+    async with get_default_application().extensions.playwright.page(
+        viewport={"width": 960, "height": 10},
+        device_scale_factor=2,
+    ) as page:
+        await page.set_content(rendered.content, wait_until="networkidle")
         if card := await page.query_selector("#card"):
             return await card.screenshot(type="png")
         return await page.screenshot(full_page=True, type="png")
