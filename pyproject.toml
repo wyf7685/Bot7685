@@ -11,10 +11,10 @@ dependencies = [
   "nonebot-adapter-discord>=1.1.7",
   "nonebot-adapter-github>=0.6.0",
   "nonebot-adapter-milky>=1.2.0",
-  "nonebot-adapter-qq>=1.7.1",
+  "nonebot-adapter-qq>=1.7.2",
   "nonebot-adapter-telegram>=0.1.0b20",
   # plugins
-  "nonebot-plugin-alconna>=0.62.0",
+  "nonebot-plugin-alconna>=0.62.1",
   "nonebot-plugin-apscheduler>=0.5.0",
   "nonebot-plugin-htmlrender[playwright]>=0.8.0,<0.9",
   "nonebot-plugin-kawaii-status>=0.2.0",
@@ -78,9 +78,6 @@ nonebot-plugin-zssm = { git = "https://github.com/wyf7685/nonebot-plugin-zssm.gi
 nonebot-plugin-chatrecorder = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" }
 nonebot-plugin-rollpig = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git" }
 nonebot-plugin-picmenu-next = { git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git" }
-# For adapter-qq - remove when released
-nonebot-plugin-alconna = { git = "https://github.com/nonebot/plugin-alconna.git", rev = "e0f2a3dc81906cf2147b94595b7b5f5145235821" }
-nonebot-adapter-qq = { git = "https://github.com/nonebot/adapter-qq.git", rev = "7bb87b74857406d0785a65bbaac82eec80436ca3" }
 
 [tool.pyright]
 pythonVersion = "3.14"

@@ -273,9 +273,9 @@ requires-dist = [
     { name = "nonebot-adapter-discord", specifier = ">=1.1.7" },
     { name = "nonebot-adapter-github", specifier = ">=0.6.0" },
     { name = "nonebot-adapter-milky", specifier = ">=1.2.0" },
-    { name = "nonebot-adapter-qq", git = "https://github.com/nonebot/adapter-qq.git?rev=7bb87b74857406d0785a65bbaac82eec80436ca3" },
+    { name = "nonebot-adapter-qq", specifier = ">=1.7.2" },
     { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20" },
-    { name = "nonebot-plugin-alconna", git = "https://github.com/nonebot/plugin-alconna.git?rev=e0f2a3dc81906cf2147b94595b7b5f5145235821" },
+    { name = "nonebot-plugin-alconna", specifier = ">=0.62.1" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
     { name = "nonebot-plugin-chatrecorder", git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" },
     { name = "nonebot-plugin-exe-code", git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" },
@@ -532,14 +532,14 @@ wheels = [
 
 [[package]]
 name = "cookit"
-version = "0.13.3"
+version = "0.14.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/79/6b/17603fa03bbd5a2d839c816a54616525a39e14eb00627351bd0651f26de9/cookit-0.13.3.tar.gz", hash = "sha256:5e34bbd24f9ec5cdb89f68bdcbba0f871742e119ce44ee49605363d02b806b3b", size = 36724, upload-time = "2025-10-30T17:19:52.886Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1f/9b/cf90deb943c6d4ae2a9daec77f76c4188a0f405b0d08e8fbdf7c8dcce2c8/cookit-0.14.0.tar.gz", hash = "sha256:202f8fd6324dd8914df5fbbad780b64b10b1b7dc14dbda8bca3d540cf8217576", size = 44195, upload-time = "2026-08-06T10:38:55.067Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/19/1d/4f66a33c99ced36993fcfee0c150771bdc6d0e0e1538e316586a4db58692/cookit-0.13.3-py3-none-any.whl", hash = "sha256:5c30042c2dc2dcac7db5a9faa711a7f7200260a400ea20652327b0d99446d61c", size = 31170, upload-time = "2025-10-30T17:19:51.808Z" },
+    { url = "https://files.pythonhosted.org/packages/83/0d/1de536d3fd11431ce495db024f3083eac6270158f459842305bd8dc5668b/cookit-0.14.0-py3-none-any.whl", hash = "sha256:74140a0d430da17fef892bd685b2511c50dc8c99653ddb470c9195d7f8559f31", size = 34783, upload-time = "2026-08-06T10:38:54.04Z" },
 ]
 
 [package.optional-dependencies]
@@ -1438,14 +1438,18 @@ wheels = [
 
 [[package]]
 name = "nonebot-adapter-qq"
-version = "1.7.1"
-source = { git = "https://github.com/nonebot/adapter-qq.git?rev=7bb87b74857406d0785a65bbaac82eec80436ca3#7bb87b74857406d0785a65bbaac82eec80436ca3" }
+version = "1.7.2"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cryptography" },
     { name = "nonebot2" },
     { name = "pydantic" },
     { name = "typing-extensions" },
     { name = "yarl" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/88/0a/04db32e598a37595ae5bd4908cb483818160ce1981e624353992107a30fd/nonebot_adapter_qq-1.7.2.tar.gz", hash = "sha256:07a2a1613def7a0d555597cf9103adf7934167d7f644172252fd69bb4a7f87fa", size = 34435, upload-time = "2026-08-09T08:24:15.241Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8c/68/adcff2c5601d1e35e759b40018fc76aac05fb61481d91a744551a1c3d0fc/nonebot_adapter_qq-1.7.2-py3-none-any.whl", hash = "sha256:487aa6473c1c9874fe5ed088817589f7c6a09967b8ac468b29a48e41cce4f1e6", size = 39199, upload-time = "2026-08-09T08:24:13.833Z" },
 ]
 
 [[package]]
@@ -1476,8 +1480,8 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-alconna"
-version = "0.62.0"
-source = { git = "https://github.com/nonebot/plugin-alconna.git?rev=e0f2a3dc81906cf2147b94595b7b5f5145235821#e0f2a3dc81906cf2147b94595b7b5f5145235821" }
+version = "0.62.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arclet-alconna" },
     { name = "arclet-alconna-tools" },
@@ -1486,6 +1490,10 @@ dependencies = [
     { name = "nonebot-plugin-waiter" },
     { name = "nonebot2" },
     { name = "tarina" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bd/c3/1698155ff82f35d4a58dec00ba56beb68f83cc726de4769e56faff0db7e6/nonebot_plugin_alconna-0.62.1.tar.gz", hash = "sha256:09d57f94a2d391dbd0f4231ff3de22d616cf24085ce889cb4c03fd173a29fb2a", size = 163477, upload-time = "2026-07-10T02:41:09.395Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e7/dd/a4da18c97246d7c66e5c7dda53a1c01abbebb0fa140ec486799c173f0cc9/nonebot_plugin_alconna-0.62.1-py3-none-any.whl", hash = "sha256:5258eb215e778e5bb8e85aa3932752f91b7c8721e03a590e0d8f307d078b8e27", size = 226116, upload-time = "2026-07-10T02:41:08.073Z" },
 ]
 
 [[package]]
@@ -1629,8 +1637,8 @@ asyncpg = [
 
 [[package]]
 name = "nonebot-plugin-picmenu-next"
-version = "0.4.1"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git#cd63bef7332fd729c4c4e29a022011152ac76eaa" }
+version = "0.5.0"
+source = { git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git#154451f77c492467ac2609bc320276ae2a1eadc9" }
 dependencies = [
     { name = "cookit", extra = ["jinja", "loguru", "nonebot-alconna", "nonebot-localstore", "pw", "pyd"] },
     { name = "jieba" },
