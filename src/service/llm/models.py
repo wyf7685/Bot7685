@@ -135,6 +135,7 @@ class ToolErrorCategory(StrEnum):
     UNKNOWN_TOOL = "unknown_tool"
     INVALID_ARGUMENTS = "invalid_arguments"
     EXECUTION = "execution"
+    REPORTED = "reported"
     RESULT_TOO_LARGE = "result_too_large"
 
 

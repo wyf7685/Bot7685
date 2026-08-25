@@ -32,6 +32,7 @@ from .contracts import (
 )
 from .forward import expand_forward_inputs
 from .input import AdapterImageFetcher, collect_input
+from .log import log_event, safe_log_text
 from .prompt import SYSTEM_PROMPT
 from .state import active_model_store
 from .tools import (
@@ -169,6 +170,7 @@ async def run_zssm(
     quoted: UniMessage | None,
     config: ZssmConfig,
     service: LLMService,
+    run_id: str | None = None,
     adapter_image_fetcher: AdapterImageFetcher | None = None,
     participant_resolver_factory: Callable[
         [Bot, Session, Any], InvocationParticipantResolver
@@ -203,12 +205,31 @@ async def run_zssm(
         raise LLMCapabilityError(model_alias=active_alias)
 
     outer_limiter = limiter or _run_limiter(config.max_concurrent_runs)
+    wait_started = perf_counter()
     async with outer_limiter:
+        log_event(
+            run_id,
+            "INFO",
+            "ZSSM",
+            f"<b>run slot acquired</> | "
+            f"wait=<y>{(perf_counter() - wait_started) * 1000:.1f}ms</> "
+            f"capacity=<c>{config.max_concurrent_runs}</> "
+            f"model=<g>{safe_log_text(active_alias)}</>",
+        )
+        forward_started = perf_counter()
         expanded_content, expanded_quoted = await forward_expander(
             content_copy,
             quoted_copy,
             bot=bot,
             config=config.forwards,
+        )
+        log_event(
+            run_id,
+            "DEBUG",
+            "ZSSM",
+            f"<b>forward expansion completed</> | "
+            f"elapsed=<c>{(perf_counter() - forward_started) * 1000:.1f}ms</> "
+            f"quoted=<y>{str(expanded_quoted is not None).lower()}</>",
         )
         participant_resolver = participant_resolver_factory(
             bot,
@@ -227,6 +248,14 @@ async def run_zssm(
             current_copy,
             started_at,
         )
+        log_event(
+            run_id,
+            "INFO",
+            "ZSSM",
+            f"<b>input ready</> | text_chars=<c>{len(collected.prompt_text)}</> "
+            f"images=<c>{len(collected.images)}</> "
+            f"participants=<c>{len(collected.participant_aliases)}</>",
+        )
         routed = await vision_router(
             collected,
             primary_model=active_alias,
@@ -234,6 +263,7 @@ async def run_zssm(
             config=config.images,
             llm_service=service,
             adapter_image_fetcher=adapter_image_fetcher,
+            correlation_id=run_id,
         )
         if routed.primary is None:
             raise AllImagesFailedError
@@ -263,6 +293,7 @@ async def run_zssm(
                 system_prompt=SYSTEM_PROMPT,
                 model=active_alias,
                 limits=limits,
+                correlation_id=run_id,
             )
             raw_answer = result.output
             if routed.stats.partial_success:
@@ -278,8 +309,9 @@ async def run_zssm(
                 usage=result.usage,
                 elapsed=sum(item.elapsed for item in result.trace.model_calls),
             )
+            total_elapsed = clock() - started
             stats = RunStatistics(
-                total_elapsed=clock() - started,
+                total_elapsed=total_elapsed,
                 primary_usage=primary_usage,
                 vision_usage=routed.stage_usage,
                 images=routed.stats,
@@ -290,6 +322,17 @@ async def run_zssm(
             sources = tuple(
                 SourceEntry.from_citation(citation)
                 for citation in resources.citations.used_citations()
+            )
+            log_event(
+                run_id,
+                "SUCCESS",
+                "ZSSM",
+                f"<g><b>assembled</b></> | elapsed=<c>{total_elapsed * 1000:.1f}ms</> "
+                f"model_calls=<c>{result.model_call_count}</> "
+                f"tools=<c>{result.tool_call_count}</> "
+                f"tool_failures=<y>{stats.tool_failures}</> "
+                f"images=<c>{routed.stats.prepared}/{routed.stats.requested}</> "
+                f"sources=<c>{len(sources)}</> answer_chars=<c>{len(answer)}</>",
             )
             return RenderModel(
                 answer=answer,

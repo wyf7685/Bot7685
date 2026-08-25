@@ -15,6 +15,7 @@ type JSONObject = dict[str, JSONValue]
 _NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _MAX_DESCRIPTION_CHARS = 1024
 _MAX_SUMMARY_CHARS = 160
+_ERROR_CODE_PATTERN = re.compile(r"^[a-z0-9_-]{1,64}$")
 
 
 class ToolArgumentsError(ValueError):
@@ -35,14 +36,18 @@ class ToolOutputTooLargeError(ToolOutputSerializationError):
 
 @dataclass(frozen=True, slots=True)
 class ToolOutput:
-    """A model-visible JSON value and a short, explicitly safe trace summary.
+    """A model-visible JSON value and explicitly safe operational metadata.
 
     ``summary`` must describe the operation without copying arguments, returned
-    payloads, user data, credentials, or exception messages.
+    payloads, user data, credentials, or exception messages. A non-null
+    ``reported_error_code`` marks a handled domain failure returned to the model.
+    ``diagnostic`` is optional safe operational metadata written only to logs.
     """
 
     value: JSONValue
     summary: str = "completed"
+    reported_error_code: str | None = None
+    diagnostic: str | None = None
 
     def __post_init__(self) -> None:
         summary = self.summary.strip()
@@ -53,6 +58,20 @@ class ToolOutput:
         if any(ord(character) < 32 or ord(character) == 127 for character in summary):
             raise ValueError("tool output summary must be a single printable line")
         object.__setattr__(self, "summary", summary)
+        if self.reported_error_code is not None:
+            code = self.reported_error_code.strip().lower()
+            if not _ERROR_CODE_PATTERN.fullmatch(code):
+                raise ValueError("reported error code must be a safe token")
+            object.__setattr__(self, "reported_error_code", code)
+        if self.diagnostic is not None:
+            diagnostic = self.diagnostic.strip()
+            if not diagnostic or len(diagnostic) > _MAX_SUMMARY_CHARS:
+                raise ValueError("tool diagnostic must contain 1-160 characters")
+            if any(
+                ord(character) < 32 or ord(character) == 127 for character in diagnostic
+            ):
+                raise ValueError("tool diagnostic must be a single printable line")
+            object.__setattr__(self, "diagnostic", diagnostic)
 
 
 @dataclass(frozen=True, slots=True)

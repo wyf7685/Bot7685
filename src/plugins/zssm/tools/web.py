@@ -47,6 +47,7 @@ _ROBOTS_CACHE_SECONDS = 300.0
 _MAX_URL_CHARS = 4096
 _HOST_LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 _CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_CAUSE_TYPE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,79}$")
 
 type SearchErrorCode = Literal[
     "configuration",
@@ -55,6 +56,7 @@ type SearchErrorCode = Literal[
     "timeout",
     "unavailable",
 ]
+type SearchDiagnosticReason = Literal["no_results"]
 type FetchErrorCode = Literal[
     "content_encoding",
     "decode",
@@ -77,10 +79,24 @@ type _RobotsMode = Literal["enforce", "skip"]
 
 
 class WebSearchError(RuntimeError):
-    """A provider failure represented only by a stable, non-sensitive code."""
+    """A provider failure with only stable, non-sensitive diagnostic facts."""
 
-    def __init__(self, code: SearchErrorCode) -> None:
+    def __init__(
+        self,
+        code: SearchErrorCode,
+        *,
+        cause_type: str | None = None,
+        status_code: int | None = None,
+        reason: SearchDiagnosticReason | None = None,
+    ) -> None:
+        if cause_type is not None and not _CAUSE_TYPE_RE.fullmatch(cause_type):
+            raise ValueError("web search cause type is invalid")
+        if status_code is not None and not 100 <= status_code <= 599:
+            raise ValueError("web search status code is invalid")
         self.code = code
+        self.cause_type = cause_type
+        self.status_code = status_code
+        self.reason = reason
         super().__init__(code)
 
 
@@ -250,17 +266,19 @@ class BraveSearchProvider(WebSearchProvider):
                 timeout=self._timeout,
                 follow_redirects=False,
             )
-        except httpx.TimeoutException:
-            raise WebSearchError("timeout") from None
-        except httpx.HTTPError:
-            raise WebSearchError("unavailable") from None
+        except httpx.TimeoutException as error:
+            raise WebSearchError("timeout", cause_type=type(error).__name__) from None
+        except httpx.HTTPError as error:
+            raise WebSearchError(
+                "unavailable", cause_type=type(error).__name__
+            ) from None
 
         if response.status_code == 429:
-            raise WebSearchError("rate_limited")
+            raise WebSearchError("rate_limited", status_code=response.status_code)
         if response.status_code in (401, 403):
-            raise WebSearchError("configuration")
+            raise WebSearchError("configuration", status_code=response.status_code)
         if not 200 <= response.status_code < 300:
-            raise WebSearchError("unavailable")
+            raise WebSearchError("unavailable", status_code=response.status_code)
 
         try:
             payload = response.json()
@@ -285,8 +303,10 @@ class BraveSearchProvider(WebSearchProvider):
             )
         except WebSearchError:
             raise
-        except TypeError, ValueError:
-            raise WebSearchError("invalid_response") from None
+        except (TypeError, ValueError) as error:
+            raise WebSearchError(
+                "invalid_response", cause_type=type(error).__name__
+            ) from None
 
 
 class TavilySearchProvider(WebSearchProvider):
@@ -340,17 +360,19 @@ class TavilySearchProvider(WebSearchProvider):
                 timeout=self._timeout,
                 follow_redirects=False,
             )
-        except httpx.TimeoutException:
-            raise WebSearchError("timeout") from None
-        except httpx.HTTPError:
-            raise WebSearchError("unavailable") from None
+        except httpx.TimeoutException as error:
+            raise WebSearchError("timeout", cause_type=type(error).__name__) from None
+        except httpx.HTTPError as error:
+            raise WebSearchError(
+                "unavailable", cause_type=type(error).__name__
+            ) from None
 
         if response.status_code in (429, 432, 433):
-            raise WebSearchError("rate_limited")
+            raise WebSearchError("rate_limited", status_code=response.status_code)
         if response.status_code in (401, 403):
-            raise WebSearchError("configuration")
+            raise WebSearchError("configuration", status_code=response.status_code)
         if not 200 <= response.status_code < 300:
-            raise WebSearchError("unavailable")
+            raise WebSearchError("unavailable", status_code=response.status_code)
 
         try:
             payload = response.json()
@@ -371,8 +393,10 @@ class TavilySearchProvider(WebSearchProvider):
             )
         except WebSearchError:
             raise
-        except TypeError, ValueError:
-            raise WebSearchError("invalid_response") from None
+        except (TypeError, ValueError) as error:
+            raise WebSearchError(
+                "invalid_response", cause_type=type(error).__name__
+            ) from None
 
 
 class _DDGSBackendUnavailable(RuntimeError):
@@ -427,14 +451,26 @@ class DDGSSearchProvider(WebSearchProvider):
                 limiter=self._limiter,
                 abandon_on_cancel=True,
             )
-        except _DDGSBackendUnavailable:
-            raise WebSearchError("configuration") from None
-        except ImportError:
-            raise WebSearchError("unavailable") from None
+        except _DDGSBackendUnavailable as error:
+            raise WebSearchError(
+                "configuration", cause_type=type(error).__name__
+            ) from None
+        except ImportError as error:
+            raise WebSearchError(
+                "unavailable", cause_type=type(error).__name__
+            ) from None
         except Exception as error:
-            if type(error).__name__ == "TimeoutException":
-                raise WebSearchError("timeout") from None
-            raise WebSearchError("unavailable") from None
+            cause_type = type(error).__name__
+            if cause_type == "TimeoutException":
+                raise WebSearchError("timeout", cause_type=cause_type) from None
+            reason: SearchDiagnosticReason | None = None
+            if cause_type == "DDGSException" and str(error) == "No results found.":
+                reason = "no_results"
+            raise WebSearchError(
+                "unavailable",
+                cause_type=cause_type,
+                reason=reason,
+            ) from None
 
         try:
             return _normalize_search_rows(
@@ -447,8 +483,10 @@ class DDGSSearchProvider(WebSearchProvider):
                 source_fields=("source",),
                 published_fields=("date", "published"),
             )
-        except TypeError, ValueError:
-            raise WebSearchError("invalid_response") from None
+        except (TypeError, ValueError) as error:
+            raise WebSearchError(
+                "invalid_response", cause_type=type(error).__name__
+            ) from None
 
     def _search_sync(
         self,
@@ -901,9 +939,21 @@ async def _handle_web_search(
             freshness=arguments.freshness,
         )
     except WebSearchError as error:
+        backend = context.web_search_config.backend
+        diagnostic_parts = [f"backend={backend}"]
+        if backend == "ddgs":
+            diagnostic_parts.append(f"engine={context.web_search_config.ddgs_backend}")
+        if error.status_code is not None:
+            diagnostic_parts.append(f"status={error.status_code}")
+        if error.cause_type is not None:
+            diagnostic_parts.append(f"cause={error.cause_type}")
+        if error.reason is not None:
+            diagnostic_parts.append(f"reason={error.reason}")
         return ToolOutput(
             value={"status": "error", "error": {"code": error.code}},
             summary="web_search status=error results=0 truncated=false",
+            reported_error_code=f"web_search_{error.code}",
+            diagnostic=" ".join(diagnostic_parts),
         )
 
     citations: list[JSONValue] = []
@@ -944,12 +994,12 @@ async def _handle_fetch_page(
         return ToolOutput(
             value={"status": "error", "error": {"code": error.code}},
             summary=f"fetch_page status={status} host={input_host} chars=0",
+            reported_error_code=f"fetch_page_{error.code}",
         )
 
     citation = context.citation_registry.get(page.citation_id)
     if citation is None:
         raise RuntimeError("page fetcher returned an unknown citation")
-    title_for_trace = _trace_text(page.title, 48)
     host = _safe_trace_hostname(page.final_url)
     output = ToolOutput(
         value={
@@ -957,10 +1007,7 @@ async def _handle_fetch_page(
             "page": _web_page_json(page),
             "citations": [_citation_json(citation)],
         },
-        summary=(
-            f"fetch_page status=ok host={host} title={title_for_trace} "
-            f"chars={len(page.text)}"
-        ),
+        summary=f"fetch_page status=ok host={host} chars={len(page.text)}",
     )
     context.citation_registry.mark_used(page.citation_id)
     return output

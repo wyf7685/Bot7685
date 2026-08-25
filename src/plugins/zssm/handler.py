@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import secrets
+from time import perf_counter
 from typing import Never
 
-from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Image, MsgId, UniMessage, UniMsg, image_fetch
@@ -16,6 +17,7 @@ from .command import ParsedContent, matcher
 from .contracts import RenderFailure, RenderFailureCategory
 from .forward import ForwardFetchError, ForwardLimitError, ForwardUnsupportedError
 from .input import EmptyInputError, ImageLimitError, UnsupportedInputError
+from .log import cause_name, log_event, safe_log_text
 from .orchestrator import AllImagesFailedError, run_zssm
 from .reaction import zssm_reaction_timeline
 from .render import (
@@ -30,16 +32,41 @@ from .state import get_zssm_config
 async def _finish_failure(
     category: RenderFailureCategory,
     *,
+    run_id: str,
+    stage: str,
+    request_started: float,
     cause: type[BaseException] | None = None,
 ) -> Never:
-    logger.warning(
-        "ZSSM request failed: category={} cause={}",
-        category.value,
-        cause.__name__ if cause is not None else "none",
+    log_event(
+        run_id,
+        "WARNING",
+        "ZSSM",
+        f"<r><b>request failed</b></> | stage=<y>{safe_log_text(stage)}</> "
+        f"category=<y>{category.value}</> "
+        f"cause=<r>{safe_log_text(cause.__name__ if cause is not None else "none")}</> "
+        f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
     )
     await render_error(
         RenderFailure(category=category, message=category.value)
     ).finish()
+
+
+async def _finish_llm_failure(
+    error: LLMServiceError,
+    *,
+    run_id: str,
+    request_started: float,
+) -> Never:
+    log_event(
+        run_id,
+        "WARNING",
+        "ZSSM",
+        f"<r><b>request failed</b></> | stage=<y>agent</> "
+        f"category=<y>{error.category.value}</> "
+        f"cause=<r>{safe_log_text(cause_name(error))}</> "
+        f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
+    )
+    await render_error(error).finish()
 
 
 def _quoted_message(
@@ -68,17 +95,38 @@ async def _handle_zssm(
     message_id: MsgId,
     reply_extension: ReplyRecordExtension,
 ) -> None:
-    async with zssm_reaction_timeline(bot, event):
-        await _execute_zssm(
-            bot=bot,
-            event=event,
-            state=state,
-            session=session,
-            current=current,
-            content=content,
-            message_id=message_id,
-            reply_extension=reply_extension,
+    run_id = secrets.token_hex(8)
+    request_started = perf_counter()
+    log_event(
+        run_id,
+        "INFO",
+        "ZSSM",
+        f"<b>request accepted</> | segments=<c>{len(current)}</> "
+        f"content=<y>{str(content.available).lower()}</>",
+    )
+    try:
+        async with zssm_reaction_timeline(bot, event):
+            await _execute_zssm(
+                bot=bot,
+                event=event,
+                state=state,
+                session=session,
+                current=current,
+                content=content,
+                message_id=message_id,
+                reply_extension=reply_extension,
+                run_id=run_id,
+                request_started=request_started,
+            )
+    except asyncio.CancelledError:
+        log_event(
+            run_id,
+            "INFO",
+            "ZSSM",
+            f"<y>request cancelled</> | "
+            f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
         )
+        raise
 
 
 async def _execute_zssm(
@@ -90,7 +138,22 @@ async def _execute_zssm(
     content: ParsedContent,
     message_id: MsgId,
     reply_extension: ReplyRecordExtension,
+    run_id: str,
+    request_started: float,
 ) -> None:
+    async def finish_failure(
+        category: RenderFailureCategory,
+        stage: str,
+        error: BaseException,
+    ) -> Never:
+        await _finish_failure(
+            category,
+            run_id=run_id,
+            stage=stage,
+            request_started=request_started,
+            cause=type(error),
+        )
+
     current_copy = current.copy()
     try:
         quoted_copy = _quoted_message(reply_extension, message_id, bot)
@@ -98,9 +161,10 @@ async def _execute_zssm(
     except asyncio.CancelledError:
         raise
     except Exception as error:
-        await _finish_failure(
+        await finish_failure(
             RenderFailureCategory.UNSUPPORTED_INPUT,
-            cause=type(error),
+            "input_snapshot",
+            error,
         )
 
     try:
@@ -109,9 +173,10 @@ async def _execute_zssm(
     except asyncio.CancelledError:
         raise
     except Exception as error:
-        await _finish_failure(
+        await finish_failure(
             RenderFailureCategory.CONFIGURATION,
-            cause=type(error),
+            "configuration",
+            error,
         )
 
     async def fetch_adapter_image(image: Image) -> bytes | None:
@@ -127,39 +192,40 @@ async def _execute_zssm(
             config=config,
             service=service,
             adapter_image_fetcher=fetch_adapter_image,
+            run_id=run_id,
         )
     except asyncio.CancelledError:
         raise
     except ForwardLimitError as error:
-        await _finish_failure(RenderFailureCategory.LIMITS, cause=type(error))
+        await finish_failure(RenderFailureCategory.LIMITS, "forward", error)
     except ForwardFetchError as error:
-        await _finish_failure(RenderFailureCategory.FORWARD, cause=type(error))
+        await finish_failure(RenderFailureCategory.FORWARD, "forward", error)
     except ForwardUnsupportedError as error:
-        await _finish_failure(
+        await finish_failure(
             RenderFailureCategory.UNSUPPORTED_INPUT,
-            cause=type(error),
+            "forward",
+            error,
         )
     except EmptyInputError as error:
-        await _finish_failure(RenderFailureCategory.EMPTY_INPUT, cause=type(error))
+        await finish_failure(RenderFailureCategory.EMPTY_INPUT, "input", error)
     except UnsupportedInputError as error:
-        await _finish_failure(
+        await finish_failure(
             RenderFailureCategory.UNSUPPORTED_INPUT,
-            cause=type(error),
+            "input",
+            error,
         )
     except (ImageLimitError, AllImagesFailedError) as error:
-        await _finish_failure(RenderFailureCategory.IMAGE, cause=type(error))
+        await finish_failure(RenderFailureCategory.IMAGE, "image", error)
     except LLMServiceError as error:
-        logger.warning(
-            "ZSSM agent failed: category={} cause={}",
-            error.category.value,
-            type(error.cause).__name__
-            if error.cause is not None
-            else type(error).__name__,
+        await _finish_llm_failure(
+            error,
+            run_id=run_id,
+            request_started=request_started,
         )
-        await render_error(error).finish()
     except Exception as error:
-        await _finish_failure(RenderFailureCategory.PROVIDER, cause=type(error))
+        await finish_failure(RenderFailureCategory.PROVIDER, "agent", error)
 
+    render_started = perf_counter()
     try:
         nodes = build_reference_nodes(
             model,
@@ -169,14 +235,35 @@ async def _execute_zssm(
     except asyncio.CancelledError:
         raise
     except Exception as error:
-        await _finish_failure(RenderFailureCategory.RENDER, cause=type(error))
+        await finish_failure(RenderFailureCategory.RENDER, "render", error)
+
+    log_event(
+        run_id,
+        "INFO",
+        "ZSSM::Render",
+        f"<b>reference built</> | nodes=<c>{len(nodes)}</> "
+        f"sources=<c>{len(model.sources)}</> trace_entries=<c>{len(model.trace)}</> "
+        f"elapsed=<c>{(perf_counter() - render_started) * 1000:.1f}ms</>",
+    )
 
     try:
         await send_reference(nodes)
     except asyncio.CancelledError:
         raise
     except ReferenceSendError as error:
-        await _finish_failure(RenderFailureCategory.RENDER, cause=type(error))
+        await finish_failure(RenderFailureCategory.RENDER, "send", error)
+
+    stats = model.stats
+    orchestration_elapsed = stats.total_elapsed if stats is not None else 0.0
+    log_event(
+        run_id,
+        "SUCCESS",
+        "ZSSM",
+        f"<g><b>request completed</b></> | "
+        f"request=<c>{(perf_counter() - request_started) * 1000:.1f}ms</> "
+        f"orchestration=<c>{orchestration_elapsed * 1000:.1f}ms</> "
+        f"nodes=<c>{len(nodes)}</>",
+    )
 
 
 __all__ = ["_handle_zssm"]

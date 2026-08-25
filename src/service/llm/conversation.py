@@ -6,7 +6,15 @@ from dataclasses import dataclass
 from time import perf_counter
 from typing import Any, Protocol
 
-from .exceptions import LLMCapabilityError, LLMErrorCategory, LLMRunError
+from nonebot import logger
+from nonebot.utils import escape_tag
+
+from .exceptions import (
+    LLMCapabilityError,
+    LLMErrorCategory,
+    LLMRunError,
+    LLMServiceError,
+)
 from .models import (
     AgentLimits,
     AgentRunResult,
@@ -29,6 +37,32 @@ from .usage import TokenUsage
 _TOOL_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _MAX_CALL_ID_CHARS = 256
 _DEFAULT_AGENT_LIMITS = AgentLimits()
+
+
+def _safe_log_text(value: object, limit: int = 80) -> str:
+    compact = re.sub(r"\s+", " ", str(value)).strip()
+    return escape_tag(compact[:limit] or "none")
+
+
+def _cause_name(error: BaseException) -> str:
+    if isinstance(error, LLMServiceError) and error.cause is not None:
+        return type(error.cause).__name__
+    return type(error).__name__
+
+
+def _log_event(
+    correlation_id: str | None,
+    level: str,
+    component: str,
+    message: str,
+) -> None:
+    if correlation_id is None:
+        return
+    run = _safe_log_text(correlation_id, 32)
+    logger.opt(colors=True).log(
+        level,
+        f"<m>{component}</m> | run=<c>{run}</> | {message}",
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +200,7 @@ async def run_agent(
     model: str | None = None,
     temperature: float | None = None,
     limits: AgentLimits = _DEFAULT_AGENT_LIMITS,
+    correlation_id: str | None = None,
 ) -> AgentRunResult:
     """Run a bounded assistant/tool conversation against a neutral backend."""
 
@@ -176,11 +211,22 @@ async def run_agent(
     if bound_tools and not capabilities.tools:
         raise LLMCapabilityError(model_alias=capabilities.model_alias)
 
+    model_alias = _safe_log_text(capabilities.model_alias)
+    _log_event(
+        correlation_id,
+        "INFO",
+        "LLM::Agent",
+        f"<b>started</> | model=<g>{model_alias}</> tools=<c>{len(bound_tools)}</> "
+        f"limits=<c>models:{limits.max_model_calls} tools:{limits.max_tool_calls} "
+        f"parallel:{limits.max_parallel_tools} "
+        f"timeout:{limits.total_timeout_seconds:g}s</>",
+    )
+
     definitions = tuple(tool.definition for tool in bound_tools)
     registry = {tool.name: tool for tool in bound_tools}
     try:
         async with asyncio.timeout(limits.total_timeout_seconds):
-            return await _run_bounded_conversation(
+            result = await _run_bounded_conversation(
                 backend=backend,
                 prompt=prompt,
                 system_prompt=system_prompt,
@@ -190,12 +236,63 @@ async def run_agent(
                 temperature=temperature,
                 limits=limits,
                 started=started,
+                correlation_id=correlation_id,
             )
+    except asyncio.CancelledError:
+        _log_event(
+            correlation_id,
+            "INFO",
+            "LLM::Agent",
+            f"<y>cancelled</> | "
+            f"elapsed=<c>{(perf_counter() - started) * 1000:.1f}ms</>",
+        )
+        raise
     except TimeoutError as error:
+        _log_event(
+            correlation_id,
+            "WARNING",
+            "LLM::Agent",
+            f"<r>failed</> | category=<y>timeout</> cause=<r>TimeoutError</> "
+            f"elapsed=<c>{(perf_counter() - started) * 1000:.1f}ms</>",
+        )
         raise LLMRunError(
             category=LLMErrorCategory.TIMEOUT,
             model_alias=capabilities.model_alias,
         ) from error
+    except LLMServiceError as error:
+        _log_event(
+            correlation_id,
+            "WARNING",
+            "LLM::Agent",
+            f"<r>failed</> | category=<y>{error.category.value}</> "
+            f"cause=<r>{_safe_log_text(_cause_name(error))}</> "
+            f"elapsed=<c>{(perf_counter() - started) * 1000:.1f}ms</>",
+        )
+        raise
+    except Exception as error:
+        _log_event(
+            correlation_id,
+            "ERROR",
+            "LLM::Agent",
+            f"<r>failed</> | category=<y>unexpected</> "
+            f"cause=<r>{_safe_log_text(_cause_name(error))}</> "
+            f"elapsed=<c>{(perf_counter() - started) * 1000:.1f}ms</>",
+        )
+        raise
+
+    tool_failures = sum(not item.success for item in result.trace.tool_calls)
+    usage = result.usage
+    _log_event(
+        correlation_id,
+        "SUCCESS",
+        "LLM::Agent",
+        f"<g><b>completed</b></> | model_calls=<c>{result.model_call_count}</> "
+        f"tools=<c>{result.tool_call_count}</> "
+        f"tool_failures=<y>{tool_failures}</> "
+        f"elapsed=<c>{result.elapsed * 1000:.1f}ms</> "
+        f"tokens_norm=<c>{usage.prompt_tokens}/{usage.completion_tokens}/{usage.total_tokens}</>",
+    )
+    return result
 
 
 async def _run_bounded_conversation(
@@ -209,12 +306,14 @@ async def _run_bounded_conversation(
     temperature: float | None,
     limits: AgentLimits,
     started: float,
+    correlation_id: str | None,
 ) -> AgentRunResult:
     history: list[AgentHistoryItem] = []
     model_traces: list[ModelCallTrace] = []
     tool_traces: list[ToolCallTrace] = []
     usage = TokenUsage()
     tool_call_count = 0
+    tool_round = 0
 
     while True:
         if len(model_traces) >= limits.max_model_calls:
@@ -223,16 +322,51 @@ async def _run_bounded_conversation(
                 model_alias=capabilities.model_alias,
             )
 
-        turn = await backend.complete_turn(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            history=tuple(history),
-            tools=definitions,
-            model=capabilities.model_alias,
-            temperature=temperature,
-            max_output_tokens=limits.max_output_tokens,
-            parallel_tool_calls=capabilities.parallel_tool_calls,
+        model_call = len(model_traces) + 1
+        _log_event(
+            correlation_id,
+            "INFO",
+            "LLM::Agent",
+            f"model_call=<y>{model_call}/{limits.max_model_calls}</> <b>started</> | "
+            f"history=<c>models:{len(model_traces)} tools:{len(tool_traces)}</>",
         )
+        call_started = perf_counter()
+        try:
+            turn = await backend.complete_turn(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                history=tuple(history),
+                tools=definitions,
+                model=capabilities.model_alias,
+                temperature=temperature,
+                max_output_tokens=limits.max_output_tokens,
+                parallel_tool_calls=capabilities.parallel_tool_calls,
+            )
+        except asyncio.CancelledError:
+            raise
+        except LLMServiceError as error:
+            _log_event(
+                correlation_id,
+                "WARNING",
+                "LLM::Agent",
+                f"model_call=<y>{model_call}/{limits.max_model_calls}</> "
+                f"<r>failed</> | "
+                f"category=<y>{error.category.value}</> "
+                f"cause=<r>{_safe_log_text(_cause_name(error))}</> "
+                f"elapsed=<c>{(perf_counter() - call_started) * 1000:.1f}ms</>",
+            )
+            raise
+        except Exception as error:
+            _log_event(
+                correlation_id,
+                "ERROR",
+                "LLM::Agent",
+                f"model_call=<y>{model_call}/{limits.max_model_calls}</> "
+                f"<r>failed</> | category=<y>unexpected</> "
+                f"cause=<r>{_safe_log_text(_cause_name(error))}</> "
+                f"elapsed=<c>{(perf_counter() - call_started) * 1000:.1f}ms</>",
+            )
+            raise
 
         if not isinstance(turn, AgentModelTurn):
             raise LLMRunError(
@@ -256,6 +390,20 @@ async def _run_bounded_conversation(
         )
         usage = usage + turn.usage
         history.append(turn)
+        finish_reason = _safe_log_text(turn.finish_reason or "none")
+        _log_event(
+            correlation_id,
+            "INFO",
+            "LLM::Agent",
+            f"model_call=<y>{model_call}/{limits.max_model_calls}</> "
+            f"<g>completed</> | finish=<c>{finish_reason}</> "
+            f"tool_requests=<c>{len(turn.tool_calls)}</> "
+            f"answer_chars=<c>{len(turn.content or "")}</> "
+            f"elapsed=<c>{turn.elapsed * 1000:.1f}ms</> "
+            f"tokens_norm=<c>{turn.usage.prompt_tokens}/{turn.usage.completion_tokens}/"
+            f"{turn.usage.total_tokens}</> cumulative=<c>{usage.prompt_tokens}/"
+            f"{usage.completion_tokens}/{usage.total_tokens}</>",
+        )
 
         if not turn.tool_calls:
             if turn.content is None or not turn.content.strip():
@@ -283,11 +431,16 @@ async def _run_bounded_conversation(
                 model_alias=capabilities.model_alias,
             )
 
+        tool_round += 1
         dispatched = await _dispatch_tool_round(
             turn.tool_calls,
             registry=registry,
             max_parallel_tools=limits.max_parallel_tools,
             max_result_bytes=limits.max_tool_result_bytes,
+            correlation_id=correlation_id,
+            round_number=tool_round,
+            origin_model_call=model_call,
+            first_ordinal=tool_call_count + 1,
         )
         tool_call_count += len(dispatched)
         for item in dispatched:
@@ -301,20 +454,60 @@ async def _dispatch_tool_round(
     registry: dict[str, BoundTool[Any, Any]],
     max_parallel_tools: int,
     max_result_bytes: int,
+    correlation_id: str | None,
+    round_number: int,
+    origin_model_call: int,
+    first_ordinal: int,
 ) -> tuple[_DispatchedToolCall, ...]:
     semaphore = asyncio.Semaphore(max_parallel_tools)
+    round_started = perf_counter()
+    last_ordinal = first_ordinal + len(calls) - 1
+    _log_event(
+        correlation_id,
+        "INFO",
+        "LLM::Tools",
+        f"round=<y>{round_number}</> origin_model_call=<y>{origin_model_call}</> "
+        f"<b>started</> | calls=<c>{len(calls)}</> parallel=<c>{max_parallel_tools}</> "
+        f"ordinals=<c>{first_ordinal}-{last_ordinal}</>",
+    )
 
-    async def dispatch(call: AgentToolCall) -> _DispatchedToolCall:
+    async def dispatch(index: int, call: AgentToolCall) -> _DispatchedToolCall:
+        scheduled = perf_counter()
         async with semaphore:
+            queue_elapsed = perf_counter() - scheduled
+            ordinal = first_ordinal + index
+            _log_event(
+                correlation_id,
+                "INFO",
+                "LLM::Tools",
+                f"tool=<y>{ordinal}</> round=<y>{round_number}</> "
+                f"slot=<c>{index + 1}/{len(calls)}</> <b>started</> | "
+                f"name=<g>{_safe_log_text(call.name)}</> "
+                f"queue=<c>{queue_elapsed * 1000:.1f}ms</>",
+            )
             return await _dispatch_tool_call(
                 call,
                 registry=registry,
                 max_result_bytes=max_result_bytes,
+                correlation_id=correlation_id,
+                ordinal=ordinal,
+                round_number=round_number,
             )
 
     async with asyncio.TaskGroup() as task_group:
-        tasks = [task_group.create_task(dispatch(call)) for call in calls]
-    return tuple(task.result() for task in tasks)
+        tasks = [
+            task_group.create_task(dispatch(index, call))
+            for index, call in enumerate(calls)
+        ]
+    results = tuple(task.result() for task in tasks)
+    _log_event(
+        correlation_id,
+        "INFO",
+        "LLM::Tools",
+        f"round=<y>{round_number}</> <g>completed</> | calls=<c>{len(calls)}</> "
+        f"elapsed=<c>{(perf_counter() - round_started) * 1000:.1f}ms</>",
+    )
+    return results
 
 
 async def _dispatch_tool_call(
@@ -322,6 +515,9 @@ async def _dispatch_tool_call(
     *,
     registry: dict[str, BoundTool[Any, Any]],
     max_result_bytes: int,
+    correlation_id: str | None,
+    ordinal: int,
+    round_number: int,
 ) -> _DispatchedToolCall:
     started = perf_counter()
     tool = registry.get(call.name)
@@ -331,26 +527,39 @@ async def _dispatch_tool_call(
             category=ToolErrorCategory.UNKNOWN_TOOL,
             summary="unknown tool",
             elapsed=perf_counter() - started,
+            correlation_id=correlation_id,
+            ordinal=ordinal,
+            round_number=round_number,
         )
 
     try:
         arguments = tool.validate_arguments(call.arguments)
-    except ToolArgumentsError:
+    except ToolArgumentsError as error:
         return _failed_tool_call(
             call,
             category=ToolErrorCategory.INVALID_ARGUMENTS,
             summary="invalid arguments",
             elapsed=perf_counter() - started,
+            correlation_id=correlation_id,
+            ordinal=ordinal,
+            round_number=round_number,
+            cause_name=type(error).__name__,
         )
 
     try:
         output = await tool.invoke(arguments)
-    except Exception:
+    except asyncio.CancelledError:
+        raise
+    except Exception as error:
         return _failed_tool_call(
             call,
             category=ToolErrorCategory.EXECUTION,
             summary="handler failed",
             elapsed=perf_counter() - started,
+            correlation_id=correlation_id,
+            ordinal=ordinal,
+            round_number=round_number,
+            cause_name=type(error).__name__,
         )
 
     try:
@@ -365,15 +574,51 @@ async def _dispatch_tool_call(
             summary="result too large",
             elapsed=perf_counter() - started,
             result_bytes=error.result_bytes,
+            correlation_id=correlation_id,
+            ordinal=ordinal,
+            round_number=round_number,
+            cause_name=type(error).__name__,
         )
-    except ToolOutputSerializationError:
+    except ToolOutputSerializationError as error:
         return _failed_tool_call(
             call,
             category=ToolErrorCategory.EXECUTION,
             summary="invalid result",
             elapsed=perf_counter() - started,
+            correlation_id=correlation_id,
+            ordinal=ordinal,
+            round_number=round_number,
+            cause_name=type(error).__name__,
         )
 
+    elapsed = perf_counter() - started
+    reported_error = output.reported_error_code
+    diagnostic = (
+        ""
+        if output.diagnostic is None
+        else f" diagnostic=<y>{_safe_log_text(output.diagnostic, 160)}</>"
+    )
+    if reported_error is None:
+        _log_event(
+            correlation_id,
+            "INFO",
+            "LLM::Tools",
+            f"tool=<y>{ordinal}</> <g>completed</> | "
+            f"name=<g>{_safe_log_text(call.name)}</> "
+            f"elapsed=<c>{elapsed * 1000:.1f}ms</> bytes=<c>{result_bytes}</> "
+            f"summary=<c>{_safe_log_text(output.summary, 160)}</>{diagnostic}",
+        )
+    else:
+        _log_event(
+            correlation_id,
+            "WARNING",
+            "LLM::Tools",
+            f"tool=<y>{ordinal}</> <r>reported error</> | "
+            f"name=<g>{_safe_log_text(call.name)}</> "
+            f"code=<y>{_safe_log_text(reported_error)}</> "
+            f"elapsed=<c>{elapsed * 1000:.1f}ms</> bytes=<c>{result_bytes}</> "
+            f"summary=<c>{_safe_log_text(output.summary, 160)}</>{diagnostic}",
+        )
     return _DispatchedToolCall(
         result=AgentToolResult(
             call_id=call.id,
@@ -383,9 +628,12 @@ async def _dispatch_tool_call(
         trace=ToolCallTrace(
             name=call.name,
             summary=output.summary,
-            success=True,
-            elapsed=perf_counter() - started,
+            success=reported_error is None,
+            elapsed=elapsed,
             result_bytes=result_bytes,
+            error_category=(
+                None if reported_error is None else ToolErrorCategory.REPORTED
+            ),
         ),
     )
 
@@ -396,8 +644,22 @@ def _failed_tool_call(
     category: ToolErrorCategory,
     summary: str,
     elapsed: float,
+    correlation_id: str | None,
+    ordinal: int,
+    round_number: int,
     result_bytes: int = 0,
+    cause_name: str | None = None,
 ) -> _DispatchedToolCall:
+    cause = _safe_log_text(cause_name or "none")
+    _log_event(
+        correlation_id,
+        "WARNING",
+        "LLM::Tools",
+        f"tool=<y>{ordinal}</> round=<y>{round_number}</> <r>failed</> | "
+        f"name=<g>{_safe_log_text(call.name)}</> category=<y>{category.value}</> "
+        f"cause=<r>{cause}</> elapsed=<c>{elapsed * 1000:.1f}ms</> "
+        f"bytes=<c>{result_bytes}</>",
+    )
     content = json.dumps(
         {"error": category.value},
         ensure_ascii=True,

@@ -34,6 +34,7 @@ from .contracts import (
     VisionStageResult,
 )
 from .input import AdapterImageFetcher, ImageURLResolver, prepare_images
+from .log import cause_name, log_event, safe_log_text
 
 _VISION_PROMPT: Final = (
     "Analyze only the attached image for another model.\n"
@@ -103,6 +104,7 @@ async def route_vision(
     adapter_image_fetcher: AdapterImageFetcher | None = None,
     url_resolver: ImageURLResolver | None = None,
     url_transport: httpx.AsyncBaseTransport | None = None,
+    correlation_id: str | None = None,
 ) -> VisionRoutingResult:
     """Prepare images and route them directly or through the fallback vision model."""
 
@@ -116,6 +118,14 @@ async def route_vision(
             prepared=(),
             failures=(),
         )
+    log_event(
+        correlation_id,
+        "INFO",
+        "ZSSM::Vision",
+        f"<b>started</> | requested=<c>{len(collected.images)}</> "
+        f"primary=<g>{safe_log_text(primary_model)}</> "
+        f"fallback=<g>{safe_log_text(vision_model)}</>",
+    )
 
     vision_handle = (
         None
@@ -131,7 +141,21 @@ async def route_vision(
         url_resolver=url_resolver,
         url_transport=url_transport,
     )
+    log_event(
+        correlation_id,
+        "INFO" if preparation.images else "WARNING",
+        "ZSSM::Vision",
+        f"<b>images prepared</> | requested=<c>{preparation.statistics.requested}</> "
+        f"prepared=<c>{preparation.statistics.prepared}</> "
+        f"failed=<y>{preparation.statistics.acquisition_failed}</>",
+    )
     if not preparation.images:
+        log_event(
+            correlation_id,
+            "WARNING",
+            "ZSSM::Vision",
+            "<r>completed without usable images</>",
+        )
         return VisionRoutingResult(
             primary=None,
             stage=None,
@@ -142,6 +166,13 @@ async def route_vision(
         )
 
     if primary_handle.capabilities.vision:
+        log_event(
+            correlation_id,
+            "INFO",
+            "ZSSM::Vision",
+            f"<g>completed</> | route=<c>primary</> "
+            f"prepared=<c>{preparation.statistics.prepared}</>",
+        )
         return VisionRoutingResult(
             primary=_direct_primary_input(collected, preparation.images),
             stage=None,
@@ -158,6 +189,7 @@ async def route_vision(
         model_id=vision_handle.model_id,
         config=config,
         llm_service=llm_service,
+        correlation_id=correlation_id,
     )
     stats = ImageStageStatistics(
         requested=preparation.statistics.requested,
@@ -181,6 +213,14 @@ async def route_vision(
         if stage.observations
         else None
     )
+    log_event(
+        correlation_id,
+        "WARNING" if failures else "INFO",
+        "ZSSM::Vision",
+        f"<g>completed</> | route=<c>fallback</> "
+        f"succeeded=<c>{len(stage.observations)}</> failed=<y>{len(failures)}</> "
+        f"elapsed=<c>{stage.elapsed * 1000:.1f}ms</>",
+    )
     return VisionRoutingResult(
         primary=primary,
         stage=stage,
@@ -198,6 +238,7 @@ async def _run_vision_stage(
     model_id: str,
     config: ImagesConfig,
     llm_service: LLMService,
+    correlation_id: str | None = None,
 ) -> VisionStageResult:
     outcomes: list[VisionObservation | ImageFailure | None] = [None] * len(images)
     usages: list[TokenUsage | None] = [None] * len(images)
@@ -206,6 +247,16 @@ async def _run_vision_stage(
 
     async def observe_one(index: int, image: PreparedImage) -> None:
         async with semaphore:
+            call_number = index + 1
+            call_started = perf_counter()
+            log_event(
+                correlation_id,
+                "INFO",
+                "ZSSM::Vision",
+                f"call=<y>{call_number}/{len(images)}</> <b>started</> | "
+                f"image=<c>{safe_log_text(image.label)}</> "
+                f"model=<g>{safe_log_text(model_alias)}</>",
+            )
             try:
                 result = await llm_service.complete_text(
                     ChatInput(
@@ -232,6 +283,16 @@ async def _run_vision_stage(
                     truncated=truncated,
                 )
                 usages[index] = result.usage
+                usage = result.usage
+                log_event(
+                    correlation_id,
+                    "INFO",
+                    "ZSSM::Vision",
+                    f"call=<y>{call_number}/{len(images)}</> <g>completed</> | "
+                    f"elapsed=<c>{(perf_counter() - call_started) * 1000:.1f}ms</> "
+                    f"tokens_norm=<c>{usage.prompt_tokens}/{usage.completion_tokens}/"
+                    f"{usage.total_tokens}</> truncated=<y>{str(truncated).lower()}</>",
+                )
             except LLMRunError as error:
                 if error.category not in _EXPECTED_VISION_FAILURES:
                     raise
@@ -239,6 +300,15 @@ async def _run_vision_stage(
                     label=image.label,
                     stage=ImageFailureStage.VISION,
                     category=ImageFailureCategory.MODEL,
+                )
+                log_event(
+                    correlation_id,
+                    "WARNING",
+                    "ZSSM::Vision",
+                    f"call=<y>{call_number}/{len(images)}</> <r>failed</> | "
+                    f"category=<y>{error.category.value}</> "
+                    f"cause=<r>{safe_log_text(cause_name(error))}</> "
+                    f"elapsed=<c>{(perf_counter() - call_started) * 1000:.1f}ms</>",
                 )
 
     children = [

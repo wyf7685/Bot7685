@@ -239,6 +239,7 @@ class LLMService:
         model: str | None = None,
         temperature: float | None = None,
         limits: AgentLimits = _DEFAULT_AGENT_LIMITS,
+        correlation_id: str | None = None,
     ) -> AgentRunResult:
         """Run one bounded conversation under a single runtime lease."""
 
@@ -252,6 +253,7 @@ class LLMService:
                 model=handle.alias,
                 temperature=temperature,
                 limits=limits,
+                correlation_id=correlation_id,
             )
 
     @staticmethod

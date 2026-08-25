@@ -4,11 +4,9 @@ import asyncio
 import re
 import unicodedata
 from collections.abc import Iterator, Sequence
-from typing import TYPE_CHECKING, NoReturn
+from typing import TYPE_CHECKING
 from urllib.parse import urlsplit, urlunsplit
 
-from nonebot import logger
-from nonebot.exception import MatcherException
 from nonebot_plugin_alconna import CustomNode, UniMessage
 
 from .config import RenderingConfig
@@ -338,24 +336,16 @@ def render_error(error: RenderFailure | LLMServiceError) -> UniMessage:
     return UniMessage.text(message)
 
 
-async def send_reference(nodes: Sequence[CustomNode]) -> NoReturn:
-    """Finish one Reference without inspecting or calling adapter-native APIs."""
+async def send_reference(nodes: Sequence[CustomNode]) -> None:
+    """Send one Reference without inspecting or calling adapter-native APIs."""
 
     if not nodes:
         raise ValueError("reference requires at least one node")
     try:
-        await UniMessage.reference(*nodes).finish()
+        await UniMessage.reference(*nodes).send()
     except asyncio.CancelledError:
         raise
-    except MatcherException:
-        raise
-    except Exception as error:
-        cause = _display_text(type(error).__name__, 80) or "Exception"
-        logger.warning(
-            "ZSSM Reference send failed: category={} cause={}",
-            RenderFailureCategory.RENDER.value,
-            cause,
-        )
+    except Exception:
         raise ReferenceSendError from None
 
 

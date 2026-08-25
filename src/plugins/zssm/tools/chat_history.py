@@ -292,6 +292,7 @@ async def _handle_recent_messages(
         return ToolOutput(
             value=_result_value(result),
             summary="returned=0 truncated=false",
+            reported_error_code="history_unsupported_scene",
         )
 
     try:
@@ -301,6 +302,7 @@ async def _handle_recent_messages(
         return ToolOutput(
             value=_result_value(result),
             summary="returned=0 truncated=false",
+            reported_error_code="history_query_failed",
         )
 
     messages_descending: list[HistoryMessage] = []
@@ -340,11 +342,13 @@ async def _handle_recent_messages(
         )
         truncated = truncated or conversion_failed or content_truncated
 
+    reported_error_code: str | None = None
     if rows and not messages_descending:
         result = RecentMessagesResult(
             status=HistoryStatus.UNAVAILABLE,
             truncated=True,
         )
+        reported_error_code = "history_conversion_failed"
     else:
         result = _fit_result_messages(
             messages_descending,
@@ -357,6 +361,7 @@ async def _handle_recent_messages(
             f"returned={result.returned} "
             f"truncated={"true" if result.truncated else "false"}"
         ),
+        reported_error_code=reported_error_code,
     )
 
 

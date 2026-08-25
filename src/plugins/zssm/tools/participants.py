@@ -427,12 +427,14 @@ async def _handle_participant_info(
     context: ZssmToolContext,
     arguments: ParticipantInfoArgs,
 ) -> ToolOutput:
+    reported_error_code: str | None = None
     try:
         participants = await context.participant_resolver.resolve_known(
             arguments.participant_aliases
         )
     except Exception:
         participants = ()
+        reported_error_code = "participant_resolution_failed"
     participant_values: list[JSONValue] = []
     for participant in participants:
         participant_value: dict[str, JSONValue] = {
@@ -449,7 +451,11 @@ async def _handle_participant_info(
         "participants": participant_values,
         "returned": len(participants),
     }
-    return ToolOutput(value=value, summary=f"returned={len(participants)}")
+    return ToolOutput(
+        value=value,
+        summary=f"returned={len(participants)}",
+        reported_error_code=reported_error_code,
+    )
 
 
 def build_participant_info_tool(
