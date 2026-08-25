@@ -58,6 +58,7 @@ type SearchErrorCode = Literal[
 ]
 type SearchDiagnosticReason = Literal[
     "forbidden",
+    "feature_not_available",
     "inactive_api_key",
     "invalid_api_key",
     "no_results",
@@ -350,6 +351,8 @@ def _tavily_error_reason(response: httpx.Response) -> SearchDiagnosticReason:
         )
     ):
         return "invalid_api_key"
+    if "only available on" in normalized or "not available on" in normalized:
+        return "feature_not_available"
     if "usage limit" in normalized or "pay-as-you-go limit" in normalized:
         return "usage_limit"
     if "excessive requests" in normalized or "request has been blocked" in normalized:
@@ -373,7 +376,9 @@ class TavilySearchProvider(WebSearchProvider):
         self._client = client
         self._api_key = config.tavily_api_key
         self._timeout = httpx.Timeout(config.timeout_seconds)
-        self._safe_search = config.safe_search != "off"
+        # Tavily's enhanced safe search is boolean and enterprise-only. The
+        # shared "moderate" setting must not opt into that strict feature.
+        self._safe_search = config.safe_search == "strict"
         self._citations = citation_registry
 
     async def search(
