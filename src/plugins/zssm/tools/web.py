@@ -56,7 +56,14 @@ type SearchErrorCode = Literal[
     "timeout",
     "unavailable",
 ]
-type SearchDiagnosticReason = Literal["no_results"]
+type SearchDiagnosticReason = Literal[
+    "forbidden",
+    "inactive_api_key",
+    "invalid_api_key",
+    "no_results",
+    "request_blocked",
+    "usage_limit",
+]
 type FetchErrorCode = Literal[
     "content_encoding",
     "decode",
@@ -309,6 +316,47 @@ class BraveSearchProvider(WebSearchProvider):
             ) from None
 
 
+def _tavily_error_reason(response: httpx.Response) -> SearchDiagnosticReason:
+    defaults: dict[int, SearchDiagnosticReason] = {
+        401: "invalid_api_key",
+        403: "forbidden",
+        429: "request_blocked",
+        432: "usage_limit",
+        433: "usage_limit",
+    }
+    default = defaults.get(response.status_code, "forbidden")
+    try:
+        payload = response.json()
+    except TypeError, ValueError:
+        return default
+    if not isinstance(payload, Mapping):
+        return default
+    detail = payload.get("detail")
+    message = detail.get("error") if isinstance(detail, Mapping) else detail
+    if not isinstance(message, str):
+        return default
+    normalized = " ".join(message.casefold().split())
+    if any(term in normalized for term in ("expired", "deactivated", "inactive")):
+        return "inactive_api_key"
+    if any(
+        term in normalized
+        for term in (
+            "invalid api key",
+            "api key is invalid",
+            "missing api key",
+            "api key is missing",
+            "unauthorized",
+            "not authorized",
+        )
+    ):
+        return "invalid_api_key"
+    if "usage limit" in normalized or "pay-as-you-go limit" in normalized:
+        return "usage_limit"
+    if "excessive requests" in normalized or "request has been blocked" in normalized:
+        return "request_blocked"
+    return default
+
+
 class TavilySearchProvider(WebSearchProvider):
     """Tavily web search using an application-owned shared HTTP client."""
 
@@ -368,9 +416,17 @@ class TavilySearchProvider(WebSearchProvider):
             ) from None
 
         if response.status_code in (429, 432, 433):
-            raise WebSearchError("rate_limited", status_code=response.status_code)
+            raise WebSearchError(
+                "rate_limited",
+                status_code=response.status_code,
+                reason=_tavily_error_reason(response),
+            )
         if response.status_code in (401, 403):
-            raise WebSearchError("configuration", status_code=response.status_code)
+            raise WebSearchError(
+                "configuration",
+                status_code=response.status_code,
+                reason=_tavily_error_reason(response),
+            )
         if not 200 <= response.status_code < 300:
             raise WebSearchError("unavailable", status_code=response.status_code)
 
