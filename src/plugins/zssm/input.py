@@ -71,6 +71,7 @@ _MEDIA_PLACEHOLDERS: Final[dict[type[Segment], str]] = {
 }
 
 type ImageURLResolver = Callable[[str, int], Awaitable[Sequence[str]]]
+type AdapterImageFetcher = Callable[[Image], Awaitable[bytes | None]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -331,6 +332,7 @@ async def prepare_images(
     collected: CollectedInput,
     *,
     config: ImagesConfig,
+    adapter_image_fetcher: AdapterImageFetcher | None = None,
     url_resolver: ImageURLResolver | None = None,
     url_transport: httpx.AsyncBaseTransport | None = None,
 ) -> ImagePreparationResult:
@@ -347,7 +349,9 @@ async def prepare_images(
     candidates = _deduplicate_source_references(collected.images)
     if len(candidates) > config.max_count:
         raise ImageLimitError(f"at most {config.max_count} unique images are allowed")
-    needs_http = any(_uses_url_source(item.segment) for item in candidates)
+    needs_http = any(
+        _uses_url_source(item.segment, adapter_image_fetcher) for item in candidates
+    )
     if needs_http:
         owned_transport = url_transport is None
         active_transport = url_transport or httpx.AsyncHTTPTransport(
@@ -365,12 +369,22 @@ async def prepare_images(
             transport=active_transport,
         )
         try:
-            acquired_outcomes = await _acquire_all(candidates, config, fetcher)
+            acquired_outcomes = await _acquire_all(
+                candidates,
+                config,
+                fetcher,
+                adapter_image_fetcher,
+            )
         finally:
             if owned_transport:
                 await active_transport.aclose()
     else:
-        acquired_outcomes = await _acquire_all(candidates, config, None)
+        acquired_outcomes = await _acquire_all(
+            candidates,
+            config,
+            None,
+            adapter_image_fetcher,
+        )
 
     unique_acquired: list[_AcquiredImage] = []
     failures: list[ImageFailure] = []
@@ -472,21 +486,35 @@ def _source_location_key(segment: Image) -> tuple[str, str] | None:
     return None
 
 
-def _uses_url_source(segment: Image) -> bool:
-    return segment.raw is None and segment.path is None and bool(segment.url)
+def _uses_url_source(
+    segment: Image,
+    adapter_image_fetcher: AdapterImageFetcher | None,
+) -> bool:
+    return (
+        segment.raw is None
+        and segment.path is None
+        and bool(segment.url)
+        and not (segment.id and adapter_image_fetcher is not None)
+    )
 
 
 async def _acquire_all(
     images: tuple[CollectedImageInput, ...],
     config: ImagesConfig,
     fetcher: _SafeImageFetcher | None,
+    adapter_image_fetcher: AdapterImageFetcher | None,
 ) -> list[_AcquiredImage | ImageFailure]:
     semaphore = asyncio.Semaphore(config.max_parallel)
     outcomes: list[_AcquiredImage | ImageFailure | None] = [None] * len(images)
 
     async def acquire_one(index: int, image: CollectedImageInput) -> None:
         async with semaphore:
-            outcomes[index] = await _acquire_outcome(image, config, fetcher)
+            outcomes[index] = await _acquire_outcome(
+                image,
+                config,
+                fetcher,
+                adapter_image_fetcher,
+            )
 
     async with asyncio.TaskGroup() as tasks:
         for index, image in enumerate(images):
@@ -498,9 +526,15 @@ async def _acquire_outcome(
     image: CollectedImageInput,
     config: ImagesConfig,
     fetcher: _SafeImageFetcher | None,
+    adapter_image_fetcher: AdapterImageFetcher | None,
 ) -> _AcquiredImage | ImageFailure:
     try:
-        data = await _read_image_source(image.segment, config.max_source_bytes, fetcher)
+        data = await _read_image_source(
+            image.segment,
+            config.max_source_bytes,
+            fetcher,
+            adapter_image_fetcher,
+        )
         if not data:
             raise _InvalidImageError
         digest = hashlib.sha256(data).hexdigest()
@@ -524,6 +558,7 @@ async def _read_image_source(
     segment: Image,
     limit: int,
     fetcher: _SafeImageFetcher | None,
+    adapter_image_fetcher: AdapterImageFetcher | None,
 ) -> bytes:
     if segment.raw is not None:
         if isinstance(segment.raw, BytesIO):
@@ -541,6 +576,15 @@ async def _read_image_source(
         return segment.raw
     if segment.path is not None:
         return await asyncio.to_thread(_read_path_bounded, Path(segment.path), limit)
+    if segment.id and adapter_image_fetcher is not None:
+        try:
+            adapter_data = await adapter_image_fetcher(segment)
+        except Exception as error:
+            raise _ImageDownloadError from error
+        if adapter_data is not None:
+            if len(adapter_data) > limit:
+                raise _SourceTooLargeError
+            return adapter_data
     if segment.url:
         if fetcher is None:
             raise _SourceUnavailableError
@@ -876,6 +920,7 @@ def _to_prepared_image(image: NormalizedImage) -> PreparedImage:
 
 
 __all__ = [
+    "AdapterImageFetcher",
     "EmptyInputError",
     "ImageLimitError",
     "ImagePreparationResult",

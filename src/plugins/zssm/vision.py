@@ -33,7 +33,7 @@ from .contracts import (
     VisionObservation,
     VisionStageResult,
 )
-from .input import ImageURLResolver, prepare_images
+from .input import AdapterImageFetcher, ImageURLResolver, prepare_images
 
 _VISION_PROMPT: Final = (
     "Analyze only the attached image for another model.\n"
@@ -100,6 +100,7 @@ async def route_vision(
     vision_model: str,
     config: ImagesConfig,
     llm_service: LLMService,
+    adapter_image_fetcher: AdapterImageFetcher | None = None,
     url_resolver: ImageURLResolver | None = None,
     url_transport: httpx.AsyncBaseTransport | None = None,
 ) -> VisionRoutingResult:
@@ -126,6 +127,7 @@ async def route_vision(
     preparation = await prepare_images(
         collected,
         config=config,
+        adapter_image_fetcher=adapter_image_fetcher,
         url_resolver=url_resolver,
         url_transport=url_transport,
     )

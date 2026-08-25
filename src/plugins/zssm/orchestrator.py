@@ -30,7 +30,7 @@ from .contracts import (
     ToolDisplayStatus,
     ZssmInvocationFacts,
 )
-from .input import collect_input
+from .input import AdapterImageFetcher, collect_input
 from .prompt import SYSTEM_PROMPT
 from .state import active_model_store
 from .tools import (
@@ -168,6 +168,7 @@ async def run_zssm(
     quoted: UniMessage | None,
     config: ZssmConfig,
     service: LLMService,
+    adapter_image_fetcher: AdapterImageFetcher | None = None,
     participant_resolver_factory: Callable[
         [Bot, Session, Any], InvocationParticipantResolver
     ] = InvocationParticipantResolver,
@@ -222,6 +223,7 @@ async def run_zssm(
             vision_model=config.vision_model,
             config=config.images,
             llm_service=service,
+            adapter_image_fetcher=adapter_image_fetcher,
         )
         if routed.primary is None:
             raise AllImagesFailedError

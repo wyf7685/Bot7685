@@ -4,8 +4,9 @@ import asyncio
 from typing import Never
 
 from nonebot import logger
-from nonebot.adapters import Bot
-from nonebot_plugin_alconna import MsgId, UniMessage, UniMsg
+from nonebot.adapters import Bot, Event
+from nonebot.typing import T_State
+from nonebot_plugin_alconna import Image, MsgId, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_alconna.builtins.extensions.reply import ReplyRecordExtension
 from nonebot_plugin_uninfo import Uninfo
 
@@ -57,6 +58,8 @@ def _quoted_message(
 @matcher.handle()
 async def _handle_zssm(
     bot: Bot,
+    event: Event,
+    state: T_State,
     session: Uninfo,
     current: UniMsg,
     content: ParsedContent,
@@ -86,6 +89,9 @@ async def _handle_zssm(
             cause=type(error),
         )
 
+    async def fetch_adapter_image(image: Image) -> bytes | None:
+        return await image_fetch(event, bot, state, image)
+
     try:
         model = await run_zssm(
             bot=bot,
@@ -95,6 +101,7 @@ async def _handle_zssm(
             quoted=quoted_copy,
             config=config,
             service=service,
+            adapter_image_fetcher=fetch_adapter_image,
         )
     except asyncio.CancelledError:
         raise
