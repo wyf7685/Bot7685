@@ -30,6 +30,7 @@ from .contracts import (
     ToolDisplayStatus,
     ZssmInvocationFacts,
 )
+from .forward import expand_forward_inputs
 from .input import AdapterImageFetcher, collect_input
 from .prompt import SYSTEM_PROMPT
 from .state import active_model_store
@@ -179,6 +180,9 @@ async def run_zssm(
         ..., AbstractAsyncContextManager[ZssmToolResources]
     ] = open_zssm_tool_resources,
     vision_router: Callable[..., Awaitable[VisionRoutingResult]] = route_vision,
+    forward_expander: Callable[..., Awaitable[tuple[UniMessage, UniMessage | None]]] = (
+        expand_forward_inputs
+    ),
     model_snapshot_factory: Callable[..., Awaitable[Any]] | None = None,
     limiter: asyncio.Semaphore | None = None,
     now_factory: Callable[[], datetime] = lambda: datetime.now(UTC),
@@ -200,14 +204,20 @@ async def run_zssm(
 
     outer_limiter = limiter or _run_limiter(config.max_concurrent_runs)
     async with outer_limiter:
+        expanded_content, expanded_quoted = await forward_expander(
+            content_copy,
+            quoted_copy,
+            bot=bot,
+            config=config.forwards,
+        )
         participant_resolver = participant_resolver_factory(
             bot,
             session,
             config.participants,
         )
         collected = collect_input(
-            content_copy,
-            quoted_copy,
+            expanded_content,
+            expanded_quoted,
             invoker_raw_id=session.user.id,
             participant_resolver=participant_resolver,
             config=config.images,

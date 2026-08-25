@@ -41,6 +41,7 @@ _RENDER_FAILURE_MESSAGES = {
     RenderFailureCategory.PERMISSION: "当前会话没有执行此操作的权限。",
     RenderFailureCategory.EMPTY_INPUT: "请在 zssm 后输入内容，或引用一条消息。",
     RenderFailureCategory.UNSUPPORTED_INPUT: "消息中包含暂不支持的内容。",
+    RenderFailureCategory.FORWARD: "转发消息内容获取失败，请稍后重试。",
     RenderFailureCategory.IMAGE: "图片处理失败，请换一张图片或稍后重试。",
     RenderFailureCategory.LIMITS: "本次处理达到限制，请缩短内容后重试。",
     RenderFailureCategory.PROVIDER: "模型服务暂时不可用，请稍后重试。",

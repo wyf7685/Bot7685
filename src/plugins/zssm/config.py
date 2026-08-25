@@ -133,6 +133,15 @@ class HistoryConfig(_FrozenConfig):
         return self
 
 
+class ForwardsConfig(_FrozenConfig):
+    max_references: PositiveInt = 4
+    max_nodes: PositiveInt = 30
+    max_depth: int = Field(default=2, ge=1, le=4)
+    max_segments: PositiveInt = 300
+    max_text_chars: PositiveInt = 20_000
+    fetch_timeout_seconds: PositiveFloat = 10.0
+
+
 class ParticipantsConfig(_FrozenConfig):
     max_per_tool_call: int = Field(default=20, ge=1, le=20)
     max_parallel_lookups: PositiveInt = 8
@@ -165,6 +174,7 @@ class ZssmConfig(_FrozenConfig):
     agent_timeout_seconds: PositiveFloat = 120.0
     max_output_tokens: PositiveInt = 2000
     images: ImagesConfig = Field(default_factory=ImagesConfig)
+    forwards: ForwardsConfig = Field(default_factory=ForwardsConfig)
     web_search: WebSearchConfig
     fetch_page: FetchPageConfig = Field(default_factory=FetchPageConfig)
     history: HistoryConfig = Field(default_factory=HistoryConfig)
@@ -204,6 +214,7 @@ class ZssmConfig(_FrozenConfig):
 
 __all__ = [
     "FetchPageConfig",
+    "ForwardsConfig",
     "HistoryConfig",
     "ImagesConfig",
     "ParticipantsConfig",

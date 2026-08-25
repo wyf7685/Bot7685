@@ -14,6 +14,7 @@ from src.service.llm import LLMServiceError, get_llm_service
 
 from .command import ParsedContent, matcher
 from .contracts import RenderFailure, RenderFailureCategory
+from .forward import ForwardFetchError, ForwardLimitError, ForwardUnsupportedError
 from .input import EmptyInputError, ImageLimitError, UnsupportedInputError
 from .orchestrator import AllImagesFailedError, run_zssm
 from .render import (
@@ -105,6 +106,15 @@ async def _handle_zssm(
         )
     except asyncio.CancelledError:
         raise
+    except ForwardLimitError as error:
+        await _finish_failure(RenderFailureCategory.LIMITS, cause=type(error))
+    except ForwardFetchError as error:
+        await _finish_failure(RenderFailureCategory.FORWARD, cause=type(error))
+    except ForwardUnsupportedError as error:
+        await _finish_failure(
+            RenderFailureCategory.UNSUPPORTED_INPUT,
+            cause=type(error),
+        )
     except EmptyInputError as error:
         await _finish_failure(RenderFailureCategory.EMPTY_INPUT, cause=type(error))
     except UnsupportedInputError as error:

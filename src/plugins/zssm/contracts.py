@@ -744,6 +744,7 @@ class RenderFailureCategory(StrEnum):
     PERMISSION = "permission"
     EMPTY_INPUT = "empty_input"
     UNSUPPORTED_INPUT = "unsupported_input"
+    FORWARD = "forward"
     IMAGE = "image"
     LIMITS = "limits"
     PROVIDER = "provider"
