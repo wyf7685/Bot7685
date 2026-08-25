@@ -17,6 +17,7 @@ from .contracts import RenderFailure, RenderFailureCategory
 from .forward import ForwardFetchError, ForwardLimitError, ForwardUnsupportedError
 from .input import EmptyInputError, ImageLimitError, UnsupportedInputError
 from .orchestrator import AllImagesFailedError, run_zssm
+from .reaction import zssm_reaction_timeline
 from .render import (
     ReferenceSendError,
     build_reference_nodes,
@@ -58,6 +59,29 @@ def _quoted_message(
 
 @matcher.handle()
 async def _handle_zssm(
+    bot: Bot,
+    event: Event,
+    state: T_State,
+    session: Uninfo,
+    current: UniMsg,
+    content: ParsedContent,
+    message_id: MsgId,
+    reply_extension: ReplyRecordExtension,
+) -> None:
+    async with zssm_reaction_timeline(bot, event):
+        await _execute_zssm(
+            bot=bot,
+            event=event,
+            state=state,
+            session=session,
+            current=current,
+            content=content,
+            message_id=message_id,
+            reply_extension=reply_extension,
+        )
+
+
+async def _execute_zssm(
     bot: Bot,
     event: Event,
     state: T_State,
