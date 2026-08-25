@@ -2,13 +2,10 @@
 
 from nonebot.log import logger
 
-from src.service.llm import (
-    SystemMessage,
-    TokenUsage,
-    UserMessage,
-    get_llm_client,
-)
 from src.service.llm.exceptions import LLMServiceError
+from src.service.llm.models import ChatInput
+from src.service.llm.service import get_llm_service
+from src.service.llm.usage import TokenUsage
 
 
 async def call_llm[T](
@@ -18,33 +15,28 @@ async def call_llm[T](
     temperature: float = 0.7,
     max_tokens: int = 4096,
 ) -> tuple[T | None, TokenUsage]:
-    """调用 LLM 并返回文本结果。
+    """调用 LLM 并返回结构化结果及 token 使用情况。
 
     Args:
+        response_model: 结构化输出类型
         prompt: 用户提示词
         system_prompt: 可选的系统提示词
         temperature: 温度参数
-        max_tokens: 最大 token 数
+        max_tokens: 最大输出 token 数
 
     Returns:
-        tuple[str | None, TokenUsage]: LLM 返回的文本内容和 token 使用情况
+        结构化输出（失败时为 ``None``）及 token 使用情况
     """
     try:
-        client = get_llm_client()
-
-        messages = []
-        if system_prompt:
-            messages.append(SystemMessage(system_prompt))
-        messages.append(UserMessage(prompt))
-
-        with client.capture_token_usage() as get_usage:
-            content = await client.chat_completion_json(
-                *messages,
-                response_model=response_model,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            )
-            return content, get_usage()
+        result = await get_llm_service().complete_structured(
+            ChatInput.from_text(prompt),
+            output_type=response_model,
+            system_prompt=system_prompt,
+            temperature=temperature,
+            max_output_tokens=max_tokens,
+        )
     except LLMServiceError:
         logger.exception("LLM 调用失败")
         return None, TokenUsage()
+    else:
+        return result.output, result.usage

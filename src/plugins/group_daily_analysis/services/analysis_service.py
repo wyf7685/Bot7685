@@ -10,7 +10,7 @@ from nonebot.adapters import Bot
 from nonebot.log import logger
 from nonebot_plugin_uninfo import Session
 
-from src.service.llm import TokenUsage
+from src.service.llm.usage import TokenUsage
 
 from ..analyzers.chat_quality import ChatQualityAnalyzer
 from ..analyzers.golden_quote import GoldenQuoteAnalyzer

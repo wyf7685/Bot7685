@@ -61,14 +61,6 @@ class TimeConfig(BaseModel):
     )
 
 
-class OpenAIConfig(BaseModel):
-    """OpenAI API 配置"""
-
-    api_key: str = Field(description="API Key")
-    base_url: str = Field(description="API 基础 URL")
-    model: str = Field(description="模型名称")
-
-
 class PluginConfig(BaseModel):
     """全局配置"""
 
@@ -86,8 +78,6 @@ class PluginConfig(BaseModel):
     filter: FilterConfig = Field(default_factory=FilterConfig)
     # 时间配置
     time: TimeConfig = Field(default_factory=TimeConfig)
-    # OpenAI 配置
-    openai: OpenAIConfig = Field()
 
 
 class Config(BaseModel):

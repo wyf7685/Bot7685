@@ -5,13 +5,6 @@ from nonebot import get_plugin_config
 from pydantic import BaseModel, Field
 
 
-class LLMSettings(BaseModel):
-    """LLM 相关配置"""
-
-    retries: int = Field(default=2, description="LLM 请求重试次数")
-    backoff: int = Field(default=2, description="重试退避基值（秒）")
-
-
 class FeatureToggles(BaseModel):
     """分析功能开关"""
 
@@ -75,7 +68,6 @@ class PluginConfig(BaseModel):
     output_format: str = Field(
         default="image", description="输出格式 (image/text/html)"
     )
-    llm: LLMSettings = Field(default_factory=LLMSettings)
     features: FeatureToggles = Field(default_factory=FeatureToggles)
     render: RenderSettings = Field(default_factory=RenderSettings)
     auto_analysis: AutoAnalysisSettings = Field(default_factory=AutoAnalysisSettings)

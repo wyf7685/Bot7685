@@ -12,12 +12,14 @@ import math
 import random
 from typing import Any
 
-import httpx
 from nonebot import logger
 from nonebot_plugin_htmlrender import render_template
 
+from src.service.llm import ChatInput, LLMServiceError
+from src.service.llm.service import get_llm_service
+
 from .analyzer import ChatAnalyzer
-from .config import TEMPLATE_FILE, config
+from .config import TEMPLATE_FILE
 
 # 每个词独立的贡献者颜色
 WORD_COLORS = [
@@ -74,68 +76,6 @@ def truncate_text(text: str | None, length: int = 50) -> str:
 def get_avatar_url(uin: str | int) -> str:
     """获取 QQ 头像 URL"""
     return f"https://q1.qlogo.cn/g?b=qq&nk={uin}&s=640"
-
-
-async def chat_completion(
-    messages: list[dict[str, str]],
-    max_tokens: int = 100,
-    temperature: float = 0.7,
-) -> str | None:
-    """调用聊天完成 API
-
-    Args:
-        messages: 消息列表 [{"role": "user/system", "content": "..."}]
-        max_tokens: 最大生成 token 数
-        temperature: 温度参数
-
-    Returns:
-        API 返回的内容，或 None 表示失败
-    """
-    headers = {
-        "Authorization": f"Bearer {config.openai.api_key}",
-        "Content-Type": "application/json",
-    }
-    payload: dict[str, Any] = {
-        "model": config.openai.model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            response = await client.post(
-                f"{config.openai.base_url}/chat/completions",
-                json=payload,
-                headers=headers,
-            )
-
-            if response.status_code != 200:
-                logger.error(
-                    f"❌ API 错误 ({response.status_code}): {response.text[:200]}"
-                )
-                return None
-
-            data: dict[str, Any] = response.json()
-            content: str | None = (
-                data.get("choices", [{}])[0].get("message", {}).get("content")
-            )
-
-            if content is None:
-                logger.error("❌ API 未返回任何内容")
-                return None
-
-            return content.strip()
-
-    except httpx.TimeoutException:
-        logger.error("❌ 请求超时，请检查网络或代理设置")
-        return None
-    except httpx.ConnectError:
-        logger.error("❌ 连接失败，请检查代理配置")
-        return None
-    except Exception as e:
-        logger.error(f"❌ 请求失败: {e}")
-        return None
 
 
 class AIWordSelector:
@@ -201,22 +141,17 @@ class AIWordSelector:
         user_prompt: str = self.USER_PROMPT.format(len(candidates), words_text)
 
         try:
-            result: str | None = await chat_completion(
-                messages=[
-                    {"role": "system", "content": self.SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                max_tokens=100,
+            result = await get_llm_service().complete_text(
+                ChatInput.from_text(user_prompt),
+                system_prompt=self.SYSTEM_PROMPT,
                 temperature=0.7,
+                max_output_tokens=100,
             )
-
-            if result is None:
-                return None
 
             # 解析序号
             indices: list[int] = []
-            for part in result.replace("，", ",").split(","):
-                with contextlib.suppress(Exception):
+            for part in result.output.replace("，", ",").split(","):
+                with contextlib.suppress(ValueError):
                     idx = int(part.strip())
                     if 1 <= idx <= len(candidates):
                         indices.append(idx - 1)  # 转为 0 索引
@@ -235,7 +170,7 @@ class AIWordSelector:
             for i, word_data in enumerate(selected, 1):
                 logger.success(f"   {i}. {word_data["word"]} ({word_data["freq"]}次)")
 
-        except Exception:
+        except LLMServiceError:
             logger.exception("❌ AI 选词失败")
             return None
 
@@ -302,18 +237,20 @@ class AICommentGenerator:
             "\n".join(f"- {s[:50]}" for s in samples[:5]) if samples else "无"
         )
 
-        user_prompt = self.USER_PROMPT.format(word, freq, samples_text)
-        messages = [
-            {"role": "system", "content": self.SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ]
+        user_prompt: str = self.USER_PROMPT.format(word, freq, samples_text)
 
         try:
-            result = await chat_completion(messages, 100, 0.9)
-            return result or _fallback_comment()
-        except Exception:
+            result = await get_llm_service().complete_text(
+                ChatInput.from_text(user_prompt),
+                system_prompt=self.SYSTEM_PROMPT,
+                temperature=0.9,
+                max_output_tokens=100,
+            )
+        except LLMServiceError:
             logger.exception(f"   ⚠️  AI 生成失败({word})")
             return _fallback_comment()
+
+        return result.output or _fallback_comment()
 
     async def generate_batch(self, words_data: list[dict[str, Any]]) -> dict[str, str]:
         """批量生成锐评

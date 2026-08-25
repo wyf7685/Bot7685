@@ -15,7 +15,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
-from src.service.llm import TokenUsage
+from src.service.llm.usage import TokenUsage
 
 from .models import (
     EmojiStatistics,

@@ -1,54 +1,98 @@
-"""OpenAI 兼容的 LLM 服务。"""
+"""Stable LLM configuration, runtime, service, and agent contracts."""
 
-from .client import LLMClient
-from .config import service_config
+from .config import EndpointConfig, LLMConfig, ModelCapabilities, ModelConfig
+from .conversation import (
+    AgentCompletionBackend,
+    AgentHistoryItem,
+    AgentModelCapabilities,
+    AgentModelTurn,
+    AgentToolCall,
+    AgentToolResult,
+    run_agent,
+)
 from .exceptions import (
-    CircuitBreakerOpenError,
-    LLMClientNotInitializedError,
-    LLMJSONParseError,
-    LLMRequestError,
-    LLMResponseError,
-    LLMRetriesExhaustedError,
+    LLMCapabilityError,
+    LLMConfigurationError,
+    LLMErrorCategory,
+    LLMRunError,
     LLMServiceError,
 )
-from .schema import (
-    AssistantMessage,
-    Message,
-    SystemMessage,
-    TokenUsage,
-    UserMessage,
-    dump_messages,
+from .models import (
+    AgentLimits,
+    AgentRunResult,
+    AgentTrace,
+    ChatInput,
+    ChatInputPart,
+    ImagePart,
+    ModelCallTrace,
+    RunResult,
+    StructuredOutputFallbackReason,
+    StructuredOutputMode,
+    StructuredRunResult,
+    TextPart,
+    ToolCallTrace,
+    ToolErrorCategory,
 )
+from .runtime import LLMRuntime, ModelHandle
+from .service import LLMService, get_llm_service
+from .tools import (
+    BoundTool,
+    JSONObject,
+    JSONScalar,
+    JSONValue,
+    ToolArgumentsError,
+    ToolDefinition,
+    ToolOutput,
+    ToolOutputSerializationError,
+    ToolOutputTooLargeError,
+)
+from .usage import CompletionTokensDetails, PromptTokensDetails, TokenUsage
 
 __all__ = [
-    "AssistantMessage",
-    "CircuitBreakerOpenError",
-    "LLMClient",
-    "LLMClientNotInitializedError",
-    "LLMJSONParseError",
-    "LLMRequestError",
-    "LLMResponseError",
-    "LLMRetriesExhaustedError",
+    "AgentCompletionBackend",
+    "AgentHistoryItem",
+    "AgentLimits",
+    "AgentModelCapabilities",
+    "AgentModelTurn",
+    "AgentRunResult",
+    "AgentToolCall",
+    "AgentToolResult",
+    "AgentTrace",
+    "BoundTool",
+    "ChatInput",
+    "ChatInputPart",
+    "CompletionTokensDetails",
+    "EndpointConfig",
+    "ImagePart",
+    "JSONObject",
+    "JSONScalar",
+    "JSONValue",
+    "LLMCapabilityError",
+    "LLMConfig",
+    "LLMConfigurationError",
+    "LLMErrorCategory",
+    "LLMRunError",
+    "LLMRuntime",
+    "LLMService",
     "LLMServiceError",
-    "Message",
-    "SystemMessage",
+    "ModelCallTrace",
+    "ModelCapabilities",
+    "ModelConfig",
+    "ModelHandle",
+    "PromptTokensDetails",
+    "RunResult",
+    "StructuredOutputFallbackReason",
+    "StructuredOutputMode",
+    "StructuredRunResult",
+    "TextPart",
     "TokenUsage",
-    "UserMessage",
-    "dump_messages",
-    "get_llm_client",
+    "ToolArgumentsError",
+    "ToolCallTrace",
+    "ToolDefinition",
+    "ToolErrorCategory",
+    "ToolOutput",
+    "ToolOutputSerializationError",
+    "ToolOutputTooLargeError",
+    "get_llm_service",
+    "run_agent",
 ]
-
-_client: LLMClient | None = None
-
-
-def get_llm_client() -> LLMClient:
-    """获取全局 LLM 客户端实例。
-
-    Raises:
-        LLMClientNotInitializedError: 如果客户端尚未初始化
-    """
-    global _client
-    if _client is None:
-        _client = LLMClient(service_config)
-
-    return _client

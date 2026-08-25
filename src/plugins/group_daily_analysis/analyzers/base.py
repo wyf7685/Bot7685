@@ -5,7 +5,7 @@ from typing import ClassVar, LiteralString, cast
 
 from nonebot.log import logger
 
-from src.service.llm import TokenUsage
+from src.service.llm.usage import TokenUsage
 
 from ..domain.value_objects import UnifiedMessage
 from ..services.llm_service import call_llm
@@ -79,7 +79,7 @@ class BaseAnalyzer[
         response, token_usage = await call_llm(
             self.response_model, prompt, system_prompt
         )
-        if not response:
+        if response is None:
             logger.error(f"{self.data_type} 分析: LLM 未返回结果")
             return [], token_usage
 

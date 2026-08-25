@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.service.llm import TokenUsage
+from src.service.llm.usage import TokenUsage
 
 from .value_objects import ModelMixin, UnifiedMember, UnifiedMessage
 
