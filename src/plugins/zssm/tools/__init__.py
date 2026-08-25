@@ -50,23 +50,23 @@ async def open_zssm_tool_resources(
 
     async with AsyncExitStack() as stack:
         citations = citation_registry_factory()
-        brave_client: httpx.AsyncClient | None = None
+        search_client: httpx.AsyncClient | None = None
         ddgs_limiter: anyio.CapacityLimiter | None = None
-        if config.web_search.backend == "brave":
-            brave_client = await stack.enter_async_context(
+        if config.web_search.backend != "ddgs":
+            search_client = await stack.enter_async_context(
                 httpx.AsyncClient(
                     trust_env=False,
                     follow_redirects=False,
                     timeout=httpx.Timeout(None),
                 )
             )
-        else:
+        if config.web_search.backend == "ddgs":
             ddgs_limiter = anyio.CapacityLimiter(config.web_search.ddgs_max_parallel)
 
         search_provider = create_web_search_provider(
             config.web_search,
             citations,
-            client=brave_client,
+            client=search_client,
             ddgs_limiter=ddgs_limiter,
         )
         page_fetcher = page_fetcher_factory(config.fetch_page, citations)

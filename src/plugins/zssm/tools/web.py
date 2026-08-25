@@ -39,6 +39,7 @@ from ..contracts import (
 )
 
 _BRAVE_ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
+_TAVILY_ENDPOINT = "https://api.tavily.com/search"
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 _USER_AGENT = "Bot7685-ZSSM/1.0"
@@ -281,6 +282,92 @@ class BraveSearchProvider(WebSearchProvider):
                 snippet_fields=("description", "snippet"),
                 source_fields=("source", "profile"),
                 published_fields=("page_age", "age"),
+            )
+        except WebSearchError:
+            raise
+        except TypeError, ValueError:
+            raise WebSearchError("invalid_response") from None
+
+
+class TavilySearchProvider(WebSearchProvider):
+    """Tavily web search using an application-owned shared HTTP client."""
+
+    def __init__(
+        self,
+        config: WebSearchConfig,
+        citation_registry: CitationRegistry,
+        client: httpx.AsyncClient,
+    ) -> None:
+        if config.backend != "tavily" or config.tavily_api_key is None:
+            raise ValueError(
+                "TavilySearchProvider requires configured Tavily credentials"
+            )
+        self._client = client
+        self._api_key = config.tavily_api_key
+        self._timeout = httpx.Timeout(config.timeout_seconds)
+        self._safe_search = config.safe_search != "off"
+        self._citations = citation_registry
+
+    async def search(
+        self,
+        *,
+        query: str,
+        max_results: int,
+        freshness: SearchFreshness,
+    ) -> WebSearchResult:
+        body: dict[str, str | int | bool] = {
+            "query": query,
+            "search_depth": "basic",
+            "topic": "general",
+            "max_results": max_results + 1,
+            "include_answer": False,
+            "include_raw_content": False,
+            "include_images": False,
+            "safe_search": self._safe_search,
+        }
+        if freshness != "any":
+            body["time_range"] = freshness
+        headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {self._api_key.get_secret_value()}",
+            "Content-Type": "application/json",
+        }
+        try:
+            response = await self._client.post(
+                _TAVILY_ENDPOINT,
+                json=body,
+                headers=headers,
+                timeout=self._timeout,
+                follow_redirects=False,
+            )
+        except httpx.TimeoutException:
+            raise WebSearchError("timeout") from None
+        except httpx.HTTPError:
+            raise WebSearchError("unavailable") from None
+
+        if response.status_code in (429, 432, 433):
+            raise WebSearchError("rate_limited")
+        if response.status_code in (401, 403):
+            raise WebSearchError("configuration")
+        if not 200 <= response.status_code < 300:
+            raise WebSearchError("unavailable")
+
+        try:
+            payload = response.json()
+            if not isinstance(payload, Mapping):
+                raise TypeError
+            rows = payload.get("results")
+            if not isinstance(rows, list):
+                raise TypeError
+            return _normalize_search_rows(
+                query=query,
+                rows=rows,
+                max_results=max_results,
+                citations=self._citations,
+                url_fields=("url",),
+                snippet_fields=("content", "snippet", "description"),
+                source_fields=("domain", "source"),
+                published_fields=("published_date", "published"),
             )
         except WebSearchError:
             raise
@@ -754,13 +841,17 @@ def create_web_search_provider(
     *,
     client: httpx.AsyncClient | None = None,
     ddgs_limiter: anyio.CapacityLimiter | None = None,
-) -> BraveSearchProvider | DDGSSearchProvider:
+) -> BraveSearchProvider | DDGSSearchProvider | TavilySearchProvider:
     """Create exactly the configured provider; never fall back to another backend."""
 
     if config.backend == "brave":
         if client is None:
             raise ValueError("a shared HTTP client is required for Brave search")
         return BraveSearchProvider(config, citation_registry, client)
+    if config.backend == "tavily":
+        if client is None:
+            raise ValueError("a shared HTTP client is required for Tavily search")
+        return TavilySearchProvider(config, citation_registry, client)
     if config.backend == "ddgs":
         return DDGSSearchProvider(config, citation_registry, limiter=ddgs_limiter)
     raise ValueError("unsupported web search backend")
@@ -1331,6 +1422,7 @@ __all__ = [
     "InvocationCitationRegistry",
     "SafePageFetchError",
     "SearchErrorCode",
+    "TavilySearchProvider",
     "WebSearchError",
     "build_web_tools",
     "create_web_search_provider",
