@@ -41,6 +41,11 @@ from .tools import (
 from .vision import VisionRoutingResult, route_vision
 
 _CITATION_RE = re.compile(r"\[(s[1-9][0-9]*)\]")
+_KEYWORD_LINE_RE = re.compile(r"^关键词[:：]\s*(.*)$")
+_KEYWORD_SEPARATOR_RE = re.compile(r"\s*(?:\||｜|,|，|、)\s*")
+_OUTPUT_LINE_PREFIX_RE = re.compile(r"^(?:#{1,6}\s*|[-*•]\s+|\d+[.)、]\s*)")
+_BODY_WHITESPACE_RE = re.compile(r"\s+")
+_BODY_CHAR_LIMIT = 500
 _RUN_LIMITERS: WeakKeyDictionary[
     asyncio.AbstractEventLoop, dict[int, asyncio.Semaphore]
 ] = WeakKeyDictionary()
@@ -88,6 +93,38 @@ async def snapshot_history_high_water(
     return 0 if maximum is None else int(maximum)
 
 
+def _normalize_keywords(value: str) -> str:
+    keywords = tuple(
+        dict.fromkeys(
+            item.strip() for item in _KEYWORD_SEPARATOR_RE.split(value) if item.strip()
+        )
+    )
+    return " | ".join(keywords[:6]) or "综合"
+
+
+def _normalize_body(lines: list[str]) -> str:
+    normalized: list[str] = []
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("```"):
+            continue
+        line = _OUTPUT_LINE_PREFIX_RE.sub("", line, count=1).strip()
+        if line:
+            normalized.append(line)
+
+    body = _BODY_WHITESPACE_RE.sub(" ", " ".join(normalized)).strip()
+    if not body:
+        return "（抱歉，我现在还不会这个）"
+    if len(body) <= _BODY_CHAR_LIMIT:
+        return body
+
+    clipped = body[:_BODY_CHAR_LIMIT]
+    boundary = max(clipped.rfind(mark) for mark in "。！？!?")
+    if boundary >= _BODY_CHAR_LIMIT // 2:
+        return clipped[: boundary + 1]
+    return clipped[:-1].rstrip("，,；;：:、 ") + "…"
+
+
 def _safe_answer(answer: str, citations: Any) -> str:
     answer = answer.strip()
 
@@ -95,9 +132,17 @@ def _safe_answer(answer: str, citations: Any) -> str:
         return match.group(0) if citations.get(match.group(1)) is not None else ""
 
     answer = _CITATION_RE.sub(replace, answer).strip()
-    if not answer.startswith("关键词："):
-        answer = f"关键词：综合\n\n{answer}"
-    return answer
+    keyword_value = ""
+    body_lines: list[str] = []
+    for line in answer.splitlines():
+        if not keyword_value and (match := _KEYWORD_LINE_RE.match(line.strip())):
+            keyword_value = match.group(1)
+            continue
+        body_lines.append(line)
+
+    keywords = _normalize_keywords(keyword_value)
+    body = _normalize_body(body_lines)
+    return f"关键词：{keywords}\n\n{body}"
 
 
 def _tool_trace(result: Any) -> tuple[ToolDisplayEntry, ...]:
@@ -207,11 +252,12 @@ async def run_zssm(
                 model=active_alias,
                 limits=limits,
             )
-            answer = _safe_answer(result.output, resources.citations)
+            raw_answer = result.output
             if routed.stats.partial_success:
-                answer += (
-                    "\n\n图片处理提示：部分图片处理失败，以上回答仅基于成功处理的内容。"
+                raw_answer += (
+                    "\n图片处理提示：部分图片处理失败，以上解释仅基于成功处理的内容。"
                 )
+            answer = _safe_answer(raw_answer, resources.citations)
             trace = _tool_trace(result)
             primary_usage = ModelStageUsage(
                 model_alias=result.model_alias,

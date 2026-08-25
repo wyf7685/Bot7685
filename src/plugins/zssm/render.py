@@ -142,20 +142,18 @@ def _render_source(source: SourceEntry) -> str:
     return heading
 
 
-def _answer_content(model: RenderModel, config: RenderingConfig) -> str:
+def _source_content(model: RenderModel, config: RenderingConfig) -> str | None:
     assert model.answer is not None
     if not config.include_sources:
-        return model.answer
+        return None
 
     referenced = set(_CITATION_RE.findall(model.answer))
     sources = tuple(
         source for source in model.sources if source.citation_id in referenced
     )
     if not sources:
-        return model.answer
-    return f"{model.answer}\n\n应用来源:\n" + "\n".join(
-        _render_source(source) for source in sources
-    )
+        return None
+    return "参考来源：\n" + "\n".join(_render_source(source) for source in sources)
 
 
 def _format_seconds(value: float) -> str:
@@ -263,15 +261,25 @@ def build_reference_nodes(
             "failure render models must be rendered as an ordinary message"
         )
 
+    assert model.answer is not None
     nodes: list[CustomNode] = []
     nodes.extend(
         _text_nodes(
-            _answer_content(model, config),
+            model.answer,
             bot_uid=bot_uid,
             node_name=config.node_name,
             max_chars=config.max_node_chars,
         )
     )
+    if source_content := _source_content(model, config):
+        nodes.extend(
+            _text_nodes(
+                source_content,
+                bot_uid=bot_uid,
+                node_name=config.node_name,
+                max_chars=config.max_node_chars,
+            )
+        )
     nodes.extend(
         _text_nodes(
             "原始消息:",
