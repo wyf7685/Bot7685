@@ -20,6 +20,22 @@ import anyio
 import httpx
 from anyio.to_thread import run_sync
 
+from src.plugins.zssm.tools.web_sources.contracts import (
+    DownloadedPage as _DownloadedPage,
+)
+from src.plugins.zssm.tools.web_sources.contracts import (
+    ExtractedPage as _ExtractedPage,
+)
+from src.plugins.zssm.tools.web_sources.contracts import (
+    SourceAdapterError,
+)
+from src.plugins.zssm.tools.web_sources.contracts import (
+    ValidatedTarget as _ValidatedTarget,
+)
+from src.plugins.zssm.tools.web_sources.registry import (
+    DEFAULT_SOURCE_REGISTRY,
+    SourceRegistry,
+)
 from src.service.llm.tools import BoundTool, JSONValue, ToolOutput
 
 from ..config import FetchPageConfig, WebSearchConfig
@@ -581,35 +597,6 @@ class DDGSSearchProvider(WebSearchProvider):
         return rows
 
 
-@dataclass(frozen=True, slots=True)
-class _ValidatedTarget:
-    url: str
-    scheme: Literal["http", "https"]
-    hostname: str
-    port: int
-    origin: str
-    host_header: str
-
-
-@dataclass(frozen=True, slots=True)
-class _DownloadedPage:
-    status_code: int
-    final_url: str
-    media_type: str | None
-    charset: str | None
-    body: bytes
-
-
-@dataclass(frozen=True, slots=True)
-class _ExtractedPage:
-    title: str
-    author: str | None
-    site: str | None
-    published: str | None
-    language: str | None
-    text: str
-
-
 @dataclass(slots=True)
 class _RobotsCacheEntry:
     expires_at: float
@@ -628,11 +615,13 @@ class HttpxSafePageFetcher:
         resolver: AddressResolver | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
         clock: Callable[[], float] = monotonic,
+        source_registry: SourceRegistry | None = None,
     ) -> None:
         self._config = config
         self._citations = citation_registry
         self._resolver = resolver or _resolve_system_addresses
         self._clock = clock
+        self._source_registry = source_registry or DEFAULT_SOURCE_REGISTRY
         self._robots_cache: dict[str, _RobotsCacheEntry] = {}
         if transport is None:
             transport = httpx.AsyncHTTPTransport(
@@ -648,6 +637,14 @@ class HttpxSafePageFetcher:
             timeout=httpx.Timeout(None),
         )
 
+    @property
+    def respect_robots(self) -> bool:
+        return self._config.respect_robots
+
+    @property
+    def max_redirects(self) -> int:
+        return self._config.max_redirects
+
     async def __aenter__(self) -> Self:
         return self
 
@@ -657,47 +654,155 @@ class HttpxSafePageFetcher:
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def fetch(self, url: str) -> WebPageResult:
-        initial = _validate_target(url)
+    async def download(
+        self,
+        url: str,
+        *,
+        accept: str,
+        allowed_content_types: Sequence[str],
+    ) -> _DownloadedPage:
+        return await self._download(
+            url,
+            allow_http_errors=False,
+            robots_mode="enforce" if self._config.respect_robots else "skip",
+            accept=accept,
+            allowed_content_types=allowed_content_types,
+        )
+
+    async def resolve_redirects(
+        self,
+        url: str,
+        *,
+        allowed_hosts: frozenset[str],
+    ) -> str | None:
+        current = _validate_target(url)
+        redirects = 0
         try:
             with anyio.fail_after(self._config.total_timeout_seconds):
+                while True:
+                    if current.hostname not in allowed_hosts:
+                        return None
+                    if self._config.respect_robots:
+                        await self._enforce_robots(current)
+                    addresses = await self._resolve(current.hostname, current.port)
+                    request = _build_pinned_request(
+                        current,
+                        addresses[0],
+                        method="HEAD",
+                    )
+                    response: httpx.Response | None = None
+                    try:
+                        try:
+                            response = await self._client.send(
+                                request,
+                                stream=True,
+                                follow_redirects=False,
+                                auth=None,
+                            )
+                        except httpx.TimeoutException:
+                            raise SafePageFetchError("timeout") from None
+                        except httpx.HTTPError:
+                            raise SafePageFetchError("network") from None
+                        _verify_peer(response, addresses)
+                        if response.status_code not in _REDIRECT_STATUSES:
+                            return current.url
+                        if redirects >= self._config.max_redirects:
+                            raise SafePageFetchError("redirect")
+                        location = response.headers.get("location")
+                        if location is None:
+                            raise SafePageFetchError("redirect")
+                        try:
+                            current = _validate_target(urljoin(current.url, location))
+                        except TypeError, ValueError, SafePageFetchError:
+                            raise SafePageFetchError("redirect") from None
+                        redirects += 1
+                    finally:
+                        if response is not None:
+                            await _close_response(response)
+        except TimeoutError:
+            raise SafePageFetchError("timeout") from None
+
+    async def fetch(self, url: str) -> WebPageResult:
+        initial = _validate_target(url)
+        match = self._source_registry.match(initial)
+        try:
+            with anyio.fail_after(self._config.total_timeout_seconds):
+                if match is not None:
+                    adapter, source_target = match
+                    specialized = await adapter.fetch_specialized(source_target, self)
+                    if specialized is not None:
+                        return self._make_page_result(
+                            requested_url=initial.url,
+                            final_url=specialized.final_url,
+                            extracted=specialized.extracted,
+                        )
+
                 downloaded = await self._download(
                     initial.url,
                     allow_http_errors=False,
                     robots_mode="enforce" if self._config.respect_robots else "skip",
                 )
+                final_target = _validate_target(downloaded.final_url)
+                final_match = self._source_registry.match(final_target)
+                if final_match is not None:
+                    final_adapter, final_source_target = final_match
+                    extracted = final_adapter.extract_html(
+                        html=_decode_text(downloaded.body, downloaded.charset),
+                        final_url=downloaded.final_url,
+                    )
+                    if extracted is not None:
+                        return self._make_page_result(
+                            requested_url=initial.url,
+                            final_url=final_source_target.canonical_url,
+                            extracted=extracted,
+                        )
                 extracted = await self._extract(downloaded)
-                full_text = extracted.text
-                truncated = len(full_text) > self._config.max_text_chars
-                text = (
-                    full_text[: self._config.max_text_chars].rstrip()
-                    if truncated
-                    else full_text
-                )
-                if not text:
-                    raise SafePageFetchError("extract")
-                content_sha256 = hashlib.sha256(full_text.encode("utf-8")).hexdigest()
-                citation = self._citations.register_page(
+                return self._make_page_result(
                     requested_url=initial.url,
                     final_url=downloaded.final_url,
-                    title=extracted.title,
-                    source=extracted.site or urlsplit(downloaded.final_url).hostname,
-                    published=extracted.published,
+                    extracted=extracted,
                 )
-                return WebPageResult(
-                    title=extracted.title,
-                    author=extracted.author,
-                    site=extracted.site,
-                    published=extracted.published,
-                    language=extracted.language,
-                    text=text,
-                    truncated=truncated,
-                    final_url=downloaded.final_url,
-                    content_sha256=content_sha256,
-                    citation_id=citation.citation_id,
-                )
+        except SourceAdapterError:
+            raise SafePageFetchError("extract") from None
         except TimeoutError:
             raise SafePageFetchError("timeout") from None
+
+    def _make_page_result(
+        self,
+        *,
+        requested_url: str,
+        final_url: str,
+        extracted: _ExtractedPage,
+    ) -> WebPageResult:
+        full_text = extracted.text
+        truncated = len(full_text) > self._config.max_text_chars
+        text = (
+            full_text[: self._config.max_text_chars].rstrip()
+            if truncated
+            else full_text
+        )
+        if not text:
+            raise SafePageFetchError("extract")
+        content_sha256 = hashlib.sha256(full_text.encode("utf-8")).hexdigest()
+        citation = self._citations.register_page(
+            requested_url=requested_url,
+            final_url=final_url,
+            title=extracted.title,
+            source=extracted.site or urlsplit(final_url).hostname,
+            published=extracted.published,
+        )
+        return WebPageResult(
+            title=extracted.title,
+            author=extracted.author,
+            site=extracted.site,
+            published=extracted.published,
+            language=extracted.language,
+            text=text,
+            truncated=truncated,
+            final_url=final_url,
+            content_sha256=content_sha256,
+            citation_id=citation.citation_id,
+        )
 
     async def _download(
         self,
@@ -705,6 +810,9 @@ class HttpxSafePageFetcher:
         *,
         allow_http_errors: bool,
         robots_mode: _RobotsMode,
+        accept: str = "text/html,application/xhtml+xml,text/plain,text/markdown",
+        accept_encoding: str = "gzip, deflate",
+        allowed_content_types: Sequence[str] | None = None,
     ) -> _DownloadedPage:
         current = _validate_target(url)
         redirects = 0
@@ -713,7 +821,12 @@ class HttpxSafePageFetcher:
                 await self._enforce_robots(current)
             addresses = await self._resolve(current.hostname, current.port)
             chosen = addresses[0]
-            request = _build_pinned_request(current, chosen)
+            request = _build_pinned_request(
+                current,
+                chosen,
+                accept=accept,
+                accept_encoding=accept_encoding,
+            )
             response: httpx.Response | None = None
             try:
                 try:
@@ -757,7 +870,10 @@ class HttpxSafePageFetcher:
                         status_code=response.status_code,
                     )
 
-                media_type, charset = self._validate_content_type(response.headers)
+                media_type, charset = self._validate_content_type(
+                    response.headers,
+                    allowed_content_types=allowed_content_types,
+                )
                 wire = await self._read_wire_body(response)
                 encoding = self._content_encoding(response.headers)
                 body = _decode_content(
@@ -825,13 +941,23 @@ class HttpxSafePageFetcher:
             raise SafePageFetchError("network") from None
         return bytes(wire)
 
-    def _validate_content_type(self, headers: httpx.Headers) -> tuple[str, str | None]:
+    def _validate_content_type(
+        self,
+        headers: httpx.Headers,
+        *,
+        allowed_content_types: Sequence[str] | None = None,
+    ) -> tuple[str, str | None]:
         values = headers.get_list("content-type")
         if len(values) != 1:
             raise SafePageFetchError("unsupported_content")
         parts = [part.strip() for part in values[0].split(";")]
         media_type = parts[0].casefold()
-        if media_type not in self._config.allowed_content_types:
+        allowed = (
+            frozenset(allowed_content_types)
+            if allowed_content_types is not None
+            else self._config.allowed_content_types
+        )
+        if media_type not in allowed:
             raise SafePageFetchError("unsupported_content")
         charset: str | None = None
         for parameter in parts[1:]:
@@ -905,6 +1031,7 @@ class HttpxSafePageFetcher:
                 robots_url,
                 allow_http_errors=True,
                 robots_mode="skip",
+                accept_encoding="identity",
             )
         except SafePageFetchError:
             return _RobotsCacheEntry(expires_at, "unavailable")
@@ -915,7 +1042,6 @@ class HttpxSafePageFetcher:
             return _RobotsCacheEntry(expires_at, "deny")
         if downloaded.status_code >= 400:
             return _RobotsCacheEntry(expires_at, "allow")
-
         try:
             robots_text = _decode_text(downloaded.body, downloaded.charset)
             parser = RobotFileParser()
@@ -924,6 +1050,23 @@ class HttpxSafePageFetcher:
         except Exception:
             return _RobotsCacheEntry(expires_at, "unavailable")
         return _RobotsCacheEntry(expires_at, "rules", parser)
+
+
+async def resolve_card_urls(
+    urls: Sequence[str],
+    config: FetchPageConfig,
+    *,
+    source_registry: SourceRegistry | None = None,
+) -> Mapping[str, str]:
+    """Resolve supported card URLs through registered source adapters."""
+
+    registry = source_registry or DEFAULT_SOURCE_REGISTRY
+    async with HttpxSafePageFetcher(
+        config,
+        InvocationCitationRegistry(),
+        source_registry=registry,
+    ) as fetcher:
+        return await registry.resolve_card_urls(urls, fetcher)
 
 
 async def _close_response(response: httpx.Response) -> None:
@@ -1297,7 +1440,12 @@ def _is_unambiguous_global(address: _IPAddress) -> bool:
 
 
 def _build_pinned_request(
-    target: _ValidatedTarget, address: _IPAddress
+    target: _ValidatedTarget,
+    address: _IPAddress,
+    *,
+    method: Literal["GET", "HEAD"] = "GET",
+    accept: str = "text/html,application/xhtml+xml,text/plain,text/markdown",
+    accept_encoding: str = "gzip, deflate",
 ) -> httpx.Request:
     parsed = urlsplit(target.url)
     connect_host = f"[{address}]" if address.version == 6 else str(address)
@@ -1308,13 +1456,13 @@ def _build_pinned_request(
     if target.scheme == "https":
         extensions["sni_hostname"] = target.hostname
     return httpx.Request(
-        "GET",
+        method,
         connect_url,
         headers={
             "Host": target.host_header,
             "User-Agent": _USER_AGENT,
-            "Accept": "text/html,application/xhtml+xml,text/plain,text/markdown",
-            "Accept-Encoding": "gzip, deflate",
+            "Accept": accept,
+            "Accept-Encoding": accept_encoding,
         },
         extensions=extensions,
     )
@@ -1534,4 +1682,5 @@ __all__ = [
     "WebSearchError",
     "build_web_tools",
     "create_web_search_provider",
+    "resolve_card_urls",
 ]

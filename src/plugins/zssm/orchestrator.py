@@ -5,6 +5,7 @@ import re
 from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
+from functools import partial
 from time import perf_counter
 from typing import Any
 from weakref import WeakKeyDictionary
@@ -39,6 +40,7 @@ from .tools import (
     InvocationParticipantResolver,
     ZssmToolResources,
     open_zssm_tool_resources,
+    resolve_card_urls,
 )
 from .vision import VisionRoutingResult, route_vision
 
@@ -236,12 +238,16 @@ async def run_zssm(
             session,
             config.participants,
         )
-        collected = collect_input(
+        collected = await collect_input(
             expanded_content,
             expanded_quoted,
             invoker_raw_id=session.user.id,
             participant_resolver=participant_resolver,
             config=config.images,
+            card_url_resolver=partial(
+                resolve_card_urls,
+                config=config.fetch_page,
+            ),
         )
         history_high_water = await history_snapshot_factory(
             session,

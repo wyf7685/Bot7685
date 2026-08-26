@@ -23,6 +23,7 @@ from .web import (
     InvocationCitationRegistry,
     build_web_tools,
     create_web_search_provider,
+    resolve_card_urls,
 )
 
 
@@ -98,4 +99,5 @@ __all__ = [
     "InvocationParticipantResolver",
     "ZssmToolResources",
     "open_zssm_tool_resources",
+    "resolve_card_urls",
 ]
