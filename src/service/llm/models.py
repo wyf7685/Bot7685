@@ -28,6 +28,13 @@ def validate_structured_output_modes(
         )
 
 
+class ModelCapability(StrEnum):
+    TOOLS = "tools"
+    VISION = "vision"
+    STRUCTURED_OUTPUT = "structured_output"
+    PARALLEL_TOOL_CALLS = "parallel_tool_calls"
+
+
 class ModelCapabilities(BaseModel):
     """Validated, immutable capabilities shared by config and runtime models."""
 
@@ -52,6 +59,33 @@ class ModelCapabilities(BaseModel):
             raise ValueError("parallel_tool_calls requires tools capability")
         return self
 
+    def supports(self, capability: ModelCapability) -> bool:
+        if not isinstance(capability, ModelCapability):
+            raise TypeError("capability must be ModelCapability")
+        match capability:
+            case ModelCapability.TOOLS:
+                return self.tools
+            case ModelCapability.VISION:
+                return self.vision
+            case ModelCapability.STRUCTURED_OUTPUT:
+                return bool(self.structured_output_modes)
+            case ModelCapability.PARALLEL_TOOL_CALLS:
+                return self.parallel_tool_calls
+
+    def require(
+        self,
+        capability: ModelCapability,
+        *,
+        model_alias: str,
+    ) -> None:
+        if not self.supports(capability):
+            from .exceptions import LLMCapabilityError
+
+            raise LLMCapabilityError(
+                model_alias=model_alias,
+                capability=capability,
+            )
+
 
 @dataclass(frozen=True, slots=True)
 class ModelInfo:
@@ -71,6 +105,10 @@ class ModelInfo:
             raise TypeError("capabilities must be ModelCapabilities")
         object.__setattr__(self, "alias", alias)
         object.__setattr__(self, "model_id", model_id)
+
+    def require_capability(self, capability: ModelCapability) -> Self:
+        self.capabilities.require(capability, model_alias=self.alias)
+        return self
 
 
 @dataclass(frozen=True, slots=True)

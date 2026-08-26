@@ -12,10 +12,10 @@ import httpx
 from src.service.llm import (
     ChatInput,
     ChatInputPart,
-    LLMCapabilityError,
     LLMErrorCategory,
     LLMRunError,
     LLMService,
+    ModelCapability,
     TextPart,
     TokenUsage,
 )
@@ -129,11 +129,11 @@ async def route_vision(
 
     vision_handle = (
         None
-        if primary_handle.capabilities.vision
-        else llm_service.get_model(vision_model)
+        if primary_handle.capabilities.supports(ModelCapability.VISION)
+        else llm_service.get_model(vision_model).require_capability(
+            ModelCapability.VISION
+        )
     )
-    if vision_handle is not None and not vision_handle.capabilities.vision:
-        raise LLMCapabilityError(model_alias=vision_model)
     preparation = await prepare_images(
         collected,
         config=config,
@@ -165,7 +165,7 @@ async def route_vision(
             failures=preparation.failures,
         )
 
-    if primary_handle.capabilities.vision:
+    if primary_handle.capabilities.supports(ModelCapability.VISION):
         log_event(
             correlation_id,
             "INFO",

@@ -9,12 +9,7 @@ from typing import Any, Protocol
 from nonebot import logger
 from nonebot.utils import escape_tag
 
-from .exceptions import (
-    LLMCapabilityError,
-    LLMErrorCategory,
-    LLMRunError,
-    LLMServiceError,
-)
+from .exceptions import LLMErrorCategory, LLMRunError, LLMServiceError
 from .models import (
     AgentLimits,
     AgentRunResult,
@@ -22,6 +17,7 @@ from .models import (
     ChatInput,
     ModelCallTrace,
     ModelCapabilities,
+    ModelCapability,
     ToolCallTrace,
     ToolErrorCategory,
 )
@@ -195,8 +191,10 @@ async def run_agent(
     capabilities = backend.capabilities
     if not isinstance(capabilities, ModelCapabilities):
         raise TypeError("backend capabilities must be ModelCapabilities")
-    if bound_tools and not capabilities.tools:
-        raise LLMCapabilityError(model_alias=model_alias)
+    if prompt.has_images:
+        capabilities.require(ModelCapability.VISION, model_alias=model_alias)
+    if bound_tools:
+        capabilities.require(ModelCapability.TOOLS, model_alias=model_alias)
     safe_model_alias = _safe_log_text(model_alias)
     _log_event(
         correlation_id,
@@ -412,7 +410,10 @@ async def _run_bounded_conversation(
             )
 
         if not capabilities.parallel_tool_calls and len(turn.tool_calls) > 1:
-            raise LLMCapabilityError(model_alias=model_alias)
+            raise LLMRunError(
+                category=LLMErrorCategory.INVALID_RESPONSE,
+                model_alias=model_alias,
+            )
         if tool_call_count + len(turn.tool_calls) > limits.max_tool_calls:
             raise LLMRunError(
                 category=LLMErrorCategory.LIMITS,

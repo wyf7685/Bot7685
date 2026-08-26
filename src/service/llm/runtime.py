@@ -5,13 +5,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Protocol
+from typing import Protocol, Self
 
 from openai import AsyncOpenAI
 
 from .config import LLMConfig
 from .exceptions import LLMConfigurationError
-from .models import ModelCapabilities, StructuredOutputMode
+from .models import ModelCapabilities, ModelCapability, StructuredOutputMode
 
 
 class OpenAIClientFactory(Protocol):
@@ -62,6 +62,10 @@ class _ModelHandle:
     client: AsyncOpenAI
     semaphore: asyncio.Semaphore
     _structured_mode: _EffectiveStructuredMode = field(repr=False, compare=False)
+
+    def require_capability(self, capability: ModelCapability) -> Self:
+        self.capabilities.require(capability, model_alias=self.alias)
+        return self
 
     def effective_structured_mode(self) -> StructuredOutputMode:
         return self._structured_mode.current()

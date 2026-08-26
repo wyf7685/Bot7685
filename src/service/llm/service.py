@@ -27,24 +27,18 @@ from ._openai_adapter import (
 from ._selection import ActiveModelStore
 from .config import LLMConfig, get_llm_config
 from .conversation import run_agent as run_agent_conversation
-from .exceptions import (
-    LLMCapabilityError,
-    LLMConfigurationError,
-    LLMErrorCategory,
-    LLMRunError,
-)
+from .exceptions import LLMConfigurationError, LLMErrorCategory, LLMRunError
 from .models import (
     AgentLimits,
     AgentRunResult,
     ChatInput,
+    ModelCapability,
     ModelInfo,
     RunResult,
     StructuredOutputMode,
     StructuredRunResult,
 )
-from .models import (
-    StructuredOutputFallbackReason as FallbackReason,
-)
+from .models import StructuredOutputFallbackReason as FallbackReason
 from .runtime import LLMRuntime, _ModelHandle
 from .tools import BoundTool
 from .usage import TokenUsage
@@ -174,8 +168,7 @@ class LLMService:
         model_alias = await self._resolve_model_alias(model)
         async with self._runtime.lease(model_alias) as handle:
             self._enforce_capabilities(handle, prompt)
-            if not handle.capabilities.structured_output_modes:
-                raise LLMCapabilityError(model_alias=handle.alias)
+            handle.require_capability(ModelCapability.STRUCTURED_OUTPUT)
             try:
                 output_adapter = make_output_adapter(output_type)
                 envelope_schema = make_envelope_schema(output_adapter)
@@ -289,7 +282,6 @@ class LLMService:
 
         model_alias = await self._resolve_model_alias(model)
         async with self._runtime.lease(model_alias) as handle:
-            self._enforce_capabilities(handle, prompt)
             return await run_agent_conversation(
                 OpenAIAgentCompletionBackend(handle),
                 prompt,
@@ -302,8 +294,8 @@ class LLMService:
 
     @staticmethod
     def _enforce_capabilities(handle: _ModelHandle, prompt: ChatInput) -> None:
-        if prompt.has_images and not handle.capabilities.vision:
-            raise LLMCapabilityError(model_alias=handle.alias)
+        if prompt.has_images:
+            handle.require_capability(ModelCapability.VISION)
 
 
 _service: LLMService | None = None

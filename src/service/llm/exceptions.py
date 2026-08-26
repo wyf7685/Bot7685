@@ -2,6 +2,8 @@
 
 from enum import StrEnum
 
+from .models import ModelCapability
+
 
 class LLMErrorCategory(StrEnum):
     CONFIGURATION = "configuration"
@@ -25,13 +27,19 @@ class LLMServiceError(Exception):
         category: LLMErrorCategory,
         model_alias: str | None = None,
         cause: BaseException | None = None,
+        _message_fields: tuple[tuple[str, str], ...] = (),
     ) -> None:
         self.category = category
         self.model_alias = model_alias
         self.cause = cause
-        message = f"LLM service error: {category.value}"
+        fields: list[tuple[str, str]] = []
         if model_alias is not None:
-            message += f" (model={model_alias})"
+            fields.append(("model", model_alias))
+        fields.extend(_message_fields)
+        message = f"LLM service error: {category.value}"
+        if fields:
+            metadata = ", ".join(f"{key}={value}" for key, value in fields)
+            message += f" ({metadata})"
         super().__init__(message)
         if cause is not None:
             self.__cause__ = cause
@@ -56,12 +64,17 @@ class LLMCapabilityError(LLMServiceError):
         self,
         *,
         model_alias: str,
+        capability: ModelCapability,
         cause: BaseException | None = None,
     ) -> None:
+        if not isinstance(capability, ModelCapability):
+            raise TypeError("capability must be ModelCapability")
+        self.capability = capability
         super().__init__(
             category=LLMErrorCategory.CAPABILITY,
             model_alias=model_alias,
             cause=cause,
+            _message_fields=(("capability", capability.value),),
         )
 
 

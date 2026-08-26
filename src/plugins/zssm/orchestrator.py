@@ -19,7 +19,7 @@ from nonebot_plugin_uninfo import Session
 from nonebot_plugin_uninfo.orm import BotModel, SceneModel, SessionModel, UserModel
 from sqlalchemy import func, select
 
-from src.service.llm import AgentLimits, LLMCapabilityError, LLMService
+from src.service.llm import AgentLimits, LLMService, ModelCapability
 
 from .config import ZssmConfig
 from .contracts import (
@@ -197,10 +197,10 @@ async def run_zssm(
     quoted_copy = quoted.copy() if quoted is not None else None
     started_at = now_factory()
     started = clock()
-    active = await service.get_active_model()
+    active = (await service.get_active_model()).require_capability(
+        ModelCapability.TOOLS
+    )
     active_alias = active.alias
-    if not active.capabilities.tools:
-        raise LLMCapabilityError(model_alias=active_alias)
 
     outer_limiter = limiter or _run_limiter(config.max_concurrent_runs)
     wait_started = perf_counter()

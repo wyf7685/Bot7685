@@ -9,6 +9,8 @@ from urllib.parse import urlsplit, urlunsplit
 
 from nonebot_plugin_alconna import CustomNode, UniMessage
 
+from src.service.llm import LLMCapabilityError, ModelCapability
+
 from .config import RenderingConfig
 from .contracts import (
     ModelStageUsage,
@@ -44,6 +46,13 @@ _RENDER_FAILURE_MESSAGES = {
     RenderFailureCategory.PROVIDER: "模型服务暂时不可用，请稍后重试。",
     RenderFailureCategory.TOOL: "工具调用失败，请稍后重试。",
     RenderFailureCategory.RENDER: "响应发送失败，请稍后重试。",
+}
+
+_CAPABILITY_FAILURE_MESSAGES = {
+    ModelCapability.TOOLS: "当前模型不支持工具调用。",
+    ModelCapability.VISION: "当前模型不支持图片输入。",
+    ModelCapability.STRUCTURED_OUTPUT: "当前模型不支持结构化输出。",
+    ModelCapability.PARALLEL_TOOL_CALLS: "当前模型不支持并行工具调用。",
 }
 
 _LLM_FAILURE_MESSAGES = {
@@ -319,6 +328,8 @@ def render_error(error: RenderFailure | LLMServiceError) -> UniMessage:
 
     if isinstance(error, RenderFailure):
         message = _RENDER_FAILURE_MESSAGES[error.category]
+    elif isinstance(error, LLMCapabilityError):
+        message = _CAPABILITY_FAILURE_MESSAGES[error.capability]
     else:
         category = getattr(error, "category", None)
         category_value = getattr(category, "value", None)

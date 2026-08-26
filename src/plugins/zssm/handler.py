@@ -11,7 +11,7 @@ from nonebot_plugin_alconna import Image, MsgId, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_alconna.builtins.extensions.reply import ReplyRecordExtension
 from nonebot_plugin_uninfo import Uninfo
 
-from src.service.llm import LLMServiceError, get_llm_service
+from src.service.llm import LLMCapabilityError, LLMServiceError, get_llm_service
 
 from .command import ParsedContent, matcher
 from .config import get_zssm_config
@@ -57,12 +57,17 @@ async def _finish_llm_failure(
     run_id: str,
     request_started: float,
 ) -> Never:
+    capability = (
+        f" capability=<y>{safe_log_text(error.capability.value)}</>"
+        if isinstance(error, LLMCapabilityError)
+        else ""
+    )
     log_event(
         run_id,
         "WARNING",
         "ZSSM",
         f"<r><b>request failed</b></> | stage=<y>agent</> "
-        f"category=<y>{error.category.value}</> "
+        f"category=<y>{error.category.value}</>{capability} "
         f"cause=<r>{safe_log_text(cause_name(error))}</> "
         f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
     )

@@ -26,11 +26,7 @@ from .conversation import (
     AgentToolCall,
     AgentToolResult,
 )
-from .exceptions import (
-    LLMCapabilityError,
-    LLMErrorCategory,
-    LLMRunError,
-)
+from .exceptions import LLMErrorCategory, LLMRunError
 from .models import (
     ChatInput,
     ImagePart,
@@ -170,16 +166,6 @@ class OpenAIAgentCompletionBackend(AgentCompletionBackend):
         parallel_tool_calls: bool,
     ) -> AgentModelTurn:
         handle = self._handle
-        if prompt.has_images and not handle.capabilities.vision:
-            raise LLMCapabilityError(model_alias=handle.alias)
-        if tools and not handle.capabilities.tools:
-            raise LLMCapabilityError(model_alias=handle.alias)
-        if (
-            tools
-            and parallel_tool_calls
-            and not handle.capabilities.parallel_tool_calls
-        ):
-            raise LLMCapabilityError(model_alias=handle.alias)
 
         messages = build_agent_messages(prompt, system_prompt, history)
         function_tools = build_function_tools(tools)
