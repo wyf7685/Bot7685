@@ -35,7 +35,6 @@ from .forward import expand_forward_inputs
 from .input import AdapterImageFetcher, collect_input
 from .log import log_event, safe_log_text
 from .prompt import SYSTEM_PROMPT
-from .state import active_model_store
 from .tools import (
     InvocationParticipantResolver,
     ZssmToolResources,
@@ -187,7 +186,6 @@ async def run_zssm(
     forward_expander: Callable[..., Awaitable[tuple[UniMessage, UniMessage | None]]] = (
         expand_forward_inputs
     ),
-    model_snapshot_factory: Callable[..., Awaitable[Any]] | None = None,
     limiter: asyncio.Semaphore | None = None,
     now_factory: Callable[[], datetime] = lambda: datetime.now(UTC),
     clock: Callable[[], float] = perf_counter,
@@ -199,11 +197,9 @@ async def run_zssm(
     quoted_copy = quoted.copy() if quoted is not None else None
     started_at = now_factory()
     started = clock()
-    snapshot = model_snapshot_factory or active_model_store.snapshot
-    active = await snapshot(config, config.selectable_models)
-    active_alias = active.active_model
-    handle = service.runtime.resolve(active_alias)
-    if not handle.capabilities.tools:
+    active = await service.get_active_model()
+    active_alias = active.alias
+    if not active.tools:
         raise LLMCapabilityError(model_alias=active_alias)
 
     outer_limiter = limiter or _run_limiter(config.max_concurrent_runs)

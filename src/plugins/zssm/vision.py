@@ -108,7 +108,7 @@ async def route_vision(
 ) -> VisionRoutingResult:
     """Prepare images and route them directly or through the fallback vision model."""
 
-    primary_handle = llm_service.runtime.resolve(primary_model)
+    primary_handle = llm_service.get_model(primary_model)
     if not collected.images:
         return VisionRoutingResult(
             primary=_base_primary_input(collected),
@@ -128,11 +128,9 @@ async def route_vision(
     )
 
     vision_handle = (
-        None
-        if primary_handle.capabilities.vision
-        else llm_service.runtime.resolve(vision_model)
+        None if primary_handle.vision else llm_service.get_model(vision_model)
     )
-    if vision_handle is not None and not vision_handle.capabilities.vision:
+    if vision_handle is not None and not vision_handle.vision:
         raise LLMCapabilityError(model_alias=vision_model)
     preparation = await prepare_images(
         collected,
@@ -165,7 +163,7 @@ async def route_vision(
             failures=preparation.failures,
         )
 
-    if primary_handle.capabilities.vision:
+    if primary_handle.vision:
         log_event(
             correlation_id,
             "INFO",

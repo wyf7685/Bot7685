@@ -72,7 +72,6 @@ class LLMRuntime:
         *,
         client_factory: OpenAIClientFactory = AsyncOpenAI,
     ) -> None:
-        self._default_alias = config.default_model
         self._clients = {
             alias: client_factory(
                 api_key=endpoint.api_key.get_secret_value(),
@@ -103,18 +102,16 @@ class LLMRuntime:
         self._drained = asyncio.Event()
         self._drained.set()
 
-    def resolve(self, alias: str | None = None) -> ModelHandle:
-        """Resolve an explicit alias or the static configured default."""
-        resolved_alias = self._default_alias if alias is None else alias
+    def resolve(self, alias: str) -> ModelHandle:
+        """Resolve one explicit configured model alias."""
         with self._lifecycle_lock:
-            return self._resolve_locked(resolved_alias)
+            return self._resolve_locked(alias)
 
     @asynccontextmanager
-    async def lease(self, alias: str | None = None) -> AsyncIterator[ModelHandle]:
-        """Atomically accept one call and keep clients open until it finishes."""
-        resolved_alias = self._default_alias if alias is None else alias
+    async def lease(self, alias: str) -> AsyncIterator[ModelHandle]:
+        """Atomically accept one explicit model call until it finishes."""
         with self._lifecycle_lock:
-            handle = self._resolve_locked(resolved_alias)
+            handle = self._resolve_locked(alias)
             self._active_calls += 1
             if self._active_calls == 1:
                 self._drained.clear()
@@ -126,12 +123,12 @@ class LLMRuntime:
                 if self._active_calls == 0:
                     self._drained.set()
 
-    def _resolve_locked(self, resolved_alias: str) -> ModelHandle:
+    def _resolve_locked(self, alias: str) -> ModelHandle:
         if self._closing:
-            raise LLMConfigurationError(model_alias=resolved_alias)
-        handle = self._handles.get(resolved_alias)
+            raise LLMConfigurationError(model_alias=alias)
+        handle = self._handles.get(alias)
         if handle is None:
-            raise LLMConfigurationError(model_alias=resolved_alias)
+            raise LLMConfigurationError(model_alias=alias)
         return handle
 
     async def aclose(self) -> None:

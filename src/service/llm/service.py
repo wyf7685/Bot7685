@@ -24,7 +24,8 @@ from ._openai_adapter import (
     parse_structured_output,
     provider_error_category,
 )
-from .config import service_config
+from ._selection import ActiveModelStore, active_model_store
+from .config import LLMConfig, service_config
 from .conversation import run_agent as run_agent_conversation
 from .exceptions import (
     LLMCapabilityError,
@@ -36,6 +37,7 @@ from .models import (
     AgentLimits,
     AgentRunResult,
     ChatInput,
+    ModelInfo,
     RunResult,
     StructuredOutputMode,
     StructuredRunResult,
@@ -51,14 +53,50 @@ _DEFAULT_AGENT_LIMITS = AgentLimits()
 
 
 class LLMService:
-    """Execute isolated text and structured model calls."""
+    """Execute isolated model calls and own the global active-model policy."""
 
-    def __init__(self, runtime: LLMRuntime) -> None:
+    def __init__(
+        self,
+        runtime: LLMRuntime,
+        config: LLMConfig,
+        model_store: ActiveModelStore = active_model_store,
+    ) -> None:
         self._runtime = runtime
+        self._config = config
+        self._model_store = model_store
 
-    @property
-    def runtime(self) -> LLMRuntime:
-        return self._runtime
+    def list_models(self) -> tuple[ModelInfo, ...]:
+        """Return immutable descriptions for every configured model alias."""
+        return tuple(self.get_model(alias) for alias in self._config.models)
+
+    def get_model(self, alias: str) -> ModelInfo:
+        """Return one configured model description."""
+        handle = self._runtime.resolve(alias.strip())
+        capabilities = handle.capabilities
+        return ModelInfo(
+            alias=handle.alias,
+            model_id=handle.model_id,
+            tools=capabilities.tools,
+            vision=capabilities.vision,
+            structured_output_modes=capabilities.structured_output_modes,
+            parallel_tool_calls=capabilities.parallel_tool_calls,
+            selectable=handle.alias in self._config.selectable_models,
+        )
+
+    async def get_active_model(self) -> ModelInfo:
+        """Return one stable snapshot of the global active model."""
+        state = await self._model_store.snapshot(self._config)
+        return self.get_model(state.active_model)
+
+    async def select_model(self, alias: str) -> ModelInfo:
+        """Persist and return one globally selectable model."""
+        state = await self._model_store.select(alias, self._config)
+        return self.get_model(state.active_model)
+
+    async def _resolve_model_alias(self, model: str | None) -> str:
+        if model is not None:
+            return model
+        return (await self.get_active_model()).alias
 
     async def aclose(self) -> None:
         await self._runtime.aclose()
@@ -72,7 +110,8 @@ class LLMService:
         temperature: float | None = None,
         max_output_tokens: int | None = None,
     ) -> RunResult[str]:
-        async with self._runtime.lease(model) as handle:
+        model_alias = await self._resolve_model_alias(model)
+        async with self._runtime.lease(model_alias) as handle:
             self._enforce_capabilities(handle, prompt)
             messages = build_messages(
                 prompt,
@@ -128,7 +167,8 @@ class LLMService:
         temperature: float | None = None,
         max_output_tokens: int | None = None,
     ) -> StructuredRunResult[T]:
-        async with self._runtime.lease(model) as handle:
+        model_alias = await self._resolve_model_alias(model)
+        async with self._runtime.lease(model_alias) as handle:
             self._enforce_capabilities(handle, prompt)
             if not handle.capabilities.structured_output_modes:
                 raise LLMCapabilityError(model_alias=handle.alias)
@@ -243,7 +283,8 @@ class LLMService:
     ) -> AgentRunResult:
         """Run one bounded conversation under a single runtime lease."""
 
-        async with self._runtime.lease(model) as handle:
+        model_alias = await self._resolve_model_alias(model)
+        async with self._runtime.lease(model_alias) as handle:
             self._enforce_capabilities(handle, prompt)
             return await run_agent_conversation(
                 OpenAIAgentCompletionBackend(handle),
@@ -274,7 +315,7 @@ def get_llm_service() -> LLMService:
         if _service_shutdown_started:
             raise LLMConfigurationError
         if _service is None:
-            _service = LLMService(LLMRuntime(service_config))
+            _service = LLMService(LLMRuntime(service_config), service_config)
         return _service
 
 

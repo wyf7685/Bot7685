@@ -14,6 +14,7 @@ from nonebot_plugin_uninfo import Uninfo
 from src.service.llm import LLMServiceError, get_llm_service
 
 from .command import ParsedContent, matcher
+from .config import get_zssm_config
 from .contracts import RenderFailure, RenderFailureCategory
 from .forward import ForwardFetchError, ForwardLimitError, ForwardUnsupportedError
 from .input import EmptyInputError, ImageLimitError, UnsupportedInputError
@@ -26,7 +27,6 @@ from .render import (
     render_error,
     send_reference,
 )
-from .state import get_zssm_config
 
 
 async def _finish_failure(

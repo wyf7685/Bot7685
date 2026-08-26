@@ -1,5 +1,6 @@
 from typing import Literal, Self
 
+from nonebot import get_plugin_config
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -164,8 +165,6 @@ class RenderingConfig(_FrozenConfig):
 
 
 class ZssmConfig(_FrozenConfig):
-    default_model: str = Field(default="deepseek", min_length=1)
-    selectable_models: tuple[str, ...] = ("deepseek", "gpt")
     vision_model: str = Field(default="mimo-vision", min_length=1)
     max_concurrent_runs: PositiveInt = 2
     max_agent_model_calls: PositiveInt = 8
@@ -181,7 +180,7 @@ class ZssmConfig(_FrozenConfig):
     participants: ParticipantsConfig = Field(default_factory=ParticipantsConfig)
     rendering: RenderingConfig = Field(default_factory=RenderingConfig)
 
-    @field_validator("default_model", "vision_model")
+    @field_validator("vision_model")
     @classmethod
     def validate_model_name(cls, value: str) -> str:
         value = value.strip()
@@ -189,27 +188,22 @@ class ZssmConfig(_FrozenConfig):
             raise ValueError("model alias must not be empty")
         return value
 
-    @field_validator("selectable_models")
-    @classmethod
-    def validate_selectable_models(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        normalized = tuple(alias.strip() for alias in value)
-        if not normalized or any(not alias for alias in normalized):
-            raise ValueError("selectable_models must not be empty")
-        if len(set(normalized)) != len(normalized):
-            raise ValueError("selectable_models must be unique")
-        return normalized
-
     @model_validator(mode="after")
-    def validate_model_selection(self) -> Self:
-        if self.default_model not in self.selectable_models:
-            raise ValueError("default_model must be selectable")
-        if self.vision_model in self.selectable_models:
-            raise ValueError("vision_model must not be selectable")
+    def validate_agent_limits(self) -> Self:
         if self.max_agent_parallel_tools > self.max_agent_tool_calls:
             raise ValueError(
                 "max_agent_parallel_tools must not exceed max_agent_tool_calls"
             )
         return self
+
+
+class RootConfig(BaseModel):
+    zssm: ZssmConfig
+
+
+def get_zssm_config() -> ZssmConfig:
+    """Validate and return the plugin's section of the global configuration."""
+    return get_plugin_config(RootConfig).zssm
 
 
 __all__ = [
@@ -219,6 +213,8 @@ __all__ = [
     "ImagesConfig",
     "ParticipantsConfig",
     "RenderingConfig",
+    "RootConfig",
     "WebSearchConfig",
     "ZssmConfig",
+    "get_zssm_config",
 ]

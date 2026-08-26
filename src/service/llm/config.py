@@ -84,6 +84,7 @@ class LLMConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     default_model: str = Field(min_length=1)
+    selectable_models: tuple[str, ...]
     endpoints: dict[str, EndpointConfig] = Field(min_length=1)
     models: dict[str, ModelConfig] = Field(min_length=1)
 
@@ -94,6 +95,16 @@ class LLMConfig(BaseModel):
         if not value:
             raise ValueError("default_model must not be empty")
         return value
+
+    @field_validator("selectable_models")
+    @classmethod
+    def validate_selectable_models(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        normalized = tuple(alias.strip() for alias in value)
+        if not normalized or any(not alias for alias in normalized):
+            raise ValueError("selectable_models must not be empty")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("selectable_models must be unique")
+        return normalized
 
     @field_validator("endpoints", "models")
     @classmethod
@@ -108,6 +119,13 @@ class LLMConfig(BaseModel):
             raise ValueError(
                 f"default_model references unknown model alias {self.default_model!r}"
             )
+        if self.default_model not in self.selectable_models:
+            raise ValueError("default_model must be selectable")
+
+        unknown_selectable = set(self.selectable_models).difference(self.models)
+        if unknown_selectable:
+            missing = ", ".join(sorted(unknown_selectable))
+            raise ValueError(f"selectable_models reference unknown models: {missing}")
 
         missing_endpoints = {
             model.endpoint

@@ -27,6 +27,31 @@ def validate_structured_output_modes(
 
 
 @dataclass(frozen=True, slots=True)
+class ModelInfo:
+    alias: str
+    model_id: str
+    tools: bool
+    vision: bool
+    structured_output_modes: tuple[StructuredOutputMode, ...]
+    parallel_tool_calls: bool
+    selectable: bool
+
+    def __post_init__(self) -> None:
+        if not self.alias.strip():
+            raise ValueError("model alias must not be empty")
+        if not self.model_id.strip():
+            raise ValueError("model ID must not be empty")
+        object.__setattr__(
+            self,
+            "structured_output_modes",
+            tuple(self.structured_output_modes),
+        )
+        validate_structured_output_modes(self.structured_output_modes)
+        if self.parallel_tool_calls and not self.tools:
+            raise ValueError("parallel_tool_calls requires tools capability")
+
+
+@dataclass(frozen=True, slots=True)
 class TextPart:
     text: str
 

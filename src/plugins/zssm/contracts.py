@@ -87,16 +87,6 @@ def _aware(value: datetime, field_name: str) -> datetime:
     return value
 
 
-class ActiveModelState(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
-    active_model: str = Field(min_length=1)
-
-    @field_validator("active_model")
-    @classmethod
-    def validate_active_model(cls, value: str) -> str:
-        return _nonempty(value, "active_model")
-
-
 class InputLocation(StrEnum):
     QUOTED = "quoted"
     CURRENT = "current"
@@ -791,7 +781,6 @@ class RenderModel:
 
 
 __all__ = [
-    "ActiveModelState",
     "Citation",
     "CitationRegistry",
     "CitationSourceKind",
