@@ -6,13 +6,13 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 from urllib.parse import urlsplit
 
-from src.plugins.zssm.tools.web_sources.base import (
+from .base import (
     BaseSourceAdapter,
     normalize_page_text,
     normalize_single_line,
     optional_metadata,
 )
-from src.plugins.zssm.tools.web_sources.contracts import (
+from .contracts import (
     ExtractedPage,
     SourceAdapterError,
     SourceIO,

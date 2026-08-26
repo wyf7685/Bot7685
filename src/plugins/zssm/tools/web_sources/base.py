@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from src.plugins.zssm.tools.web_sources.contracts import (
+from .contracts import (
     ExtractedPage,
     SourceIO,
     SourceTarget,

@@ -3,14 +3,9 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Mapping, Sequence
 
-from src.plugins.zssm.tools.web_sources.bilibili import BilibiliAdapter
-from src.plugins.zssm.tools.web_sources.contracts import (
-    SourceAdapter,
-    SourceIO,
-    SourceTarget,
-    ValidatedTarget,
-)
-from src.plugins.zssm.tools.web_sources.twitter import TwitterAdapter
+from .bilibili import BilibiliAdapter
+from .contracts import SourceAdapter, SourceIO, SourceTarget, ValidatedTarget
+from .twitter import TwitterAdapter
 
 
 class SourceRegistry:

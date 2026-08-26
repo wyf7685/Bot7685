@@ -20,22 +20,6 @@ import anyio
 import httpx
 from anyio.to_thread import run_sync
 
-from src.plugins.zssm.tools.web_sources.contracts import (
-    DownloadedPage as _DownloadedPage,
-)
-from src.plugins.zssm.tools.web_sources.contracts import (
-    ExtractedPage as _ExtractedPage,
-)
-from src.plugins.zssm.tools.web_sources.contracts import (
-    SourceAdapterError,
-)
-from src.plugins.zssm.tools.web_sources.contracts import (
-    ValidatedTarget as _ValidatedTarget,
-)
-from src.plugins.zssm.tools.web_sources.registry import (
-    DEFAULT_SOURCE_REGISTRY,
-    SourceRegistry,
-)
 from src.service.llm.tools import BoundTool, JSONValue, ToolOutput
 
 from ..config import FetchPageConfig, WebSearchConfig
@@ -53,6 +37,11 @@ from ..contracts import (
     ZssmToolContext,
     bind_web_search_args,
 )
+from .web_sources.contracts import DownloadedPage as _DownloadedPage
+from .web_sources.contracts import ExtractedPage as _ExtractedPage
+from .web_sources.contracts import SourceAdapterError
+from .web_sources.contracts import ValidatedTarget as _ValidatedTarget
+from .web_sources.registry import DEFAULT_SOURCE_REGISTRY, SourceRegistry
 
 _BRAVE_ENDPOINT = "https://api.search.brave.com/res/v1/web/search"
 _TAVILY_ENDPOINT = "https://api.tavily.com/search"
