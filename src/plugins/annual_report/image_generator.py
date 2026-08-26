@@ -15,8 +15,7 @@ from typing import Any
 from nonebot import logger
 from nonebot_plugin_htmlrender import render_template
 
-from src.service.llm import ChatInput, LLMServiceError
-from src.service.llm.service import get_llm_service
+from src.service.llm import ChatInput, LLMServiceError, get_llm_service
 
 from .analyzer import ChatAnalyzer
 from .config import TEMPLATE_FILE

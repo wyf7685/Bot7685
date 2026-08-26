@@ -1,18 +1,28 @@
 """Process-local OpenAI SDK clients and model execution state."""
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from threading import Lock
+from typing import Protocol
 
 from openai import AsyncOpenAI
 
-from .config import LLMConfig, ModelCapabilities
+from .config import LLMConfig
 from .exceptions import LLMConfigurationError
-from .models import StructuredOutputMode
+from .models import ModelCapabilities, StructuredOutputMode
 
-type OpenAIClientFactory = Callable[..., AsyncOpenAI]
+
+class OpenAIClientFactory(Protocol):
+    def __call__(
+        self,
+        *,
+        api_key: str,
+        base_url: str,
+        timeout: float,
+        max_retries: int,
+    ) -> AsyncOpenAI: ...
 
 
 class _EffectiveStructuredMode:
@@ -43,11 +53,10 @@ class _EffectiveStructuredMode:
 
 
 @dataclass(frozen=True, slots=True)
-class ModelHandle:
+class _ModelHandle:
     """Immutable model snapshot with shared endpoint and alias-local state."""
 
     alias: str
-    endpoint_alias: str
     model_id: str
     capabilities: ModelCapabilities
     client: AsyncOpenAI
@@ -82,9 +91,8 @@ class LLMRuntime:
             for alias, endpoint in config.endpoints.items()
         }
         self._handles = {
-            alias: ModelHandle(
+            alias: _ModelHandle(
                 alias=alias,
-                endpoint_alias=model.endpoint,
                 model_id=model.model,
                 capabilities=model.capabilities,
                 client=self._clients[model.endpoint],
@@ -102,13 +110,13 @@ class LLMRuntime:
         self._drained = asyncio.Event()
         self._drained.set()
 
-    def resolve(self, alias: str) -> ModelHandle:
+    def resolve(self, alias: str) -> _ModelHandle:
         """Resolve one explicit configured model alias."""
         with self._lifecycle_lock:
             return self._resolve_locked(alias)
 
     @asynccontextmanager
-    async def lease(self, alias: str) -> AsyncIterator[ModelHandle]:
+    async def lease(self, alias: str) -> AsyncIterator[_ModelHandle]:
         """Atomically accept one explicit model call until it finishes."""
         with self._lifecycle_lock:
             handle = self._resolve_locked(alias)
@@ -123,7 +131,7 @@ class LLMRuntime:
                 if self._active_calls == 0:
                     self._drained.set()
 
-    def _resolve_locked(self, alias: str) -> ModelHandle:
+    def _resolve_locked(self, alias: str) -> _ModelHandle:
         if self._closing:
             raise LLMConfigurationError(model_alias=alias)
         handle = self._handles.get(alias)
@@ -147,5 +155,9 @@ class LLMRuntime:
             *(client.close() for client in self._clients.values()),
             return_exceptions=True,
         )
-        if any(isinstance(result, BaseException) for result in results):
-            raise RuntimeError("one or more LLM endpoint clients failed to close")
+        if exceptions := [
+            result for result in results if isinstance(result, BaseException)
+        ]:
+            raise BaseExceptionGroup(
+                "one or more LLM endpoint clients failed to close", exceptions
+            )

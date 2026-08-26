@@ -6,6 +6,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    NonNegativeInt,
     PositiveFloat,
     PositiveInt,
     SecretStr,
@@ -13,56 +14,32 @@ from pydantic import (
     model_validator,
 )
 
-from .models import StructuredOutputMode, validate_structured_output_modes
+from .models import ModelCapabilities
 
 
-class EndpointConfig(BaseModel):
-    """Connection settings shared by one or more model aliases."""
-
+class _FrozenConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class EndpointConfig(_FrozenConfig):
+    """Connection settings shared by one or more model aliases."""
 
     base_url: AnyHttpUrl
     api_key: SecretStr
     timeout_seconds: PositiveFloat = 60.0
-    max_retries: PositiveInt = 1
+    max_retries: NonNegativeInt = 1
 
     @field_validator("api_key")
     @classmethod
     def validate_api_key(cls, value: SecretStr) -> SecretStr:
-        if not value.get_secret_value().strip():
+        secret = value.get_secret_value().strip()
+        if not secret:
             raise ValueError("api_key must not be empty")
-        return value
+        return SecretStr(secret)
 
 
-class ModelCapabilities(BaseModel):
-    """Capabilities declared for a configured model."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    tools: bool
-    vision: bool
-    structured_output_modes: tuple[StructuredOutputMode, ...]
-    parallel_tool_calls: bool
-
-    @field_validator("structured_output_modes")
-    @classmethod
-    def validate_modes(
-        cls, value: tuple[StructuredOutputMode, ...]
-    ) -> tuple[StructuredOutputMode, ...]:
-        validate_structured_output_modes(value)
-        return value
-
-    @model_validator(mode="after")
-    def validate_tool_capabilities(self) -> Self:
-        if self.parallel_tool_calls and not self.tools:
-            raise ValueError("parallel_tool_calls requires tools capability")
-        return self
-
-
-class ModelConfig(BaseModel):
+class ModelConfig(_FrozenConfig):
     """A model ID and its endpoint-local execution policy."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
 
     endpoint: str = Field(min_length=1)
     model: str = Field(min_length=1)
@@ -78,10 +55,8 @@ class ModelConfig(BaseModel):
         return value
 
 
-class LLMConfig(BaseModel):
+class LLMConfig(_FrozenConfig):
     """Validated endpoint, model, and default-model registry configuration."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
 
     default_model: str = Field(min_length=1)
     selectable_models: tuple[str, ...]
@@ -108,10 +83,16 @@ class LLMConfig(BaseModel):
 
     @field_validator("endpoints", "models")
     @classmethod
-    def validate_aliases(cls, value: dict[str, object]) -> dict[str, object]:
-        if any(not alias.strip() for alias in value):
-            raise ValueError("aliases must not be empty")
-        return value
+    def normalize_aliases(cls, value: dict[str, object]) -> dict[str, object]:
+        normalized: dict[str, object] = {}
+        for raw_alias, item in value.items():
+            alias = raw_alias.strip()
+            if not alias:
+                raise ValueError("aliases must not be empty")
+            if alias in normalized:
+                raise ValueError("aliases must be unique after normalization")
+            normalized[alias] = item
+        return normalized
 
     @model_validator(mode="after")
     def validate_references(self) -> Self:
@@ -138,8 +119,9 @@ class LLMConfig(BaseModel):
         return self
 
 
-class Config(BaseModel):
+class _RootConfig(BaseModel):
     llm: LLMConfig = Field(description="LLM service configuration")
 
 
-service_config = get_plugin_config(Config).llm
+def get_llm_config() -> LLMConfig:
+    return get_plugin_config(_RootConfig).llm

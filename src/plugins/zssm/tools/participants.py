@@ -14,7 +14,7 @@ from nonebot_plugin_uninfo import Member, SceneType, Session, User, get_interfac
 from nonebot_plugin_uninfo.orm import BotModel, SceneModel, SessionModel, UserModel
 from sqlalchemy import select
 
-from src.service.llm.tools import BoundTool, JSONValue, ToolOutput
+from src.service.llm import BoundTool, JSONValue, ToolOutput
 
 from ..config import ParticipantsConfig
 from ..contracts import (

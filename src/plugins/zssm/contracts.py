@@ -23,8 +23,7 @@ if TYPE_CHECKING:
     from nonebot_plugin_alconna import Image, UniMessage
     from nonebot_plugin_uninfo import Session
 
-    from src.service.llm.models import ChatInputPart, ImagePart
-    from src.service.llm.usage import TokenUsage
+    from src.service.llm import ChatInputPart, ImagePart, TokenUsage
 
 _PARTICIPANT_ALIAS_PATTERN = r"p_[0-9a-f]{16}"
 _PARTICIPANT_ALIAS_RE = re.compile(rf"^{_PARTICIPANT_ALIAS_PATTERN}$")

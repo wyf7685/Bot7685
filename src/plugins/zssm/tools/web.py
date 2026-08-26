@@ -20,7 +20,7 @@ import anyio
 import httpx
 from anyio.to_thread import run_sync
 
-from src.service.llm.tools import BoundTool, JSONValue, ToolOutput
+from src.service.llm import BoundTool, JSONValue, ToolOutput
 
 from ..config import FetchPageConfig, WebSearchConfig
 from ..contracts import (

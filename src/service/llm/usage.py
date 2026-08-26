@@ -8,6 +8,20 @@ class CompletionTokensDetails:
     reasoning_tokens: int = 0
     rejected_prediction_tokens: int = 0
 
+    def __post_init__(self) -> None:
+        counts = (
+            self.accepted_prediction_tokens,
+            self.audio_tokens,
+            self.reasoning_tokens,
+            self.rejected_prediction_tokens,
+        )
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) for value in counts
+        ):
+            raise TypeError("token counts must be integers")
+        if any(value < 0 for value in counts):
+            raise ValueError("token counts must not be negative")
+
     def __add__(self, other: CompletionTokensDetails) -> CompletionTokensDetails:
         return CompletionTokensDetails(
             accepted_prediction_tokens=self.accepted_prediction_tokens
@@ -23,6 +37,15 @@ class CompletionTokensDetails:
 class PromptTokensDetails:
     audio_tokens: int = 0
     cached_tokens: int = 0
+
+    def __post_init__(self) -> None:
+        counts = (self.audio_tokens, self.cached_tokens)
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) for value in counts
+        ):
+            raise TypeError("token counts must be integers")
+        if any(value < 0 for value in counts):
+            raise ValueError("token counts must not be negative")
 
     def __add__(self, other: PromptTokensDetails) -> PromptTokensDetails:
         return PromptTokensDetails(
@@ -42,6 +65,19 @@ class TokenUsage:
     prompt_tokens_details: PromptTokensDetails = dataclasses.field(
         default_factory=PromptTokensDetails
     )
+
+    def __post_init__(self) -> None:
+        counts = (self.completion_tokens, self.prompt_tokens, self.total_tokens)
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) for value in counts
+        ):
+            raise TypeError("token counts must be integers")
+        if any(value < 0 for value in counts):
+            raise ValueError("token counts must not be negative")
+        if not isinstance(self.completion_tokens_details, CompletionTokensDetails):
+            raise TypeError("completion_tokens_details has an invalid type")
+        if not isinstance(self.prompt_tokens_details, PromptTokensDetails):
+            raise TypeError("prompt_tokens_details has an invalid type")
 
     def __add__(self, other: TokenUsage) -> TokenUsage:
         return TokenUsage(

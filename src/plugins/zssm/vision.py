@@ -128,9 +128,11 @@ async def route_vision(
     )
 
     vision_handle = (
-        None if primary_handle.vision else llm_service.get_model(vision_model)
+        None
+        if primary_handle.capabilities.vision
+        else llm_service.get_model(vision_model)
     )
-    if vision_handle is not None and not vision_handle.vision:
+    if vision_handle is not None and not vision_handle.capabilities.vision:
         raise LLMCapabilityError(model_alias=vision_model)
     preparation = await prepare_images(
         collected,
@@ -163,7 +165,7 @@ async def route_vision(
             failures=preparation.failures,
         )
 
-    if primary_handle.vision:
+    if primary_handle.capabilities.vision:
         log_event(
             correlation_id,
             "INFO",

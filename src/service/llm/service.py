@@ -24,8 +24,8 @@ from ._openai_adapter import (
     parse_structured_output,
     provider_error_category,
 )
-from ._selection import ActiveModelStore, active_model_store
-from .config import LLMConfig, service_config
+from ._selection import ActiveModelStore
+from .config import LLMConfig, get_llm_config
 from .conversation import run_agent as run_agent_conversation
 from .exceptions import (
     LLMCapabilityError,
@@ -45,7 +45,7 @@ from .models import (
 from .models import (
     StructuredOutputFallbackReason as FallbackReason,
 )
-from .runtime import LLMRuntime, ModelHandle
+from .runtime import LLMRuntime, _ModelHandle
 from .tools import BoundTool
 from .usage import TokenUsage
 
@@ -59,38 +59,42 @@ class LLMService:
         self,
         runtime: LLMRuntime,
         config: LLMConfig,
-        model_store: ActiveModelStore = active_model_store,
+        model_store: ActiveModelStore,
     ) -> None:
+        selectable = frozenset(config.selectable_models)
         self._runtime = runtime
-        self._config = config
         self._model_store = model_store
+        self._models = {
+            alias: ModelInfo(
+                alias=alias,
+                model_id=model.model,
+                capabilities=model.capabilities,
+                selectable=alias in selectable,
+            )
+            for alias, model in config.models.items()
+        }
+        self._model_list = tuple(self._models.values())
 
     def list_models(self) -> tuple[ModelInfo, ...]:
-        """Return immutable descriptions for every configured model alias."""
-        return tuple(self.get_model(alias) for alias in self._config.models)
+        """Return cached immutable descriptions for every configured model."""
+        return self._model_list
 
     def get_model(self, alias: str) -> ModelInfo:
         """Return one configured model description."""
-        handle = self._runtime.resolve(alias.strip())
-        capabilities = handle.capabilities
-        return ModelInfo(
-            alias=handle.alias,
-            model_id=handle.model_id,
-            tools=capabilities.tools,
-            vision=capabilities.vision,
-            structured_output_modes=capabilities.structured_output_modes,
-            parallel_tool_calls=capabilities.parallel_tool_calls,
-            selectable=handle.alias in self._config.selectable_models,
-        )
+        normalized = alias.strip()
+        try:
+            return self._models[normalized]
+        except KeyError as error:
+            raise LLMConfigurationError(model_alias=normalized) from error
 
     async def get_active_model(self) -> ModelInfo:
         """Return one stable snapshot of the global active model."""
-        state = await self._model_store.snapshot(self._config)
+        state = await self._model_store.snapshot()
         return self.get_model(state.active_model)
 
     async def select_model(self, alias: str) -> ModelInfo:
         """Persist and return one globally selectable model."""
-        state = await self._model_store.select(alias, self._config)
+        state = await self._model_store.select(alias)
         return self.get_model(state.active_model)
 
     async def _resolve_model_alias(self, model: str | None) -> str:
@@ -291,14 +295,13 @@ class LLMService:
                 prompt,
                 tools=tools,
                 system_prompt=system_prompt,
-                model=handle.alias,
                 temperature=temperature,
                 limits=limits,
                 correlation_id=correlation_id,
             )
 
     @staticmethod
-    def _enforce_capabilities(handle: ModelHandle, prompt: ChatInput) -> None:
+    def _enforce_capabilities(handle: _ModelHandle, prompt: ChatInput) -> None:
         if prompt.has_images and not handle.capabilities.vision:
             raise LLMCapabilityError(model_alias=handle.alias)
 
@@ -315,7 +318,13 @@ def get_llm_service() -> LLMService:
         if _service_shutdown_started:
             raise LLMConfigurationError
         if _service is None:
-            _service = LLMService(LLMRuntime(service_config), service_config)
+            config = get_llm_config()
+            model_store = ActiveModelStore(
+                default_alias=config.default_model,
+                configured_aliases=config.models,
+                selectable_aliases=config.selectable_models,
+            )
+            _service = LLMService(LLMRuntime(config), config, model_store)
         return _service
 
 

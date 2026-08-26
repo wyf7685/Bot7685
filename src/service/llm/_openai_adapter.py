@@ -22,19 +22,23 @@ from pydantic import TypeAdapter, ValidationError
 from .conversation import (
     AgentCompletionBackend,
     AgentHistoryItem,
-    AgentModelCapabilities,
     AgentModelTurn,
     AgentToolCall,
     AgentToolResult,
 )
 from .exceptions import (
     LLMCapabilityError,
-    LLMConfigurationError,
     LLMErrorCategory,
     LLMRunError,
 )
-from .models import ChatInput, ImagePart, StructuredOutputMode, TextPart
-from .runtime import ModelHandle
+from .models import (
+    ChatInput,
+    ImagePart,
+    ModelCapabilities,
+    StructuredOutputMode,
+    TextPart,
+)
+from .runtime import _ModelHandle
 from .tools import ToolDefinition
 from .usage import CompletionTokensDetails, PromptTokensDetails, TokenUsage
 
@@ -143,18 +147,16 @@ async def create_completion(
 class OpenAIAgentCompletionBackend(AgentCompletionBackend):
     """Translate agent turns using one run-scoped immutable model handle."""
 
-    def __init__(self, handle: ModelHandle) -> None:
+    def __init__(self, handle: _ModelHandle) -> None:
         self._handle = handle
 
-    def resolve_model(self, model: str | None, /) -> AgentModelCapabilities:
-        handle = self._handle
-        if model is not None and model != handle.alias:
-            raise LLMConfigurationError(model_alias=model)
-        return AgentModelCapabilities(
-            model_alias=handle.alias,
-            tools=handle.capabilities.tools,
-            parallel_tool_calls=handle.capabilities.parallel_tool_calls,
-        )
+    @property
+    def model_alias(self) -> str:
+        return self._handle.alias
+
+    @property
+    def capabilities(self) -> ModelCapabilities:
+        return self._handle.capabilities
 
     async def complete_turn(
         self,
@@ -163,14 +165,11 @@ class OpenAIAgentCompletionBackend(AgentCompletionBackend):
         system_prompt: str | None,
         history: tuple[AgentHistoryItem, ...],
         tools: tuple[ToolDefinition, ...],
-        model: str,
         temperature: float | None,
         max_output_tokens: int,
         parallel_tool_calls: bool,
     ) -> AgentModelTurn:
         handle = self._handle
-        if model != handle.alias:
-            raise LLMConfigurationError(model_alias=model)
         if prompt.has_images and not handle.capabilities.vision:
             raise LLMCapabilityError(model_alias=handle.alias)
         if tools and not handle.capabilities.tools:

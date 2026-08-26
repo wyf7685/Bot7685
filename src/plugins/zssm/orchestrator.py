@@ -199,7 +199,7 @@ async def run_zssm(
     started = clock()
     active = await service.get_active_model()
     active_alias = active.alias
-    if not active.tools:
+    if not active.capabilities.tools:
         raise LLMCapabilityError(model_alias=active_alias)
 
     outer_limiter = limiter or _run_limiter(config.max_concurrent_runs)

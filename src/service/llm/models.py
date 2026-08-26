@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Self
+
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from .usage import TokenUsage
 
@@ -26,29 +28,49 @@ def validate_structured_output_modes(
         )
 
 
-@dataclass(frozen=True, slots=True)
-class ModelInfo:
-    alias: str
-    model_id: str
+class ModelCapabilities(BaseModel):
+    """Validated, immutable capabilities shared by config and runtime models."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     tools: bool
     vision: bool
     structured_output_modes: tuple[StructuredOutputMode, ...]
     parallel_tool_calls: bool
+
+    @field_validator("structured_output_modes")
+    @classmethod
+    def validate_modes(
+        cls, value: tuple[StructuredOutputMode, ...]
+    ) -> tuple[StructuredOutputMode, ...]:
+        validate_structured_output_modes(value)
+        return value
+
+    @model_validator(mode="after")
+    def validate_tool_capabilities(self) -> Self:
+        if self.parallel_tool_calls and not self.tools:
+            raise ValueError("parallel_tool_calls requires tools capability")
+        return self
+
+
+@dataclass(frozen=True, slots=True)
+class ModelInfo:
+    alias: str
+    model_id: str
+    capabilities: ModelCapabilities
     selectable: bool
 
     def __post_init__(self) -> None:
-        if not self.alias.strip():
+        alias = self.alias.strip()
+        model_id = self.model_id.strip()
+        if not alias:
             raise ValueError("model alias must not be empty")
-        if not self.model_id.strip():
+        if not model_id:
             raise ValueError("model ID must not be empty")
-        object.__setattr__(
-            self,
-            "structured_output_modes",
-            tuple(self.structured_output_modes),
-        )
-        validate_structured_output_modes(self.structured_output_modes)
-        if self.parallel_tool_calls and not self.tools:
-            raise ValueError("parallel_tool_calls requires tools capability")
+        if not isinstance(self.capabilities, ModelCapabilities):
+            raise TypeError("capabilities must be ModelCapabilities")
+        object.__setattr__(self, "alias", alias)
+        object.__setattr__(self, "model_id", model_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,8 +88,12 @@ class ImagePart:
     detail: Literal["auto", "low", "high"] = "auto"
 
     def __post_init__(self) -> None:
-        if not self.url.strip():
+        url = self.url.strip()
+        if not url:
             raise ValueError("image URL must not be empty")
+        if self.detail not in {"auto", "low", "high"}:
+            raise ValueError("image detail is invalid")
+        object.__setattr__(self, "url", url)
 
 
 type ChatInputPart = TextPart | ImagePart
@@ -102,12 +128,18 @@ class RunResult[T]:
     elapsed: float
 
     def __post_init__(self) -> None:
-        if not self.model_alias.strip():
+        model_alias = self.model_alias.strip()
+        model_id = self.model_id.strip()
+        if not model_alias:
             raise ValueError("model_alias must not be empty")
-        if not self.model_id.strip():
+        if not model_id:
             raise ValueError("model_id must not be empty")
+        if not isinstance(self.usage, TokenUsage):
+            raise TypeError("usage must be TokenUsage")
         if self.elapsed < 0:
             raise ValueError("elapsed must not be negative")
+        object.__setattr__(self, "model_alias", model_alias)
+        object.__setattr__(self, "model_id", model_id)
 
 
 class StructuredOutputFallbackReason(StrEnum):
@@ -154,6 +186,8 @@ class AgentLimits:
                 raise ValueError(f"{name} must be positive")
         if self.total_timeout_seconds <= 0:
             raise ValueError("total_timeout_seconds must be positive")
+        if self.max_parallel_tools > self.max_tool_calls:
+            raise ValueError("max_parallel_tools must not exceed max_tool_calls")
 
 
 class ToolErrorCategory(StrEnum):
@@ -174,12 +208,18 @@ class ModelCallTrace:
     structured_mode: StructuredOutputMode = None
 
     def __post_init__(self) -> None:
-        if not self.model_alias.strip():
+        model_alias = self.model_alias.strip()
+        model_id = self.model_id.strip()
+        if not model_alias:
             raise ValueError("model_alias must not be empty")
-        if not self.model_id.strip():
+        if not model_id:
             raise ValueError("model_id must not be empty")
+        if not isinstance(self.usage, TokenUsage):
+            raise TypeError("usage must be TokenUsage")
         if self.elapsed < 0:
             raise ValueError("elapsed must not be negative")
+        object.__setattr__(self, "model_alias", model_alias)
+        object.__setattr__(self, "model_id", model_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -192,9 +232,11 @@ class ToolCallTrace:
     error_category: ToolErrorCategory | None = None
 
     def __post_init__(self) -> None:
-        if not self.name.strip():
+        name = self.name.strip()
+        summary = self.summary.strip()
+        if not name:
             raise ValueError("tool name must not be empty")
-        if not self.summary.strip():
+        if not summary:
             raise ValueError("tool summary must not be empty")
         if self.elapsed < 0:
             raise ValueError("elapsed must not be negative")
@@ -204,6 +246,8 @@ class ToolCallTrace:
             raise ValueError(
                 "failed tool calls require exactly one safe error category"
             )
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "summary", summary)
 
 
 @dataclass(frozen=True, slots=True)
@@ -230,6 +274,8 @@ class AgentRunResult(RunResult[str]):
 
     def __post_init__(self) -> None:
         super().__post_init__()
+        if not isinstance(self.trace, AgentTrace):
+            raise TypeError("trace must be AgentTrace")
         if not self.output.strip():
             raise ValueError("agent output must not be empty")
 

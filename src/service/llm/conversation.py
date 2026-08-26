@@ -21,6 +21,7 @@ from .models import (
     AgentTrace,
     ChatInput,
     ModelCallTrace,
+    ModelCapabilities,
     ToolCallTrace,
     ToolErrorCategory,
 )
@@ -145,31 +146,14 @@ class AgentToolResult:
 type AgentHistoryItem = AgentModelTurn | AgentToolResult
 
 
-@dataclass(frozen=True, slots=True)
-class AgentModelCapabilities:
-    """Resolved model identity and tool-call capabilities needed by the loop."""
-
-    model_alias: str
-    tools: bool
-    parallel_tool_calls: bool
-
-    def __post_init__(self) -> None:
-        model_alias = self.model_alias.strip()
-        if not model_alias:
-            raise ValueError("model_alias must not be empty")
-        if self.parallel_tool_calls and not self.tools:
-            raise ValueError("parallel_tool_calls requires tools capability")
-        object.__setattr__(self, "model_alias", model_alias)
-
-
 class AgentCompletionBackend(Protocol):
     """Minimal adapter contract required by the provider-neutral agent loop."""
 
-    def resolve_model(
-        self,
-        model: str | None,
-        /,
-    ) -> AgentModelCapabilities: ...
+    @property
+    def model_alias(self) -> str: ...
+
+    @property
+    def capabilities(self) -> ModelCapabilities: ...
 
     async def complete_turn(
         self,
@@ -178,7 +162,6 @@ class AgentCompletionBackend(Protocol):
         system_prompt: str | None,
         history: tuple[AgentHistoryItem, ...],
         tools: tuple[ToolDefinition, ...],
-        model: str,
         temperature: float | None,
         max_output_tokens: int,
         parallel_tool_calls: bool,
@@ -197,7 +180,6 @@ async def run_agent(
     *,
     tools: Sequence[BoundTool[Any, Any]] = (),
     system_prompt: str | None = None,
-    model: str | None = None,
     temperature: float | None = None,
     limits: AgentLimits = _DEFAULT_AGENT_LIMITS,
     correlation_id: str | None = None,
@@ -207,16 +189,21 @@ async def run_agent(
     started = perf_counter()
     bound_tools = tuple(tools)
     _validate_bound_tools(bound_tools)
-    capabilities = backend.resolve_model(model)
+    model_alias = backend.model_alias.strip()
+    if not model_alias:
+        raise ValueError("backend model alias must not be empty")
+    capabilities = backend.capabilities
+    if not isinstance(capabilities, ModelCapabilities):
+        raise TypeError("backend capabilities must be ModelCapabilities")
     if bound_tools and not capabilities.tools:
-        raise LLMCapabilityError(model_alias=capabilities.model_alias)
-
-    model_alias = _safe_log_text(capabilities.model_alias)
+        raise LLMCapabilityError(model_alias=model_alias)
+    safe_model_alias = _safe_log_text(model_alias)
     _log_event(
         correlation_id,
         "INFO",
         "LLM::Agent",
-        f"<b>started</> | model=<g>{model_alias}</> tools=<c>{len(bound_tools)}</> "
+        f"<b>started</> | model=<g>{safe_model_alias}</> "
+        f"tools=<c>{len(bound_tools)}</> "
         f"limits=<c>models:{limits.max_model_calls} tools:{limits.max_tool_calls} "
         f"parallel:{limits.max_parallel_tools} "
         f"timeout:{limits.total_timeout_seconds:g}s</>",
@@ -232,6 +219,7 @@ async def run_agent(
                 system_prompt=system_prompt,
                 definitions=definitions,
                 registry=registry,
+                model_alias=model_alias,
                 capabilities=capabilities,
                 temperature=temperature,
                 limits=limits,
@@ -257,7 +245,7 @@ async def run_agent(
         )
         raise LLMRunError(
             category=LLMErrorCategory.TIMEOUT,
-            model_alias=capabilities.model_alias,
+            model_alias=model_alias,
         ) from error
     except LLMServiceError as error:
         _log_event(
@@ -302,7 +290,8 @@ async def _run_bounded_conversation(
     system_prompt: str | None,
     definitions: tuple[ToolDefinition, ...],
     registry: dict[str, BoundTool[Any, Any]],
-    capabilities: AgentModelCapabilities,
+    model_alias: str,
+    capabilities: ModelCapabilities,
     temperature: float | None,
     limits: AgentLimits,
     started: float,
@@ -319,7 +308,7 @@ async def _run_bounded_conversation(
         if len(model_traces) >= limits.max_model_calls:
             raise LLMRunError(
                 category=LLMErrorCategory.LIMITS,
-                model_alias=capabilities.model_alias,
+                model_alias=model_alias,
             )
 
         model_call = len(model_traces) + 1
@@ -337,7 +326,6 @@ async def _run_bounded_conversation(
                 system_prompt=system_prompt,
                 history=tuple(history),
                 tools=definitions,
-                model=capabilities.model_alias,
                 temperature=temperature,
                 max_output_tokens=limits.max_output_tokens,
                 parallel_tool_calls=capabilities.parallel_tool_calls,
@@ -371,12 +359,12 @@ async def _run_bounded_conversation(
         if not isinstance(turn, AgentModelTurn):
             raise LLMRunError(
                 category=LLMErrorCategory.INVALID_RESPONSE,
-                model_alias=capabilities.model_alias,
+                model_alias=model_alias,
             )
-        if turn.model_alias != capabilities.model_alias:
+        if turn.model_alias != model_alias:
             raise LLMRunError(
                 category=LLMErrorCategory.INVALID_RESPONSE,
-                model_alias=capabilities.model_alias,
+                model_alias=model_alias,
             )
 
         model_traces.append(
@@ -409,7 +397,7 @@ async def _run_bounded_conversation(
             if turn.content is None or not turn.content.strip():
                 raise LLMRunError(
                     category=LLMErrorCategory.INVALID_RESPONSE,
-                    model_alias=capabilities.model_alias,
+                    model_alias=model_alias,
                 )
             return AgentRunResult(
                 output=turn.content,
@@ -424,11 +412,11 @@ async def _run_bounded_conversation(
             )
 
         if not capabilities.parallel_tool_calls and len(turn.tool_calls) > 1:
-            raise LLMCapabilityError(model_alias=capabilities.model_alias)
+            raise LLMCapabilityError(model_alias=model_alias)
         if tool_call_count + len(turn.tool_calls) > limits.max_tool_calls:
             raise LLMRunError(
                 category=LLMErrorCategory.LIMITS,
-                model_alias=capabilities.model_alias,
+                model_alias=model_alias,
             )
 
         tool_round += 1

@@ -21,8 +21,7 @@ from .contracts import (
 )
 
 if TYPE_CHECKING:
-    from src.service.llm.exceptions import LLMServiceError
-    from src.service.llm.usage import TokenUsage
+    from src.service.llm import LLMServiceError, TokenUsage
 
 _CITATION_RE = re.compile(r"\[(s[1-9][0-9]*)\]")
 _REDIRECT_PATH_PARTS = frozenset({"ck", "l", "link", "redirect", "redir", "url"})

@@ -1,15 +1,5 @@
-"""Stable LLM configuration, runtime, service, and agent contracts."""
+"""Stable public contracts for Bot7685 LLM consumers."""
 
-from .config import EndpointConfig, LLMConfig, ModelCapabilities, ModelConfig
-from .conversation import (
-    AgentCompletionBackend,
-    AgentHistoryItem,
-    AgentModelCapabilities,
-    AgentModelTurn,
-    AgentToolCall,
-    AgentToolResult,
-    run_agent,
-)
 from .exceptions import (
     LLMCapabilityError,
     LLMConfigurationError,
@@ -26,6 +16,7 @@ from .models import (
     ChatInputPart,
     ImagePart,
     ModelCallTrace,
+    ModelCapabilities,
     ModelInfo,
     RunResult,
     StructuredOutputFallbackReason,
@@ -35,7 +26,6 @@ from .models import (
     ToolCallTrace,
     ToolErrorCategory,
 )
-from .runtime import LLMRuntime, ModelHandle
 from .service import LLMService, get_llm_service
 from .tools import (
     BoundTool,
@@ -43,7 +33,6 @@ from .tools import (
     JSONScalar,
     JSONValue,
     ToolArgumentsError,
-    ToolDefinition,
     ToolOutput,
     ToolOutputSerializationError,
     ToolOutputTooLargeError,
@@ -51,37 +40,26 @@ from .tools import (
 from .usage import CompletionTokensDetails, PromptTokensDetails, TokenUsage
 
 __all__ = [
-    "AgentCompletionBackend",
-    "AgentHistoryItem",
     "AgentLimits",
-    "AgentModelCapabilities",
-    "AgentModelTurn",
     "AgentRunResult",
-    "AgentToolCall",
-    "AgentToolResult",
     "AgentTrace",
     "BoundTool",
     "ChatInput",
     "ChatInputPart",
     "CompletionTokensDetails",
-    "EndpointConfig",
     "ImagePart",
     "JSONObject",
     "JSONScalar",
     "JSONValue",
     "LLMCapabilityError",
-    "LLMConfig",
     "LLMConfigurationError",
     "LLMErrorCategory",
     "LLMModelSelectionError",
     "LLMRunError",
-    "LLMRuntime",
     "LLMService",
     "LLMServiceError",
     "ModelCallTrace",
     "ModelCapabilities",
-    "ModelConfig",
-    "ModelHandle",
     "ModelInfo",
     "PromptTokensDetails",
     "RunResult",
@@ -92,11 +70,9 @@ __all__ = [
     "TokenUsage",
     "ToolArgumentsError",
     "ToolCallTrace",
-    "ToolDefinition",
     "ToolErrorCategory",
     "ToolOutput",
     "ToolOutputSerializationError",
     "ToolOutputTooLargeError",
     "get_llm_service",
-    "run_agent",
 ]

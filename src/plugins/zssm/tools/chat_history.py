@@ -32,7 +32,7 @@ from nonebot_plugin_uninfo import SceneType
 from nonebot_plugin_uninfo.orm import BotModel, SceneModel, SessionModel, UserModel
 from sqlalchemy import select
 
-from src.service.llm.tools import BoundTool, JSONValue, ToolOutput
+from src.service.llm import BoundTool, JSONValue, ToolOutput
 
 from ..contracts import (
     HistoryMessage,
