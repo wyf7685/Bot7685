@@ -4,6 +4,7 @@
 
 import contextlib
 import json
+import os
 import uuid
 from collections.abc import Callable, Generator
 from pathlib import Path
@@ -12,6 +13,7 @@ from typing import Any, cast
 from msgspec import toml as msgtoml
 
 root = Path(__file__).resolve().parent.parent
+CONFIG_DIR = root / "config"
 env_file = root / ".env"
 toml_file = root / "pyproject.toml"
 
@@ -77,21 +79,22 @@ def _load_file(fp: Path) -> dict[str, Any]:
     return data
 
 
-def load_config() -> dict[str, Any]:
-    config_dir = Path("config")
+def load_config(config_dir: Path = CONFIG_DIR) -> dict[str, Any]:
     if (root_config := _find_config_file(config_dir / "config")) is None:
         return {}
 
     config = _load_file(root_config)
+    env = os.getenv("ENVIRONMENT") or str(config.get("environment", "prod"))
+    config["environment"] = env
 
-    env = str(config.get("environment", "prod"))
-    if (env_config := _find_config_file(config_dir / env)) is None:
+    if not (env_dir := config_dir / env).exists():
+        return config
+    if not (env_config := _find_config_file(env_dir / "config")):
         return config
 
     config = deep_update(config, _load_file(env_config))
-
-    if (env_dir := config_dir / env).exists():
-        for p in filter(Path.is_file, env_dir.iterdir()):
+    for p in env_dir.iterdir():
+        if p.is_file() and p != env_config:
             config = deep_update(config, _load_file(p))
 
     return config

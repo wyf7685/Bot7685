@@ -1,8 +1,8 @@
+import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
 
-from nonebot.compat import type_validate_python
 from nonebot.utils import deep_update
 from pydantic import BaseModel
 
@@ -13,6 +13,7 @@ type LogLevelMap = dict[str, LogLevel]
 
 log = logger_wrapper("Bootstrap::Config")
 _decoders: dict[str, Callable[[bytes], dict[str, object]]] = {}
+CONFIG_DIR = Path(__file__).parent.parent.parent / "config"
 
 
 def _find_config_file(fp: Path) -> Path | None:
@@ -55,26 +56,26 @@ def _load_file(fp: Path) -> dict[str, object]:
     return data
 
 
-def load_config() -> dict[str, object]:
-    config_dir = Path("config")
+def load_config(config_dir: Path = CONFIG_DIR) -> dict[str, object]:
     if (root_config := _find_config_file(config_dir / "config")) is None:
         log.warning("No configuration file found in <y>config/</y> directory")
         return {}
 
     config = _load_file(root_config)
+    env = os.getenv("ENVIRONMENT") or str(config.get("environment", "prod"))
+    config["environment"] = env
 
-    env = str(config.get("environment", "prod"))
-    if (env_config := _find_config_file(config_dir / env)) is None:
+    if not (env_dir := config_dir / env).exists():
+        log.warning(f"No environment configuration directory found for <y>{env}</y>")
+        return config
+    if not (env_config := _find_config_file(env_dir / "config")):
         log.warning(f"No environment configuration file found for <y>{env}</y>")
         return config
 
     config = deep_update(config, _load_file(env_config))
-
-    if (env_dir := config_dir / env).exists():
-        for p in filter(Path.is_file, env_dir.iterdir()):
+    for p in env_dir.iterdir():
+        if p.is_file() and p != env_config:
             config = deep_update(config, _load_file(p))
-    else:
-        log.warning(f"No environment directory found for <y>{env}</y>")
 
     return config
 
@@ -87,4 +88,4 @@ class BootstrapConfig(BaseModel):
 
     @classmethod
     def from_config(cls, config: dict[str, object]) -> BootstrapConfig:
-        return type_validate_python(cls, config.pop("bootstrap", {}))
+        return cls.model_validate(config.pop("bootstrap", {}))
