@@ -13,6 +13,8 @@ from pydantic import (
     model_validator,
 )
 
+from src.service.llm import ReasoningEffort
+
 
 class _FrozenConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -166,6 +168,7 @@ class RenderingConfig(_FrozenConfig):
 
 class ZssmConfig(_FrozenConfig):
     vision_model: str = Field(default="mimo-vision", min_length=1)
+    agent_reasoning_effort: ReasoningEffort | None = None
     max_concurrent_runs: PositiveInt = 2
     max_agent_model_calls: PositiveInt = 8
     max_agent_tool_calls: PositiveInt = 16

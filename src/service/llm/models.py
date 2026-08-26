@@ -7,6 +7,25 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from .usage import TokenUsage
 
 type StructuredOutputMode = Literal["json_schema", "json_object"] | None
+type ReasoningEffort = Literal[
+    "none",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+]
+_REASONING_EFFORT_ORDER: tuple[ReasoningEffort, ...] = (
+    "none",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+)
+
 _STRUCTURED_OUTPUT_MODE_ORDER: tuple[StructuredOutputMode, ...] = (
     "json_schema",
     "json_object",
@@ -33,6 +52,7 @@ class ModelCapability(StrEnum):
     VISION = "vision"
     STRUCTURED_OUTPUT = "structured_output"
     PARALLEL_TOOL_CALLS = "parallel_tool_calls"
+    REASONING_EFFORT = "reasoning_effort"
 
 
 class ModelCapabilities(BaseModel):
@@ -42,6 +62,7 @@ class ModelCapabilities(BaseModel):
 
     tools: bool
     vision: bool
+    reasoning_efforts: tuple[ReasoningEffort, ...] = ()
     structured_output_modes: tuple[StructuredOutputMode, ...]
     parallel_tool_calls: bool
 
@@ -51,6 +72,18 @@ class ModelCapabilities(BaseModel):
         cls, value: tuple[StructuredOutputMode, ...]
     ) -> tuple[StructuredOutputMode, ...]:
         validate_structured_output_modes(value)
+        return value
+
+    @field_validator("reasoning_efforts")
+    @classmethod
+    def validate_reasoning_efforts(
+        cls, value: tuple[ReasoningEffort, ...]
+    ) -> tuple[ReasoningEffort, ...]:
+        if len(set(value)) != len(value):
+            raise ValueError("reasoning_efforts must not contain duplicates")
+        positions = tuple(_REASONING_EFFORT_ORDER.index(effort) for effort in value)
+        if positions != tuple(sorted(positions)):
+            raise ValueError("reasoning_efforts must follow none-to-max order")
         return value
 
     @model_validator(mode="after")
@@ -67,10 +100,26 @@ class ModelCapabilities(BaseModel):
                 return self.tools
             case ModelCapability.VISION:
                 return self.vision
+            case ModelCapability.REASONING_EFFORT:
+                return bool(self.reasoning_efforts)
             case ModelCapability.STRUCTURED_OUTPUT:
                 return bool(self.structured_output_modes)
             case ModelCapability.PARALLEL_TOOL_CALLS:
                 return self.parallel_tool_calls
+
+    def resolve_reasoning_effort(
+        self, requested: ReasoningEffort | None
+    ) -> ReasoningEffort | None:
+        if requested is None:
+            return None
+
+        requested_index = _REASONING_EFFORT_ORDER.index(requested)
+        for candidate in reversed(_REASONING_EFFORT_ORDER[: requested_index + 1]):
+            if candidate in self.reasoning_efforts:
+                return candidate
+        raise ValueError(
+            f"model does not support reasoning effort {requested!r} or any lower effort"
+        )
 
     def require(
         self,
@@ -243,6 +292,7 @@ class ModelCallTrace:
     usage: TokenUsage
     elapsed: float
     finish_reason: str | None = None
+    reasoning_effort: ReasoningEffort | None = None
     structured_mode: StructuredOutputMode = None
 
     def __post_init__(self) -> None:

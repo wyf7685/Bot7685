@@ -295,6 +295,7 @@ async def run_zssm(
                 system_prompt=SYSTEM_PROMPT,
                 model=active_alias,
                 limits=limits,
+                reasoning_effort=config.agent_reasoning_effort,
                 correlation_id=run_id,
             )
             raw_answer = result.output

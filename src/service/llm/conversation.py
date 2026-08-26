@@ -18,6 +18,7 @@ from .models import (
     ModelCallTrace,
     ModelCapabilities,
     ModelCapability,
+    ReasoningEffort,
     ToolCallTrace,
     ToolErrorCategory,
 )
@@ -159,6 +160,7 @@ class AgentCompletionBackend(Protocol):
         history: tuple[AgentHistoryItem, ...],
         tools: tuple[ToolDefinition, ...],
         temperature: float | None,
+        reasoning_effort: ReasoningEffort | None,
         max_output_tokens: int,
         parallel_tool_calls: bool,
     ) -> AgentModelTurn: ...
@@ -177,6 +179,7 @@ async def run_agent(
     tools: Sequence[BoundTool[Any, Any]] = (),
     system_prompt: str | None = None,
     temperature: float | None = None,
+    reasoning_effort: ReasoningEffort | None = None,
     limits: AgentLimits = _DEFAULT_AGENT_LIMITS,
     correlation_id: str | None = None,
 ) -> AgentRunResult:
@@ -219,6 +222,7 @@ async def run_agent(
                 registry=registry,
                 model_alias=model_alias,
                 capabilities=capabilities,
+                reasoning_effort=reasoning_effort,
                 temperature=temperature,
                 limits=limits,
                 started=started,
@@ -291,6 +295,7 @@ async def _run_bounded_conversation(
     model_alias: str,
     capabilities: ModelCapabilities,
     temperature: float | None,
+    reasoning_effort: ReasoningEffort | None,
     limits: AgentLimits,
     started: float,
     correlation_id: str | None,
@@ -325,6 +330,7 @@ async def _run_bounded_conversation(
                 history=tuple(history),
                 tools=definitions,
                 temperature=temperature,
+                reasoning_effort=reasoning_effort,
                 max_output_tokens=limits.max_output_tokens,
                 parallel_tool_calls=capabilities.parallel_tool_calls,
             )
@@ -372,6 +378,7 @@ async def _run_bounded_conversation(
                 usage=turn.usage,
                 elapsed=turn.elapsed,
                 finish_reason=turn.finish_reason,
+                reasoning_effort=reasoning_effort,
             )
         )
         usage = usage + turn.usage

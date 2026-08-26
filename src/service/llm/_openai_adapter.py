@@ -31,6 +31,7 @@ from .models import (
     ChatInput,
     ImagePart,
     ModelCapabilities,
+    ReasoningEffort,
     StructuredOutputMode,
     TextPart,
 )
@@ -122,6 +123,7 @@ async def create_completion(
     messages: list[dict[str, Any]],
     temperature: float | None,
     max_output_tokens: int | None,
+    reasoning_effort: ReasoningEffort | None = None,
     response_format: dict[str, Any] | None = None,
     tools: list[dict[str, Any]] | None = None,
     parallel_tool_calls: bool | None = None,
@@ -131,6 +133,8 @@ async def create_completion(
         request["temperature"] = temperature
     if max_output_tokens is not None:
         request["max_completion_tokens"] = max_output_tokens
+    if reasoning_effort is not None:
+        request["reasoning_effort"] = reasoning_effort
     if response_format is not None:
         request["response_format"] = response_format
     if tools:
@@ -162,6 +166,7 @@ class OpenAIAgentCompletionBackend(AgentCompletionBackend):
         history: tuple[AgentHistoryItem, ...],
         tools: tuple[ToolDefinition, ...],
         temperature: float | None,
+        reasoning_effort: ReasoningEffort | None,
         max_output_tokens: int,
         parallel_tool_calls: bool,
     ) -> AgentModelTurn:
@@ -178,6 +183,7 @@ class OpenAIAgentCompletionBackend(AgentCompletionBackend):
                     messages=messages,
                     temperature=temperature,
                     max_output_tokens=max_output_tokens,
+                    reasoning_effort=reasoning_effort,
                     tools=function_tools,
                     parallel_tool_calls=(
                         parallel_tool_calls if function_tools else None

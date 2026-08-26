@@ -27,13 +27,19 @@ from ._openai_adapter import (
 from ._selection import ActiveModelStore
 from .config import LLMConfig, get_llm_config
 from .conversation import run_agent as run_agent_conversation
-from .exceptions import LLMConfigurationError, LLMErrorCategory, LLMRunError
+from .exceptions import (
+    LLMCapabilityError,
+    LLMConfigurationError,
+    LLMErrorCategory,
+    LLMRunError,
+)
 from .models import (
     AgentLimits,
     AgentRunResult,
     ChatInput,
     ModelCapability,
     ModelInfo,
+    ReasoningEffort,
     RunResult,
     StructuredOutputMode,
     StructuredRunResult,
@@ -107,10 +113,14 @@ class LLMService:
         model: str | None = None,
         temperature: float | None = None,
         max_output_tokens: int | None = None,
+        reasoning_effort: ReasoningEffort | None = None,
     ) -> RunResult[str]:
         model_alias = await self._resolve_model_alias(model)
         async with self._runtime.lease(model_alias) as handle:
             self._enforce_capabilities(handle, prompt)
+            effective_reasoning_effort = self._resolve_reasoning_effort(
+                handle, reasoning_effort
+            )
             messages = build_messages(
                 prompt,
                 system_prompt,
@@ -126,6 +136,7 @@ class LLMService:
                         messages=messages,
                         temperature=temperature,
                         max_output_tokens=max_output_tokens,
+                        reasoning_effort=effective_reasoning_effort,
                     )
                     output = extract_text(completion)
                     usage = normalize_usage(completion)
@@ -164,10 +175,14 @@ class LLMService:
         model: str | None = None,
         temperature: float | None = None,
         max_output_tokens: int | None = None,
+        reasoning_effort: ReasoningEffort | None = None,
     ) -> StructuredRunResult[T]:
         model_alias = await self._resolve_model_alias(model)
         async with self._runtime.lease(model_alias) as handle:
             self._enforce_capabilities(handle, prompt)
+            effective_reasoning_effort = self._resolve_reasoning_effort(
+                handle, reasoning_effort
+            )
             handle.require_capability(ModelCapability.STRUCTURED_OUTPUT)
             try:
                 output_adapter = make_output_adapter(output_type)
@@ -202,6 +217,7 @@ class LLMService:
                             temperature=temperature,
                             max_output_tokens=max_output_tokens,
                             response_format=response_format,
+                            reasoning_effort=effective_reasoning_effort,
                         )
                     except asyncio.CancelledError:
                         raise
@@ -275,6 +291,7 @@ class LLMService:
         system_prompt: str | None = None,
         model: str | None = None,
         temperature: float | None = None,
+        reasoning_effort: ReasoningEffort | None = None,
         limits: AgentLimits = _DEFAULT_AGENT_LIMITS,
         correlation_id: str | None = None,
     ) -> AgentRunResult:
@@ -282,6 +299,9 @@ class LLMService:
 
         model_alias = await self._resolve_model_alias(model)
         async with self._runtime.lease(model_alias) as handle:
+            effective_reasoning_effort = self._resolve_reasoning_effort(
+                handle, reasoning_effort
+            )
             return await run_agent_conversation(
                 OpenAIAgentCompletionBackend(handle),
                 prompt,
@@ -289,8 +309,23 @@ class LLMService:
                 system_prompt=system_prompt,
                 temperature=temperature,
                 limits=limits,
+                reasoning_effort=effective_reasoning_effort,
                 correlation_id=correlation_id,
             )
+
+    @staticmethod
+    def _resolve_reasoning_effort(
+        handle: _ModelHandle,
+        requested: ReasoningEffort | None,
+    ) -> ReasoningEffort | None:
+        try:
+            return handle.capabilities.resolve_reasoning_effort(requested)
+        except ValueError as error:
+            raise LLMCapabilityError(
+                model_alias=handle.alias,
+                capability=ModelCapability.REASONING_EFFORT,
+                cause=error,
+            ) from error
 
     @staticmethod
     def _enforce_capabilities(handle: _ModelHandle, prompt: ChatInput) -> None:
