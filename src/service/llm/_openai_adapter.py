@@ -13,10 +13,12 @@ from openai import (
     APIResponseValidationError,
     APIStatusError,
     APITimeoutError,
+    AsyncOpenAI,
     AuthenticationError,
     PermissionDeniedError,
     RateLimitError,
 )
+from openai.types.chat import ChatCompletion
 from pydantic import TypeAdapter, ValidationError
 
 from .conversation import (
@@ -117,7 +119,7 @@ def build_messages(
 
 
 async def create_completion(
-    client: Any,
+    client: AsyncOpenAI,
     *,
     model_id: str,
     messages: list[dict[str, Any]],
@@ -127,7 +129,7 @@ async def create_completion(
     response_format: dict[str, Any] | None = None,
     tools: list[dict[str, Any]] | None = None,
     parallel_tool_calls: bool | None = None,
-) -> Any:
+) -> ChatCompletion:
     request: dict[str, Any] = {"model": model_id, "messages": messages}
     if temperature is not None:
         request["temperature"] = temperature
@@ -274,7 +276,7 @@ def build_function_tools(
 
 
 def extract_agent_turn(
-    completion: Any,
+    completion: ChatCompletion,
     *,
     model_alias: str,
     model_id: str,
@@ -446,7 +448,7 @@ def _resolve_local_ref(root: dict[str, Any], reference: str) -> dict[str, Any]:
     return current
 
 
-def extract_text(completion: Any) -> str:
+def extract_text(completion: ChatCompletion) -> str:
     choices = _field(completion, "choices")
     if not isinstance(choices, (list, tuple)) or not choices:
         raise InvalidSDKResponseError("completion has no choices")
