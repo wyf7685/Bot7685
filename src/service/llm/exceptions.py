@@ -82,6 +82,16 @@ class LLMModelSelectionError(ValueError):
     """Safe validation error for administrative model selection."""
 
 
+class LLMConfigurationConflictError(LLMServiceError):
+    """The administrative configuration snapshot is no longer current."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            category=LLMErrorCategory.CONFIGURATION,
+            _message_fields=(("reason", "stale_revision"),),
+        )
+
+
 class LLMRunError(LLMServiceError):
     def __init__(
         self,

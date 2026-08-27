@@ -1,7 +1,9 @@
 """Stable public contracts for Bot7685 LLM consumers."""
 
+from .config import EndpointConfig, LLMConfig, ModelConfig
 from .exceptions import (
     LLMCapabilityError,
+    LLMConfigurationConflictError,
     LLMConfigurationError,
     LLMErrorCategory,
     LLMModelSelectionError,
@@ -28,7 +30,7 @@ from .models import (
     ToolCallTrace,
     ToolErrorCategory,
 )
-from .service import LLMService, get_llm_service
+from .service import LLMConfigurationSnapshot, LLMService, get_llm_service
 from .tools import (
     BoundTool,
     JSONObject,
@@ -49,12 +51,16 @@ __all__ = [
     "ChatInput",
     "ChatInputPart",
     "CompletionTokensDetails",
+    "EndpointConfig",
     "ImagePart",
     "JSONObject",
     "JSONScalar",
     "JSONValue",
     "LLMCapabilityError",
+    "LLMConfig",
+    "LLMConfigurationConflictError",
     "LLMConfigurationError",
+    "LLMConfigurationSnapshot",
     "LLMErrorCategory",
     "LLMModelSelectionError",
     "LLMRunError",
@@ -63,6 +69,7 @@ __all__ = [
     "ModelCallTrace",
     "ModelCapabilities",
     "ModelCapability",
+    "ModelConfig",
     "ModelInfo",
     "PromptTokensDetails",
     "ReasoningEffort",

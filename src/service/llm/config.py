@@ -1,15 +1,16 @@
 from typing import Self
 
-from nonebot import get_plugin_config
 from pydantic import (
     AnyHttpUrl,
     BaseModel,
     ConfigDict,
     Field,
+    FieldSerializationInfo,
     NonNegativeInt,
     PositiveFloat,
     PositiveInt,
     SecretStr,
+    field_serializer,
     field_validator,
     model_validator,
 )
@@ -37,6 +38,17 @@ class EndpointConfig(_FrozenConfig):
             raise ValueError("api_key must not be empty")
         return SecretStr(secret)
 
+    @field_serializer("api_key", when_used="json")
+    def serialize_api_key(
+        self,
+        value: SecretStr,
+        info: FieldSerializationInfo,
+    ) -> str:
+        context = info.context
+        if isinstance(context, dict) and context.get("persist_secrets") is True:
+            return value.get_secret_value()
+        return str(value)
+
 
 class ModelConfig(_FrozenConfig):
     """A model ID and its endpoint-local execution policy."""
@@ -45,6 +57,7 @@ class ModelConfig(_FrozenConfig):
     model: str = Field(min_length=1)
     max_concurrent: PositiveInt = 1
     capabilities: ModelCapabilities
+    selectable: bool = True
 
     @field_validator("endpoint", "model")
     @classmethod
@@ -56,30 +69,19 @@ class ModelConfig(_FrozenConfig):
 
 
 class LLMConfig(_FrozenConfig):
-    """Validated endpoint, model, and default-model registry configuration."""
+    """Validated endpoint, model, and active-model registry configuration."""
 
-    default_model: str = Field(min_length=1)
-    selectable_models: tuple[str, ...]
+    active_model: str = Field(min_length=1)
     endpoints: dict[str, EndpointConfig] = Field(min_length=1)
     models: dict[str, ModelConfig] = Field(min_length=1)
 
-    @field_validator("default_model")
+    @field_validator("active_model")
     @classmethod
-    def validate_default_name(cls, value: str) -> str:
+    def validate_active_name(cls, value: str) -> str:
         value = value.strip()
         if not value:
-            raise ValueError("default_model must not be empty")
+            raise ValueError("active_model must not be empty")
         return value
-
-    @field_validator("selectable_models")
-    @classmethod
-    def validate_selectable_models(cls, value: tuple[str, ...]) -> tuple[str, ...]:
-        normalized = tuple(alias.strip() for alias in value)
-        if not normalized or any(not alias for alias in normalized):
-            raise ValueError("selectable_models must not be empty")
-        if len(set(normalized)) != len(normalized):
-            raise ValueError("selectable_models must be unique")
-        return normalized
 
     @field_validator("endpoints", "models")
     @classmethod
@@ -96,17 +98,13 @@ class LLMConfig(_FrozenConfig):
 
     @model_validator(mode="after")
     def validate_references(self) -> Self:
-        if self.default_model not in self.models:
+        active = self.models.get(self.active_model)
+        if active is None:
             raise ValueError(
-                f"default_model references unknown model alias {self.default_model!r}"
+                f"active_model references unknown model alias {self.active_model!r}"
             )
-        if self.default_model not in self.selectable_models:
-            raise ValueError("default_model must be selectable")
-
-        unknown_selectable = set(self.selectable_models).difference(self.models)
-        if unknown_selectable:
-            missing = ", ".join(sorted(unknown_selectable))
-            raise ValueError(f"selectable_models reference unknown models: {missing}")
+        if not active.selectable:
+            raise ValueError("active_model must be selectable")
 
         missing_endpoints = {
             model.endpoint
@@ -119,9 +117,4 @@ class LLMConfig(_FrozenConfig):
         return self
 
 
-class _RootConfig(BaseModel):
-    llm: LLMConfig = Field(description="LLM service configuration")
-
-
-def get_llm_config() -> LLMConfig:
-    return get_plugin_config(_RootConfig).llm
+__all__ = ["EndpointConfig", "LLMConfig", "ModelConfig"]

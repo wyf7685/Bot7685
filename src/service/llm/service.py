@@ -1,12 +1,16 @@
 """Public one-shot LLM service backed by the process-local SDK runtime."""
 
 import asyncio
-from collections.abc import Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
+from contextlib import AsyncExitStack, asynccontextmanager
+from dataclasses import dataclass
 from threading import Lock
 from time import perf_counter
+from types import MappingProxyType
 from typing import Any, cast
 
-from nonebot import get_driver
+from nonebot import get_driver, logger
+from pydantic import ValidationError
 
 from ._openai_adapter import (
     InvalidSDKResponseError,
@@ -24,13 +28,14 @@ from ._openai_adapter import (
     parse_structured_output,
     provider_error_category,
 )
-from ._selection import ActiveModelStore
-from .config import LLMConfig, get_llm_config
+from .config import LLMConfig
 from .conversation import run_agent as run_agent_conversation
 from .exceptions import (
     LLMCapabilityError,
+    LLMConfigurationConflictError,
     LLMConfigurationError,
     LLMErrorCategory,
+    LLMModelSelectionError,
     LLMRunError,
 )
 from .models import (
@@ -45,6 +50,7 @@ from .models import (
     StructuredRunResult,
 )
 from .models import StructuredOutputFallbackReason as FallbackReason
+from .repository import LLMConfigRepository
 from .runtime import LLMRuntime, _ModelHandle
 from .tools import BoundTool
 from .usage import TokenUsage
@@ -52,58 +58,214 @@ from .usage import TokenUsage
 _DEFAULT_AGENT_LIMITS = AgentLimits()
 
 
-class LLMService:
-    """Execute isolated model calls and own the global active-model policy."""
+@dataclass(frozen=True, slots=True)
+class LLMConfigurationSnapshot:
+    revision: int
+    config: LLMConfig | None
+    load_error: bool
 
-    def __init__(
-        self,
-        runtime: LLMRuntime,
-        config: LLMConfig,
-        model_store: ActiveModelStore,
-    ) -> None:
-        selectable = frozenset(config.selectable_models)
-        self._runtime = runtime
-        self._model_store = model_store
-        self._models = {
-            alias: ModelInfo(
-                alias=alias,
-                model_id=model.model,
-                capabilities=model.capabilities,
-                selectable=alias in selectable,
+
+@dataclass(frozen=True, slots=True)
+class _ServiceState:
+    config: LLMConfig
+    runtime: LLMRuntime
+    models: Mapping[str, ModelInfo]
+    model_list: tuple[ModelInfo, ...]
+
+
+class LLMService:
+    """Execute LLM calls against an atomically replaceable runtime snapshot."""
+
+    def __init__(self, repository: LLMConfigRepository | None = None) -> None:
+        self._repository = repository or LLMConfigRepository()
+        self._state_lock = asyncio.Lock()
+        self._revision = 0
+        self._load_error = False
+        self._shutdown = False
+        self._retired_runtimes: set[asyncio.Task[None]] = set()
+        self._state: _ServiceState | None = None
+
+        try:
+            config = self._repository.load()
+            if config is not None:
+                self._state = self._build_state(config)
+        except (OSError, ValidationError, ValueError) as error:
+            self._load_error = True
+            logger.error(
+                f"LLM persisted configuration is unavailable: {type(error).__name__}"
             )
-            for alias, model in config.models.items()
-        }
-        self._model_list = tuple(self._models.values())
+
+    @staticmethod
+    def _build_state(config: LLMConfig) -> _ServiceState:
+        models = MappingProxyType(
+            {
+                alias: ModelInfo(
+                    alias=alias,
+                    model_id=model.model,
+                    capabilities=model.capabilities,
+                    selectable=model.selectable,
+                )
+                for alias, model in config.models.items()
+            }
+        )
+        return _ServiceState(
+            config=config,
+            runtime=LLMRuntime(config),
+            models=models,
+            model_list=tuple(models.values()),
+        )
+
+    async def configuration_snapshot(self) -> LLMConfigurationSnapshot:
+        async with self._state_lock:
+            return LLMConfigurationSnapshot(
+                revision=self._revision,
+                config=self._state.config if self._state is not None else None,
+                load_error=self._load_error,
+            )
+
+    async def replace_configuration(
+        self,
+        config: LLMConfig,
+        *,
+        expected_revision: int,
+    ) -> int:
+        candidate = self._build_state(config)
+        previous: _ServiceState | None
+        try:
+            async with self._state_lock:
+                self._ensure_open()
+                if expected_revision != self._revision:
+                    raise LLMConfigurationConflictError
+                try:
+                    self._repository.save(config)
+                except OSError as error:
+                    raise LLMConfigurationError(cause=error) from error
+                previous = self._state
+                self._state = candidate
+                self._load_error = False
+                self._revision += 1
+                revision = self._revision
+        except BaseException:
+            await self._close_runtime(candidate.runtime)
+            raise
+
+        if previous is not None:
+            self._retire_runtime(previous.runtime)
+        return revision
+
+    async def reset_configuration(self, *, expected_revision: int) -> int:
+        async with self._state_lock:
+            self._ensure_open()
+            if expected_revision != self._revision:
+                raise LLMConfigurationConflictError
+            try:
+                self._repository.delete()
+            except OSError as error:
+                raise LLMConfigurationError(cause=error) from error
+            previous = self._state
+            self._state = None
+            self._load_error = False
+            self._revision += 1
+            revision = self._revision
+
+        if previous is not None:
+            self._retire_runtime(previous.runtime)
+        return revision
 
     def list_models(self) -> tuple[ModelInfo, ...]:
-        """Return cached immutable descriptions for every configured model."""
-        return self._model_list
+        state = self._state
+        return state.model_list if state is not None else ()
 
     def get_model(self, alias: str) -> ModelInfo:
-        """Return one configured model description."""
+        state = self._state
         normalized = alias.strip()
+        if state is None:
+            raise LLMConfigurationError(model_alias=normalized)
         try:
-            return self._models[normalized]
+            return state.models[normalized]
         except KeyError as error:
             raise LLMConfigurationError(model_alias=normalized) from error
 
     async def get_active_model(self) -> ModelInfo:
-        """Return one stable snapshot of the global active model."""
-        state = await self._model_store.snapshot()
-        return self.get_model(state.active_model)
+        async with self._state_lock:
+            self._ensure_open()
+            state = self._require_state()
+            return state.models[state.config.active_model]
 
     async def select_model(self, alias: str) -> ModelInfo:
-        """Persist and return one globally selectable model."""
-        state = await self._model_store.select(alias)
-        return self.get_model(state.active_model)
+        normalized = alias.strip()
+        async with self._state_lock:
+            self._ensure_open()
+            state = self._require_state()
+            model = state.models.get(normalized)
+            if model is None:
+                raise LLMModelSelectionError("Unknown model alias.")
+            if not model.selectable:
+                raise LLMModelSelectionError("The model alias is not selectable.")
 
-    async def _resolve_model_alias(self, model: str | None) -> str:
-        if model is not None:
+            config = state.config.model_copy(update={"active_model": normalized})
+            try:
+                self._repository.save(config)
+            except OSError as error:
+                raise LLMConfigurationError(cause=error) from error
+            self._state = _ServiceState(
+                config=config,
+                runtime=state.runtime,
+                models=state.models,
+                model_list=state.model_list,
+            )
+            self._revision += 1
             return model
-        return (await self.get_active_model()).alias
+
+    @asynccontextmanager
+    async def _lease_model(self, model: str | None) -> AsyncIterator[_ModelHandle]:
+        stack = AsyncExitStack()
+        try:
+            async with self._state_lock:
+                self._ensure_open()
+                state = self._require_state()
+                alias = (
+                    model.strip() if model is not None else state.config.active_model
+                )
+                handle = await stack.enter_async_context(state.runtime.lease(alias))
+            yield handle
+        finally:
+            await stack.aclose()
 
     async def aclose(self) -> None:
-        await self._runtime.aclose()
+        async with self._state_lock:
+            if self._shutdown:
+                return
+            self._shutdown = True
+            state = self._state
+            self._state = None
+
+        if state is not None:
+            await self._close_runtime(state.runtime)
+        retired = tuple(self._retired_runtimes)
+        if retired:
+            await asyncio.gather(*retired, return_exceptions=True)
+
+    def _ensure_open(self) -> None:
+        if self._shutdown:
+            raise LLMConfigurationError
+
+    def _require_state(self) -> _ServiceState:
+        if self._state is None:
+            raise LLMConfigurationError
+        return self._state
+
+    def _retire_runtime(self, runtime: LLMRuntime) -> None:
+        task = asyncio.create_task(self._close_runtime(runtime))
+        self._retired_runtimes.add(task)
+        task.add_done_callback(self._retired_runtimes.discard)
+
+    @staticmethod
+    async def _close_runtime(runtime: LLMRuntime) -> None:
+        try:
+            await runtime.aclose()
+        except Exception as error:
+            logger.warning(f"Failed to close an LLM runtime: {type(error).__name__}")
 
     async def complete_text(
         self,
@@ -115,8 +277,7 @@ class LLMService:
         max_output_tokens: int | None = None,
         reasoning_effort: ReasoningEffort | None = None,
     ) -> RunResult[str]:
-        model_alias = await self._resolve_model_alias(model)
-        async with self._runtime.lease(model_alias) as handle:
+        async with self._lease_model(model) as handle:
             self._enforce_capabilities(handle, prompt)
             effective_reasoning_effort = self._resolve_reasoning_effort(
                 handle, reasoning_effort
@@ -177,8 +338,7 @@ class LLMService:
         max_output_tokens: int | None = None,
         reasoning_effort: ReasoningEffort | None = None,
     ) -> StructuredRunResult[T]:
-        model_alias = await self._resolve_model_alias(model)
-        async with self._runtime.lease(model_alias) as handle:
+        async with self._lease_model(model) as handle:
             self._enforce_capabilities(handle, prompt)
             effective_reasoning_effort = self._resolve_reasoning_effort(
                 handle, reasoning_effort
@@ -297,8 +457,7 @@ class LLMService:
     ) -> AgentRunResult:
         """Run one bounded conversation under a single runtime lease."""
 
-        model_alias = await self._resolve_model_alias(model)
-        async with self._runtime.lease(model_alias) as handle:
+        async with self._lease_model(model) as handle:
             effective_reasoning_effort = self._resolve_reasoning_effort(
                 handle, reasoning_effort
             )
@@ -345,13 +504,7 @@ def get_llm_service() -> LLMService:
         if _service_shutdown_started:
             raise LLMConfigurationError
         if _service is None:
-            config = get_llm_config()
-            model_store = ActiveModelStore(
-                default_alias=config.default_model,
-                configured_aliases=config.models,
-                selectable_aliases=config.selectable_models,
-            )
-            _service = LLMService(LLMRuntime(config), config, model_store)
+            _service = LLMService()
         return _service
 
 
