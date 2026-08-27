@@ -5,13 +5,14 @@ from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlsplit
 
+from ....http_transport import ValidatedHttpTarget
 from .base import (
     BaseSourceAdapter,
     normalize_page_text,
     normalize_single_line,
     optional_metadata,
 )
-from .contracts import ExtractedPage, SourceIO, SourceTarget, ValidatedTarget
+from .contracts import ExtractedPage, SourceIO, SourceTarget
 
 _B23_HOST = "b23.tv"
 _BILIBILI_VIDEO_HOSTS = frozenset(
@@ -58,7 +59,7 @@ class _JSONLDScriptParser(HTMLParser):
 class BilibiliAdapter(BaseSourceAdapter):
     source_id = "bilibili"
 
-    def recognize(self, target: ValidatedTarget) -> SourceTarget | None:
+    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None:
         canonical = canonical_bilibili_video_url(target.url)
         if canonical is None:
             return None

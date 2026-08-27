@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 
+from ....http_transport import ValidatedHttpTarget
 from ..text import normalize_page_text, normalize_single_line, optional_metadata
 from .contracts import (
     DownloadedSourceMedia,
@@ -7,14 +8,13 @@ from .contracts import (
     SourceIO,
     SourceTarget,
     SpecializedPage,
-    ValidatedTarget,
 )
 
 
 class BaseSourceAdapter:
     source_id = "unknown"
 
-    def recognize(self, target: ValidatedTarget) -> SourceTarget | None:
+    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None:
         _ = target
         return None
 

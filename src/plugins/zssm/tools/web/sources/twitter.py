@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 from urllib.parse import urlsplit
 
+from ....http_transport import ValidatedHttpTarget
 from .base import (
     BaseSourceAdapter,
     normalize_page_text,
@@ -16,7 +17,6 @@ from .contracts import (
     SourceIO,
     SourceTarget,
     SpecializedPage,
-    ValidatedTarget,
 )
 
 _TWITTER_HOSTS = frozenset(
@@ -39,7 +39,7 @@ _TWITTER_STATUS_PATH_RE = re.compile(
 class TwitterAdapter(BaseSourceAdapter):
     source_id = "twitter"
 
-    def recognize(self, target: ValidatedTarget) -> SourceTarget | None:
+    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None:
         if target.hostname not in _TWITTER_HOSTS:
             return None
         match = _TWITTER_STATUS_PATH_RE.fullmatch(urlsplit(target.url).path)

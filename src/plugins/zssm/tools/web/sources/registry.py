@@ -1,8 +1,9 @@
 import asyncio
 from collections.abc import Mapping, Sequence
 
+from ....http_transport import ValidatedHttpTarget
 from .bilibili import BilibiliAdapter
-from .contracts import SourceAdapter, SourceIO, SourceTarget, ValidatedTarget
+from .contracts import SourceAdapter, SourceIO, SourceTarget
 from .pixiv import PixivAdapter
 from .twitter import TwitterAdapter
 
@@ -13,7 +14,7 @@ class SourceRegistry:
 
     def match(
         self,
-        target: ValidatedTarget,
+        target: ValidatedHttpTarget,
     ) -> tuple[SourceAdapter, SourceTarget] | None:
         for adapter in self._adapters:
             source_target = adapter.recognize(target)

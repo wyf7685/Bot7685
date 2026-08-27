@@ -3,7 +3,7 @@ from typing import cast
 from src.service.llm import JSONValue
 
 from ...contracts import Citation, CitationRegistry, CitationSourceKind
-from .urls import normalize_http_url
+from ...http_transport import normalize_http_url
 
 
 class InvocationCitationRegistry(CitationRegistry):

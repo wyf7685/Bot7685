@@ -5,6 +5,7 @@ from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urlsplit
 
+from ....http_transport import ValidatedHttpTarget
 from .base import (
     BaseSourceAdapter,
     normalize_page_text,
@@ -18,7 +19,6 @@ from .contracts import (
     SourceIO,
     SourceTarget,
     SpecializedPage,
-    ValidatedTarget,
 )
 
 _PIXIV_HOSTS = frozenset({"pixiv.net", "www.pixiv.net"})
@@ -114,7 +114,7 @@ class _CaptionHTMLParser(HTMLParser):
 class PixivAdapter(BaseSourceAdapter):
     source_id = "pixiv"
 
-    def recognize(self, target: ValidatedTarget) -> SourceTarget | None:
+    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None:
         canonical = canonical_pixiv_artwork_url(target.url)
         if canonical is None:
             return None

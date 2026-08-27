@@ -9,8 +9,8 @@ from ....contracts import (
     SearchResult,
     WebSearchResult,
 )
+from ....http_transport import InvalidHttpTargetError, normalize_http_url
 from ..text import normalize_single_line
-from ..urls import InvalidWebUrlError, normalize_http_url
 
 _CAUSE_TYPE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,79}$")
 _MAX_URL_CHARS = 4096
@@ -97,7 +97,7 @@ def normalize_search_rows(
                 source=source,
                 published=published,
             )
-        except TypeError, ValueError, InvalidWebUrlError:
+        except TypeError, ValueError, InvalidHttpTargetError:
             continue
         seen_urls.add(url)
         normalized.append(

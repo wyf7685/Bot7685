@@ -1,15 +1,13 @@
 import codecs
 import hashlib
-import ipaddress
 import socket
 import zlib
-from collections.abc import Awaitable, Callable, Mapping, Sequence
-from contextlib import suppress
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import partial
 from time import monotonic
-from typing import Any, Literal, Self, cast
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from typing import Literal, Self, cast
+from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
 import anyio
@@ -20,18 +18,33 @@ from src.service.llm import BoundTool, JSONValue, ToolOutput
 
 from ...config import FetchPageConfig
 from ...contracts import FetchPageArgs, MediaSetRef, WebPageResult, ZssmToolContext
+from ...http_transport import (
+    AddressResolver,
+    DNSResolutionError,
+    InvalidHttpTargetError,
+    InvalidResponseHeaderError,
+    IPAddress,
+    PeerMismatchError,
+    ResponseTooLargeError,
+    UnsafeAddressError,
+    ValidatedHttpTarget,
+    build_pinned_request,
+    close_response_bounded,
+    read_bounded_body,
+    resolve_public_addresses,
+    validate_http_target,
+    verify_peer,
+)
 from .citations import InvocationCitationRegistry
 from .citations import citation_json as _citation_json
 from .media import InvocationMediaRegistry
 from .sources.contracts import DownloadedPage as _DownloadedPage
 from .sources.contracts import ExtractedPage as _ExtractedPage
 from .sources.contracts import SourceAdapterError
-from .sources.contracts import ValidatedTarget as _ValidatedTarget
 from .sources.registry import DEFAULT_SOURCE_REGISTRY, SourceRegistry
 from .text import normalize_page_text as _normalize_page_text
 from .text import normalize_single_line as _normalize_single_line
 from .text import optional_metadata as _optional_metadata
-from .urls import InvalidWebUrlError, validate_target
 
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 _USER_AGENT = "Bot7685-ZSSM/1.0"
@@ -55,12 +68,6 @@ type FetchErrorCode = Literal[
 ]
 
 
-type AddressResolver = Callable[[str, int], Awaitable[Sequence[str]]]
-
-
-type _IPAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
-
-
 type _RobotsMode = Literal["enforce", "skip"]
 
 
@@ -73,10 +80,10 @@ class SafePageFetchError(RuntimeError):
         super().__init__(code)
 
 
-def _validate_target(url: str) -> _ValidatedTarget:
+def _validate_target(url: str) -> ValidatedHttpTarget:
     try:
-        return validate_target(url)
-    except InvalidWebUrlError:
+        return validate_http_target(url)
+    except InvalidHttpTargetError:
         raise SafePageFetchError("unsafe_url") from None
 
 
@@ -215,7 +222,7 @@ class HttpxSafePageFetcher:
                     if self._config.respect_robots:
                         await self._enforce_robots(current)
                     addresses = await self._resolve(current.hostname, current.port)
-                    request = _build_pinned_request(
+                    request = _build_direct_request(
                         current,
                         addresses[0],
                         method="HEAD",
@@ -233,7 +240,7 @@ class HttpxSafePageFetcher:
                             raise SafePageFetchError("timeout") from None
                         except httpx.HTTPError:
                             raise SafePageFetchError("network") from None
-                        _verify_peer(response, addresses)
+                        _verify_expected_peer(response, addresses)
                         if response.status_code not in _REDIRECT_STATUSES:
                             return current.url
                         if redirects >= self._config.max_redirects:
@@ -248,7 +255,7 @@ class HttpxSafePageFetcher:
                         redirects += 1
                     finally:
                         if response is not None:
-                            await _close_response(response)
+                            await close_response_bounded(response)
         except TimeoutError:
             raise SafePageFetchError("timeout") from None
 
@@ -388,7 +395,7 @@ class HttpxSafePageFetcher:
                 )
                 client = self._source_client
             else:
-                request = _build_pinned_request(
+                request = _build_direct_request(
                     current,
                     addresses[0],
                     accept=accept,
@@ -411,7 +418,7 @@ class HttpxSafePageFetcher:
                     raise SafePageFetchError("network") from None
 
                 if not use_source_proxy:
-                    _verify_peer(response, addresses)
+                    _verify_expected_peer(response, addresses)
                 if response.status_code in _REDIRECT_STATUSES:
                     if redirects >= self._config.max_redirects:
                         raise SafePageFetchError("redirect")
@@ -461,26 +468,19 @@ class HttpxSafePageFetcher:
                 )
             finally:
                 if response is not None:
-                    await _close_response(response)
+                    await close_response_bounded(response)
 
-    async def _resolve(self, hostname: str, port: int) -> tuple[_IPAddress, ...]:
+    async def _resolve(self, hostname: str, port: int) -> tuple[IPAddress, ...]:
         try:
-            raw_addresses = await self._resolver(hostname, port)
-        except Exception:
+            addresses = await resolve_public_addresses(
+                hostname,
+                port,
+                self._resolver,
+            )
+        except DNSResolutionError:
             raise SafePageFetchError("dns") from None
-        addresses: set[_IPAddress] = set()
-        for raw_address in raw_addresses:
-            if not isinstance(raw_address, str) or "%" in raw_address:
-                raise SafePageFetchError("unsafe_url")
-            try:
-                address = ipaddress.ip_address(raw_address)
-            except ValueError:
-                raise SafePageFetchError("dns") from None
-            if not _is_unambiguous_global(address):
-                raise SafePageFetchError("unsafe_url")
-            addresses.add(address)
-        if not addresses:
-            raise SafePageFetchError("dns")
+        except UnsafeAddressError:
+            raise SafePageFetchError("unsafe_url") from None
         return tuple(sorted(addresses, key=lambda item: (item.version, item.packed)))
 
     async def _read_wire_body(
@@ -488,32 +488,14 @@ class HttpxSafePageFetcher:
         response: httpx.Response,
         limit: int,
     ) -> bytes:
-        lengths = response.headers.get_list("content-length")
-        if len(lengths) > 1:
-            raise SafePageFetchError("too_large")
-        if lengths:
-            try:
-                content_length = int(lengths[0])
-            except ValueError:
-                raise SafePageFetchError("too_large") from None
-            if content_length < 0 or content_length > limit:
-                raise SafePageFetchError("too_large")
-
-        wire = bytearray()
-        if response.is_stream_consumed:
-            if len(response.content) > limit:
-                raise SafePageFetchError("too_large")
-            return response.content
         try:
-            async for chunk in response.aiter_raw():
-                if len(wire) + len(chunk) > limit:
-                    raise SafePageFetchError("too_large")
-                wire.extend(chunk)
+            return await read_bounded_body(response, limit)
+        except ResponseTooLargeError, InvalidResponseHeaderError:
+            raise SafePageFetchError("too_large") from None
         except httpx.TimeoutException:
             raise SafePageFetchError("timeout") from None
         except httpx.HTTPError:
             raise SafePageFetchError("network") from None
-        return bytes(wire)
 
     def _validate_content_type(
         self,
@@ -578,7 +560,7 @@ class HttpxSafePageFetcher:
 
     async def _enforce_robots(
         self,
-        target: _ValidatedTarget,
+        target: ValidatedHttpTarget,
         *,
         source_proxy: bool = False,
     ) -> None:
@@ -605,7 +587,7 @@ class HttpxSafePageFetcher:
 
     async def _load_robots(
         self,
-        target: _ValidatedTarget,
+        target: ValidatedHttpTarget,
         now: float,
         *,
         source_proxy: bool,
@@ -654,14 +636,6 @@ async def resolve_card_urls(
         source_registry=registry,
     ) as fetcher:
         return await registry.resolve_card_urls(urls, fetcher)
-
-
-async def _close_response(response: httpx.Response) -> None:
-    """Bound cleanup while shielding it from an expired or caller cancel scope."""
-
-    with anyio.move_on_after(1.0, shield=True):
-        with suppress(Exception):
-            await response.aclose()
 
 
 def build_fetch_page_tool(
@@ -723,28 +697,6 @@ async def _resolve_system_addresses(hostname: str, port: int) -> Sequence[str]:
     return tuple(str(info[4][0]) for info in infos)
 
 
-def _is_unambiguous_global(address: _IPAddress) -> bool:
-    if not address.is_global:
-        return False
-    if isinstance(address, ipaddress.IPv6Address):
-        if (
-            address.ipv4_mapped is not None
-            or address.sixtofour is not None
-            or address.teredo is not None
-        ):
-            return False
-        if address.scope_id is not None:
-            return False
-    return not (
-        address.is_loopback
-        or address.is_link_local
-        or address.is_multicast
-        or address.is_private
-        or address.is_reserved
-        or address.is_unspecified
-    )
-
-
 def _request_headers(
     *,
     accept: str,
@@ -762,7 +714,7 @@ def _request_headers(
 
 
 def _build_source_proxy_request(
-    target: _ValidatedTarget,
+    target: ValidatedHttpTarget,
     *,
     accept: str,
     accept_encoding: str,
@@ -779,53 +731,34 @@ def _build_source_proxy_request(
     )
 
 
-def _build_pinned_request(
-    target: _ValidatedTarget,
-    address: _IPAddress,
+def _build_direct_request(
+    target: ValidatedHttpTarget,
+    address: IPAddress,
     *,
     method: Literal["GET", "HEAD"] = "GET",
     accept: str = "text/html,application/xhtml+xml,text/plain,text/markdown",
     accept_encoding: str = "gzip, deflate",
     referer: str | None = None,
 ) -> httpx.Request:
-    parsed = urlsplit(target.url)
-    connect_host = f"[{address}]" if address.version == 6 else str(address)
-    connect_url = urlunsplit(
-        (target.scheme, connect_host, parsed.path, parsed.query, "")
-    )
-    extensions: dict[str, Any] = {}
-    if target.scheme == "https":
-        extensions["sni_hostname"] = target.hostname
-    headers = _request_headers(
-        accept=accept,
-        accept_encoding=accept_encoding,
-        referer=referer,
-    )
-    headers["Host"] = target.host_header
-    return httpx.Request(
-        method,
-        connect_url,
-        headers=headers,
-        extensions=extensions,
+    return build_pinned_request(
+        target,
+        address,
+        method=method,
+        headers=_request_headers(
+            accept=accept,
+            accept_encoding=accept_encoding,
+            referer=referer,
+        ),
     )
 
 
-def _verify_peer(response: httpx.Response, expected: Sequence[_IPAddress]) -> None:
-    stream = response.extensions.get("network_stream")
-    if stream is None or not hasattr(stream, "get_extra_info"):
-        return
-    peer = stream.get_extra_info("server_addr")
-    if peer is None:
-        return
-    raw_address = peer[0] if isinstance(peer, tuple) and peer else peer
-    if not isinstance(raw_address, str):
-        raise SafePageFetchError("peer_mismatch")
+def _verify_expected_peer(
+    response: httpx.Response, expected: Sequence[IPAddress]
+) -> None:
     try:
-        actual = ipaddress.ip_address(raw_address.split("%", 1)[0])
-    except ValueError:
+        verify_peer(response, expected)
+    except PeerMismatchError:
         raise SafePageFetchError("peer_mismatch") from None
-    if actual not in expected or not _is_unambiguous_global(actual):
-        raise SafePageFetchError("peer_mismatch")
 
 
 def _decode_content(

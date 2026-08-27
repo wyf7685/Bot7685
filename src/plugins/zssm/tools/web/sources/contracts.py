@@ -1,16 +1,8 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol
+from typing import Any, Protocol
 
-
-@dataclass(frozen=True, slots=True)
-class ValidatedTarget:
-    url: str
-    scheme: Literal["http", "https"]
-    hostname: str
-    port: int
-    origin: str
-    host_header: str
+from ....http_transport import ValidatedHttpTarget
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,7 +103,7 @@ class SourceIO(Protocol):
 class SourceAdapter(Protocol):
     source_id: str
 
-    def recognize(self, target: ValidatedTarget) -> SourceTarget | None: ...
+    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None: ...
 
     async def fetch_specialized(
         self,
@@ -147,5 +139,4 @@ __all__ = [
     "SourceIO",
     "SourceTarget",
     "SpecializedPage",
-    "ValidatedTarget",
 ]
