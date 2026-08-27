@@ -249,6 +249,7 @@ class ImageStageStatistics:
     unique: int = 0
     prepared: int = 0
     acquisition_failed: int = 0
+    normalization_failed: int = 0
     vision_succeeded: int = 0
     vision_failed: int = 0
     vision_truncated: int = 0
@@ -259,18 +260,22 @@ class ImageStageStatistics:
             raise ValueError("image statistics must not be negative")
         if self.unique > self.requested:
             raise ValueError("unique images must not exceed requested images")
-        if self.prepared + self.acquisition_failed != self.unique:
-            raise ValueError("every unique image must be prepared or fail acquisition")
+        if self.prepared + self.preparation_failed != self.unique:
+            raise ValueError("every unique image must be prepared or fail preparation")
         if self.vision_succeeded + self.vision_failed > self.prepared:
             raise ValueError("vision outcomes must not exceed prepared images")
         if self.vision_truncated > self.vision_succeeded:
             raise ValueError("truncated observations must have succeeded")
 
     @property
+    def preparation_failed(self) -> int:
+        return self.acquisition_failed + self.normalization_failed
+
+    @property
     def partial_success(self) -> bool:
         vision_attempted = self.vision_succeeded + self.vision_failed > 0
         usable_successes = self.vision_succeeded if vision_attempted else self.prepared
-        failures = self.acquisition_failed + self.vision_failed
+        failures = self.preparation_failed + self.vision_failed
         return usable_successes > 0 and failures > 0
 
 

@@ -205,7 +205,7 @@ def _statistics_content(stats: RunStatistics) -> str:
         if stats.vision_usage is None
         else (stats.primary_usage, stats.vision_usage)
     )
-    failed_images = stats.images.acquisition_failed + stats.images.vision_failed
+    failed_images = stats.images.preparation_failed + stats.images.vision_failed
     total_calls = sum(stage.calls for stage in stages)
     combined_usage = _combined_usage_text(stages)
     lines = [
@@ -225,7 +225,10 @@ def _statistics_content(stats: RunStatistics) -> str:
             f"耗时 {_format_seconds(stats.tool_elapsed)}",
             f"工具图片: 返回 {stats.tool_images}；载荷 {stats.tool_image_bytes} bytes",
             f"图片: 请求 {stats.images.requested}；准备 {stats.images.prepared}；"
-            f"失败 {failed_images}；部分成功 {partial_success}",
+            f"获取失败 {stats.images.acquisition_failed}；"
+            f"归一化失败 {stats.images.normalization_failed}；"
+            f"视觉失败 {stats.images.vision_failed}；失败总计 {failed_images}；"
+            f"部分成功 {partial_success}",
         )
     )
     return "\n".join(lines)

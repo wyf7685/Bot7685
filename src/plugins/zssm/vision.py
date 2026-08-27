@@ -145,7 +145,9 @@ async def route_vision(
         "ZSSM::Vision",
         f"<b>images prepared</> | requested=<c>{preparation.statistics.requested}</> "
         f"prepared=<c>{preparation.statistics.prepared}</> "
-        f"failed=<y>{preparation.statistics.acquisition_failed}</>",
+        f"failed=<y>{preparation.statistics.preparation_failed}</> "
+        f"acquisition_failed=<y>{preparation.statistics.acquisition_failed}</> "
+        f"normalization_failed=<y>{preparation.statistics.normalization_failed}</>",
     )
     if not preparation.images:
         log_event(
@@ -194,6 +196,7 @@ async def route_vision(
         unique=preparation.statistics.unique,
         prepared=preparation.statistics.prepared,
         acquisition_failed=preparation.statistics.acquisition_failed,
+        normalization_failed=preparation.statistics.normalization_failed,
         vision_succeeded=len(stage.observations),
         vision_failed=len(stage.failures),
         vision_truncated=sum(item.truncated for item in stage.observations),

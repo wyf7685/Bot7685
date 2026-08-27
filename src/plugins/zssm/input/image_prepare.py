@@ -33,8 +33,10 @@ class ImagePreparationResult:
         object.__setattr__(self, "failures", tuple(self.failures))
         if len(self.images) != self.statistics.prepared:
             raise ValueError("prepared image count does not match statistics")
-        if len(self.failures) != self.statistics.acquisition_failed:
-            raise ValueError("image failure count does not match statistics")
+        if len(self.failures) != self.statistics.preparation_failed:
+            raise ValueError(
+                "image preparation failure count does not match statistics"
+            )
 
 
 async def prepare_images(
@@ -95,12 +97,14 @@ async def prepare_images(
 
     unique_acquired: list[_AcquiredImage] = []
     failures: list[ImageFailure] = []
+    acquisition_failed = 0
     seen_content: set[str] = set()
     unique_count = 0
     for _candidate, outcome in zip(candidates, acquired_outcomes, strict=True):
         if isinstance(outcome, ImageFailure):
             unique_count += 1
             failures.append(outcome)
+            acquisition_failed += 1
             continue
         if outcome.sha256 in seen_content:
             continue
@@ -110,9 +114,11 @@ async def prepare_images(
 
     normalized_outcomes = await _normalize_all(unique_acquired, config)
     prepared: list[PreparedImage] = []
+    normalization_failed = 0
     for outcome in normalized_outcomes:
         if isinstance(outcome, ImageFailure):
             failures.append(outcome)
+            normalization_failed += 1
         else:
             prepared.append(_to_prepared_image(outcome))
 
@@ -120,7 +126,8 @@ async def prepare_images(
         requested=requested,
         unique=unique_count,
         prepared=len(prepared),
-        acquisition_failed=len(failures),
+        acquisition_failed=acquisition_failed,
+        normalization_failed=normalization_failed,
     )
     return ImagePreparationResult(
         images=tuple(prepared),
