@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Annotated
 
 from arclet.alconna import Alconna, AllParam, Args

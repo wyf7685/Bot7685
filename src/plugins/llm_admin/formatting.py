@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from src.service.llm import (
     EndpointConfig,
     LLMConfig,

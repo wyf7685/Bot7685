@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import secrets
 from time import perf_counter
