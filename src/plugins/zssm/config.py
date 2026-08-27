@@ -1,4 +1,5 @@
 from typing import Literal, Self
+from urllib.parse import urlsplit
 
 from nonebot import get_plugin_config
 from pydantic import (
@@ -83,6 +84,7 @@ class WebSearchConfig(_FrozenConfig):
 
 
 class FetchPageConfig(_FrozenConfig):
+    source_proxy: SecretStr | None = None
     respect_robots: bool = True
     max_redirects: NonNegativeInt = 5
     max_wire_bytes: PositiveInt = 2 * 1024 * 1024
@@ -96,6 +98,27 @@ class FetchPageConfig(_FrozenConfig):
         "text/plain",
         "text/markdown",
     )
+
+    @field_validator("source_proxy")
+    @classmethod
+    def validate_source_proxy(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is None:
+            return None
+        raw_value = value.get_secret_value().strip()
+        try:
+            parsed = urlsplit(raw_value)
+            _ = parsed.port
+        except ValueError:
+            raise ValueError("source_proxy must be a valid HTTP proxy URL") from None
+        if (
+            parsed.scheme.casefold() not in {"http", "https"}
+            or parsed.hostname is None
+            or parsed.query
+            or parsed.fragment
+            or parsed.path not in {"", "/"}
+        ):
+            raise ValueError("source_proxy must be a valid HTTP proxy URL")
+        return SecretStr(raw_value)
 
     @field_validator("allowed_content_types")
     @classmethod

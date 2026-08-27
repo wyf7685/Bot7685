@@ -5,6 +5,7 @@ from collections.abc import Mapping, Sequence
 
 from .bilibili import BilibiliAdapter
 from .contracts import SourceAdapter, SourceIO, SourceTarget, ValidatedTarget
+from .pixiv import PixivAdapter
 from .twitter import TwitterAdapter
 
 
@@ -51,10 +52,7 @@ class SourceRegistry:
 
 
 DEFAULT_SOURCE_REGISTRY = SourceRegistry(
-    (
-        TwitterAdapter(),
-        BilibiliAdapter(),
-    )
+    (TwitterAdapter(), BilibiliAdapter(), PixivAdapter())
 )
 
 

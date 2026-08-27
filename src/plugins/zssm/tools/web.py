@@ -611,7 +611,7 @@ class HttpxSafePageFetcher:
         self._resolver = resolver or _resolve_system_addresses
         self._clock = clock
         self._source_registry = source_registry or DEFAULT_SOURCE_REGISTRY
-        self._robots_cache: dict[str, _RobotsCacheEntry] = {}
+        self._robots_cache: dict[tuple[str, bool], _RobotsCacheEntry] = {}
         if transport is None:
             transport = httpx.AsyncHTTPTransport(
                 trust_env=False,
@@ -625,6 +625,17 @@ class HttpxSafePageFetcher:
             follow_redirects=False,
             timeout=httpx.Timeout(None),
         )
+        self._source_client: httpx.AsyncClient | None = None
+        if self._config.source_proxy is not None:
+            self._source_client = httpx.AsyncClient(
+                proxy=self._config.source_proxy.get_secret_value(),
+                trust_env=False,
+                follow_redirects=False,
+                timeout=httpx.Timeout(None),
+                http1=True,
+                http2=False,
+                limits=httpx.Limits(max_keepalive_connections=0),
+            )
 
     @property
     def respect_robots(self) -> bool:
@@ -641,6 +652,8 @@ class HttpxSafePageFetcher:
         await self.aclose()
 
     async def aclose(self) -> None:
+        if self._source_client is not None:
+            await self._source_client.aclose()
         await self._client.aclose()
 
     async def download(
@@ -656,6 +669,7 @@ class HttpxSafePageFetcher:
             robots_mode="enforce" if self._config.respect_robots else "skip",
             accept=accept,
             allowed_content_types=allowed_content_types,
+            source_proxy=self._source_client is not None,
         )
 
     async def resolve_redirects(
@@ -802,24 +816,37 @@ class HttpxSafePageFetcher:
         accept: str = "text/html,application/xhtml+xml,text/plain,text/markdown",
         accept_encoding: str = "gzip, deflate",
         allowed_content_types: Sequence[str] | None = None,
+        source_proxy: bool = False,
     ) -> _DownloadedPage:
         current = _validate_target(url)
         redirects = 0
+        use_source_proxy = source_proxy and self._source_client is not None
         while True:
             if robots_mode == "enforce":
-                await self._enforce_robots(current)
+                await self._enforce_robots(
+                    current,
+                    source_proxy=use_source_proxy,
+                )
             addresses = await self._resolve(current.hostname, current.port)
-            chosen = addresses[0]
-            request = _build_pinned_request(
-                current,
-                chosen,
-                accept=accept,
-                accept_encoding=accept_encoding,
-            )
+            if use_source_proxy:
+                request = _build_source_proxy_request(
+                    current,
+                    accept=accept,
+                    accept_encoding=accept_encoding,
+                )
+                client = self._source_client
+            else:
+                request = _build_pinned_request(
+                    current,
+                    addresses[0],
+                    accept=accept,
+                    accept_encoding=accept_encoding,
+                )
+                client = self._client
             response: httpx.Response | None = None
             try:
                 try:
-                    response = await self._client.send(
+                    response = await client.send(
                         request,
                         stream=True,
                         follow_redirects=False,
@@ -830,7 +857,8 @@ class HttpxSafePageFetcher:
                 except httpx.HTTPError:
                     raise SafePageFetchError("network") from None
 
-                _verify_peer(response, addresses)
+                if not use_source_proxy:
+                    _verify_peer(response, addresses)
                 if response.status_code in _REDIRECT_STATUSES:
                     if redirects >= self._config.max_redirects:
                         raise SafePageFetchError("redirect")
@@ -991,12 +1019,22 @@ class HttpxSafePageFetcher:
             raise SafePageFetchError("extract")
         return extracted
 
-    async def _enforce_robots(self, target: _ValidatedTarget) -> None:
+    async def _enforce_robots(
+        self,
+        target: _ValidatedTarget,
+        *,
+        source_proxy: bool = False,
+    ) -> None:
         now = self._clock()
-        cached = self._robots_cache.get(target.origin)
+        cache_key = (target.origin, source_proxy)
+        cached = self._robots_cache.get(cache_key)
         if cached is None or cached.expires_at <= now:
-            cached = await self._load_robots(target, now)
-            self._robots_cache[target.origin] = cached
+            cached = await self._load_robots(
+                target,
+                now,
+                source_proxy=source_proxy,
+            )
+            self._robots_cache[cache_key] = cached
 
         if cached.mode == "unavailable":
             raise SafePageFetchError("robots_unavailable")
@@ -1012,6 +1050,8 @@ class HttpxSafePageFetcher:
         self,
         target: _ValidatedTarget,
         now: float,
+        *,
+        source_proxy: bool,
     ) -> _RobotsCacheEntry:
         expires_at = now + _ROBOTS_CACHE_SECONDS
         robots_url = f"{target.origin}/robots.txt"
@@ -1021,6 +1061,7 @@ class HttpxSafePageFetcher:
                 allow_http_errors=True,
                 robots_mode="skip",
                 accept_encoding="identity",
+                source_proxy=source_proxy,
             )
         except SafePageFetchError:
             return _RobotsCacheEntry(expires_at, "unavailable")
@@ -1425,6 +1466,23 @@ def _is_unambiguous_global(address: _IPAddress) -> bool:
         or address.is_private
         or address.is_reserved
         or address.is_unspecified
+    )
+
+
+def _build_source_proxy_request(
+    target: _ValidatedTarget,
+    *,
+    accept: str,
+    accept_encoding: str,
+) -> httpx.Request:
+    return httpx.Request(
+        "GET",
+        target.url,
+        headers={
+            "User-Agent": _USER_AGENT,
+            "Accept": accept,
+            "Accept-Encoding": accept_encoding,
+        },
     )
 
 
