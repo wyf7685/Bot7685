@@ -258,6 +258,8 @@ class AgentLimits:
     max_tool_calls: int = 16
     max_parallel_tools: int = 4
     max_tool_result_bytes: int = 64 * 1024
+    max_tool_images: int = 4
+    max_tool_image_bytes: int = 20 * 1024 * 1024
     total_timeout_seconds: float = 120.0
     max_output_tokens: int = 2000
 
@@ -267,6 +269,8 @@ class AgentLimits:
             "max_tool_calls",
             "max_parallel_tools",
             "max_tool_result_bytes",
+            "max_tool_images",
+            "max_tool_image_bytes",
             "max_output_tokens",
         ):
             if getattr(self, name) <= 0:
@@ -318,6 +322,8 @@ class ToolCallTrace:
     elapsed: float
     result_bytes: int
     error_category: ToolErrorCategory | None = None
+    image_count: int = 0
+    image_bytes: int = 0
 
     def __post_init__(self) -> None:
         name = self.name.strip()
@@ -330,6 +336,8 @@ class ToolCallTrace:
             raise ValueError("elapsed must not be negative")
         if self.result_bytes < 0:
             raise ValueError("result_bytes must not be negative")
+        if self.image_count < 0 or self.image_bytes < 0:
+            raise ValueError("tool image trace values must not be negative")
         if self.success == (self.error_category is not None):
             raise ValueError(
                 "failed tool calls require exactly one safe error category"

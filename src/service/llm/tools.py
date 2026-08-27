@@ -8,6 +8,8 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
+from .models import ImagePart
+
 type JSONScalar = str | int | float | bool | None
 type JSONValue = JSONScalar | list[JSONValue] | dict[str, JSONValue]
 type JSONObject = dict[str, JSONValue]
@@ -16,6 +18,8 @@ _NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 _MAX_DESCRIPTION_CHARS = 1024
 _MAX_SUMMARY_CHARS = 160
 _ERROR_CODE_PATTERN = re.compile(r"^[a-z0-9_-]{1,64}$")
+_IMAGE_LABEL_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,96}$")
+_SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 class ToolArgumentsError(ValueError):
@@ -35,6 +39,37 @@ class ToolOutputTooLargeError(ToolOutputSerializationError):
 
 
 @dataclass(frozen=True, slots=True)
+class ToolImageAttachment:
+    """One bounded image supplied to the model after a tool result."""
+
+    label: str
+    part: ImagePart = field(repr=False)
+    payload_bytes: int
+    width: int
+    height: int
+    sha256: str
+
+    def __post_init__(self) -> None:
+        label = self.label.strip()
+        sha256 = self.sha256.strip().lower()
+        if not _IMAGE_LABEL_PATTERN.fullmatch(label):
+            raise ValueError("tool image label is invalid")
+        if not isinstance(self.part, ImagePart):
+            raise TypeError("tool image part must be an ImagePart")
+        if not self.part.url.startswith("data:image/"):
+            raise ValueError("tool images must use data URLs")
+        actual_payload_bytes = len(self.part.url.encode("utf-8"))
+        if self.payload_bytes != actual_payload_bytes or self.payload_bytes <= 0:
+            raise ValueError("tool image payload byte count is invalid")
+        if self.width <= 0 or self.height <= 0:
+            raise ValueError("tool image dimensions must be positive")
+        if not _SHA256_PATTERN.fullmatch(sha256):
+            raise ValueError("tool image sha256 is invalid")
+        object.__setattr__(self, "label", label)
+        object.__setattr__(self, "sha256", sha256)
+
+
+@dataclass(frozen=True, slots=True)
 class ToolOutput:
     """A model-visible JSON value and explicitly safe operational metadata.
 
@@ -48,8 +83,12 @@ class ToolOutput:
     summary: str = "completed"
     reported_error_code: str | None = None
     diagnostic: str | None = None
+    images: tuple[ToolImageAttachment, ...] = ()
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "images", tuple(self.images))
+        if any(not isinstance(image, ToolImageAttachment) for image in self.images):
+            raise TypeError("tool output images contain an unsupported value")
         summary = self.summary.strip()
         if not summary:
             raise ValueError("tool output summary must not be empty")

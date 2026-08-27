@@ -281,11 +281,18 @@ async def run_zssm(
             participant_resolver=participant_resolver,
             history_high_water=history_high_water,
             invocation=invocation,
+            llm_service=service,
+            correlation_id=run_id,
         ) as resources:
             limits = AgentLimits(
                 max_model_calls=config.max_agent_model_calls,
                 max_tool_calls=config.max_agent_tool_calls,
                 max_parallel_tools=config.max_agent_parallel_tools,
+                max_tool_images=config.source_images.max_pages_per_run,
+                max_tool_image_bytes=(
+                    config.images.max_payload_bytes
+                    * config.source_images.max_pages_per_run
+                ),
                 total_timeout_seconds=config.agent_timeout_seconds,
                 max_output_tokens=config.max_output_tokens,
             )
@@ -299,6 +306,12 @@ async def run_zssm(
                 correlation_id=run_id,
             )
             raw_answer = result.output
+            if collected.omitted_images:
+                raw_answer += (
+                    "\n图片处理提示：输入超过上限，仅处理前 "
+                    f"{config.images.max_count} 张，"
+                    f"其余 {collected.omitted_images} 张未处理。"
+                )
             if routed.stats.partial_success:
                 raw_answer += (
                     "\n图片处理提示：部分图片处理失败，以上解释仅基于成功处理的内容。"
@@ -321,6 +334,10 @@ async def run_zssm(
                 tool_calls=result.tool_call_count,
                 tool_failures=sum(not item.success for item in result.trace.tool_calls),
                 tool_elapsed=sum(item.elapsed for item in result.trace.tool_calls),
+                tool_images=sum(item.image_count for item in result.trace.tool_calls),
+                tool_image_bytes=sum(
+                    item.image_bytes for item in result.trace.tool_calls
+                ),
             )
             sources = tuple(
                 SourceEntry.from_citation(citation)

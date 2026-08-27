@@ -225,6 +225,7 @@ def _statistics_content(stats: RunStatistics) -> str:
         (
             f"工具: 调用 {stats.tool_calls}；失败 {stats.tool_failures}；"
             f"耗时 {_format_seconds(stats.tool_elapsed)}",
+            f"工具图片: 返回 {stats.tool_images}；载荷 {stats.tool_image_bytes} bytes",
             f"图片: 请求 {stats.images.requested}；准备 {stats.images.prepared}；"
             f"失败 {failed_images}；部分成功 {partial_success}",
         )

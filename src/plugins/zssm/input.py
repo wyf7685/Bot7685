@@ -192,10 +192,6 @@ class UnsupportedInputError(InputCollectionError):
     """The invocation contains a segment that cannot be flattened safely."""
 
 
-class ImageLimitError(InputCollectionError):
-    """The invocation contains more images than configured."""
-
-
 @dataclass(frozen=True, slots=True)
 class ImagePreparationResult:
     images: tuple[PreparedImage, ...]
@@ -315,8 +311,17 @@ async def collect_input(
                 substantive = substantive or not isinstance(segment, (At, AtAll))
             source_index += 1
         rendered[location] = "".join(fragments)
-    if len(_deduplicate_source_references(tuple(images))) > config.max_count:
-        raise ImageLimitError(f"at most {config.max_count} unique images are allowed")
+    unique_images = _deduplicate_source_references(tuple(images))
+    omitted_images = max(0, len(unique_images) - config.max_count)
+    images = [
+        CollectedImageInput(
+            label=f"image-{index}",
+            location=image.location,
+            source_index=image.source_index,
+            segment=image.segment,
+        )
+        for index, image in enumerate(unique_images[: config.max_count], start=1)
+    ]
 
     if not substantive:
         raise EmptyInputError("input must contain text or supported media")
@@ -333,6 +338,14 @@ async def collect_input(
             prompt_parts_list.append(TextPart(f"Current supplement:\n{current_text}"))
     elif current_text:
         prompt_parts_list.append(TextPart(current_text))
+    if omitted_images:
+        prompt_parts_list.append(
+            TextPart(
+                f"Image input notice: only the first {config.max_count} image(s) "
+                f"were included; {omitted_images} additional image(s) "
+                "were omitted because the image limit was reached."
+            )
+        )
     prompt_parts = tuple(prompt_parts_list)
     prompt_text = "\n\n".join(part.text for part in prompt_parts)
     return CollectedInput(
@@ -342,6 +355,7 @@ async def collect_input(
         quoted=quoted_snapshot,
         images=tuple(images),
         participant_aliases=tuple(participant_aliases),
+        omitted_images=omitted_images,
     )
 
 
@@ -363,9 +377,7 @@ async def prepare_images(
             statistics=ImageStageStatistics(),
         )
 
-    candidates = _deduplicate_source_references(collected.images)
-    if len(candidates) > config.max_count:
-        raise ImageLimitError(f"at most {config.max_count} unique images are allowed")
+    candidates = _deduplicate_source_references(collected.images)[: config.max_count]
     needs_http = any(
         _uses_url_source(item.segment, adapter_image_fetcher) for item in candidates
     )
@@ -1066,7 +1078,6 @@ __all__ = [
     "AdapterImageFetcher",
     "CardURLResolver",
     "EmptyInputError",
-    "ImageLimitError",
     "ImagePreparationResult",
     "ImageURLResolver",
     "InputCollectionError",

@@ -40,6 +40,19 @@ class ImagesConfig(_FrozenConfig):
         return self
 
 
+class SourceImagesConfig(_FrozenConfig):
+    enabled: bool = True
+    max_pages_per_call: int = Field(default=2, ge=1, le=8)
+    max_pages_per_run: int = Field(default=4, ge=1, le=16)
+    allow_restricted: bool = False
+
+    @model_validator(mode="after")
+    def validate_limits(self) -> Self:
+        if self.max_pages_per_call > self.max_pages_per_run:
+            raise ValueError("max_pages_per_call must not exceed max_pages_per_run")
+        return self
+
+
 class WebSearchConfig(_FrozenConfig):
     backend: Literal["brave", "ddgs", "tavily"] = "brave"
     timeout_seconds: PositiveFloat = 8.0
@@ -199,6 +212,7 @@ class ZssmConfig(_FrozenConfig):
     agent_timeout_seconds: PositiveFloat = 120.0
     max_output_tokens: PositiveInt = 2000
     images: ImagesConfig = Field(default_factory=ImagesConfig)
+    source_images: SourceImagesConfig = Field(default_factory=SourceImagesConfig)
     forwards: ForwardsConfig = Field(default_factory=ForwardsConfig)
     web_search: WebSearchConfig
     fetch_page: FetchPageConfig = Field(default_factory=FetchPageConfig)
@@ -220,6 +234,10 @@ class ZssmConfig(_FrozenConfig):
             raise ValueError(
                 "max_agent_parallel_tools must not exceed max_agent_tool_calls"
             )
+        if self.source_images.max_pages_per_call > self.images.max_count:
+            raise ValueError(
+                "source_images.max_pages_per_call must not exceed images.max_count"
+            )
         return self
 
 
@@ -240,6 +258,7 @@ __all__ = [
     "ParticipantsConfig",
     "RenderingConfig",
     "RootConfig",
+    "SourceImagesConfig",
     "WebSearchConfig",
     "ZssmConfig",
     "get_zssm_config",

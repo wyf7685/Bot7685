@@ -28,6 +28,7 @@ from ..contracts import (
     CitationRegistry,
     CitationSourceKind,
     FetchPageArgs,
+    MediaSetRef,
     SearchFreshness,
     SearchResult,
     WebPageResult,
@@ -37,6 +38,7 @@ from ..contracts import (
     ZssmToolContext,
     bind_web_search_args,
 )
+from .media import InvocationMediaRegistry
 from .web_sources.contracts import DownloadedPage as _DownloadedPage
 from .web_sources.contracts import ExtractedPage as _ExtractedPage
 from .web_sources.contracts import SourceAdapterError
@@ -605,12 +607,14 @@ class HttpxSafePageFetcher:
         transport: httpx.AsyncBaseTransport | None = None,
         clock: Callable[[], float] = monotonic,
         source_registry: SourceRegistry | None = None,
+        media_registry: InvocationMediaRegistry | None = None,
     ) -> None:
         self._config = config
         self._citations = citation_registry
         self._resolver = resolver or _resolve_system_addresses
         self._clock = clock
         self._source_registry = source_registry or DEFAULT_SOURCE_REGISTRY
+        self._media_registry = media_registry
         self._robots_cache: dict[tuple[str, bool], _RobotsCacheEntry] = {}
         if transport is None:
             transport = httpx.AsyncHTTPTransport(
@@ -670,6 +674,37 @@ class HttpxSafePageFetcher:
             accept=accept,
             allowed_content_types=allowed_content_types,
             source_proxy=self._source_client is not None,
+        )
+
+    async def download_media(
+        self,
+        url: str,
+        *,
+        referer: str,
+        allowed_hosts: frozenset[str],
+        max_bytes: int,
+    ) -> _DownloadedPage:
+        if max_bytes <= 0 or not allowed_hosts:
+            raise SafePageFetchError("unsafe_url")
+        normalized_hosts = frozenset(
+            host.casefold().rstrip(".") for host in allowed_hosts
+        )
+        target = _validate_target(url)
+        if target.hostname not in normalized_hosts:
+            raise SafePageFetchError("unsafe_url")
+        normalized_referer = _validate_target(referer).url
+        return await self._download(
+            target.url,
+            allow_http_errors=False,
+            robots_mode="skip",
+            accept="image/jpeg,image/png,image/webp",
+            accept_encoding="identity",
+            allowed_content_types=("image/jpeg", "image/png", "image/webp"),
+            source_proxy=self._source_client is not None,
+            max_wire_bytes=max_bytes,
+            max_decoded_bytes=max_bytes,
+            referer=normalized_referer,
+            allowed_hosts=normalized_hosts,
         )
 
     async def resolve_redirects(
@@ -734,10 +769,22 @@ class HttpxSafePageFetcher:
                     adapter, source_target = match
                     specialized = await adapter.fetch_specialized(source_target, self)
                     if specialized is not None:
+                        media = (
+                            self._media_registry.register(
+                                adapter=adapter,
+                                target=source_target,
+                                count=specialized.media_count,
+                                restricted=specialized.media_restricted,
+                            )
+                            if self._media_registry is not None
+                            and specialized.media_count > 0
+                            else None
+                        )
                         return self._make_page_result(
                             requested_url=initial.url,
                             final_url=specialized.final_url,
                             extracted=specialized.extracted,
+                            media=media,
                         )
 
                 downloaded = await self._download(
@@ -776,6 +823,7 @@ class HttpxSafePageFetcher:
         requested_url: str,
         final_url: str,
         extracted: _ExtractedPage,
+        media: MediaSetRef | None = None,
     ) -> WebPageResult:
         full_text = extracted.text
         truncated = len(full_text) > self._config.max_text_chars
@@ -805,6 +853,7 @@ class HttpxSafePageFetcher:
             final_url=final_url,
             content_sha256=content_sha256,
             citation_id=citation.citation_id,
+            media=media,
         )
 
     async def _download(
@@ -817,11 +866,21 @@ class HttpxSafePageFetcher:
         accept_encoding: str = "gzip, deflate",
         allowed_content_types: Sequence[str] | None = None,
         source_proxy: bool = False,
+        max_wire_bytes: int | None = None,
+        max_decoded_bytes: int | None = None,
+        referer: str | None = None,
+        allowed_hosts: frozenset[str] | None = None,
     ) -> _DownloadedPage:
         current = _validate_target(url)
         redirects = 0
         use_source_proxy = source_proxy and self._source_client is not None
+        wire_limit = max_wire_bytes or self._config.max_wire_bytes
+        decoded_limit = max_decoded_bytes or self._config.max_decoded_bytes
+        if wire_limit <= 0 or decoded_limit <= 0:
+            raise SafePageFetchError("too_large")
         while True:
+            if allowed_hosts is not None and current.hostname not in allowed_hosts:
+                raise SafePageFetchError("unsafe_url")
             if robots_mode == "enforce":
                 await self._enforce_robots(
                     current,
@@ -833,6 +892,7 @@ class HttpxSafePageFetcher:
                     current,
                     accept=accept,
                     accept_encoding=accept_encoding,
+                    referer=referer,
                 )
                 client = self._source_client
             else:
@@ -841,6 +901,7 @@ class HttpxSafePageFetcher:
                     addresses[0],
                     accept=accept,
                     accept_encoding=accept_encoding,
+                    referer=referer,
                 )
                 client = self._client
             response: httpx.Response | None = None
@@ -891,12 +952,12 @@ class HttpxSafePageFetcher:
                     response.headers,
                     allowed_content_types=allowed_content_types,
                 )
-                wire = await self._read_wire_body(response)
+                wire = await self._read_wire_body(response, wire_limit)
                 encoding = self._content_encoding(response.headers)
                 body = _decode_content(
                     wire,
                     encoding=encoding,
-                    max_decoded_bytes=self._config.max_decoded_bytes,
+                    max_decoded_bytes=decoded_limit,
                     max_expansion_ratio=self._config.max_expansion_ratio,
                 )
                 return _DownloadedPage(
@@ -930,7 +991,11 @@ class HttpxSafePageFetcher:
             raise SafePageFetchError("dns")
         return tuple(sorted(addresses, key=lambda item: (item.version, item.packed)))
 
-    async def _read_wire_body(self, response: httpx.Response) -> bytes:
+    async def _read_wire_body(
+        self,
+        response: httpx.Response,
+        limit: int,
+    ) -> bytes:
         lengths = response.headers.get_list("content-length")
         if len(lengths) > 1:
             raise SafePageFetchError("too_large")
@@ -939,17 +1004,17 @@ class HttpxSafePageFetcher:
                 content_length = int(lengths[0])
             except ValueError:
                 raise SafePageFetchError("too_large") from None
-            if content_length < 0 or content_length > self._config.max_wire_bytes:
+            if content_length < 0 or content_length > limit:
                 raise SafePageFetchError("too_large")
 
         wire = bytearray()
         if response.is_stream_consumed:
-            if len(response.content) > self._config.max_wire_bytes:
+            if len(response.content) > limit:
                 raise SafePageFetchError("too_large")
             return response.content
         try:
             async for chunk in response.aiter_raw():
-                if len(wire) + len(chunk) > self._config.max_wire_bytes:
+                if len(wire) + len(chunk) > limit:
                     raise SafePageFetchError("too_large")
                 wire.extend(chunk)
         except httpx.TimeoutException:
@@ -1469,20 +1534,37 @@ def _is_unambiguous_global(address: _IPAddress) -> bool:
     )
 
 
+def _request_headers(
+    *,
+    accept: str,
+    accept_encoding: str,
+    referer: str | None,
+) -> dict[str, str]:
+    headers = {
+        "User-Agent": _USER_AGENT,
+        "Accept": accept,
+        "Accept-Encoding": accept_encoding,
+    }
+    if referer is not None:
+        headers["Referer"] = referer
+    return headers
+
+
 def _build_source_proxy_request(
     target: _ValidatedTarget,
     *,
     accept: str,
     accept_encoding: str,
+    referer: str | None = None,
 ) -> httpx.Request:
     return httpx.Request(
         "GET",
         target.url,
-        headers={
-            "User-Agent": _USER_AGENT,
-            "Accept": accept,
-            "Accept-Encoding": accept_encoding,
-        },
+        headers=_request_headers(
+            accept=accept,
+            accept_encoding=accept_encoding,
+            referer=referer,
+        ),
     )
 
 
@@ -1493,6 +1575,7 @@ def _build_pinned_request(
     method: Literal["GET", "HEAD"] = "GET",
     accept: str = "text/html,application/xhtml+xml,text/plain,text/markdown",
     accept_encoding: str = "gzip, deflate",
+    referer: str | None = None,
 ) -> httpx.Request:
     parsed = urlsplit(target.url)
     connect_host = f"[{address}]" if address.version == 6 else str(address)
@@ -1502,15 +1585,16 @@ def _build_pinned_request(
     extensions: dict[str, Any] = {}
     if target.scheme == "https":
         extensions["sni_hostname"] = target.hostname
+    headers = _request_headers(
+        accept=accept,
+        accept_encoding=accept_encoding,
+        referer=referer,
+    )
+    headers["Host"] = target.host_header
     return httpx.Request(
         method,
         connect_url,
-        headers={
-            "Host": target.host_header,
-            "User-Agent": _USER_AGENT,
-            "Accept": accept,
-            "Accept-Encoding": accept_encoding,
-        },
+        headers=headers,
         extensions=extensions,
     )
 
@@ -1688,7 +1772,7 @@ def _search_result_json(result: SearchResult) -> dict[str, JSONValue]:
 
 
 def _web_page_json(page: WebPageResult) -> dict[str, JSONValue]:
-    return {
+    value: dict[str, JSONValue] = {
         "title": page.title,
         "author": page.author,
         "site": page.site,
@@ -1700,6 +1784,14 @@ def _web_page_json(page: WebPageResult) -> dict[str, JSONValue]:
         "content_sha256": page.content_sha256,
         "citation_id": page.citation_id,
     }
+    if page.media is not None:
+        value["media"] = {
+            "media_id": page.media.media_id,
+            "kind": "image_collection",
+            "count": page.media.count,
+            "restricted": page.media.restricted,
+        }
+    return value
 
 
 def _safe_trace_hostname(url: str) -> str:

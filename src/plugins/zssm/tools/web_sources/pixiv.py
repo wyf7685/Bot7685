@@ -14,6 +14,7 @@ from .base import (
     optional_metadata,
 )
 from .contracts import (
+    DownloadedSourceMedia,
     ExtractedPage,
     SourceAdapterError,
     SourceIO,
@@ -30,6 +31,8 @@ _PIXIV_SHORT_PATH_RE = re.compile(r"^/i/(?P<artwork_id>[1-9][0-9]{0,19})/?$")
 _PIXIV_LEGACY_PATH = "/member_illust.php"
 _PIXIV_AJAX_ORIGIN = "https://www.pixiv.net"
 _PIXIV_OEMBED_ENDPOINT = "https://embed.pixiv.net/oembed.php"
+_PIXIV_IMAGE_HOSTS = frozenset({"i.pximg.net"})
+_PIXIV_REFERER = "https://www.pixiv.net/"
 _MAX_CAPTION_HTML_CHARS = 32_000
 _MAX_CAPTION_CHARS = 4_000
 _MAX_TAGS = 16
@@ -130,31 +133,37 @@ class PixivAdapter(BaseSourceAdapter):
             return None
 
         candidates: tuple[
-            tuple[str, Callable[[Mapping[str, Any]], ExtractedPage]], ...
+            tuple[str, Callable[[Mapping[str, Any]], ExtractedPage], bool], ...
         ] = (
             (
                 f"{_PIXIV_AJAX_ORIGIN}/ajax/illust/{artwork_id}?lang=zh",
                 parse_pixiv_ajax_payload,
+                True,
             ),
             (
                 f"{_PIXIV_OEMBED_ENDPOINT}?{urlencode({"url": target.canonical_url})}",
                 parse_pixiv_oembed_payload,
+                False,
             ),
         )
         last_error: Exception | None = None
-        for api_url, parser in candidates:
+        for api_url, parser, includes_media in candidates:
             try:
                 downloaded = await io.download(
                     api_url,
                     accept="application/json",
                     allowed_content_types=("application/json",),
                 )
-                extracted = parse_pixiv_json(
-                    downloaded.body,
-                    downloaded.charset,
-                    parser,
+                payload = decode_pixiv_json(downloaded.body, downloaded.charset)
+                extracted = parser(payload)
+                media_count = pixiv_media_count(payload) if includes_media else 0
+                restricted = pixiv_media_restricted(payload) if media_count else False
+                return SpecializedPage(
+                    target.canonical_url,
+                    extracted,
+                    media_count=media_count,
+                    media_restricted=restricted,
                 )
-                return SpecializedPage(target.canonical_url, extracted)
             except Exception as error:
                 last_error = error
         if last_error is not None:
@@ -164,6 +173,48 @@ class PixivAdapter(BaseSourceAdapter):
     async def resolve_card_url(self, url: str, io: SourceIO) -> str | None:
         _ = io
         return canonical_pixiv_artwork_url(url)
+
+    async def fetch_media(
+        self,
+        target: SourceTarget,
+        pages: Sequence[int],
+        io: SourceIO,
+        *,
+        max_bytes: int,
+    ) -> tuple[DownloadedSourceMedia, ...]:
+        artwork_id = target.value
+        if not isinstance(artwork_id, str):
+            raise SourceAdapterError("pixiv media target is invalid")
+        downloaded = await io.download(
+            f"{_PIXIV_AJAX_ORIGIN}/ajax/illust/{artwork_id}/pages?lang=zh",
+            accept="application/json",
+            allowed_content_types=("application/json",),
+        )
+        payload = decode_pixiv_json(downloaded.body, downloaded.charset)
+        media_pages = parse_pixiv_media_pages(payload)
+        results: list[DownloadedSourceMedia] = []
+        for page in pages:
+            if page <= 0 or page > len(media_pages):
+                raise SourceAdapterError("pixiv media page is out of range")
+            item = media_pages[page - 1]
+            image = await io.download_media(
+                item[0],
+                referer=_PIXIV_REFERER,
+                allowed_hosts=_PIXIV_IMAGE_HOSTS,
+                max_bytes=max_bytes,
+            )
+            if image.media_type is None:
+                raise SourceAdapterError("pixiv image response has no media type")
+            results.append(
+                DownloadedSourceMedia(
+                    page=page,
+                    media_type=image.media_type,
+                    body=image.body,
+                    width=item[1],
+                    height=item[2],
+                )
+            )
+        return tuple(results)
 
 
 def canonical_pixiv_artwork_url(url: str) -> str | None:
@@ -201,11 +252,7 @@ def canonical_pixiv_artwork_url(url: str) -> str | None:
     return f"https://www.pixiv.net/artworks/{artwork_id}"
 
 
-def parse_pixiv_json(
-    body: bytes,
-    charset: str | None,
-    parser: Callable[[Mapping[str, Any]], ExtractedPage],
-) -> ExtractedPage:
+def decode_pixiv_json(body: bytes, charset: str | None) -> Mapping[str, Any]:
     encoding = charset or "utf-8"
     try:
         payload = json.loads(body.decode(encoding, errors="replace").lstrip("\ufeff"))
@@ -213,15 +260,19 @@ def parse_pixiv_json(
         raise SourceAdapterError("pixiv response is not valid JSON") from None
     if not isinstance(payload, Mapping):
         raise SourceAdapterError("pixiv response must be an object")
-    return parser(payload)
+    return payload
+
+
+def parse_pixiv_json(
+    body: bytes,
+    charset: str | None,
+    parser: Callable[[Mapping[str, Any]], ExtractedPage],
+) -> ExtractedPage:
+    return parser(decode_pixiv_json(body, charset))
 
 
 def parse_pixiv_ajax_payload(payload: Mapping[str, Any]) -> ExtractedPage:
-    if payload.get("error") is not False:
-        raise SourceAdapterError("pixiv API returned an error")
-    body = payload.get("body")
-    if not isinstance(body, Mapping):
-        raise SourceAdapterError("pixiv API response has no body")
+    body = _pixiv_ajax_body(payload)
 
     title = optional_metadata(body.get("title") or body.get("illustTitle"), 500)
     if title is None:
@@ -270,6 +321,68 @@ def parse_pixiv_ajax_payload(payload: Mapping[str, Any]) -> ExtractedPage:
         language=None,
         text=normalize_page_text("\n".join(lines)),
     )
+
+
+def pixiv_media_count(payload: Mapping[str, Any]) -> int:
+    body = _pixiv_ajax_body(payload)
+    return _positive_int(body.get("pageCount")) or 0
+
+
+def pixiv_media_restricted(payload: Mapping[str, Any]) -> bool:
+    body = _pixiv_ajax_body(payload)
+    return (
+        body.get("xRestrict") in {1, 2}
+        or body.get("isLoginOnly") is True
+        or body.get("isMasked") is True
+        or body.get("isUnlisted") is True
+    )
+
+
+def parse_pixiv_media_pages(
+    payload: Mapping[str, Any],
+) -> tuple[tuple[str, int, int], ...]:
+    if payload.get("error") is not False:
+        raise SourceAdapterError("pixiv pages API returned an error")
+    body = payload.get("body")
+    if not isinstance(body, Sequence) or isinstance(body, str):
+        raise SourceAdapterError("pixiv pages API response has no page list")
+    pages: list[tuple[str, int, int]] = []
+    for item in body:
+        if not isinstance(item, Mapping):
+            raise SourceAdapterError("pixiv pages API contains an invalid page")
+        urls = item.get("urls")
+        raw_url = urls.get("regular") if isinstance(urls, Mapping) else None
+        width = _positive_int(item.get("width"))
+        height = _positive_int(item.get("height"))
+        if not isinstance(raw_url, str) or width is None or height is None:
+            raise SourceAdapterError("pixiv page metadata is incomplete")
+        try:
+            parsed = urlsplit(raw_url)
+            port = parsed.port
+        except UnicodeError, ValueError:
+            raise SourceAdapterError("pixiv image URL is invalid") from None
+        if (
+            parsed.scheme.casefold() != "https"
+            or parsed.hostname is None
+            or parsed.hostname.casefold().rstrip(".") not in _PIXIV_IMAGE_HOSTS
+            or port not in (None, 443)
+            or parsed.username is not None
+            or parsed.password is not None
+        ):
+            raise SourceAdapterError("pixiv image URL is invalid")
+        pages.append((raw_url, width, height))
+    if not pages:
+        raise SourceAdapterError("pixiv pages API returned no pages")
+    return tuple(pages)
+
+
+def _pixiv_ajax_body(payload: Mapping[str, Any]) -> Mapping[str, Any]:
+    if payload.get("error") is not False:
+        raise SourceAdapterError("pixiv API returned an error")
+    body = payload.get("body")
+    if not isinstance(body, Mapping):
+        raise SourceAdapterError("pixiv API response has no body")
+    return body
 
 
 def parse_pixiv_oembed_payload(payload: Mapping[str, Any]) -> ExtractedPage:

@@ -8,7 +8,7 @@ from typing import Any
 import anyio
 import httpx
 
-from src.service.llm import BoundTool
+from src.service.llm import BoundTool, LLMService
 
 from ..config import ZssmConfig
 from ..contracts import (
@@ -17,7 +17,9 @@ from ..contracts import (
     ZssmToolContext,
 )
 from .chat_history import build_recent_messages_tool
+from .media import InvocationMediaRegistry
 from .participants import InvocationParticipantResolver, build_participant_info_tool
+from .source_images import SourceImageToolContext, build_source_image_tool
 from .web import (
     HttpxSafePageFetcher,
     InvocationCitationRegistry,
@@ -42,6 +44,8 @@ async def open_zssm_tool_resources(
     participant_resolver: ParticipantResolver,
     history_high_water: int,
     invocation: ZssmInvocationFacts,
+    llm_service: LLMService,
+    correlation_id: str | None = None,
     citation_registry_factory: Callable[
         [], InvocationCitationRegistry
     ] = InvocationCitationRegistry,
@@ -51,6 +55,7 @@ async def open_zssm_tool_resources(
 
     async with AsyncExitStack() as stack:
         citations = citation_registry_factory()
+        media_registry = InvocationMediaRegistry()
         search_client: httpx.AsyncClient | None = None
         ddgs_limiter: anyio.CapacityLimiter | None = None
         if config.web_search.backend != "ddgs":
@@ -70,7 +75,11 @@ async def open_zssm_tool_resources(
             client=search_client,
             ddgs_limiter=ddgs_limiter,
         )
-        page_fetcher = page_fetcher_factory(config.fetch_page, citations)
+        page_fetcher = page_fetcher_factory(
+            config.fetch_page,
+            citations,
+            media_registry=media_registry,
+        )
         await stack.enter_async_context(page_fetcher)
         context = ZssmToolContext(
             session=session,
@@ -86,12 +95,29 @@ async def open_zssm_tool_resources(
             citation_registry=citations,
         )
         web_search, fetch_page = build_web_tools(context)
-        tools: tuple[BoundTool[Any, Any], ...] = (
-            web_search,
-            fetch_page,
-            build_recent_messages_tool(context),
-            build_participant_info_tool(context),
+        tools_list: list[BoundTool[Any, Any]] = [web_search, fetch_page]
+        if config.source_images.enabled:
+            tools_list.append(
+                build_source_image_tool(
+                    SourceImageToolContext(
+                        media_registry=media_registry,
+                        page_fetcher=page_fetcher,
+                        images_config=config.images,
+                        source_config=config.source_images,
+                        llm_service=llm_service,
+                        primary_model=invocation.active_model,
+                        vision_model=config.vision_model,
+                        correlation_id=correlation_id,
+                    )
+                )
+            )
+        tools_list.extend(
+            (
+                build_recent_messages_tool(context),
+                build_participant_info_tool(context),
+            )
         )
+        tools = tuple(tools_list)
         yield ZssmToolResources(context=context, tools=tools, citations=citations)
 
 

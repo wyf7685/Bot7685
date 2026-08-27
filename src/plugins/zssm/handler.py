@@ -17,7 +17,7 @@ from .command import ParsedContent, matcher
 from .config import get_zssm_config
 from .contracts import RenderFailure, RenderFailureCategory
 from .forward import ForwardFetchError, ForwardLimitError, ForwardUnsupportedError
-from .input import EmptyInputError, ImageLimitError, UnsupportedInputError
+from .input import EmptyInputError, UnsupportedInputError
 from .log import cause_name, log_event, safe_log_text
 from .orchestrator import AllImagesFailedError, run_zssm
 from .reaction import zssm_reaction_timeline
@@ -219,7 +219,7 @@ async def _execute_zssm(
             "input",
             error,
         )
-    except (ImageLimitError, AllImagesFailedError) as error:
+    except AllImagesFailedError as error:
         await finish_failure(RenderFailureCategory.IMAGE, "image", error)
     except LLMServiceError as error:
         await _finish_llm_failure(

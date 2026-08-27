@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from typing import Any
 
 from .contracts import (
+    DownloadedSourceMedia,
     ExtractedPage,
     SourceIO,
     SourceTarget,
@@ -70,6 +72,17 @@ class BaseSourceAdapter:
     async def resolve_card_url(self, url: str, io: SourceIO) -> str | None:
         _ = url, io
         return None
+
+    async def fetch_media(
+        self,
+        target: SourceTarget,
+        pages: Sequence[int],
+        io: SourceIO,
+        *,
+        max_bytes: int,
+    ) -> tuple[DownloadedSourceMedia, ...]:
+        _ = target, pages, io, max_bytes
+        return ()
 
 
 __all__ = [

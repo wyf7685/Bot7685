@@ -30,6 +30,7 @@ _PARTICIPANT_ALIAS_RE = re.compile(rf"^{_PARTICIPANT_ALIAS_PATTERN}$")
 _CITATION_ID_RE = re.compile(r"^s[1-9][0-9]*$")
 _IMAGE_LABEL_RE = re.compile(r"^image-[1-9][0-9]*$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_MEDIA_ID_RE = re.compile(r"^m[1-9][0-9]*$")
 
 
 def _nonempty(value: str, field_name: str) -> str:
@@ -113,11 +114,14 @@ class CollectedInput:
     current: UniMessage = field(repr=False, compare=False)
     quoted: UniMessage | None = field(default=None, repr=False, compare=False)
     images: tuple[CollectedImageInput, ...] = ()
+    omitted_images: int = 0
     participant_aliases: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "prompt_parts", tuple(self.prompt_parts))
         object.__setattr__(self, "images", tuple(self.images))
+        if self.omitted_images < 0:
+            raise ValueError("omitted image count must not be negative")
         object.__setattr__(self, "participant_aliases", tuple(self.participant_aliases))
         object.__setattr__(self, "current", self.current.copy())
         if self.quoted is not None:
@@ -420,6 +424,21 @@ class WebSearchResult:
 
 
 @dataclass(frozen=True, slots=True)
+class MediaSetRef:
+    media_id: str
+    count: int
+    restricted: bool = False
+
+    def __post_init__(self) -> None:
+        media_id = self.media_id.strip()
+        if not _MEDIA_ID_RE.fullmatch(media_id):
+            raise ValueError("media_id must match m<positive integer>")
+        if self.count <= 0:
+            raise ValueError("media count must be positive")
+        object.__setattr__(self, "media_id", media_id)
+
+
+@dataclass(frozen=True, slots=True)
 class WebPageResult:
     title: str
     author: str | None
@@ -431,6 +450,7 @@ class WebPageResult:
     final_url: str
     content_sha256: str
     citation_id: str
+    media: MediaSetRef | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "title", _nonempty(self.title, "title"))
@@ -438,6 +458,8 @@ class WebPageResult:
         object.__setattr__(self, "final_url", _http_url(self.final_url, "final_url"))
         object.__setattr__(self, "content_sha256", _sha256(self.content_sha256))
         object.__setattr__(self, "citation_id", _citation_id(self.citation_id))
+        if self.media is not None and not isinstance(self.media, MediaSetRef):
+            raise TypeError("page media must be a MediaSetRef")
         for name in ("author", "site", "published", "language"):
             if (value := getattr(self, name)) is not None:
                 object.__setattr__(self, name, _nonempty(value, name))
@@ -720,12 +742,16 @@ class RunStatistics:
     tool_calls: int
     tool_failures: int
     tool_elapsed: float
+    tool_images: int = 0
+    tool_image_bytes: int = 0
 
     def __post_init__(self) -> None:
         if self.total_elapsed < 0 or self.tool_elapsed < 0:
             raise ValueError("elapsed values must not be negative")
         if self.tool_calls < 0 or not 0 <= self.tool_failures <= self.tool_calls:
             raise ValueError("tool counts are inconsistent")
+        if self.tool_images < 0 or self.tool_image_bytes < 0:
+            raise ValueError("tool image statistics must not be negative")
 
 
 class RenderFailureCategory(StrEnum):
@@ -793,6 +819,7 @@ __all__ = [
     "ImageFailureStage",
     "ImageStageStatistics",
     "InputLocation",
+    "MediaSetRef",
     "ModelStageUsage",
     "NormalizedImage",
     "ParticipantAlias",

@@ -27,10 +27,12 @@ from .conversation import (
     AgentModelTurn,
     AgentToolCall,
     AgentToolResult,
+    AgentUserTurn,
 )
 from .exceptions import LLMErrorCategory, LLMRunError
 from .models import (
     ChatInput,
+    ChatInputPart,
     ImagePart,
     ModelCapabilities,
     ReasoningEffort,
@@ -101,8 +103,13 @@ def build_messages(
             }
         )
 
+    messages.append({"role": "user", "content": _build_content_parts(prompt.parts)})
+    return messages
+
+
+def _build_content_parts(parts: tuple[ChatInputPart, ...]) -> list[dict[str, Any]]:
     content: list[dict[str, Any]] = []
-    for part in prompt.parts:
+    for part in parts:
         if isinstance(part, TextPart):
             content.append({"type": "text", "text": part.text})
         elif isinstance(part, ImagePart):
@@ -112,10 +119,9 @@ def build_messages(
                     "image_url": {"url": part.url, "detail": part.detail},
                 }
             )
-        else:  # ChatInput validates this, but keep the SDK boundary total.
+        else:
             raise TypeError("unsupported chat input part")
-    messages.append({"role": "user", "content": content})
-    return messages
+    return content
 
 
 async def create_completion(
@@ -247,6 +253,13 @@ def build_agent_messages(
                     "role": "tool",
                     "tool_call_id": item.call_id,
                     "content": item.content,
+                }
+            )
+        elif isinstance(item, AgentUserTurn):
+            messages.append(
+                {
+                    "role": "user",
+                    "content": _build_content_parts(item.parts),
                 }
             )
         else:
