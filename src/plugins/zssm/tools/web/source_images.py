@@ -14,12 +14,12 @@ from src.service.llm import (
     ToolOutput,
 )
 
-from ..config import ImagesConfig, SourceImagesConfig
-from ..contracts import CollectedImageInput, CollectedInput, InputLocation
-from ..vision import route_vision
+from ...config import ImagesConfig, SourceImagesConfig
+from ...contracts import CollectedImageInput, CollectedInput, InputLocation
+from ...vision import route_vision
+from .fetch import HttpxSafePageFetcher
 from .media import InvocationMediaRegistry, RegisteredMediaSet
-from .web import HttpxSafePageFetcher
-from .web_sources.contracts import DownloadedSourceMedia
+from .sources.contracts import DownloadedSourceMedia
 
 _MEDIA_ID_PATTERN = r"m[1-9][0-9]*"
 _MAX_REQUESTED_PAGES = 16

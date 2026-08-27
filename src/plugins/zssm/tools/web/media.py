@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from ..contracts import MediaSetRef
-from .web_sources.contracts import SourceAdapter, SourceTarget
+from ...contracts import MediaSetRef
+from .sources.contracts import SourceAdapter, SourceTarget
 
 
 @dataclass(frozen=True, slots=True)

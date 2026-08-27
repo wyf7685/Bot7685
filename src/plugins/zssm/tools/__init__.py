@@ -15,13 +15,15 @@ from ..contracts import (
     ZssmToolContext,
 )
 from .chat_history import build_recent_messages_tool
-from .media import InvocationMediaRegistry
 from .participants import InvocationParticipantResolver, build_participant_info_tool
-from .source_images import SourceImageToolContext, build_source_image_tool
 from .web import (
     HttpxSafePageFetcher,
     InvocationCitationRegistry,
-    build_web_tools,
+    InvocationMediaRegistry,
+    SourceImageToolContext,
+    build_fetch_page_tool,
+    build_source_image_tool,
+    build_web_search_tool,
     create_web_search_provider,
     resolve_card_urls,
 )
@@ -92,7 +94,8 @@ async def open_zssm_tool_resources(
             participants_config=config.participants,
             citation_registry=citations,
         )
-        web_search, fetch_page = build_web_tools(context)
+        web_search = build_web_search_tool(context)
+        fetch_page = build_fetch_page_tool(context)
         tools_list: list[BoundTool[Any, Any]] = [web_search, fetch_page]
         if config.source_images.enabled:
             tools_list.append(
