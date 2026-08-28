@@ -1,4 +1,5 @@
-from nonebot_plugin_alconna import UniMessage
+from nonebot.adapters import Bot
+from nonebot_plugin_alconna import CustomNode, UniMessage
 
 from src.service.llm import (
     LLMConfigurationError,
@@ -7,14 +8,41 @@ from src.service.llm import (
 )
 
 from .common import finish_service_error
-from .formatting import format_model_list, format_status
+from .formatting import format_endpoint, format_model, format_model_list, format_status
 from .matcher import model_admin
 
 
 @model_admin.assign("status")
-async def handle_status() -> None:
+async def handle_status(bot: Bot) -> None:
     snapshot = await get_llm_service().configuration_snapshot()
-    await UniMessage.text(format_status(snapshot)).finish()
+    if snapshot.config is None:
+        await UniMessage.text(format_status(snapshot)).finish()
+
+    config = snapshot.config
+    nodes = [
+        CustomNode(
+            uid=bot.self_id,
+            name="LLM 状态 - 概览",
+            content=f"活动模型：{config.active_model}",
+        )
+    ]
+    nodes.extend(
+        CustomNode(
+            uid=bot.self_id,
+            name=f"LLM Endpoint - {alias}",
+            content=format_endpoint(alias, endpoint),
+        )
+        for alias, endpoint in sorted(config.endpoints.items())
+    )
+    nodes.extend(
+        CustomNode(
+            uid=bot.self_id,
+            name=f"LLM 模型 - {alias}",
+            content=format_model(alias, model, active=alias == config.active_model),
+        )
+        for alias, model in sorted(config.models.items())
+    )
+    await UniMessage.reference(*nodes).finish()
 
 
 @model_admin.assign("model.list")
