@@ -44,7 +44,6 @@ class SourceImageToolContext:
     llm_service: LLMService
     primary_model: str
     vision_model: str
-    correlation_id: str | None = None
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False, repr=False)
     _reserved: set[tuple[str, int]] = field(default_factory=set, init=False, repr=False)
     _consumed: int = field(default=0, init=False, repr=False)
@@ -166,7 +165,6 @@ async def _handle_inspect_source_images(
         vision_model=context.vision_model,
         config=context.images_config,
         llm_service=context.llm_service,
-        correlation_id=context.correlation_id,
     )
     media_by_label = {
         f"image-{index}": item for index, item in enumerate(media, start=1)

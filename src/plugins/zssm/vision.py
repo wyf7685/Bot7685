@@ -102,7 +102,6 @@ async def route_vision(
     adapter_image_fetcher: AdapterImageFetcher | None = None,
     url_resolver: ImageURLResolver | None = None,
     url_transport: httpx.AsyncBaseTransport | None = None,
-    correlation_id: str | None = None,
 ) -> VisionRoutingResult:
     """Prepare images and route them directly or through the fallback vision model."""
 
@@ -117,7 +116,6 @@ async def route_vision(
             failures=(),
         )
     log_event(
-        correlation_id,
         "INFO",
         "ZSSM::Vision",
         f"<b>started</> | requested=<c>{len(collected.images)}</> "
@@ -140,7 +138,6 @@ async def route_vision(
         url_transport=url_transport,
     )
     log_event(
-        correlation_id,
         "INFO" if preparation.images else "WARNING",
         "ZSSM::Vision",
         f"<b>images prepared</> | requested=<c>{preparation.statistics.requested}</> "
@@ -151,7 +148,6 @@ async def route_vision(
     )
     if not preparation.images:
         log_event(
-            correlation_id,
             "WARNING",
             "ZSSM::Vision",
             "<r>completed without usable images</>",
@@ -167,7 +163,6 @@ async def route_vision(
 
     if primary_handle.capabilities.supports(ModelCapability.VISION):
         log_event(
-            correlation_id,
             "INFO",
             "ZSSM::Vision",
             f"<g>completed</> | route=<c>primary</> "
@@ -189,7 +184,6 @@ async def route_vision(
         model_id=vision_handle.model_id,
         config=config,
         llm_service=llm_service,
-        correlation_id=correlation_id,
     )
     stats = ImageStageStatistics(
         requested=preparation.statistics.requested,
@@ -215,7 +209,6 @@ async def route_vision(
         else None
     )
     log_event(
-        correlation_id,
         "WARNING" if failures else "INFO",
         "ZSSM::Vision",
         f"<g>completed</> | route=<c>fallback</> "
@@ -239,7 +232,6 @@ async def _run_vision_stage(
     model_id: str,
     config: ImagesConfig,
     llm_service: LLMService,
-    correlation_id: str | None = None,
 ) -> VisionStageResult:
     outcomes: list[VisionObservation | ImageFailure | None] = [None] * len(images)
     usages: list[TokenUsage | None] = [None] * len(images)
@@ -251,7 +243,6 @@ async def _run_vision_stage(
             call_number = index + 1
             call_started = perf_counter()
             log_event(
-                correlation_id,
                 "INFO",
                 "ZSSM::Vision",
                 f"call=<y>{call_number}/{len(images)}</> <b>started</> | "
@@ -286,7 +277,6 @@ async def _run_vision_stage(
                 usages[index] = result.usage
                 usage = result.usage
                 log_event(
-                    correlation_id,
                     "INFO",
                     "ZSSM::Vision",
                     f"call=<y>{call_number}/{len(images)}</> <g>completed</> | "
@@ -303,7 +293,6 @@ async def _run_vision_stage(
                     category=ImageFailureCategory.MODEL,
                 )
                 log_event(
-                    correlation_id,
                     "WARNING",
                     "ZSSM::Vision",
                     f"call=<y>{call_number}/{len(images)}</> <r>failed</> | "

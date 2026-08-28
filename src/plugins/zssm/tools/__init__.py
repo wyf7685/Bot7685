@@ -45,7 +45,6 @@ async def open_zssm_tool_resources(
     history_high_water: int,
     invocation: ZssmInvocationFacts,
     llm_service: LLMService,
-    correlation_id: str | None = None,
     citation_registry_factory: Callable[
         [], InvocationCitationRegistry
     ] = InvocationCitationRegistry,
@@ -108,7 +107,6 @@ async def open_zssm_tool_resources(
                         llm_service=llm_service,
                         primary_model=invocation.active_model,
                         vision_model=config.vision_model,
-                        correlation_id=correlation_id,
                     )
                 )
             )

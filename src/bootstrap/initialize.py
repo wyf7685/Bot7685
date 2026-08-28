@@ -8,7 +8,6 @@ import nonebot
 from bot7685_ext.nonebot import mount_plugin_loader_hook
 from nonebot import _log_patcher
 from nonebot.adapters import Adapter
-from nonebot.compat import model_dump
 from nonebot.config import Config, Env
 from nonebot.drivers import Driver
 from nonebot.utils import escape_tag, resolve_dot_notation
@@ -67,7 +66,7 @@ def create_driver(config_dict: dict[str, Any]) -> Driver:
 
     nonebot.logger.configure(extra={"nonebot_log_level": config.log_level})
     log.info(f"Current <y><b>Env: {escape_tag(env.environment)}</b></y>")
-    log.debug(f"Loaded <y><b>Config</b></y>: {escape_tag(str(model_dump(config)))}")
+    # log.debug(f"Loaded <y><b>Config</b></y>: {escape_tag(repr(config.model_dump()))}")
 
     driver = create_patched_driver_class(config.driver)(env, config)
     nonebot._driver = driver  # noqa: SLF001

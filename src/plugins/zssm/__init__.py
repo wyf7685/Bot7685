@@ -1,10 +1,4 @@
-from nonebot import require
 from nonebot.plugin import PluginMetadata, inherit_supported_adapters
-
-require("nonebot_plugin_alconna")
-require("nonebot_plugin_orm")
-require("nonebot_plugin_chatrecorder")
-require("nonebot_plugin_uninfo")
 
 from .config import RootConfig
 

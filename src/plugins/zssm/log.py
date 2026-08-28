@@ -1,4 +1,5 @@
 import re
+from contextvars import ContextVar
 
 from nonebot import logger
 from nonebot.utils import escape_tag
@@ -17,12 +18,15 @@ def cause_name(error: BaseException) -> str:
     return type(error).__name__
 
 
+current_run_id: ContextVar[str | None] = ContextVar("current_run_id", default=None)
+
+
 def log_event(
-    run_id: str | None,
     level: str,
     component: str,
     message: str,
 ) -> None:
+    run_id = current_run_id.get()
     if run_id is None:
         return
     run = safe_log_text(run_id, 32)

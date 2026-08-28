@@ -4,6 +4,7 @@ from time import perf_counter
 from typing import Never
 
 from nonebot.adapters import Bot, Event
+from nonebot.params import Depends
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Image, MsgId, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_alconna.builtins.extensions.reply import ReplyRecordExtension
@@ -16,7 +17,7 @@ from .config import get_zssm_config
 from .contracts import RenderFailure, RenderFailureCategory
 from .forward import ForwardFetchError, ForwardLimitError, ForwardUnsupportedError
 from .input import EmptyInputError, UnsupportedInputError
-from .log import cause_name, log_event, safe_log_text
+from .log import cause_name, current_run_id, log_event, safe_log_text
 from .orchestrator import AllImagesFailedError, run_zssm
 from .reaction import zssm_reaction_timeline
 from .render import (
@@ -30,18 +31,16 @@ from .render import (
 async def _finish_failure(
     category: RenderFailureCategory,
     *,
-    run_id: str,
     stage: str,
     request_started: float,
-    cause: type[BaseException] | None = None,
+    cause: BaseException | None = None,
 ) -> Never:
     log_event(
-        run_id,
         "WARNING",
         "ZSSM",
         f"<r><b>request failed</b></> | stage=<y>{safe_log_text(stage)}</> "
         f"category=<y>{category.value}</> "
-        f"cause=<r>{safe_log_text(cause.__name__ if cause is not None else "none")}</> "
+        f"cause=<r>{safe_log_text(repr(cause) if cause is not None else "none")}</> "
         f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
     )
     await render_error(
@@ -52,7 +51,6 @@ async def _finish_failure(
 async def _finish_llm_failure(
     error: LLMServiceError,
     *,
-    run_id: str,
     request_started: float,
 ) -> Never:
     capability = (
@@ -61,7 +59,6 @@ async def _finish_llm_failure(
         else ""
     )
     log_event(
-        run_id,
         "WARNING",
         "ZSSM",
         f"<r><b>request failed</b></> | stage=<y>agent</> "
@@ -87,7 +84,12 @@ def _quoted_message(
     return UniMessage.of(reply.msg, bot=bot).copy()
 
 
-@matcher.handle()
+async def _set_run_id():
+    with current_run_id.set(secrets.token_hex(8)):
+        yield
+
+
+@matcher.handle(parameterless=[Depends(_set_run_id)])
 async def _handle_zssm(
     bot: Bot,
     event: Event,
@@ -98,10 +100,8 @@ async def _handle_zssm(
     message_id: MsgId,
     reply_extension: ReplyRecordExtension,
 ) -> None:
-    run_id = secrets.token_hex(8)
     request_started = perf_counter()
     log_event(
-        run_id,
         "INFO",
         "ZSSM",
         f"<b>request accepted</> | segments=<c>{len(current)}</> "
@@ -118,12 +118,10 @@ async def _handle_zssm(
                 content=content,
                 message_id=message_id,
                 reply_extension=reply_extension,
-                run_id=run_id,
                 request_started=request_started,
             )
     except asyncio.CancelledError:
         log_event(
-            run_id,
             "INFO",
             "ZSSM",
             f"<y>request cancelled</> | "
@@ -141,7 +139,6 @@ async def _execute_zssm(
     content: ParsedContent,
     message_id: MsgId,
     reply_extension: ReplyRecordExtension,
-    run_id: str,
     request_started: float,
 ) -> None:
     async def finish_failure(
@@ -151,10 +148,9 @@ async def _execute_zssm(
     ) -> Never:
         await _finish_failure(
             category,
-            run_id=run_id,
             stage=stage,
             request_started=request_started,
-            cause=type(error),
+            cause=error,
         )
 
     current_copy = current.copy()
@@ -195,7 +191,6 @@ async def _execute_zssm(
             config=config,
             service=service,
             adapter_image_fetcher=fetch_adapter_image,
-            run_id=run_id,
         )
     except asyncio.CancelledError:
         raise
@@ -222,7 +217,6 @@ async def _execute_zssm(
     except LLMServiceError as error:
         await _finish_llm_failure(
             error,
-            run_id=run_id,
             request_started=request_started,
         )
     except Exception as error:
@@ -241,7 +235,6 @@ async def _execute_zssm(
         await finish_failure(RenderFailureCategory.RENDER, "render", error)
 
     log_event(
-        run_id,
         "INFO",
         "ZSSM::Render",
         f"<b>reference built</> | nodes=<c>{len(nodes)}</> "
@@ -259,7 +252,6 @@ async def _execute_zssm(
     stats = model.stats
     orchestration_elapsed = stats.total_elapsed if stats is not None else 0.0
     log_event(
-        run_id,
         "SUCCESS",
         "ZSSM",
         f"<g><b>request completed</b></> | "

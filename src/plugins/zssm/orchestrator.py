@@ -17,7 +17,7 @@ from nonebot_plugin_uninfo import Session
 from nonebot_plugin_uninfo.orm import BotModel, SceneModel, SessionModel, UserModel
 from sqlalchemy import func, select
 
-from src.service.llm import AgentLimits, LLMService, ModelCapability
+from src.service.llm import AgentLimits, AgentRunResult, LLMService, ModelCapability
 
 from .config import ZssmConfig
 from .contracts import (
@@ -31,7 +31,7 @@ from .contracts import (
 )
 from .forward import expand_forward_inputs
 from .input import AdapterImageFetcher, collect_input
-from .log import log_event, safe_log_text
+from .log import current_run_id, log_event, safe_log_text
 from .prompt import SYSTEM_PROMPT
 from .tools import (
     InvocationParticipantResolver,
@@ -146,7 +146,7 @@ def _safe_answer(answer: str, citations: Any) -> str:
     return f"关键词：{keywords}\n\n{body}"
 
 
-def _tool_trace(result: Any) -> tuple[ToolDisplayEntry, ...]:
+def _tool_trace(result: AgentRunResult) -> tuple[ToolDisplayEntry, ...]:
     return tuple(
         ToolDisplayEntry(
             name=item.name,
@@ -169,7 +169,6 @@ async def run_zssm(
     quoted: UniMessage | None,
     config: ZssmConfig,
     service: LLMService,
-    run_id: str | None = None,
     adapter_image_fetcher: AdapterImageFetcher | None = None,
     participant_resolver_factory: Callable[
         [Bot, Session, Any], InvocationParticipantResolver
@@ -204,7 +203,6 @@ async def run_zssm(
     wait_started = perf_counter()
     async with outer_limiter:
         log_event(
-            run_id,
             "INFO",
             "ZSSM",
             f"<b>run slot acquired</> | "
@@ -220,7 +218,6 @@ async def run_zssm(
             config=config.forwards,
         )
         log_event(
-            run_id,
             "DEBUG",
             "ZSSM",
             f"<b>forward expansion completed</> | "
@@ -249,7 +246,6 @@ async def run_zssm(
             started_at,
         )
         log_event(
-            run_id,
             "INFO",
             "ZSSM",
             f"<b>input ready</> | text_chars=<c>{len(collected.prompt_text)}</> "
@@ -263,7 +259,6 @@ async def run_zssm(
             config=config.images,
             llm_service=service,
             adapter_image_fetcher=adapter_image_fetcher,
-            correlation_id=run_id,
         )
         if routed.primary is None:
             raise AllImagesFailedError
@@ -280,7 +275,6 @@ async def run_zssm(
             history_high_water=history_high_water,
             invocation=invocation,
             llm_service=service,
-            correlation_id=run_id,
         ) as resources:
             limits = AgentLimits(
                 max_model_calls=config.max_agent_model_calls,
@@ -301,7 +295,7 @@ async def run_zssm(
                 model=active_alias,
                 limits=limits,
                 reasoning_effort=config.agent_reasoning_effort,
-                correlation_id=run_id,
+                correlation_id=current_run_id.get(),
             )
             raw_answer = result.output
             if collected.omitted_images:
@@ -342,7 +336,6 @@ async def run_zssm(
                 for citation in resources.citations.used_citations()
             )
             log_event(
-                run_id,
                 "SUCCESS",
                 "ZSSM",
                 f"<g><b>assembled</b></> | elapsed=<c>{total_elapsed * 1000:.1f}ms</> "
