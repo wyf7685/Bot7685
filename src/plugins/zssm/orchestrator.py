@@ -169,6 +169,7 @@ async def run_zssm(
     quoted: UniMessage | None,
     config: ZssmConfig,
     service: LLMService,
+    model_alias: str | None = None,
     adapter_image_fetcher: AdapterImageFetcher | None = None,
     participant_resolver_factory: Callable[
         [Bot, Session, Any], InvocationParticipantResolver
@@ -194,10 +195,12 @@ async def run_zssm(
     quoted_copy = quoted.copy() if quoted is not None else None
     started_at = now_factory()
     started = clock()
-    active = (await service.get_active_model()).require_capability(
-        ModelCapability.TOOLS
-    )
-    active_alias = active.alias
+    primary = (
+        service.get_model(model_alias)
+        if model_alias is not None
+        else await service.get_active_model()
+    ).require_capability(ModelCapability.TOOLS)
+    primary_alias = primary.alias
 
     outer_limiter = limiter or _run_limiter(config.max_concurrent_runs)
     wait_started = perf_counter()
@@ -208,7 +211,7 @@ async def run_zssm(
             f"<b>run slot acquired</> | "
             f"wait=<y>{(perf_counter() - wait_started) * 1000:.1f}ms</> "
             f"capacity=<c>{config.max_concurrent_runs}</> "
-            f"model=<g>{safe_log_text(active_alias)}</>",
+            f"model=<g>{safe_log_text(primary_alias)}</>",
         )
         forward_started = perf_counter()
         expanded_content, expanded_quoted = await forward_expander(
@@ -254,7 +257,7 @@ async def run_zssm(
         )
         routed = await vision_router(
             collected,
-            primary_model=active_alias,
+            primary_model=primary_alias,
             vision_model=config.vision_model,
             config=config.images,
             llm_service=service,
@@ -265,7 +268,7 @@ async def run_zssm(
 
         invocation = ZssmInvocationFacts(
             started_at=started_at,
-            active_model=active_alias,
+            active_model=primary_alias,
             invoker_alias=collected.participant_aliases[0],
         )
         async with tool_resources_factory(
@@ -292,7 +295,7 @@ async def run_zssm(
                 routed.primary,
                 tools=resources.tools,
                 system_prompt=SYSTEM_PROMPT,
-                model=active_alias,
+                model=primary_alias,
                 limits=limits,
                 reasoning_effort=config.agent_reasoning_effort,
                 correlation_id=current_run_id.get(),

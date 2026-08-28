@@ -5,7 +5,7 @@ from .config import RootConfig
 __plugin_meta__ = PluginMetadata(
     name="zssm",
     description="群聊上下文增强的工具调用式大语言模型助手",
-    usage="zssm [内容]",
+    usage="zssm [-m <模型别名>] [内容]",
     type="application",
     config=RootConfig,
     supported_adapters=inherit_supported_adapters(

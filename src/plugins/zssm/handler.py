@@ -99,13 +99,15 @@ async def _handle_zssm(
     content: ParsedContent,
     message_id: MsgId,
     reply_extension: ReplyRecordExtension,
+    model_alias: str | None = None,
 ) -> None:
     request_started = perf_counter()
     log_event(
         "INFO",
         "ZSSM",
         f"<b>request accepted</> | segments=<c>{len(current)}</> "
-        f"content=<y>{str(content.available).lower()}</>",
+        f"content=<y>{str(content.available).lower()}</> "
+        f"model=<g>{safe_log_text(model_alias or "$active")}</>",
     )
     try:
         async with zssm_reaction_timeline(bot, event):
@@ -116,6 +118,7 @@ async def _handle_zssm(
                 session=session,
                 current=current,
                 content=content,
+                model_alias=model_alias,
                 message_id=message_id,
                 reply_extension=reply_extension,
                 request_started=request_started,
@@ -137,6 +140,7 @@ async def _execute_zssm(
     session: Uninfo,
     current: UniMsg,
     content: ParsedContent,
+    model_alias: str | None,
     message_id: MsgId,
     reply_extension: ReplyRecordExtension,
     request_started: float,
@@ -190,6 +194,7 @@ async def _execute_zssm(
             quoted=quoted_copy,
             config=config,
             service=service,
+            model_alias=model_alias,
             adapter_image_fetcher=fetch_adapter_image,
         )
     except asyncio.CancelledError:
