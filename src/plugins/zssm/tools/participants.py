@@ -8,7 +8,14 @@ from enum import Enum
 
 from nonebot.adapters import Bot
 from nonebot_plugin_orm import get_session
-from nonebot_plugin_uninfo import Member, SceneType, Session, User, get_interface
+from nonebot_plugin_uninfo import (
+    Interface,
+    Member,
+    SceneType,
+    Session,
+    User,
+    get_interface,
+)
 from nonebot_plugin_uninfo.orm import BotModel, SceneModel, SessionModel, UserModel
 from sqlalchemy import select
 
@@ -61,7 +68,7 @@ class InvocationParticipantResolver:
         self._bot = bot
         self._session = session
         self._config = config
-        self._interface = get_interface(bot)
+        self._interface: Interface | None = get_interface(bot)
         self._lookup_semaphore = asyncio.Semaphore(config.max_parallel_lookups)
         self._lookup_locks: dict[str, asyncio.Lock] = {}
         self._refs_by_raw_id: dict[str, ParticipantRef] = {}
@@ -190,7 +197,7 @@ class InvocationParticipantResolver:
         )
         live_user: User | None = None
         live_member: Member | None = None
-        if self._interface is None:
+        if (interface := self._interface) is None:
             snapshot = await _safe_lookup(snapshot_call)
         elif is_membership_scene:
             member_scene_type = (
@@ -206,7 +213,7 @@ class InvocationParticipantResolver:
             live_member, live_user, snapshot = await asyncio.gather(
                 _safe_lookup(
                     self._bounded_call(
-                        lambda: self._interface.get_member(
+                        lambda: interface.get_member(
                             member_scene_type,
                             member_scene_id,
                             raw_user_id,
@@ -214,14 +221,14 @@ class InvocationParticipantResolver:
                     )
                 ),
                 _safe_lookup(
-                    self._bounded_call(lambda: self._interface.get_user(raw_user_id))
+                    self._bounded_call(lambda: interface.get_user(raw_user_id))
                 ),
                 _safe_lookup(snapshot_call),
             )
         else:
             live_user, snapshot = await asyncio.gather(
                 _safe_lookup(
-                    self._bounded_call(lambda: self._interface.get_user(raw_user_id))
+                    self._bounded_call(lambda: interface.get_user(raw_user_id))
                 ),
                 _safe_lookup(snapshot_call),
             )
