@@ -4,7 +4,6 @@ from time import perf_counter
 from typing import Never
 
 from nonebot.adapters import Bot, Event
-from nonebot.params import Depends
 from nonebot.typing import T_State
 from nonebot_plugin_alconna import Image, MsgId, UniMessage, UniMsg, image_fetch
 from nonebot_plugin_alconna.builtins.extensions.reply import ReplyRecordExtension
@@ -84,12 +83,7 @@ def _quoted_message(
     return UniMessage.of(reply.msg, bot=bot).copy()
 
 
-async def _set_run_id():
-    with current_run_id.set(secrets.token_hex(8)):
-        yield
-
-
-@matcher.handle(parameterless=[Depends(_set_run_id)])
+@matcher.handle()
 async def _handle_zssm(
     bot: Bot,
     event: Event,
@@ -101,36 +95,37 @@ async def _handle_zssm(
     reply_extension: ReplyRecordExtension,
     model_alias: str | None = None,
 ) -> None:
-    request_started = perf_counter()
-    log_event(
-        "INFO",
-        "ZSSM",
-        f"<b>request accepted</> | segments=<c>{len(current)}</> "
-        f"content=<y>{str(content.available).lower()}</> "
-        f"model=<g>{safe_log_text(model_alias or "$active")}</>",
-    )
-    try:
-        async with zssm_reaction_timeline(bot, event):
-            await _execute_zssm(
-                bot=bot,
-                event=event,
-                state=state,
-                session=session,
-                current=current,
-                content=content,
-                model_alias=model_alias,
-                message_id=message_id,
-                reply_extension=reply_extension,
-                request_started=request_started,
-            )
-    except asyncio.CancelledError:
+    with current_run_id.set(secrets.token_hex(8)):
+        request_started = perf_counter()
         log_event(
             "INFO",
             "ZSSM",
-            f"<y>request cancelled</> | "
-            f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
+            f"<b>request accepted</> | segments=<c>{len(current)}</> "
+            f"content=<y>{str(content.available).lower()}</> "
+            f"model=<g>{safe_log_text(model_alias or "$active")}</>",
         )
-        raise
+        try:
+            async with zssm_reaction_timeline(bot, event):
+                await _execute_zssm(
+                    bot=bot,
+                    event=event,
+                    state=state,
+                    session=session,
+                    current=current,
+                    content=content,
+                    model_alias=model_alias,
+                    message_id=message_id,
+                    reply_extension=reply_extension,
+                    request_started=request_started,
+                )
+        except asyncio.CancelledError:
+            log_event(
+                "INFO",
+                "ZSSM",
+                f"<y>request cancelled</> | "
+                f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
+            )
+            raise
 
 
 async def _execute_zssm(
