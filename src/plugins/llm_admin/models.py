@@ -4,19 +4,30 @@ from src.service.llm import LLMConfig
 
 from .common import config_operation, configured_snapshot, replace_configuration
 from .formatting import format_model
-from .forms import ask_model
+from .forms import ModelOptionError, ModelOptions, ask_model
 from .interaction import confirm
 from .matcher import model_admin
 
 
 @model_admin.assign("config.model.add")
-async def handle_model_add(target: MsgTarget, alias: str) -> None:
+async def handle_model_add(
+    target: MsgTarget,
+    alias: str,
+    options: ModelOptions,
+) -> None:
     async with config_operation(target):
         snapshot, config = await configured_snapshot()
         alias = alias.strip()
         if not alias or alias in config.models:
             await UniMessage.text("模型别名为空或已存在。").finish()
-        model = await ask_model(alias=alias, endpoints=config.endpoints)
+        try:
+            model = await ask_model(
+                alias=alias,
+                endpoints=config.endpoints,
+                options=options,
+            )
+        except ModelOptionError as error:
+            await UniMessage.text(str(error)).finish()
         if not await confirm(
             f"确认添加模型 {alias!r}？\n{format_model(alias, model, active=False)}"
         ):
@@ -31,19 +42,27 @@ async def handle_model_add(target: MsgTarget, alias: str) -> None:
 
 
 @model_admin.assign("config.model.edit")
-async def handle_model_edit(target: MsgTarget, alias: str) -> None:
+async def handle_model_edit(
+    target: MsgTarget,
+    alias: str,
+    options: ModelOptions,
+) -> None:
     async with config_operation(target):
         snapshot, config = await configured_snapshot()
         alias = alias.strip()
         model = config.models.get(alias)
         if model is None:
             await UniMessage.text("未找到该模型。").finish()
-        updated = await ask_model(
-            alias=alias,
-            endpoints=config.endpoints,
-            existing=model,
-            force_selectable=alias == config.active_model,
-        )
+        try:
+            updated = await ask_model(
+                alias=alias,
+                endpoints=config.endpoints,
+                existing=model,
+                force_selectable=alias == config.active_model,
+                options=options,
+            )
+        except ModelOptionError as error:
+            await UniMessage.text(str(error)).finish()
         if not await confirm(
             f"确认更新模型 {alias!r}？\n"
             f"{format_model(alias, updated, active=alias == config.active_model)}"

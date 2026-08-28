@@ -7,6 +7,7 @@ import nonebot_plugin_waiter.unimsg as waiter
 from nonebot_plugin_alconna import UniMessage
 
 _CANCEL_WORDS = {"取消", "cancel", "quit", "exit"}
+_DEFAULT_WORDS = {"默认", "default", "保留", "keep"}
 _SESSION_GUARD = asyncio.Lock()
 _SESSION_ACTIVE = False
 
@@ -46,7 +47,7 @@ async def ask_value[T](
     parser: Callable[[str], T],
     *,
     default: T | None = None,
-    allow_empty_default: bool = False,
+    allow_default: bool = False,
     retries: int = 3,
     timeout_seconds: float = 60,
     error_message: str = "输入无效，请重新输入。",
@@ -59,9 +60,10 @@ async def ask_value[T](
         if result is None:
             raise InteractionTimeout
         text = result.extract_plain_text().strip()
-        if text.casefold() in _CANCEL_WORDS:
+        normalized = text.casefold()
+        if normalized in _CANCEL_WORDS:
             raise InteractionCancelled
-        if not text and allow_empty_default:
+        if allow_default and normalized in _DEFAULT_WORDS:
             return cast("T", default)
         try:
             return parser(text)
@@ -74,7 +76,7 @@ async def ask_text(
     prompt: str,
     *,
     default: str | None = None,
-    allow_empty_default: bool = False,
+    allow_default: bool = False,
 ) -> str:
     def parse(value: str) -> str:
         value = value.strip()
@@ -86,7 +88,7 @@ async def ask_text(
         prompt,
         parse,
         default=default,
-        allow_empty_default=allow_empty_default,
+        allow_default=allow_default,
         error_message="输入不能为空。",
     )
 
@@ -96,7 +98,7 @@ async def ask_int(
     *,
     minimum: int,
     default: int | None = None,
-    allow_empty_default: bool = False,
+    allow_default: bool = False,
 ) -> int:
     def parse(value: str) -> int:
         parsed = int(value)
@@ -108,7 +110,7 @@ async def ask_int(
         prompt,
         parse,
         default=default,
-        allow_empty_default=allow_empty_default,
+        allow_default=allow_default,
         error_message=f"请输入不小于 {minimum} 的整数。",
     )
 
@@ -118,7 +120,7 @@ async def ask_float(
     *,
     minimum_exclusive: float,
     default: float | None = None,
-    allow_empty_default: bool = False,
+    allow_default: bool = False,
 ) -> float:
     def parse(value: str) -> float:
         parsed = float(value)
@@ -130,7 +132,7 @@ async def ask_float(
         prompt,
         parse,
         default=default,
-        allow_empty_default=allow_empty_default,
+        allow_default=allow_default,
         error_message=f"请输入大于 {minimum_exclusive:g} 的数字。",
     )
 
@@ -139,7 +141,7 @@ async def ask_bool(
     prompt: str,
     *,
     default: bool | None = None,
-    allow_empty_default: bool = False,
+    allow_default: bool = False,
 ) -> bool:
     truthy = {"是", "y", "yes", "true", "1", "on"}
     falsy = {"否", "n", "no", "false", "0", "off"}
@@ -152,11 +154,16 @@ async def ask_bool(
             return False
         raise ValueError
 
+    default_hint = (
+        f"，回复“默认”选择{"是" if default else "否"}"
+        if allow_default and default is not None
+        else ""
+    )
     return await ask_value(
-        f"{prompt} [是/否]",
+        f"{prompt} [是/否{default_hint}]",
         parse,
         default=default,
-        allow_empty_default=allow_empty_default,
+        allow_default=allow_default,
         error_message="请回复“是”或“否”。",
     )
 
@@ -166,12 +173,16 @@ async def ask_choice[T](
     choices: Sequence[tuple[str, T]],
     *,
     default: T | None = None,
-    allow_empty_default: bool = False,
+    allow_default: bool = False,
 ) -> T:
     if not choices:
         raise ValueError("choices must not be empty")
     lines = [prompt]
-    lines.extend(f"{index}. {label}" for index, (label, _) in enumerate(choices, 1))
+    lines.extend(
+        f"{index}. {label}"
+        f"{"（默认；回复“默认”选择）" if allow_default and value == default else ""}"
+        for index, (label, value) in enumerate(choices, 1)
+    )
     by_label = {label.casefold(): value for label, value in choices}
 
     def parse(text: str) -> T:
@@ -186,7 +197,7 @@ async def ask_choice[T](
         "\n".join(lines),
         parse,
         default=default,
-        allow_empty_default=allow_empty_default,
+        allow_default=allow_default,
         error_message="请输入候选项编号或名称。",
     )
 

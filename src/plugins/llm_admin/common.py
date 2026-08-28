@@ -41,7 +41,12 @@ async def config_operation(target: MsgTarget):
 async def configured_snapshot() -> tuple[LLMConfigurationSnapshot, LLMConfig]:
     snapshot = await get_llm_service().configuration_snapshot()
     if snapshot.config is None:
-        await UniMessage.text("LLM 尚未配置，请先执行 /llm config setup。").finish()
+        message = (
+            "LLM 配置文件不可用。请在私聊执行 /llm config setup 重新配置。"
+            if snapshot.load_error
+            else "LLM 尚未配置。请在私聊执行 /llm config setup。"
+        )
+        await UniMessage.text(message).finish()
     return snapshot, snapshot.config
 
 

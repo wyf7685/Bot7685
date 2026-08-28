@@ -7,7 +7,7 @@ from src.service.llm import (
     get_llm_service,
 )
 
-from .common import finish_service_error
+from .common import configured_snapshot, finish_service_error
 from .formatting import format_endpoint, format_model, format_model_list, format_status
 from .matcher import model_admin
 
@@ -48,16 +48,14 @@ async def handle_status(bot: Bot) -> None:
 @model_admin.assign("model.list")
 async def handle_model_list() -> None:
     service = get_llm_service()
-    try:
-        active = await service.get_active_model()
-    except LLMConfigurationError as error:
-        await finish_service_error(error)
-    message = format_model_list(active.alias, service.list_models())
+    _, config = await configured_snapshot()
+    message = format_model_list(config.active_model, service.list_models())
     await UniMessage.text(message).finish()
 
 
 @model_admin.assign("model.use")
 async def handle_model_use(alias: str) -> None:
+    await configured_snapshot()
     try:
         model = await get_llm_service().select_model(alias)
     except LLMModelSelectionError as error:

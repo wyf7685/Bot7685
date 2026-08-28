@@ -199,9 +199,9 @@ class LLMService:
             state = self._require_state()
             model = state.models.get(normalized)
             if model is None:
-                raise LLMModelSelectionError("Unknown model alias.")
+                raise LLMModelSelectionError("未找到该模型。")
             if not model.selectable:
-                raise LLMModelSelectionError("The model alias is not selectable.")
+                raise LLMModelSelectionError("该模型不可切换。")
 
             config = state.config.model_copy(update={"active_model": normalized})
             try:
