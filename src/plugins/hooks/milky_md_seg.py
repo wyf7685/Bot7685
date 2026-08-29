@@ -12,4 +12,4 @@ with contextlib.suppress(ImportError):
     class Markdown(MessageSegment, element_type="markdown"):
         data: MarkdownData = dataclasses.field(default_factory=dict)
 
-    TYPE_MAPPING.update({Markdown.__element_type__: Markdown})  # ty:ignore[no-matching-overload]
+    TYPE_MAPPING.update({Markdown.__element_type__: Markdown})

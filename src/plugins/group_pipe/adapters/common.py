@@ -15,7 +15,7 @@ class MessageConverter[
     TMS: MessageSegment = MessageSegment,
     TB: Bot = Bot,
     TM: Message = Message,
-](AbstractMessageConverter[TB, TM], adapter=None):
+](AbstractMessageConverter[TB, TM], adapter=None):  # ty: ignore[invalid-argument-type]
     logger: ClassVar[loguru.Logger] = nonebot.logger.opt(colors=True)
 
     def get_cos_key(self, key: str) -> str:

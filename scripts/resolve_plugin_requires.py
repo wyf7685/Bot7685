@@ -1,9 +1,7 @@
-# ruff: noqa: T201, S603
+# ruff: noqa: T201
 import ast
 import itertools
 import json
-import shutil
-import subprocess
 from collections.abc import Iterable
 from importlib.util import find_spec
 from pathlib import Path
@@ -88,9 +86,6 @@ def filter_requires(requires: set[str]) -> Iterable[str]:
 
 
 def main():
-    git = shutil.which("git")
-    assert git is not None, "Git is required to run this script."
-
     plugin_requires = {
         path.stem if path.is_file() else path.name: sorted(
             filter_requires(resolve_requires(path))
@@ -106,7 +101,6 @@ def main():
     ):
         deps_json_file.write_text(deps_json, encoding="utf-8")
         print("Plugin dependencies updated.")
-        subprocess.run([git, "add", str(deps_json_file)], check=True)
 
 
 if __name__ == "__main__":

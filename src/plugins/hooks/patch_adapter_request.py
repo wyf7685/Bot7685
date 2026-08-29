@@ -12,6 +12,8 @@ from nonebot.drivers import (
     Response,
 )
 
+from src.utils import copy_signature
+
 _ATTR_NAME = "_bot7685_adapter_session"
 _IDLE_TIMEOUT = 300.0
 
@@ -114,4 +116,4 @@ async def request(self: Adapter, setup: Request) -> Response:
 
 
 for adapter in Adapter.__subclasses__():
-    adapter.request = request
+    adapter.request = copy_signature(adapter.request)(request)

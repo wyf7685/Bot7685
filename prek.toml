@@ -18,7 +18,7 @@ types_or = ["python", "pyi"]
 [[repos.hooks]]
 id = "ty"
 name = "ty check"
-entry = "uv run ty check ."
+entry = "uv run ty check --force-exclude ."
 language = "python"
 types_or = ["python", "pyi"]
 

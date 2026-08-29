@@ -63,7 +63,7 @@ dev = [
   { include-group = "lint" },
   { include-group = "dev-runtime" },
 ]
-lint = ["ruff>=0.16.3", "prek>=0.4.14", "ty>=0.0.72"]
+lint = ["ruff>=0.16.5", "prek>=0.5.0", "ty>=0.0.75"]
 dev-runtime = [
   "ddgs>=9.15,<10",
   "nonebot-adapter-feishu>=2.7.1",
