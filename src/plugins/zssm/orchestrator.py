@@ -323,6 +323,7 @@ async def run_zssm(
                 model_alias=result.model_alias,
                 model_id=result.model_id,
                 calls=result.model_call_count,
+                usage_calls=result.model_call_count,
                 usage=result.usage,
                 elapsed=sum(item.elapsed for item in result.trace.model_calls),
             )

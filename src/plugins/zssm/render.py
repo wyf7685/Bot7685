@@ -171,37 +171,66 @@ def _statistics_content(stats: RunStatistics) -> str:
         if stats.vision_usage is None
         else (stats.primary_usage, stats.vision_usage)
     )
+    model_calls: dict[str, int] = {}
+    for stage in stages:
+        model_calls[stage.model_alias] = (
+            model_calls.get(stage.model_alias, 0) + stage.calls
+        )
+
+    model_summary = " · ".join(
+        f"{_display_text(alias, 80) or "未知模型"} ×{calls}"
+        for alias, calls in model_calls.items()
+    )
     lines = [
         "处理统计",
-        f"耗时 {_format_seconds(stats.total_elapsed)} · "
-        f"模型调用 {sum(stage.calls for stage in stages)} 次",
+        f"耗时: {_format_seconds(stats.total_elapsed)}",
+        f"模型: {model_summary}",
     ]
 
     usage = sum((stage.usage for stage in stages), TokenUsage())
-    lines.append(
-        f"Tokens: "
-        f"I/{usage.prompt_tokens:,} "
-        f"C/{usage.prompt_tokens_details.cached_tokens:,} "
-        f"O/{usage.completion_tokens:,} "
-        f"R/{usage.completion_tokens_details.reasoning_tokens:,} "
-        f"T/{usage.total_tokens:,}"
-    )
+    usage_calls = sum(stage.usage_calls for stage in stages)
+    total_calls = sum(stage.calls for stage in stages)
+    if not usage_calls:
+        lines.append("Tokens: N/A")
+    else:
+        usage_label = (
+            "Tokens"
+            if usage_calls == total_calls
+            else f"Tokens({usage_calls}/{total_calls})"
+        )
+        lines.append(
+            f"{usage_label}: "
+            f"I/{usage.prompt_tokens:,} "
+            f"C/{usage.prompt_tokens_details.cached_tokens:,} "
+            f"O/{usage.completion_tokens:,} "
+            f"R/{usage.completion_tokens_details.reasoning_tokens:,} "
+            f"T/{usage.total_tokens:,}"
+        )
 
     if stats.tool_calls:
-        tool_summary = f"工具调用 {stats.tool_calls} 次"
+        tool_summary = f"工具: {stats.tool_calls} 次"
         if stats.tool_failures:
-            tool_summary += f"（失败 {stats.tool_failures} 次）"
+            tool_summary += f" (失败 {stats.tool_failures})"
         lines.append(tool_summary)
 
-    failed_images = stats.images.preparation_failed + stats.images.vision_failed
-    if failed_images:
+    if stats.images.unique:
         vision_attempted = (
             stats.images.vision_succeeded + stats.images.vision_failed > 0
         )
         successful_images = (
             stats.images.vision_succeeded if vision_attempted else stats.images.prepared
         )
-        lines.append(f"图片 {successful_images}/{stats.images.unique} 成功")
+        image_summary = f"图片: {successful_images}/{stats.images.unique} 成功"
+        failures = []
+        if stats.images.acquisition_failed:
+            failures.append(f"获取失败 {stats.images.acquisition_failed}")
+        if stats.images.normalization_failed:
+            failures.append(f"归一化失败 {stats.images.normalization_failed}")
+        if stats.images.vision_failed:
+            failures.append(f"视觉失败 {stats.images.vision_failed}")
+        if failures:
+            image_summary += f" ({" · ".join(failures)})"
+        lines.append(image_summary)
     return "\n".join(lines)
 
 

@@ -784,6 +784,7 @@ class ModelStageUsage:
     model_alias: str
     model_id: str
     calls: int
+    usage_calls: int
     usage: TokenUsage
     elapsed: float
 
@@ -792,8 +793,10 @@ class ModelStageUsage:
             self, "model_alias", _nonempty(self.model_alias, "model_alias")
         )
         object.__setattr__(self, "model_id", _nonempty(self.model_id, "model_id"))
-        if self.calls < 0 or self.elapsed < 0:
-            raise ValueError("stage calls and elapsed must not be negative")
+        if self.calls < 0 or not 0 <= self.usage_calls <= self.calls:
+            raise ValueError("stage call counts are inconsistent")
+        if self.elapsed < 0:
+            raise ValueError("stage elapsed must not be negative")
 
 
 @dataclass(frozen=True, slots=True)

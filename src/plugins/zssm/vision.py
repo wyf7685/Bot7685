@@ -201,6 +201,7 @@ async def route_vision(
         model_alias=stage.model_alias,
         model_id=stage.model_id,
         calls=len(preparation.images),
+        usage_calls=len(stage.observations),
         usage=stage.usage,
         elapsed=stage.elapsed,
     )
