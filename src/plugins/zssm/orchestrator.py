@@ -5,7 +5,7 @@ from functools import partial
 from time import perf_counter
 from weakref import WeakKeyDictionary
 
-from nonebot.adapters import Bot
+from nonebot.adapters import Bot, Event
 from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_chatrecorder import MessageRecord
 from nonebot_plugin_chatrecorder.record import filter_statement
@@ -160,6 +160,7 @@ def _tool_trace(result: AgentRunResult) -> tuple[ToolDisplayEntry, ...]:
 async def run_zssm(
     *,
     bot: Bot,
+    event: Event,
     session: Session,
     current: UniMessage,
     content: UniMessage,
@@ -199,6 +200,7 @@ async def run_zssm(
             content_copy,
             quoted_copy,
             bot=bot,
+            event=event,
             config=config.forwards,
         )
         log_event(

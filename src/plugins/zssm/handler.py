@@ -183,6 +183,7 @@ async def _execute_zssm(
     try:
         model = await run_zssm(
             bot=bot,
+            event=event,
             session=session,
             current=current_copy,
             content=content_copy,
