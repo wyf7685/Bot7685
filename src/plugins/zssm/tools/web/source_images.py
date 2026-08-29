@@ -254,29 +254,28 @@ async def _download_pages(
     registered: RegisteredMediaSet,
     pages: tuple[int, ...],
 ) -> tuple[tuple[DownloadedSourceMedia, ...], tuple[int, ...]]:
-    media: list[DownloadedSourceMedia] = []
-    failed: list[int] = []
-
-    async def download(page: int) -> None:
-        try:
-            result = await registered.adapter.fetch_media(
-                registered.target,
-                (page,),
-                context.page_fetcher,
-                max_bytes=context.images_config.max_source_bytes,
-            )
-            if len(result) != 1 or result[0].page != page:
+    try:
+        media = await registered.adapter.fetch_media(
+            registered.target,
+            pages,
+            context.page_fetcher,
+            max_bytes=context.images_config.max_source_bytes,
+        )
+        requested = frozenset(pages)
+        by_page: dict[int, DownloadedSourceMedia] = {}
+        for item in media:
+            if item.page not in requested or item.page in by_page:
                 raise ValueError("source adapter returned mismatched media")
-            media.append(result[0])
-        except asyncio.CancelledError:
-            raise
-        except Exception:
-            failed.append(page)
+            by_page[item.page] = item
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        return (), pages
 
-    for page in pages:
-        await download(page)
-    by_page = {item.page: item for item in media}
-    return tuple(by_page[page] for page in pages if page in by_page), tuple(failed)
+    return (
+        tuple(by_page[page] for page in pages if page in by_page),
+        tuple(page for page in pages if page not in by_page),
+    )
 
 
 def _collected_media_input(
