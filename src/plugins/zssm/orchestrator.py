@@ -142,6 +142,24 @@ def _safe_answer(answer: str, citations: CitationRegistry) -> str:
     return f"关键词：{keywords}\n\n{body}"
 
 
+def _append_image_processing_notices(
+    answer: str,
+    *,
+    omitted_images: int,
+    max_images: int,
+    partial_success: bool,
+) -> str:
+    notices: list[str] = []
+    if omitted_images:
+        notices.append(
+            "图片处理提示：普通图片输入超过上限，仅处理前 "
+            f"{max_images} 张，其余 {omitted_images} 张普通图片未处理。"
+        )
+    if partial_success:
+        notices.append("图片处理提示：部分图片处理失败，以上解释仅基于成功处理的内容。")
+    return f"{answer} {" ".join(notices)}" if notices else answer
+
+
 def _tool_trace(result: AgentRunResult) -> tuple[ToolDisplayEntry, ...]:
     return tuple(
         ToolDisplayEntry(
@@ -285,18 +303,13 @@ async def run_zssm(
                 reasoning_effort=config.agent_reasoning_effort,
                 correlation_id=current_run_id.get(),
             )
-            raw_answer = result.output
-            if collected.omitted_images:
-                raw_answer += (
-                    "\n图片处理提示：普通图片输入超过上限，仅处理前 "
-                    f"{config.images.max_count} 张，"
-                    f"其余 {collected.omitted_images} 张普通图片未处理。"
-                )
-            if routed.stats.partial_success:
-                raw_answer += (
-                    "\n图片处理提示：部分图片处理失败，以上解释仅基于成功处理的内容。"
-                )
-            answer = _safe_answer(raw_answer, resources.citations)
+            answer = _safe_answer(result.output, resources.citations)
+            answer = _append_image_processing_notices(
+                answer,
+                omitted_images=collected.omitted_images,
+                max_images=config.images.max_count,
+                partial_success=routed.stats.partial_success,
+            )
             trace = _tool_trace(result)
             primary_usage = ModelStageUsage(
                 model_alias=result.model_alias,
