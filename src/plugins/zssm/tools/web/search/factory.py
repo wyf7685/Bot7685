@@ -1,4 +1,3 @@
-import anyio
 import httpx
 
 from ....config import WebSearchConfig
@@ -13,9 +12,8 @@ def create_web_search_provider(
     citation_registry: CitationRegistry,
     *,
     client: httpx.AsyncClient | None = None,
-    ddgs_limiter: anyio.CapacityLimiter | None = None,
 ) -> WebSearchProvider:
-    """Create exactly the configured provider; never fall back to another backend."""
+    """Create the configured provider."""
 
     if config.backend == "brave":
         if client is None:
@@ -26,7 +24,7 @@ def create_web_search_provider(
             raise ValueError("a shared HTTP client is required for Tavily search")
         return TavilySearchProvider(config, citation_registry, client)
     if config.backend == "ddgs":
-        return DDGSSearchProvider(config, citation_registry, limiter=ddgs_limiter)
+        return DDGSSearchProvider(config, citation_registry)
     raise ValueError("unsupported web search backend")
 
 

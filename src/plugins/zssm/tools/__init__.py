@@ -3,7 +3,6 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
-import anyio
 import httpx
 
 from src.service.llm import BoundTool, LLMService
@@ -56,7 +55,6 @@ async def open_zssm_tool_resources(
         citations = citation_registry_factory()
         media_registry = InvocationMediaRegistry()
         search_client: httpx.AsyncClient | None = None
-        ddgs_limiter: anyio.CapacityLimiter | None = None
         if config.web_search.backend != "ddgs":
             search_client = await stack.enter_async_context(
                 httpx.AsyncClient(
@@ -65,14 +63,11 @@ async def open_zssm_tool_resources(
                     timeout=httpx.Timeout(None),
                 )
             )
-        if config.web_search.backend == "ddgs":
-            ddgs_limiter = anyio.CapacityLimiter(config.web_search.ddgs_max_parallel)
 
         search_provider = create_web_search_provider(
             config.web_search,
             citations,
             client=search_client,
-            ddgs_limiter=ddgs_limiter,
         )
         page_fetcher = page_fetcher_factory(
             config.fetch_page,
@@ -93,9 +88,12 @@ async def open_zssm_tool_resources(
             participants_config=config.participants,
             citation_registry=citations,
         )
-        web_search = build_web_search_tool(context)
-        fetch_page = build_fetch_page_tool(context)
-        tools_list: list[BoundTool[Any, Any]] = [web_search, fetch_page]
+        tools_list = [
+            build_web_search_tool(context),
+            build_fetch_page_tool(context),
+            build_recent_messages_tool(context),
+            build_participant_info_tool(context),
+        ]
         if config.source_images.enabled:
             tools_list.append(
                 build_source_image_tool(
@@ -110,14 +108,11 @@ async def open_zssm_tool_resources(
                     )
                 )
             )
-        tools_list.extend(
-            (
-                build_recent_messages_tool(context),
-                build_participant_info_tool(context),
-            )
+        yield ZssmToolResources(
+            context=context,
+            tools=tuple(tools_list),
+            citations=citations,
         )
-        tools = tuple(tools_list)
-        yield ZssmToolResources(context=context, tools=tools, citations=citations)
 
 
 __all__ = [

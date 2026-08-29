@@ -331,7 +331,7 @@ class LLMService:
         self,
         prompt: ChatInput,
         *,
-        output_type: object,
+        output_type: type[T],
         system_prompt: str | None = None,
         model: str | None = None,
         temperature: float | None = None,

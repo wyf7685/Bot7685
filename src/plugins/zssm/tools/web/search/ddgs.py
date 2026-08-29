@@ -1,3 +1,4 @@
+import functools
 import math
 import re
 from functools import partial
@@ -22,6 +23,11 @@ class _DDGSBackendUnavailable(RuntimeError):
     pass
 
 
+@functools.cache
+def _get_ddgs_limiter(max_parallel: int) -> anyio.CapacityLimiter:
+    return anyio.CapacityLimiter(max_parallel)
+
+
 class DDGSSearchProvider(WebSearchProvider):
     """A lazy, bounded DDGS provider pinned to one configured backend."""
 
@@ -29,8 +35,6 @@ class DDGSSearchProvider(WebSearchProvider):
         self,
         config: WebSearchConfig,
         citation_registry: CitationRegistry,
-        *,
-        limiter: anyio.CapacityLimiter | None = None,
     ) -> None:
         backend = config.ddgs_backend.strip().casefold()
         if (
@@ -49,7 +53,7 @@ class DDGSSearchProvider(WebSearchProvider):
             "strict": "on",
         }[config.safe_search]
         self._citations = citation_registry
-        self._limiter = limiter or anyio.CapacityLimiter(config.ddgs_max_parallel)
+        self._limiter = _get_ddgs_limiter(config.ddgs_max_parallel)
 
     async def search(
         self,
@@ -114,7 +118,7 @@ class DDGSSearchProvider(WebSearchProvider):
         max_results: int,
         freshness: SearchFreshness,
     ) -> list[dict[str, Any]]:
-        from ddgs import DDGS
+        from ddgs.ddgs import DDGS
         from ddgs.engines import ENGINES
 
         if self._backend not in ENGINES.get("text", {}):
