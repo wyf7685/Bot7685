@@ -3,7 +3,7 @@ import hashlib
 import socket
 import zlib
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import partial
 from time import monotonic
 from typing import Literal, Self, cast
@@ -13,11 +13,18 @@ from urllib.robotparser import RobotFileParser
 import anyio
 import httpx
 from anyio.to_thread import run_sync
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from src.service.llm import BoundTool, JSONValue, ToolOutput
 
 from ...config import FetchPageConfig
-from ...contracts import FetchPageArgs, MediaSetRef, WebPageResult, ZssmToolContext
+from ...contracts._validation import _nonempty
+from ...contracts.web import (
+    CitationRegistry,
+    MediaSetRef,
+    SafePageFetcher,
+    WebPageResult,
+)
 from ...http_transport import (
     AddressResolver,
     DNSResolutionError,
@@ -69,6 +76,23 @@ type FetchErrorCode = Literal[
 
 
 type _RobotsMode = Literal["enforce", "skip"]
+
+
+class FetchPageArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    url: str = Field(min_length=1)
+
+    @field_validator("url")
+    @classmethod
+    def validate_url(cls, value: str) -> str:
+        return _nonempty(value, "url")
+
+
+@dataclass(frozen=True, slots=True)
+class FetchPageToolContext:
+    page_fetcher: SafePageFetcher = field(repr=False, compare=False)
+    citation_registry: CitationRegistry = field(repr=False, compare=False)
 
 
 class SafePageFetchError(RuntimeError):
@@ -639,8 +663,8 @@ async def resolve_card_urls(
 
 
 def build_fetch_page_tool(
-    context: ZssmToolContext,
-) -> BoundTool[ZssmToolContext, FetchPageArgs]:
+    context: FetchPageToolContext,
+) -> BoundTool[FetchPageToolContext, FetchPageArgs]:
     """Bind the safe page fetcher to one invocation context."""
 
     return BoundTool(
@@ -656,7 +680,7 @@ def build_fetch_page_tool(
 
 
 async def _handle_fetch_page(
-    context: ZssmToolContext,
+    context: FetchPageToolContext,
     arguments: FetchPageArgs,
 ) -> ToolOutput:
     input_host = _safe_trace_hostname(arguments.url)
@@ -898,6 +922,7 @@ def _trace_text(value: str, maximum: int) -> str:
 __all__ = [
     "AddressResolver",
     "FetchErrorCode",
+    "FetchPageToolContext",
     "HttpxSafePageFetcher",
     "SafePageFetchError",
     "build_fetch_page_tool",

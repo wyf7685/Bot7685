@@ -1,18 +1,59 @@
+from dataclasses import dataclass, field
+
+from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
+
 from src.service.llm import BoundTool, JSONValue, ToolOutput
 
-from ....contracts import (
+from ....config import WebSearchConfig
+from ....contracts._validation import _nonempty
+from ....contracts.web import (
+    CitationRegistry,
+    SearchFreshness,
     SearchResult,
-    WebSearchArgs,
-    ZssmToolContext,
-    bind_web_search_args,
+    WebSearchProvider,
 )
 from ..citations import citation_json
 from .common import WebSearchError
 
 
+class WebSearchArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    query: str = Field(min_length=1, max_length=300)
+    max_results: int = Field(default=5, ge=1, le=8)
+    freshness: SearchFreshness = "any"
+
+    @field_validator("query")
+    @classmethod
+    def validate_query(cls, value: str) -> str:
+        return _nonempty(value, "query")
+
+
+def bind_web_search_args(config: WebSearchConfig) -> type[WebSearchArgs]:
+    """Materialize the strict model schema for one configured search provider."""
+
+    maximum = min(8, config.max_results)
+    return create_model(
+        f"ConfiguredWebSearchArgsMax{maximum}",
+        __base__=WebSearchArgs,
+        __module__=__name__,
+        max_results=(
+            int,
+            Field(default=min(5, maximum), ge=1, le=maximum),
+        ),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class WebSearchToolContext:
+    search_provider: WebSearchProvider = field(repr=False, compare=False)
+    web_search_config: WebSearchConfig
+    citation_registry: CitationRegistry = field(repr=False, compare=False)
+
+
 def build_web_search_tool(
-    context: ZssmToolContext,
-) -> BoundTool[ZssmToolContext, WebSearchArgs]:
+    context: WebSearchToolContext,
+) -> BoundTool[WebSearchToolContext, WebSearchArgs]:
     """Bind the configured web search provider to one invocation context."""
 
     return BoundTool(
@@ -28,7 +69,7 @@ def build_web_search_tool(
 
 
 async def _handle_web_search(
-    context: ZssmToolContext,
+    context: WebSearchToolContext,
     arguments: WebSearchArgs,
 ) -> ToolOutput:
     try:
@@ -94,4 +135,4 @@ def _search_result_json(result: SearchResult) -> dict[str, JSONValue]:
     }
 
 
-__all__ = ["build_web_search_tool"]
+__all__ = ["WebSearchToolContext", "build_web_search_tool"]

@@ -2,7 +2,7 @@ from typing import cast
 
 from src.service.llm import JSONValue
 
-from ...contracts import Citation, CitationRegistry, CitationSourceKind
+from ...contracts.web import Citation, CitationRegistry, CitationSourceKind
 from ...http_transport import normalize_http_url
 
 

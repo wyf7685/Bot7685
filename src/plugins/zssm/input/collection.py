@@ -23,13 +23,13 @@ from nonebot_plugin_alconna.uniseg import (
 from src.service.llm import TextPart
 
 from ..config import ImagesConfig
-from ..contracts import (
+from ..contracts.input import (
     CollectedImageInput,
     CollectedInput,
     DeferredImageInput,
     InputLocation,
-    ParticipantResolver,
 )
+from ..contracts.participants import ParticipantResolver
 from .cards import CardURLResolver, _render_hyper_prompt, _resolve_card_urls
 from .image_acquisition import _deduplicate_source_references
 

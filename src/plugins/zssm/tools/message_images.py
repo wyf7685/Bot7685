@@ -15,7 +15,7 @@ from src.service.llm import (
 )
 
 from ..config import ImagesConfig
-from ..contracts import (
+from ..contracts.input import (
     CollectedImageInput,
     CollectedInput,
     DeferredImageInput,

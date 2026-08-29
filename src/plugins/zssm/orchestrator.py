@@ -17,16 +17,15 @@ from sqlalchemy import func, select
 from src.service.llm import AgentLimits, AgentRunResult, LLMService, ModelCapability
 
 from .config import ZssmConfig
-from .contracts import (
-    CitationRegistry,
+from .contracts.output import RenderModel, SourceEntry
+from .contracts.run import (
     ModelStageUsage,
-    RenderModel,
     RunStatistics,
-    SourceEntry,
     ToolDisplayEntry,
     ToolDisplayStatus,
     ZssmInvocationFacts,
 )
+from .contracts.web import CitationRegistry
 from .forward import expand_forward_inputs
 from .input import AdapterImageFetcher, collect_input
 from .log import current_run_id, log_event, safe_log_text

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from ...contracts import MediaSetRef
+from ...contracts.web import MediaSetRef
 from .sources.contracts import SourceAdapter, SourceTarget
 
 

@@ -2,6 +2,7 @@ import asyncio
 import base64
 import math
 import warnings
+from dataclasses import dataclass, field
 from io import BytesIO
 from typing import Final
 
@@ -11,11 +12,11 @@ from PIL import ImageOps, UnidentifiedImageError
 from src.service.llm import ImagePart
 
 from ..config import ImagesConfig
-from ..contracts import (
+from ..contracts._validation import _image_label, _sha256
+from ..contracts.images import (
     ImageFailure,
     ImageFailureCategory,
     ImageFailureStage,
-    NormalizedImage,
     PreparedImage,
 )
 from .image_acquisition import (
@@ -25,6 +26,24 @@ from .image_acquisition import (
 )
 
 _DATA_URL_PREFIX: Final = "data:image/jpeg;base64,"
+
+
+@dataclass(frozen=True, slots=True)
+class NormalizedImage:
+    label: str
+    jpeg_bytes: bytes = field(repr=False)
+    source_bytes: int
+    width: int
+    height: int
+    sha256: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "label", _image_label(self.label))
+        object.__setattr__(self, "sha256", _sha256(self.sha256))
+        if not self.jpeg_bytes or self.source_bytes <= 0:
+            raise ValueError("normalized image byte counts must be positive")
+        if self.width <= 0 or self.height <= 0:
+            raise ValueError("normalized image dimensions must be positive")
 
 
 async def _normalize_all(

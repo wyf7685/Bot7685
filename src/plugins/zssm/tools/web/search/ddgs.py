@@ -8,7 +8,7 @@ import anyio
 from anyio.to_thread import run_sync
 
 from ....config import WebSearchConfig
-from ....contracts import (
+from ....contracts.web import (
     CitationRegistry,
     SearchFreshness,
     WebSearchProvider,

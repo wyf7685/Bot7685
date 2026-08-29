@@ -1,7 +1,7 @@
 import httpx
 
 from ....config import WebSearchConfig
-from ....contracts import CitationRegistry, WebSearchProvider
+from ....contracts.web import CitationRegistry, WebSearchProvider
 from .brave import BraveSearchProvider
 from .ddgs import DDGSSearchProvider
 from .tavily import TavilySearchProvider

@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 
 from nonebot_plugin_alconna.uniseg import Hyper, UniMessage
 
-from ..contracts import InputLocation
+from ..contracts.input import InputLocation
 
 _QQ_MINIAPP_NAME: Final = "com.tencent.miniapp_01"
 _QQ_MINIAPP_PROMPT_PREFIX_RE: Final = re.compile(r"^\s*\[QQ小程序\]\s*")

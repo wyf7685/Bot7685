@@ -3,12 +3,8 @@ from dataclasses import dataclass
 import httpx
 
 from ..config import ImagesConfig
-from ..contracts import (
-    CollectedInput,
-    ImageFailure,
-    ImageStageStatistics,
-    PreparedImage,
-)
+from ..contracts.images import ImageFailure, ImageStageStatistics, PreparedImage
+from ..contracts.input import CollectedInput
 from .image_acquisition import (
     AdapterImageFetcher,
     ImageURLResolver,

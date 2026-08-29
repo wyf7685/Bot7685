@@ -3,7 +3,7 @@ import re
 import secrets
 import unicodedata
 from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from enum import Enum
 
 from nonebot.adapters import Bot
@@ -17,25 +17,54 @@ from nonebot_plugin_uninfo import (
     get_interface,
 )
 from nonebot_plugin_uninfo.orm import BotModel, SceneModel, SessionModel, UserModel
+from pydantic import BaseModel, ConfigDict, Field, create_model
 from sqlalchemy import select
 
 from src.service.llm import BoundTool, JSONValue, ToolOutput
 
 from ..config import ParticipantsConfig
-from ..contracts import (
+from ..contracts.participants import (
+    ParticipantAlias,
     ParticipantInfo,
-    ParticipantInfoArgs,
     ParticipantMetadataStatus,
     ParticipantRef,
+    ParticipantResolver,
     ParticipantRole,
-    ZssmToolContext,
-    bind_participant_info_args,
 )
 
 _PARTICIPANT_ALIAS_RE = re.compile(r"^p_[0-9a-f]{16}$")
 _BIDI_CONTROL_CLASSES = frozenset(
     {"BN", "LRE", "RLE", "LRO", "RLO", "LRI", "RLI", "FSI", "PDI", "PDF"}
 )
+
+
+class ParticipantInfoArgs(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    participant_aliases: list[ParticipantAlias] = Field(min_length=1, max_length=20)
+
+
+def bind_participant_info_args(
+    config: ParticipantsConfig,
+) -> type[ParticipantInfoArgs]:
+    """Materialize the strict alias-list cap for one invocation."""
+
+    maximum = min(20, config.max_per_tool_call)
+    return create_model(
+        f"ConfiguredParticipantInfoArgsMax{maximum}",
+        __base__=ParticipantInfoArgs,
+        __module__=__name__,
+        participant_aliases=(
+            list[ParticipantAlias],
+            Field(min_length=1, max_length=maximum),
+        ),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ParticipantInfoToolContext:
+    participant_resolver: ParticipantResolver = field(repr=False, compare=False)
+    participants_config: ParticipantsConfig
 
 
 @dataclass(frozen=True, slots=True)
@@ -429,7 +458,7 @@ def _normalize_role(member: Member | None) -> ParticipantRole:
 
 
 async def _handle_participant_info(
-    context: ZssmToolContext,
+    context: ParticipantInfoToolContext,
     arguments: ParticipantInfoArgs,
 ) -> ToolOutput:
     reported_error_code: str | None = None
@@ -464,8 +493,8 @@ async def _handle_participant_info(
 
 
 def build_participant_info_tool(
-    context: ZssmToolContext,
-) -> BoundTool[ZssmToolContext, ParticipantInfoArgs]:
+    context: ParticipantInfoToolContext,
+) -> BoundTool[ParticipantInfoToolContext, ParticipantInfoArgs]:
     return BoundTool(
         name="get_participant_info",
         description=(
@@ -478,4 +507,8 @@ def build_participant_info_tool(
     )
 
 
-__all__ = ["InvocationParticipantResolver", "build_participant_info_tool"]
+__all__ = [
+    "InvocationParticipantResolver",
+    "ParticipantInfoToolContext",
+    "build_participant_info_tool",
+]

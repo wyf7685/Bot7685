@@ -10,14 +10,13 @@ from nonebot_plugin_alconna import CustomNode, UniMessage
 from src.service.llm import LLMCapabilityError, ModelCapability, TokenUsage
 
 from .config import RenderingConfig
-from .contracts import (
+from .contracts.output import (
     RenderFailure,
     RenderFailureCategory,
     RenderModel,
-    RunStatistics,
     SourceEntry,
-    ToolDisplayEntry,
 )
+from .contracts.run import RunStatistics, ToolDisplayEntry
 
 if TYPE_CHECKING:
     from src.service.llm import LLMServiceError

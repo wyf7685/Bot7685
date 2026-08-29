@@ -3,7 +3,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Literal, cast
 from urllib.parse import urlsplit
 
-from ....contracts import (
+from ....contracts.web import (
     CitationRegistry,
     CitationSourceKind,
     SearchResult,

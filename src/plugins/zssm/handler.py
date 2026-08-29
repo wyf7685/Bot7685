@@ -13,7 +13,7 @@ from src.service.llm import LLMCapabilityError, LLMServiceError, get_llm_service
 
 from .command import ParsedContent, matcher
 from .config import get_zssm_config
-from .contracts import RenderFailure, RenderFailureCategory
+from .contracts.output import RenderFailure, RenderFailureCategory
 from .forward import ForwardFetchError, ForwardLimitError, ForwardUnsupportedError
 from .input import EmptyInputError, UnsupportedInputError
 from .log import cause_name, current_run_id, log_event, safe_log_text

@@ -14,12 +14,8 @@ import httpx
 from nonebot_plugin_alconna.uniseg import Image
 
 from ..config import ImagesConfig
-from ..contracts import (
-    CollectedImageInput,
-    ImageFailure,
-    ImageFailureCategory,
-    ImageFailureStage,
-)
+from ..contracts.images import ImageFailure, ImageFailureCategory, ImageFailureStage
+from ..contracts.input import CollectedImageInput
 from ..http_transport import (
     AddressResolver,
     DNSResolutionError,

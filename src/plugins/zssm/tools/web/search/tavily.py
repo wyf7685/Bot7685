@@ -3,7 +3,7 @@ from collections.abc import Mapping
 import httpx
 
 from ....config import WebSearchConfig
-from ....contracts import (
+from ....contracts.web import (
     CitationRegistry,
     SearchFreshness,
     WebSearchProvider,

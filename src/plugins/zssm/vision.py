@@ -19,18 +19,16 @@ from src.service.llm import (
 )
 
 from .config import ImagesConfig
-from .contracts import (
-    CollectedInput,
+from .contracts._validation import _image_label, _nonempty
+from .contracts.images import (
     ImageFailure,
     ImageFailureCategory,
     ImageFailureStage,
     ImageStageStatistics,
-    InputLocation,
-    ModelStageUsage,
     PreparedImage,
-    VisionObservation,
-    VisionStageResult,
 )
+from .contracts.input import CollectedInput, InputLocation
+from .contracts.run import ModelStageUsage
 from .input import AdapterImageFetcher, ImageURLResolver, prepare_images
 from .log import cause_name, log_event, safe_log_text
 
@@ -70,6 +68,44 @@ _EXPECTED_VISION_FAILURES: Final = frozenset(
         LLMErrorCategory.INVALID_RESPONSE,
     }
 )
+
+
+@dataclass(frozen=True, slots=True)
+class VisionObservation:
+    label: str
+    text: str
+    truncated: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "label", _image_label(self.label))
+        object.__setattr__(self, "text", _nonempty(self.text, "vision observation"))
+
+
+@dataclass(frozen=True, slots=True)
+class VisionStageResult:
+    model_alias: str
+    model_id: str
+    observations: tuple[VisionObservation, ...]
+    failures: tuple[ImageFailure, ...]
+    usage: TokenUsage
+    elapsed: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "model_alias", _nonempty(self.model_alias, "model_alias")
+        )
+        object.__setattr__(self, "model_id", _nonempty(self.model_id, "model_id"))
+        object.__setattr__(self, "observations", tuple(self.observations))
+        object.__setattr__(self, "failures", tuple(self.failures))
+        if self.elapsed < 0:
+            raise ValueError("elapsed must not be negative")
+        labels = [item.label for item in (*self.observations, *self.failures)]
+        if not labels or len(set(labels)) != len(labels):
+            raise ValueError("each image must have exactly one vision outcome")
+
+    @property
+    def partial_success(self) -> bool:
+        return bool(self.observations and self.failures)
 
 
 @dataclass(frozen=True, slots=True)

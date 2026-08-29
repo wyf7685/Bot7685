@@ -9,25 +9,28 @@ from nonebot_plugin_uninfo import Session
 from src.service.llm import BoundTool, LLMService
 
 from ..config import ZssmConfig
-from ..contracts import (
-    DeferredImageInput,
-    ParticipantResolver,
-    ZssmInvocationFacts,
-    ZssmToolContext,
-)
+from ..contracts.input import DeferredImageInput
+from ..contracts.participants import ParticipantResolver
+from ..contracts.run import ZssmInvocationFacts
 from ..input import AdapterImageFetcher
-from .chat_history import build_recent_messages_tool
+from .chat_history import RecentMessagesToolContext, build_recent_messages_tool
 from .message_images import (
     InvocationMessageImageRegistry,
     MessageImageToolContext,
     build_message_image_tool,
 )
-from .participants import InvocationParticipantResolver, build_participant_info_tool
+from .participants import (
+    InvocationParticipantResolver,
+    ParticipantInfoToolContext,
+    build_participant_info_tool,
+)
 from .web import (
+    FetchPageToolContext,
     HttpxSafePageFetcher,
     InvocationCitationRegistry,
     InvocationMediaRegistry,
     SourceImageToolContext,
+    WebSearchToolContext,
     build_fetch_page_tool,
     build_source_image_tool,
     build_web_search_tool,
@@ -38,7 +41,6 @@ from .web import (
 
 @dataclass(frozen=True, slots=True)
 class ZssmToolResources:
-    context: ZssmToolContext
     tools: tuple[BoundTool[Any, Any], ...]
     citations: InvocationCitationRegistry
 
@@ -82,24 +84,30 @@ async def open_zssm_tool_resources(
             media_registry=media_registry,
         )
         await stack.enter_async_context(page_fetcher)
-        context = ZssmToolContext(
-            session=session,
-            participant_resolver=participant_resolver,
-            search_provider=search_provider,
-            page_fetcher=page_fetcher,
-            message_images=message_images,
-            history_high_water=history_high_water,
-            invocation=invocation,
-            web_search_config=config.web_search,
-            fetch_page_config=config.fetch_page,
-            history_config=config.history,
-            participants_config=config.participants,
-            citation_registry=citations,
-        )
         tools_list = [
-            build_web_search_tool(context),
-            build_fetch_page_tool(context),
-            build_recent_messages_tool(context),
+            build_web_search_tool(
+                WebSearchToolContext(
+                    search_provider=search_provider,
+                    web_search_config=config.web_search,
+                    citation_registry=citations,
+                )
+            ),
+            build_fetch_page_tool(
+                FetchPageToolContext(
+                    page_fetcher=page_fetcher,
+                    citation_registry=citations,
+                )
+            ),
+            build_recent_messages_tool(
+                RecentMessagesToolContext(
+                    session=session,
+                    participant_resolver=participant_resolver,
+                    message_images=message_images,
+                    history_high_water=history_high_water,
+                    invocation=invocation,
+                    history_config=config.history,
+                )
+            ),
             build_message_image_tool(
                 MessageImageToolContext(
                     registry=message_images,
@@ -110,7 +118,12 @@ async def open_zssm_tool_resources(
                     adapter_image_fetcher=adapter_image_fetcher,
                 )
             ),
-            build_participant_info_tool(context),
+            build_participant_info_tool(
+                ParticipantInfoToolContext(
+                    participant_resolver=participant_resolver,
+                    participants_config=config.participants,
+                )
+            ),
         ]
         if config.source_images.enabled:
             tools_list.append(
@@ -127,7 +140,6 @@ async def open_zssm_tool_resources(
                 )
             )
         yield ZssmToolResources(
-            context=context,
             tools=tuple(tools_list),
             citations=citations,
         )

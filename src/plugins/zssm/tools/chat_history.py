@@ -1,7 +1,8 @@
 import json
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta, timezone
+from enum import StrEnum
 
 from nonebot_plugin_alconna import (
     At,
@@ -26,25 +27,120 @@ from nonebot_plugin_chatrecorder import MessageRecord
 from nonebot_plugin_chatrecorder.message import deserialize_message
 from nonebot_plugin_chatrecorder.record import filter_statement
 from nonebot_plugin_orm import get_session
-from nonebot_plugin_uninfo import SceneType
+from nonebot_plugin_uninfo import SceneType, Session
 from nonebot_plugin_uninfo.orm import BotModel, SceneModel, SessionModel, UserModel
+from pydantic import BaseModel, ConfigDict, Field, create_model
 from sqlalchemy import select
 
 from src.service.llm import BoundTool, JSONValue, ToolOutput
 
-from ..contracts import (
-    HistoryMessage,
-    HistoryStatus,
-    RecentMessagesArgs,
-    RecentMessagesResult,
-    ZssmToolContext,
-    bind_recent_messages_args,
-)
+from ..config import HistoryConfig
+from ..contracts._validation import _message_image_id, _nonempty, _participant_alias
+from ..contracts.input import MessageImageRegistry
+from ..contracts.participants import ParticipantResolver
+from ..contracts.run import ZssmInvocationFacts
 
 _BIDI_CONTROL_CLASSES = frozenset(
     {"BN", "LRE", "RLE", "LRO", "RLO", "LRI", "RLI", "FSI", "PDI", "PDF"}
 )
 _UTC8 = timezone(timedelta(hours=8))
+
+
+@dataclass(frozen=True, slots=True)
+class HistoryMessage:
+    timestamp: str
+    participant_alias: str
+    content: str
+    image_ids: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "timestamp", _nonempty(self.timestamp, "timestamp"))
+        object.__setattr__(
+            self, "participant_alias", _participant_alias(self.participant_alias)
+        )
+        object.__setattr__(self, "content", _nonempty(self.content, "content"))
+        object.__setattr__(self, "image_ids", tuple(self.image_ids))
+        for image_id in self.image_ids:
+            _message_image_id(image_id)
+        if len(set(self.image_ids)) != len(self.image_ids):
+            raise ValueError("history message image IDs must be unique")
+
+
+class HistoryStatus(StrEnum):
+    AVAILABLE = "available"
+    UNAVAILABLE = "history_unavailable"
+
+
+@dataclass(frozen=True, slots=True)
+class RecentMessagesResult:
+    status: HistoryStatus
+    messages: tuple[HistoryMessage, ...] = ()
+    truncated: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "messages", tuple(self.messages))
+        if self.status is HistoryStatus.UNAVAILABLE and self.messages:
+            raise ValueError("unavailable history must not contain messages")
+
+    @property
+    def returned(self) -> int:
+        return len(self.messages)
+
+
+class RecentMessagesArgs(BaseModel):
+    """Absolute safety bounds for a config-bound recent-message schema."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    count: int = Field(ge=1, le=50)
+    lookback_minutes: int = Field(ge=1, le=1440)
+    search_text: str | None = Field(default=None, max_length=128)
+
+
+def bind_recent_messages_args(config: HistoryConfig) -> type[RecentMessagesArgs]:
+    """Materialize strict defaults and effective caps from history config."""
+
+    count_maximum = min(50, config.max_count)
+    lookback_maximum = min(1440, config.max_lookback_minutes)
+    search_maximum = min(128, config.max_search_chars)
+    return create_model(
+        (
+            "ConfiguredRecentMessagesArgs"
+            f"C{count_maximum}L{lookback_maximum}S{search_maximum}"
+        ),
+        __base__=RecentMessagesArgs,
+        __module__=__name__,
+        count=(
+            int,
+            Field(default=config.default_count, ge=1, le=count_maximum),
+        ),
+        lookback_minutes=(
+            int,
+            Field(
+                default=config.default_lookback_minutes,
+                ge=1,
+                le=lookback_maximum,
+            ),
+        ),
+        search_text=(
+            str | None,
+            Field(default=None, max_length=search_maximum),
+        ),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class RecentMessagesToolContext:
+    session: Session = field(repr=False, compare=False)
+    participant_resolver: ParticipantResolver = field(repr=False, compare=False)
+    message_images: MessageImageRegistry = field(repr=False, compare=False)
+    history_high_water: int
+    invocation: ZssmInvocationFacts
+    history_config: HistoryConfig
+
+    def __post_init__(self) -> None:
+        if self.history_high_water < 0:
+            raise ValueError("history_high_water must not be negative")
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +151,7 @@ class _HistoryRow:
 
 
 async def _query_recent_rows(
-    context: ZssmToolContext,
+    context: RecentMessagesToolContext,
     arguments: RecentMessagesArgs,
 ) -> tuple[tuple[_HistoryRow, ...], bool]:
     cutoff = context.invocation.started_at - timedelta(
@@ -119,7 +215,7 @@ def _normalize_text(value: str) -> str:
 
 
 def _segment_summary(
-    context: ZssmToolContext,
+    context: RecentMessagesToolContext,
     segment: Segment,
 ) -> tuple[str, str | None]:
     if isinstance(segment, Text):
@@ -168,7 +264,7 @@ def _segment_summary(
 
 
 def _summarize_message(
-    context: ZssmToolContext,
+    context: RecentMessagesToolContext,
     message: UniMessage,
 ) -> tuple[str, tuple[str, ...]]:
     parts: list[str] = []
@@ -299,7 +395,7 @@ def _fit_result_messages(
 
 
 async def _handle_recent_messages(
-    context: ZssmToolContext,
+    context: RecentMessagesToolContext,
     arguments: RecentMessagesArgs,
 ) -> ToolOutput:
     if context.session.scene.type not in {SceneType.GROUP, SceneType.PRIVATE}:
@@ -383,8 +479,8 @@ async def _handle_recent_messages(
 
 
 def build_recent_messages_tool(
-    context: ZssmToolContext,
-) -> BoundTool[ZssmToolContext, RecentMessagesArgs]:
+    context: RecentMessagesToolContext,
+) -> BoundTool[RecentMessagesToolContext, RecentMessagesArgs]:
     return BoundTool(
         name="get_recent_messages",
         description=(
@@ -399,4 +495,4 @@ def build_recent_messages_tool(
     )
 
 
-__all__ = ["build_recent_messages_tool"]
+__all__ = ["RecentMessagesToolContext", "build_recent_messages_tool"]
