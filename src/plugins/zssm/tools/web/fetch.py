@@ -190,14 +190,18 @@ class HttpxSafePageFetcher:
         accept: str,
         allowed_content_types: Sequence[str],
     ) -> _DownloadedPage:
-        return await self._download(
-            url,
-            allow_http_errors=False,
-            robots_mode="enforce" if self._config.respect_robots else "skip",
-            accept=accept,
-            allowed_content_types=allowed_content_types,
-            source_proxy=self._source_client is not None,
-        )
+        try:
+            with anyio.fail_after(self._config.total_timeout_seconds):
+                return await self._download(
+                    url,
+                    allow_http_errors=False,
+                    robots_mode=("enforce" if self._config.respect_robots else "skip"),
+                    accept=accept,
+                    allowed_content_types=allowed_content_types,
+                    source_proxy=self._source_client is not None,
+                )
+        except TimeoutError:
+            raise SafePageFetchError("timeout") from None
 
     async def download_media(
         self,
@@ -216,19 +220,23 @@ class HttpxSafePageFetcher:
         if target.hostname not in normalized_hosts:
             raise SafePageFetchError("unsafe_url")
         normalized_referer = _validate_target(referer).url
-        return await self._download(
-            target.url,
-            allow_http_errors=False,
-            robots_mode="skip",
-            accept="image/jpeg,image/png,image/webp",
-            accept_encoding="identity",
-            allowed_content_types=("image/jpeg", "image/png", "image/webp"),
-            source_proxy=self._source_client is not None,
-            max_wire_bytes=max_bytes,
-            max_decoded_bytes=max_bytes,
-            referer=normalized_referer,
-            allowed_hosts=normalized_hosts,
-        )
+        try:
+            with anyio.fail_after(self._config.total_timeout_seconds):
+                return await self._download(
+                    target.url,
+                    allow_http_errors=False,
+                    robots_mode="skip",
+                    accept="image/jpeg,image/png,image/webp",
+                    accept_encoding="identity",
+                    allowed_content_types=("image/jpeg", "image/png", "image/webp"),
+                    source_proxy=self._source_client is not None,
+                    max_wire_bytes=max_bytes,
+                    max_decoded_bytes=max_bytes,
+                    referer=normalized_referer,
+                    allowed_hosts=normalized_hosts,
+                )
+        except TimeoutError:
+            raise SafePageFetchError("timeout") from None
 
     async def resolve_redirects(
         self,
