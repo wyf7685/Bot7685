@@ -40,7 +40,7 @@ from .vision import route_vision
 _CITATION_RE = re.compile(r"\[(s[1-9][0-9]*)\]")
 _KEYWORD_LINE_RE = re.compile(r"^关键词[:：]\s*(.*)$")
 _KEYWORD_SEPARATOR_RE = re.compile(r"\s*(?:\||｜|,|，|、)\s*")
-_OUTPUT_LINE_PREFIX_RE = re.compile(r"^(?:#{1,6}\s*|[-*•]\s+|\d+[.)、]\s*)")
+_OUTPUT_LINE_PREFIX_RE = re.compile(r"^(?:#{1,6}\s*|[-*•]\s+|\d+[.)、]\s+)")
 _BODY_WHITESPACE_RE = re.compile(r"\s+")
 _BODY_CHAR_LIMIT = 500
 _RUN_LIMITERS: WeakKeyDictionary[
