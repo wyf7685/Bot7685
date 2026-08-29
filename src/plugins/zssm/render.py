@@ -7,11 +7,10 @@ from urllib.parse import urlsplit, urlunsplit
 
 from nonebot_plugin_alconna import CustomNode, UniMessage
 
-from src.service.llm import LLMCapabilityError, ModelCapability
+from src.service.llm import LLMCapabilityError, ModelCapability, TokenUsage
 
 from .config import RenderingConfig
 from .contracts import (
-    ModelStageUsage,
     RenderFailure,
     RenderFailureCategory,
     RenderModel,
@@ -21,7 +20,7 @@ from .contracts import (
 )
 
 if TYPE_CHECKING:
-    from src.service.llm import LLMServiceError, TokenUsage
+    from src.service.llm import LLMServiceError
 
 _CITATION_RE = re.compile(r"\[(s[1-9][0-9]*)\]")
 _REDIRECT_PATH_PARTS = frozenset({"ck", "l", "link", "redirect", "redir", "url"})
@@ -166,71 +165,43 @@ def _format_seconds(value: float) -> str:
     return f"{rendered or "0"}s"
 
 
-def _usage_text(usage: TokenUsage | None) -> str:
-    if usage is None:
-        return "tokens 不可用"
-    return (
-        f"输入 {usage.prompt_tokens}；输出 {usage.completion_tokens}；"
-        f"总计 {usage.total_tokens}"
-    )
-
-
-def _combined_usage_text(stages: Sequence[ModelStageUsage]) -> str:
-    if any(stage.usage is None for stage in stages):
-        return "tokens 不可用"
-    prompt_tokens = sum(
-        stage.usage.prompt_tokens for stage in stages if stage.usage is not None
-    )
-    completion_tokens = sum(
-        stage.usage.completion_tokens for stage in stages if stage.usage is not None
-    )
-    total_tokens = sum(
-        stage.usage.total_tokens for stage in stages if stage.usage is not None
-    )
-    return f"输入 {prompt_tokens}；输出 {completion_tokens}；总计 {total_tokens}"
-
-
-def _stage_line(label: str, stage: ModelStageUsage) -> str:
-    alias = _display_text(stage.model_alias, 80) or "未知模型"
-    elapsed = _format_seconds(stage.elapsed)
-    return (
-        f"{label}（{alias}）: 调用 {stage.calls}；耗时 {elapsed}；"
-        f"{_usage_text(stage.usage)}"
-    )
-
-
 def _statistics_content(stats: RunStatistics) -> str:
     stages = (
         (stats.primary_usage,)
         if stats.vision_usage is None
         else (stats.primary_usage, stats.vision_usage)
     )
-    failed_images = stats.images.preparation_failed + stats.images.vision_failed
-    total_calls = sum(stage.calls for stage in stages)
-    combined_usage = _combined_usage_text(stages)
     lines = [
         "处理统计",
-        f"总耗时: {_format_seconds(stats.total_elapsed)}",
-        f"模型总计: 调用 {total_calls}；{combined_usage}",
-        _stage_line("主模型", stats.primary_usage),
+        f"耗时 {_format_seconds(stats.total_elapsed)} · "
+        f"模型调用 {sum(stage.calls for stage in stages)} 次",
     ]
-    if stats.vision_usage is None:
-        lines.append("视觉模型: 未使用；调用 0；输入 0；输出 0；总计 0")
-    else:
-        lines.append(_stage_line("视觉模型", stats.vision_usage))
-    partial_success = "是" if stats.images.partial_success else "否"
-    lines.extend(
-        (
-            f"工具: 调用 {stats.tool_calls}；失败 {stats.tool_failures}；"
-            f"耗时 {_format_seconds(stats.tool_elapsed)}",
-            f"工具图片: 返回 {stats.tool_images}；载荷 {stats.tool_image_bytes} bytes",
-            f"图片: 请求 {stats.images.requested}；准备 {stats.images.prepared}；"
-            f"获取失败 {stats.images.acquisition_failed}；"
-            f"归一化失败 {stats.images.normalization_failed}；"
-            f"视觉失败 {stats.images.vision_failed}；失败总计 {failed_images}；"
-            f"部分成功 {partial_success}",
-        )
+
+    usage = sum((stage.usage for stage in stages), TokenUsage())
+    lines.append(
+        f"Tokens: "
+        f"I/{usage.prompt_tokens:,} "
+        f"C/{usage.prompt_tokens_details.cached_tokens:,} "
+        f"O/{usage.completion_tokens:,} "
+        f"R/{usage.completion_tokens_details.reasoning_tokens:,} "
+        f"T/{usage.total_tokens:,}"
     )
+
+    if stats.tool_calls:
+        tool_summary = f"工具调用 {stats.tool_calls} 次"
+        if stats.tool_failures:
+            tool_summary += f"（失败 {stats.tool_failures} 次）"
+        lines.append(tool_summary)
+
+    failed_images = stats.images.preparation_failed + stats.images.vision_failed
+    if failed_images:
+        vision_attempted = (
+            stats.images.vision_succeeded + stats.images.vision_failed > 0
+        )
+        successful_images = (
+            stats.images.vision_succeeded if vision_attempted else stats.images.prepared
+        )
+        lines.append(f"图片 {successful_images}/{stats.images.unique} 成功")
     return "\n".join(lines)
 
 

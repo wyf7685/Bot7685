@@ -222,7 +222,7 @@ class VisionStageResult:
     model_id: str
     observations: tuple[VisionObservation, ...]
     failures: tuple[ImageFailure, ...]
-    usage: TokenUsage | None
+    usage: TokenUsage
     elapsed: float
 
     def __post_init__(self) -> None:
@@ -724,7 +724,7 @@ class ModelStageUsage:
     model_alias: str
     model_id: str
     calls: int
-    usage: TokenUsage | None
+    usage: TokenUsage
     elapsed: float
 
     def __post_init__(self) -> None:

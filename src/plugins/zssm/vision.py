@@ -234,7 +234,7 @@ async def _run_vision_stage(
     llm_service: LLMService,
 ) -> VisionStageResult:
     outcomes: list[VisionObservation | ImageFailure | None] = [None] * len(images)
-    usages: list[TokenUsage | None] = [None] * len(images)
+    usages: list[TokenUsage] = []
     started = perf_counter()
     semaphore = asyncio.Semaphore(config.max_parallel)
 
@@ -274,7 +274,7 @@ async def _run_vision_stage(
                     text=text,
                     truncated=truncated,
                 )
-                usages[index] = result.usage
+                usages.append(result.usage)
                 usage = result.usage
                 log_event(
                     "INFO",
@@ -323,18 +323,12 @@ async def _run_vision_stage(
         else:
             failures.append(outcome)
 
-    successful_usage = [usage for usage in usages if usage is not None]
-    usage = None
-    if successful_usage:
-        usage = TokenUsage()
-        for item in successful_usage:
-            usage += item
     return VisionStageResult(
         model_alias=model_alias,
         model_id=model_id,
         observations=tuple(observations),
         failures=tuple(failures),
-        usage=usage,
+        usage=sum(usages, TokenUsage()),
         elapsed=perf_counter() - started,
     )
 
