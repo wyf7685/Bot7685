@@ -101,6 +101,7 @@ async def collect_input(
     deferred_images: list[DeferredImageInput] = []
     rendered: dict[InputLocation, str] = {}
     substantive = False
+    unsupported = False
     source_index = 0
 
     for location, message in ordered_messages:
@@ -145,7 +146,8 @@ async def collect_input(
                 pass
             else:
                 fragments.append(_safe_placeholder(segment))
-                substantive = substantive or not isinstance(segment, (At, AtAll))
+                if not isinstance(segment, (At, AtAll)):
+                    unsupported = True
             source_index += 1
         rendered[location] = "".join(fragments)
     unique_images = _deduplicate_source_references(tuple(images))
@@ -161,6 +163,8 @@ async def collect_input(
     ]
 
     if not substantive:
+        if unsupported:
+            raise UnsupportedInputError("input contains only unsupported media")
         raise EmptyInputError("input must contain text or supported media")
 
     quoted_text = rendered.get(InputLocation.QUOTED, "")
