@@ -1,9 +1,10 @@
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
+from nonebot_plugin_uninfo import Session
 
 from src.service.llm import BoundTool, LLMService
 
@@ -46,27 +47,20 @@ class ZssmToolResources:
 async def open_zssm_tool_resources(
     *,
     config: ZssmConfig,
-    session: Any,
+    session: Session,
     participant_resolver: ParticipantResolver,
     history_high_water: int,
     invocation: ZssmInvocationFacts,
     llm_service: LLMService,
     deferred_images: tuple[DeferredImageInput, ...],
     adapter_image_fetcher: AdapterImageFetcher | None,
-    citation_registry_factory: Callable[
-        [], InvocationCitationRegistry
-    ] = InvocationCitationRegistry,
-    page_fetcher_factory: Callable[..., HttpxSafePageFetcher] = HttpxSafePageFetcher,
-    message_image_registry_factory: Callable[
-        ..., InvocationMessageImageRegistry
-    ] = InvocationMessageImageRegistry,
 ) -> AsyncIterator[ZssmToolResources]:
     """Own every invocation-bound tool resource and close it exactly once."""
 
     async with AsyncExitStack() as stack:
-        citations = citation_registry_factory()
+        citations = InvocationCitationRegistry()
         media_registry = InvocationMediaRegistry()
-        message_images = message_image_registry_factory(deferred_images)
+        message_images = InvocationMessageImageRegistry(deferred_images)
         search_client: httpx.AsyncClient | None = None
         if config.web_search.backend != "ddgs":
             search_client = await stack.enter_async_context(
@@ -82,7 +76,7 @@ async def open_zssm_tool_resources(
             citations,
             client=search_client,
         )
-        page_fetcher = page_fetcher_factory(
+        page_fetcher = HttpxSafePageFetcher(
             config.fetch_page,
             citations,
             media_registry=media_registry,

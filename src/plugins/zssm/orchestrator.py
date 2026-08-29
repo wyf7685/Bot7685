@@ -1,11 +1,8 @@
 import asyncio
 import re
-from collections.abc import Awaitable, Callable
-from contextlib import AbstractAsyncContextManager
 from datetime import UTC, datetime
 from functools import partial
 from time import perf_counter
-from typing import Any
 from weakref import WeakKeyDictionary
 
 from nonebot.adapters import Bot
@@ -21,6 +18,7 @@ from src.service.llm import AgentLimits, AgentRunResult, LLMService, ModelCapabi
 
 from .config import ZssmConfig
 from .contracts import (
+    CitationRegistry,
     ModelStageUsage,
     RenderModel,
     RunStatistics,
@@ -35,11 +33,10 @@ from .log import current_run_id, log_event, safe_log_text
 from .prompt import SYSTEM_PROMPT
 from .tools import (
     InvocationParticipantResolver,
-    ZssmToolResources,
     open_zssm_tool_resources,
     resolve_card_urls,
 )
-from .vision import VisionRoutingResult, route_vision
+from .vision import route_vision
 
 _CITATION_RE = re.compile(r"\[(s[1-9][0-9]*)\]")
 _KEYWORD_LINE_RE = re.compile(r"^关键词[:：]\s*(.*)$")
@@ -126,7 +123,7 @@ def _normalize_body(lines: list[str]) -> str:
     return clipped[:-1].rstrip("，,；;：:、 ") + "…"
 
 
-def _safe_answer(answer: str, citations: Any) -> str:
+def _safe_answer(answer: str, citations: CitationRegistry) -> str:
     answer = answer.strip()
 
     def replace(match: re.Match[str]) -> str:
@@ -171,30 +168,14 @@ async def run_zssm(
     service: LLMService,
     model_alias: str | None = None,
     adapter_image_fetcher: AdapterImageFetcher | None = None,
-    participant_resolver_factory: Callable[
-        [Bot, Session, Any], InvocationParticipantResolver
-    ] = InvocationParticipantResolver,
-    history_snapshot_factory: Callable[
-        [Session, UniMessage, datetime], Awaitable[int]
-    ] = snapshot_history_high_water,
-    tool_resources_factory: Callable[
-        ..., AbstractAsyncContextManager[ZssmToolResources]
-    ] = open_zssm_tool_resources,
-    vision_router: Callable[..., Awaitable[VisionRoutingResult]] = route_vision,
-    forward_expander: Callable[..., Awaitable[tuple[UniMessage, UniMessage | None]]] = (
-        expand_forward_inputs
-    ),
-    limiter: asyncio.Semaphore | None = None,
-    now_factory: Callable[[], datetime] = lambda: datetime.now(UTC),
-    clock: Callable[[], float] = perf_counter,
 ) -> RenderModel:
     """Run one isolated ZSSM agent invocation and return renderer input."""
 
     current_copy = current.copy()
     content_copy = content.copy()
     quoted_copy = quoted.copy() if quoted is not None else None
-    started_at = now_factory()
-    started = clock()
+    started_at = datetime.now(UTC)
+    started = perf_counter()
     primary = (
         service.get_model(model_alias)
         if model_alias is not None
@@ -202,7 +183,7 @@ async def run_zssm(
     ).require_capability(ModelCapability.TOOLS)
     primary_alias = primary.alias
 
-    outer_limiter = limiter or _run_limiter(config.max_concurrent_runs)
+    outer_limiter = _run_limiter(config.max_concurrent_runs)
     wait_started = perf_counter()
     async with outer_limiter:
         log_event(
@@ -214,7 +195,7 @@ async def run_zssm(
             f"model=<g>{safe_log_text(primary_alias)}</>",
         )
         forward_started = perf_counter()
-        expanded_content, expanded_quoted = await forward_expander(
+        expanded_content, expanded_quoted = await expand_forward_inputs(
             content_copy,
             quoted_copy,
             bot=bot,
@@ -227,7 +208,7 @@ async def run_zssm(
             f"elapsed=<c>{(perf_counter() - forward_started) * 1000:.1f}ms</> "
             f"quoted=<y>{str(expanded_quoted is not None).lower()}</>",
         )
-        participant_resolver = participant_resolver_factory(
+        participant_resolver = InvocationParticipantResolver(
             bot,
             session,
             config.participants,
@@ -238,12 +219,9 @@ async def run_zssm(
             invoker_raw_id=session.user.id,
             participant_resolver=participant_resolver,
             config=config.images,
-            card_url_resolver=partial(
-                resolve_card_urls,
-                config=config.fetch_page,
-            ),
+            card_url_resolver=partial(resolve_card_urls, config=config.fetch_page),
         )
-        history_high_water = await history_snapshot_factory(
+        history_high_water = await snapshot_history_high_water(
             session,
             current_copy,
             started_at,
@@ -256,7 +234,7 @@ async def run_zssm(
             f"deferred_images=<c>{len(collected.deferred_images)}</> "
             f"participants=<c>{len(collected.participant_aliases)}</>",
         )
-        routed = await vision_router(
+        routed = await route_vision(
             collected,
             primary_model=primary_alias,
             vision_model=config.vision_model,
@@ -272,7 +250,7 @@ async def run_zssm(
             active_model=primary_alias,
             invoker_alias=collected.participant_aliases[0],
         )
-        async with tool_resources_factory(
+        async with open_zssm_tool_resources(
             config=config,
             session=session,
             participant_resolver=participant_resolver,
@@ -327,7 +305,7 @@ async def run_zssm(
                 usage=result.usage,
                 elapsed=sum(item.elapsed for item in result.trace.model_calls),
             )
-            total_elapsed = clock() - started
+            total_elapsed = perf_counter() - started
             stats = RunStatistics(
                 total_elapsed=total_elapsed,
                 primary_usage=primary_usage,
