@@ -11,8 +11,8 @@ from .config import LLMConfig
 class LLMConfigRepository:
     """Persist the complete LLM configuration in the service config directory."""
 
-    def __init__(self, file: Path | None = None) -> None:
-        self._file = file or get_plugin_config_file("config.json")
+    def __init__(self) -> None:
+        self._file = get_plugin_config_file("config.json")
 
     @property
     def file(self) -> Path:

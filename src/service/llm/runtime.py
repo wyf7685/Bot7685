@@ -5,24 +5,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Protocol, Self
+from typing import Self
 
 from openai import AsyncOpenAI
 
 from .config import LLMConfig
 from .exceptions import LLMConfigurationError
 from .models import ModelCapabilities, ModelCapability, StructuredOutputMode
-
-
-class OpenAIClientFactory(Protocol):
-    def __call__(
-        self,
-        *,
-        api_key: str,
-        base_url: str,
-        timeout: float,
-        max_retries: int,
-    ) -> AsyncOpenAI: ...
 
 
 class _EffectiveStructuredMode:
@@ -79,14 +68,9 @@ class _ModelHandle:
 class LLMRuntime:
     """Own shared endpoint SDK clients and immutable model handles."""
 
-    def __init__(
-        self,
-        config: LLMConfig,
-        *,
-        client_factory: OpenAIClientFactory = AsyncOpenAI,
-    ) -> None:
+    def __init__(self, config: LLMConfig) -> None:
         self._clients = {
-            alias: client_factory(
+            alias: AsyncOpenAI(
                 api_key=endpoint.api_key.get_secret_value(),
                 base_url=str(endpoint.base_url),
                 timeout=float(endpoint.timeout_seconds),

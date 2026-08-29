@@ -76,8 +76,8 @@ class _ServiceState:
 class LLMService:
     """Execute LLM calls against an atomically replaceable runtime snapshot."""
 
-    def __init__(self, repository: LLMConfigRepository | None = None) -> None:
-        self._repository = repository or LLMConfigRepository()
+    def __init__(self) -> None:
+        self._repository = LLMConfigRepository()
         self._state_lock = asyncio.Lock()
         self._revision = 0
         self._load_error = False
