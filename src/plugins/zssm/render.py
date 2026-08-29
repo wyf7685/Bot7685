@@ -49,6 +49,7 @@ _CAPABILITY_FAILURE_MESSAGES = {
     ModelCapability.VISION: "当前模型不支持图片输入。",
     ModelCapability.STRUCTURED_OUTPUT: "当前模型不支持结构化输出。",
     ModelCapability.PARALLEL_TOOL_CALLS: "当前模型不支持并行工具调用。",
+    ModelCapability.REASONING_EFFORT: "当前模型不支持配置的推理强度。",
 }
 
 _LLM_FAILURE_MESSAGES = {
@@ -330,7 +331,10 @@ def render_error(error: RenderFailure | LLMServiceError) -> UniMessage:
     if isinstance(error, RenderFailure):
         message = _RENDER_FAILURE_MESSAGES[error.category]
     elif isinstance(error, LLMCapabilityError):
-        message = _CAPABILITY_FAILURE_MESSAGES[error.capability]
+        message = _CAPABILITY_FAILURE_MESSAGES.get(
+            error.capability,
+            _LLM_FAILURE_MESSAGES["capability"],
+        )
     else:
         category = getattr(error, "category", None)
         category_value = getattr(category, "value", None)
