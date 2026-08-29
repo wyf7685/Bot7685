@@ -118,54 +118,69 @@ def _normalize_text(value: str) -> str:
     return " ".join("".join(characters).split())
 
 
-def _segment_summary(context: ZssmToolContext, segment: Segment) -> str:
+def _segment_summary(
+    context: ZssmToolContext,
+    segment: Segment,
+) -> tuple[str, str | None]:
     if isinstance(segment, Text):
-        return _normalize_text(segment.text)
+        return _normalize_text(segment.text), None
     if isinstance(segment, At):
         if segment.flag != "user":
-            return f"[mention:{segment.flag}]"
+            return f"[mention:{segment.flag}]", None
         if segment.target == context.session.self_id:
-            return "@assistant"
+            return "@assistant", None
         try:
             alias = context.participant_resolver.observe(
                 segment.target
             ).participant_alias
         except TypeError, ValueError:
-            return "[mention:user]"
-        return f"@{alias}"
+            return "[mention:user]", None
+        return f"@{alias}", None
     if isinstance(segment, AtAll):
-        return "[mention:here]" if segment.here else "[mention:all]"
+        return ("[mention:here]" if segment.here else "[mention:all]"), None
     if isinstance(segment, Image):
-        return "[image]"
+        image = context.message_images.register(segment)
+        kind = "sticker" if image.sticker else "image"
+        return f"[{kind}:{image.image_id}]", image.image_id
     if isinstance(segment, Audio):
-        return "[audio]"
+        return "[audio]", None
     if isinstance(segment, Voice):
-        return "[voice]"
+        return "[voice]", None
     if isinstance(segment, Video):
-        return "[video]"
+        return "[video]", None
     if isinstance(segment, File):
-        return "[file]"
+        return "[file]", None
     if isinstance(segment, Emoji):
-        return "[emoji]"
+        return "[emoji]", None
     if isinstance(segment, Reply):
-        return "[reply]"
+        return "[reply]", None
     if isinstance(segment, Reference):
-        return "[reference]"
+        return "[reference]", None
     if isinstance(segment, Hyper):
-        return "[card]"
+        return "[card]", None
     if isinstance(segment, Button):
-        return "[button]"
+        return "[button]", None
     if isinstance(segment, Keyboard):
-        return "[keyboard]"
+        return "[keyboard]", None
     if isinstance(segment, Other):
-        return "[unsupported]"
-    return "[segment]"
+        return "[unsupported]", None
+    return "[segment]", None
 
 
-def _summarize_message(context: ZssmToolContext, message: UniMessage) -> str:
-    parts = [_segment_summary(context, segment) for segment in message]
-    content = _normalize_text(" ".join(part for part in parts if part))
-    return content or "[empty]"
+def _summarize_message(
+    context: ZssmToolContext,
+    message: UniMessage,
+) -> tuple[str, tuple[str, ...]]:
+    parts: list[str] = []
+    image_ids: list[str] = []
+    for segment in message:
+        part, image_id = _segment_summary(context, segment)
+        if part:
+            parts.append(part)
+        if image_id is not None:
+            image_ids.append(image_id)
+    content = _normalize_text(" ".join(parts))
+    return content or "[empty]", tuple(image_ids)
 
 
 def _safe_timestamp(value: datetime) -> str:
@@ -201,6 +216,7 @@ def _message_value(message: HistoryMessage) -> dict[str, JSONValue]:
         "timestamp": message.timestamp,
         "participant_alias": message.participant_alias,
         "content": message.content,
+        "image_ids": list(message.image_ids),
     }
 
 
@@ -259,6 +275,7 @@ def _fit_result_messages(
                 timestamp=message.timestamp,
                 participant_alias=message.participant_alias,
                 content=content,
+                image_ids=message.image_ids,
             )
             single = RecentMessagesResult(
                 status=HistoryStatus.AVAILABLE,
@@ -316,12 +333,13 @@ async def _handle_recent_messages(
             continue
 
         conversion_failed = False
+        image_ids: tuple[str, ...] = ()
         try:
             message = UniMessage.of(
                 deserialize_message(row.adapter, row.record.message),
                 adapter=row.adapter,
             )
-            content = _summarize_message(context, message)
+            content, image_ids = _summarize_message(context, message)
         except Exception:
             content = _normalize_text(row.record.plain_text or "")
             content = content or "[unreadable message]"
@@ -336,6 +354,7 @@ async def _handle_recent_messages(
                 timestamp=timestamp,
                 participant_alias=participant_alias,
                 content=content,
+                image_ids=image_ids,
             )
         )
         truncated = truncated or conversion_failed or content_truncated
@@ -370,7 +389,9 @@ def build_recent_messages_tool(
         name="get_recent_messages",
         description=(
             "Return recent incoming messages from the current group or private "
-            "conversation, using opaque participant aliases and safe segment summaries."
+            "conversation, using opaque participant aliases and safe segment "
+            "summaries. Image and sticker placeholders include IDs accepted by "
+            "inspect_message_images."
         ),
         arguments_type=bind_recent_messages_args(context.history_config),
         context=context,

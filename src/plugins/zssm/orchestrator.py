@@ -253,6 +253,7 @@ async def run_zssm(
             "ZSSM",
             f"<b>input ready</> | text_chars=<c>{len(collected.prompt_text)}</> "
             f"images=<c>{len(collected.images)}</> "
+            f"deferred_images=<c>{len(collected.deferred_images)}</> "
             f"participants=<c>{len(collected.participant_aliases)}</>",
         )
         routed = await vision_router(
@@ -278,15 +279,20 @@ async def run_zssm(
             history_high_water=history_high_water,
             invocation=invocation,
             llm_service=service,
+            deferred_images=collected.deferred_images,
+            adapter_image_fetcher=adapter_image_fetcher,
         ) as resources:
+            max_tool_images = max(
+                config.images.max_tool_count,
+                config.source_images.max_pages_per_run,
+            )
             limits = AgentLimits(
                 max_model_calls=config.max_agent_model_calls,
                 max_tool_calls=config.max_agent_tool_calls,
                 max_parallel_tools=config.max_agent_parallel_tools,
-                max_tool_images=config.source_images.max_pages_per_run,
+                max_tool_images=max_tool_images,
                 max_tool_image_bytes=(
-                    config.images.max_payload_bytes
-                    * config.source_images.max_pages_per_run
+                    config.images.max_payload_bytes * max_tool_images
                 ),
                 total_timeout_seconds=config.agent_timeout_seconds,
                 max_output_tokens=config.max_output_tokens,
@@ -303,9 +309,9 @@ async def run_zssm(
             raw_answer = result.output
             if collected.omitted_images:
                 raw_answer += (
-                    "\n图片处理提示：输入超过上限，仅处理前 "
+                    "\n图片处理提示：普通图片输入超过上限，仅处理前 "
                     f"{config.images.max_count} 张，"
-                    f"其余 {collected.omitted_images} 张未处理。"
+                    f"其余 {collected.omitted_images} 张普通图片未处理。"
                 )
             if routed.stats.partial_success:
                 raw_answer += (

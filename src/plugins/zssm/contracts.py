@@ -29,6 +29,8 @@ _CITATION_ID_RE = re.compile(r"^s[1-9][0-9]*$")
 _IMAGE_LABEL_RE = re.compile(r"^image-[1-9][0-9]*$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _MEDIA_ID_RE = re.compile(r"^m[1-9][0-9]*$")
+_MESSAGE_IMAGE_ID_PATTERN = r"i[1-9][0-9]*"
+_MESSAGE_IMAGE_ID_RE = re.compile(rf"^{_MESSAGE_IMAGE_ID_PATTERN}$")
 
 
 def _nonempty(value: str, field_name: str) -> str:
@@ -54,6 +56,17 @@ def _image_label(value: str) -> str:
     if not _IMAGE_LABEL_RE.fullmatch(value):
         raise ValueError("image label must match image-<positive integer>")
     return value
+
+
+def _message_image_id(value: str) -> str:
+    if not _MESSAGE_IMAGE_ID_RE.fullmatch(value):
+        raise ValueError("message image ID must match i<positive integer>")
+    return value
+
+
+MessageImageId = Annotated[
+    str, StringConstraints(pattern=rf"^{_MESSAGE_IMAGE_ID_PATTERN}$")
+]
 
 
 def _sha256(value: str) -> str:
@@ -104,6 +117,35 @@ class CollectedImageInput:
 
 
 @dataclass(frozen=True, slots=True)
+class DeferredImageInput:
+    image_id: str
+    location: InputLocation
+    source_index: int
+    segment: Image = field(repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "image_id", _message_image_id(self.image_id))
+        if self.source_index < 0:
+            raise ValueError("source_index must not be negative")
+        if not self.segment.sticker:
+            raise ValueError("deferred input images must be stickers")
+
+
+@dataclass(frozen=True, slots=True)
+class MessageImageRef:
+    image_id: str
+    sticker: bool
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "image_id", _message_image_id(self.image_id))
+
+
+class MessageImageRegistry(Protocol):
+    def register(self, segment: Image) -> MessageImageRef: ...
+    def get(self, image_id: str) -> Image | None: ...
+
+
+@dataclass(frozen=True, slots=True)
 class CollectedInput:
     """A copied run snapshot; aliases alone never make an invocation nonempty."""
 
@@ -112,12 +154,14 @@ class CollectedInput:
     current: UniMessage = field(repr=False, compare=False)
     quoted: UniMessage | None = field(default=None, repr=False, compare=False)
     images: tuple[CollectedImageInput, ...] = ()
+    deferred_images: tuple[DeferredImageInput, ...] = ()
     omitted_images: int = 0
     participant_aliases: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "prompt_parts", tuple(self.prompt_parts))
         object.__setattr__(self, "images", tuple(self.images))
+        object.__setattr__(self, "deferred_images", tuple(self.deferred_images))
         if self.omitted_images < 0:
             raise ValueError("omitted image count must not be negative")
         object.__setattr__(self, "participant_aliases", tuple(self.participant_aliases))
@@ -130,6 +174,12 @@ class CollectedInput:
         labels = tuple(image.label for image in self.images)
         if labels != tuple(f"image-{i}" for i in range(1, len(labels) + 1)):
             raise ValueError("images must use contiguous stable labels")
+        deferred_indices = tuple(image.source_index for image in self.deferred_images)
+        if deferred_indices != tuple(sorted(deferred_indices)):
+            raise ValueError("deferred images must retain source order")
+        deferred_ids = tuple(image.image_id for image in self.deferred_images)
+        if deferred_ids != tuple(f"i{i}" for i in range(1, len(deferred_ids) + 1)):
+            raise ValueError("deferred images must use contiguous stable IDs")
         for alias in self.participant_aliases:
             _participant_alias(alias)
         if len(set(self.participant_aliases)) != len(self.participant_aliases):
@@ -142,7 +192,10 @@ class CollectedInput:
     @property
     def is_empty(self) -> bool:
         return (
-            not self.prompt_text.strip() and not self.prompt_parts and not self.images
+            not self.prompt_text.strip()
+            and not self.prompt_parts
+            and not self.images
+            and not self.deferred_images
         )
 
 
@@ -494,6 +547,7 @@ class HistoryMessage:
     timestamp: str
     participant_alias: str
     content: str
+    image_ids: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "timestamp", _nonempty(self.timestamp, "timestamp"))
@@ -501,6 +555,11 @@ class HistoryMessage:
             self, "participant_alias", _participant_alias(self.participant_alias)
         )
         object.__setattr__(self, "content", _nonempty(self.content, "content"))
+        object.__setattr__(self, "image_ids", tuple(self.image_ids))
+        for image_id in self.image_ids:
+            _message_image_id(image_id)
+        if len(set(self.image_ids)) != len(self.image_ids):
+            raise ValueError("history message image IDs must be unique")
 
 
 class HistoryStatus(StrEnum):
@@ -655,6 +714,7 @@ class ZssmToolContext:
     participant_resolver: ParticipantResolver = field(repr=False, compare=False)
     search_provider: WebSearchProvider = field(repr=False, compare=False)
     page_fetcher: SafePageFetcher = field(repr=False, compare=False)
+    message_images: MessageImageRegistry = field(repr=False, compare=False)
     history_high_water: int
     invocation: ZssmInvocationFacts
     web_search_config: WebSearchConfig
@@ -814,6 +874,7 @@ __all__ = [
     "CitationSourceKind",
     "CollectedImageInput",
     "CollectedInput",
+    "DeferredImageInput",
     "FetchPageArgs",
     "HistoryMessage",
     "HistoryStatus",
@@ -823,6 +884,9 @@ __all__ = [
     "ImageStageStatistics",
     "InputLocation",
     "MediaSetRef",
+    "MessageImageId",
+    "MessageImageRef",
+    "MessageImageRegistry",
     "ModelStageUsage",
     "NormalizedImage",
     "ParticipantAlias",

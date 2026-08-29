@@ -9,11 +9,18 @@ from src.service.llm import BoundTool, LLMService
 
 from ..config import ZssmConfig
 from ..contracts import (
+    DeferredImageInput,
     ParticipantResolver,
     ZssmInvocationFacts,
     ZssmToolContext,
 )
+from ..input import AdapterImageFetcher
 from .chat_history import build_recent_messages_tool
+from .message_images import (
+    InvocationMessageImageRegistry,
+    MessageImageToolContext,
+    build_message_image_tool,
+)
 from .participants import InvocationParticipantResolver, build_participant_info_tool
 from .web import (
     HttpxSafePageFetcher,
@@ -44,16 +51,22 @@ async def open_zssm_tool_resources(
     history_high_water: int,
     invocation: ZssmInvocationFacts,
     llm_service: LLMService,
+    deferred_images: tuple[DeferredImageInput, ...],
+    adapter_image_fetcher: AdapterImageFetcher | None,
     citation_registry_factory: Callable[
         [], InvocationCitationRegistry
     ] = InvocationCitationRegistry,
     page_fetcher_factory: Callable[..., HttpxSafePageFetcher] = HttpxSafePageFetcher,
+    message_image_registry_factory: Callable[
+        ..., InvocationMessageImageRegistry
+    ] = InvocationMessageImageRegistry,
 ) -> AsyncIterator[ZssmToolResources]:
-    """Own every invocation-bound web resource and close it exactly once."""
+    """Own every invocation-bound tool resource and close it exactly once."""
 
     async with AsyncExitStack() as stack:
         citations = citation_registry_factory()
         media_registry = InvocationMediaRegistry()
+        message_images = message_image_registry_factory(deferred_images)
         search_client: httpx.AsyncClient | None = None
         if config.web_search.backend != "ddgs":
             search_client = await stack.enter_async_context(
@@ -80,6 +93,7 @@ async def open_zssm_tool_resources(
             participant_resolver=participant_resolver,
             search_provider=search_provider,
             page_fetcher=page_fetcher,
+            message_images=message_images,
             history_high_water=history_high_water,
             invocation=invocation,
             web_search_config=config.web_search,
@@ -92,6 +106,16 @@ async def open_zssm_tool_resources(
             build_web_search_tool(context),
             build_fetch_page_tool(context),
             build_recent_messages_tool(context),
+            build_message_image_tool(
+                MessageImageToolContext(
+                    registry=message_images,
+                    images_config=config.images,
+                    llm_service=llm_service,
+                    primary_model=invocation.active_model,
+                    vision_model=config.vision_model,
+                    adapter_image_fetcher=adapter_image_fetcher,
+                )
+            ),
             build_participant_info_tool(context),
         ]
         if config.source_images.enabled:

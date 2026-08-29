@@ -22,7 +22,8 @@ class _FrozenConfig(BaseModel):
 
 
 class ImagesConfig(_FrozenConfig):
-    max_count: PositiveInt = 2
+    max_count: PositiveInt = 8
+    max_tool_count: int = Field(default=8, ge=1, le=16)
     max_source_bytes: PositiveInt = 20 * 1024 * 1024
     max_payload_bytes: PositiveInt = 5 * 1024 * 1024
     max_pixels: PositiveInt = 40_000_000
@@ -203,13 +204,13 @@ class RenderingConfig(_FrozenConfig):
 
 
 class ZssmConfig(_FrozenConfig):
-    vision_model: str = Field(default="mimo-vision", min_length=1)
+    vision_model: str = Field(min_length=1)
     agent_reasoning_effort: ReasoningEffort | None = None
     max_concurrent_runs: PositiveInt = 2
-    max_agent_model_calls: PositiveInt = 8
-    max_agent_tool_calls: PositiveInt = 16
+    max_agent_model_calls: PositiveInt = 12
+    max_agent_tool_calls: PositiveInt = 20
     max_agent_parallel_tools: PositiveInt = 4
-    agent_timeout_seconds: PositiveFloat = 120.0
+    agent_timeout_seconds: PositiveFloat = 180.0
     max_output_tokens: PositiveInt = 2000
     images: ImagesConfig = Field(default_factory=ImagesConfig)
     source_images: SourceImagesConfig = Field(default_factory=SourceImagesConfig)

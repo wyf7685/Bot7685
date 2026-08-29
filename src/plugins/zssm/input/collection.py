@@ -26,6 +26,7 @@ from ..config import ImagesConfig
 from ..contracts import (
     CollectedImageInput,
     CollectedInput,
+    DeferredImageInput,
     InputLocation,
     ParticipantResolver,
 )
@@ -97,6 +98,7 @@ async def collect_input(
     participant_aliases = [invoker.participant_alias]
     seen_aliases = {invoker.participant_alias}
     images: list[CollectedImageInput] = []
+    deferred_images: list[DeferredImageInput] = []
     rendered: dict[InputLocation, str] = {}
     substantive = False
     source_index = 0
@@ -115,14 +117,26 @@ async def collect_input(
                     seen_aliases.add(alias)
                     participant_aliases.append(alias)
             elif isinstance(segment, Image):
-                images.append(
-                    CollectedImageInput(
-                        label=f"image-{len(images) + 1}",
-                        location=location,
-                        source_index=source_index,
-                        segment=segment,
+                if segment.sticker:
+                    image_id = f"i{len(deferred_images) + 1}"
+                    deferred_images.append(
+                        DeferredImageInput(
+                            image_id=image_id,
+                            location=location,
+                            source_index=source_index,
+                            segment=segment,
+                        )
                     )
-                )
+                    fragments.append(f"[sticker:{image_id}]")
+                else:
+                    images.append(
+                        CollectedImageInput(
+                            label=f"image-{len(images) + 1}",
+                            location=location,
+                            source_index=source_index,
+                            segment=segment,
+                        )
+                    )
                 substantive = True
             elif isinstance(segment, Hyper):
                 fragments.append(_render_hyper_prompt(segment, resolved_card_urls))
@@ -164,9 +178,9 @@ async def collect_input(
     if omitted_images:
         prompt_parts_list.append(
             TextPart(
-                f"Image input notice: only the first {config.max_count} image(s) "
-                f"were included; {omitted_images} additional image(s) "
-                "were omitted because the image limit was reached."
+                f"Image input notice: only the first {config.max_count} non-sticker "
+                f"image(s) were included; {omitted_images} additional non-sticker "
+                "image(s) were omitted because the image limit was reached."
             )
         )
     prompt_parts = tuple(prompt_parts_list)
@@ -177,6 +191,7 @@ async def collect_input(
         current=current_snapshot,
         quoted=quoted_snapshot,
         images=tuple(images),
+        deferred_images=tuple(deferred_images),
         participant_aliases=tuple(participant_aliases),
         omitted_images=omitted_images,
     )

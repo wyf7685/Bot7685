@@ -153,7 +153,9 @@ async def route_vision(
             "<r>completed without usable images</>",
         )
         return VisionRoutingResult(
-            primary=None,
+            primary=(
+                _base_primary_input(collected) if collected.deferred_images else None
+            ),
             stage=None,
             stage_usage=None,
             stats=preparation.statistics,
@@ -203,11 +205,12 @@ async def route_vision(
         elapsed=stage.elapsed,
     )
     failures = (*preparation.failures, *stage.failures)
-    primary = (
-        _observed_primary_input(collected, stage.observations)
-        if stage.observations
-        else None
-    )
+    if stage.observations:
+        primary = _observed_primary_input(collected, stage.observations)
+    elif collected.deferred_images:
+        primary = _base_primary_input(collected)
+    else:
+        primary = None
     log_event(
         "WARNING" if failures else "INFO",
         "ZSSM::Vision",
