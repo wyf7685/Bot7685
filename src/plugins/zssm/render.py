@@ -171,15 +171,18 @@ def _statistics_content(stats: RunStatistics) -> str:
         if stats.vision_usage is None
         else (stats.primary_usage, stats.vision_usage)
     )
-    model_calls: dict[str, int] = {}
+    model_stats: dict[str, tuple[int, float]] = {}
     for stage in stages:
-        model_calls[stage.model_alias] = (
-            model_calls.get(stage.model_alias, 0) + stage.calls
+        calls, elapsed = model_stats.get(stage.model_alias, (0, 0.0))
+        model_stats[stage.model_alias] = (
+            calls + stage.calls,
+            elapsed + stage.elapsed,
         )
 
     model_summary = " · ".join(
-        f"{_display_text(alias, 80) or "未知模型"} ×{calls}"
-        for alias, calls in model_calls.items()
+        f"{_display_text(alias, 80) or "未知模型"} ×{calls} "
+        f"({_format_seconds(elapsed)})"
+        for alias, (calls, elapsed) in model_stats.items()
     )
     lines = [
         "处理统计",
