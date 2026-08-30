@@ -93,7 +93,7 @@ def load_config(config_dir: Path = CONFIG_DIR) -> dict[str, Any]:
         return config
 
     config = deep_update(config, _load_file(env_config))
-    for p in env_dir.iterdir():
+    for p in sorted(env_dir.iterdir()):
         if p.is_file() and p != env_config:
             config = deep_update(config, _load_file(p))
 
