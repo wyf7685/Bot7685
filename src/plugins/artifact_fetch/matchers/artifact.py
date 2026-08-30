@@ -14,8 +14,9 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
+from pydantic import ValidationError
 
-from ..artifact_helper import Helper, RequestedArtifacts
+from ..artifact_helper import Helper, RequestedArtifacts, RequestedRun
 from ..data_source import (
     ArtifactConfig,
     CacheDirectory,
@@ -33,7 +34,6 @@ alc = Alconna(
         Option("--owner|-o", Args["owner", str]),
         Option("--repo|-r", Args["repo", str]),
         Option("--workflow-id|-w", Args["workflow_id?", WorkflowID]),
-        Option("--target-folder|-t", Args["target_folder?", str]),
     ),
     Subcommand(
         "subscribe",
@@ -43,7 +43,6 @@ alc = Alconna(
             Option("--repo|-r", Args["repo", str]),
             Option("--workflow-id|-w", Args["workflow_id?", WorkflowID]),
             Option("--upload-artifact", dest="upload_artifact"),
-            Option("--target-folder|-t", Args["target_folder?", str]),
             Option("--filter-regex", Args["filter_regex?", str]),
             Option("--rename-template", Args["rename_template?", str]),
         ),
@@ -64,6 +63,7 @@ matcher = on_alconna(alc)
 @matcher.assign("~fetch")
 async def assign_fetch(
     helper: Helper,
+    run: RequestedRun,
     artifacts: RequestedArtifacts,
     cache_dir: CacheDirectory,
 ) -> None:
@@ -71,7 +71,12 @@ async def assign_fetch(
     if not saved:
         await UniMessage.text("未能成功下载任何 artifact").finish(reply_to=True)
 
-    await upload_artifacts(saved, target=None, reply_to=True)
+    await upload_artifacts(
+        saved,
+        target=None,
+        reply_to=True,
+        key_prefix=f"artifacts/{helper.owner}/{helper.repo}/{run.id}",
+    )
 
 
 async def _extract_sub(
@@ -112,10 +117,14 @@ async def assign_subscribe_add_upload(
     filter_regex: str | None = None,
     rename_template: str | None = None,
 ) -> None:
-    sub.artifact_upload_config = ArtifactConfig(
-        filter_regex=filter_regex,
-        rename_template=rename_template,
-    )
+    try:
+        config = ArtifactConfig(
+            filter_regex=filter_regex,
+            rename_template=rename_template,
+        )
+    except ValidationError:
+        await UniMessage.text("过滤正则或重命名模板无效").finish(reply_to=True)
+    sub.artifact_upload_config = config
 
 
 @matcher.assign("~subscribe.add")

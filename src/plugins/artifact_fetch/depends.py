@@ -32,7 +32,7 @@ async def _request_admin_approval(
     async def _rule(event: Event, t: MsgTarget, s: Uninfo) -> bool:
         if not t.verify(target):  # 同会话
             return False
-        if s.member and s.member.role and s.member.role.level > 1:  # 管理员权限
+        if not s.member or not (role := s.member.role) or role.level <= 1:
             return False
         if event.get_plaintext().strip().lower() not in keywords:
             await UniMessage.text("请回复同意或拒绝").send(reply_to=True)
@@ -90,16 +90,15 @@ async def _extract_repository(
     target: MsgTarget,
     repos: Annotated[Repos, Depends(_select_repos)],
 ) -> AsyncGenerator[Repos]:
-    if (
-        # 在群组中, 且 uninfo 支持获取成员信息
-        (member := session.member)
-        # member 的 role level 始终等于 1
-        and ((role := member.role) and role.level <= 1)
-    ):
-        # 普通群成员需要管理员审批
-        approved = await _request_admin_approval(repos, event, target)
-        if not approved:
-            await UniMessage.text("管理员未通过你的请求").finish(reply_to=True)
+    if not session.scene.is_private:
+        if not session.member or (role := session.member.role) is None:
+            await UniMessage.text("无法确认群成员权限，操作已取消").finish(
+                reply_to=True
+            )
+        if role.level <= 1:
+            approved = await _request_admin_approval(repos, event, target)
+            if not approved:
+                await UniMessage.text("管理员未通过你的请求").finish(reply_to=True)
 
     if repos in processing_repos:
         await UniMessage.text("该仓库正在被访问，请稍后再试").finish(reply_to=True)

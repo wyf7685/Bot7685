@@ -6,14 +6,15 @@ import uuid
 from collections.abc import AsyncIterator
 from copy import deepcopy
 from pathlib import Path
-from typing import Annotated, Any, NamedTuple
+from string import Formatter
+from typing import Annotated, Any, NamedTuple, Self
 
 import anyio
 import anyio.to_thread
 from nonebot.params import Depends
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_localstore import get_plugin_cache_dir, get_plugin_data_dir
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, model_validator
 
 from src.utils import ConfigListFile
 
@@ -26,12 +27,84 @@ class Repos(NamedTuple):
     repo: str
 
 
+class DownloadedArtifact(NamedTuple):
+    name: str
+    path: Path
+    artifact_id: int
+
+
 WorkflowID = int | str
+
+
+_TEMPLATE_ROOTS = {
+    "name",
+    "run",
+    "head_sha",
+    "head_sha_short",
+    "artifact",
+    "match",
+}
+_FORMATTER = Formatter()
 
 
 class ArtifactConfig(BaseModel):
     filter_regex: str | None = None
     rename_template: str | None = None
+
+    @field_validator("filter_regex")
+    @classmethod
+    def validate_filter_regex(cls, value: str | None) -> str | None:
+        if value is not None:
+            try:
+                re.compile(value)
+            except re.error as exc:
+                raise ValueError(
+                    "filter_regex must be a valid regular expression"
+                ) from exc
+        return value
+
+    @field_validator("rename_template")
+    @classmethod
+    def validate_rename_template(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not value.strip():
+            raise ValueError("rename_template must not be empty")
+        try:
+            fields = _FORMATTER.parse(value)
+            for _, field_name, _, _ in fields:
+                if field_name is None:
+                    continue
+                if not field_name:
+                    raise ValueError("rename_template must use named fields")
+                root = field_name.split(".", 1)[0].split("[", 1)[0]
+                if root not in _TEMPLATE_ROOTS and not re.fullmatch(r"\$\d+", root):
+                    raise ValueError(f"unsupported rename_template field: {root}")
+        except ValueError as exc:
+            raise ValueError(f"invalid rename_template: {exc}") from exc
+        return value
+
+    @model_validator(mode="after")
+    def validate_match_references(self) -> Self:
+        if self.rename_template is None:
+            return self
+        group_count = (
+            re.compile(self.filter_regex).groups if self.filter_regex is not None else 0
+        )
+        for _, field_name, _, _ in _FORMATTER.parse(self.rename_template):
+            if field_name is None:
+                continue
+            root = field_name.split(".", 1)[0].split("[", 1)[0]
+            if not (match := re.fullmatch(r"\$(\d+)", root)):
+                continue
+            group_index = int(match.group(1))
+            if self.filter_regex is None or (
+                group_index > group_count and group_index != 0
+            ):
+                raise ValueError(
+                    f"rename_template references unavailable capture group: {root}"
+                )
+        return self
 
     def match_regex(self, name: str) -> re.Match[str] | None:
         if self.filter_regex is None:

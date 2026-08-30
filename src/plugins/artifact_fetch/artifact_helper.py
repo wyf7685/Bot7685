@@ -18,7 +18,7 @@ from nonebot_plugin_alconna import UniMessage
 from src.utils import with_semaphore
 
 from .config import AppGitHub, plugin_config
-from .data_source import ArtifactConfig, WorkflowID
+from .data_source import ArtifactConfig, DownloadedArtifact, WorkflowID
 from .depends import Repository
 
 if TYPE_CHECKING:
@@ -65,9 +65,14 @@ async def download_artifact(
         async for offset, chunk in chunk_recv:
             data = memoryview(chunk)
             await file.seek(offset)
-            await file.write(data)
+            written = await file.write(data)
+            if written != len(data):
+                raise OSError(
+                    f"Short write for artifact {artifact.id}: "
+                    f"expected {len(data)}, wrote {written}"
+                )
             chunk_count += 1
-            bytes_written += len(data)
+            bytes_written += written
 
             if chunk_count % 10 == 0 or chunk_count == total_chunks:
                 logger.opt(colors=True).debug(
@@ -75,16 +80,35 @@ async def download_artifact(
                 )
 
     @with_semaphore(concurrency_limit)
-    async def request_chunk(chunk_range: str) -> Buffer:
+    async def request_chunk(start: int, end: int) -> Buffer:
         buffer = bytearray()
         async with client.stream(
             method="GET",
             url=artifact.archive_download_url,
-            headers={"Range": f"bytes={chunk_range}"},
+            headers={"Range": f"bytes={start}-{end}"},
         ) as response:
             response.raise_for_status()
+            if response.status_code != 206:
+                raise ValueError(
+                    f"Expected partial content for artifact {artifact.id}, "
+                    f"got HTTP {response.status_code}"
+                )
+            expected_content_range = f"bytes {start}-{end}/{total_size}"
+            if response.headers.get("Content-Range") != expected_content_range:
+                raise ValueError(
+                    f"Unexpected Content-Range for artifact {artifact.id}: "
+                    f"expected {expected_content_range!r}, "
+                    f"got {response.headers.get("Content-Range")!r}"
+                )
             async for chunk in response.aiter_bytes():
                 buffer.extend(chunk)
+
+        expected_size = end - start + 1
+        if len(buffer) != expected_size:
+            raise ValueError(
+                f"Unexpected chunk size for artifact {artifact.id}: "
+                f"expected {expected_size}, got {len(buffer)}"
+            )
         return buffer
 
     async def fetch_chunk_with_retry(chunk_seq: int) -> None:
@@ -95,7 +119,7 @@ async def download_artifact(
         excs: list[Exception] = []
         for attempt in range(1, chunk_max_retry + 1):
             try:
-                buffer = await request_chunk(chunk_range)
+                buffer = await request_chunk(start, end)
             except Exception as e:
                 logger.opt(
                     colors=True,
@@ -132,6 +156,13 @@ async def download_artifact(
     async with ayafileio.open(save_path, "wb") as file, anyio.create_task_group() as tg:
         tg.start_soon(file_writer, file)
         tg.start_soon(fetch_chunks)
+
+    file_size = (await anyio.Path(save_path).stat()).st_size
+    if file_size != total_size:
+        raise ValueError(
+            f"Downloaded artifact {artifact.id} has unexpected file size: "
+            f"expected {total_size}, got {file_size}"
+        )
 
     time_end = anyio.current_time()
     time_elapsed = time_end - time_start
@@ -247,8 +278,8 @@ class ArtifactHelper:
         save_dir: Path,
         run: WorkflowRun | None = None,
         config: ArtifactConfig | None = None,
-    ) -> dict[str, Path]:
-        saved: dict[str, Path] = {}
+    ) -> list[DownloadedArtifact]:
+        saved: dict[int, DownloadedArtifact] = {}
         format_data = (
             {"run": run, "head_sha": run.head_sha, "head_sha_short": run.head_sha[:7]}
             if run
@@ -256,23 +287,29 @@ class ArtifactHelper:
         )
 
         async def download(client: httpx.AsyncClient, artifact: Artifact) -> None:
-            save_path = save_dir / f"{artifact.name}.zip"
+            save_path = save_dir / f"{artifact.id}.zip"
             try:
                 await download_artifact(client, artifact, save_path)
+                if config is not None:
+                    name = config.rename(
+                        artifact.name,
+                        {**format_data, **prepare_format_data(config, artifact)},
+                    )
+                else:
+                    name = artifact.name
+                if not name.strip():
+                    raise ValueError("artifact output name must not be empty")
             except Exception:
                 logger.exception(f"Failed to download artifact {artifact.name}")
                 with contextlib.suppress(Exception):
                     await anyio.Path(save_path).unlink(missing_ok=True)
                 return
 
-            if config is not None:
-                name = config.rename(
-                    artifact.name,
-                    {**format_data, **prepare_format_data(config, artifact)},
-                )
-            else:
-                name = artifact.name
-            saved[f"{name}.zip"] = save_path
+            saved[artifact.id] = DownloadedArtifact(
+                name=f"{name}.zip",
+                path=save_path,
+                artifact_id=artifact.id,
+            )
 
         await anyio.Path(save_dir).mkdir(parents=True, exist_ok=True)
         async with (
@@ -282,7 +319,7 @@ class ArtifactHelper:
             for artifact in artifacts:
                 tg.start_soon(download, client, artifact)
 
-        return saved
+        return [saved[artifact.id] for artifact in artifacts if artifact.id in saved]
 
 
 async def _artifact_helper(

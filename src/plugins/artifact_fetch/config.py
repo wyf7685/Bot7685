@@ -9,9 +9,9 @@ from pydantic import BaseModel, Field
 
 
 class DownloadConfig(BaseModel):
-    chunk_size: int = 1024 * 1024 * 1  # 1 MB
-    concurrency_limit: int = 16
-    chunk_max_retry: int = 5
+    chunk_size: int = Field(default=1024 * 1024 * 1, gt=0)
+    concurrency_limit: int = Field(default=16, gt=0)
+    chunk_max_retry: int = Field(default=5, ge=1)
 
 
 class PluginConfig(BaseModel):
