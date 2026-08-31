@@ -18,7 +18,7 @@ class MessageConverter[
 ](AbstractMessageConverter[TB, TM], adapter=None):  # ty: ignore[invalid-argument-type]
     logger: ClassVar[loguru.Logger] = nonebot.logger.opt(colors=True)
 
-    def get_cos_key(self, key: str) -> str:
+    def get_s3_key(self, key: str) -> str:
         type_ = self.src_bot.type.lower().replace(" ", "_")
         return f"{type_}/{self.src_bot.self_id}/{key}"
 

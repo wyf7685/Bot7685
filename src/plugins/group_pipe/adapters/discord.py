@@ -23,8 +23,8 @@ from nonebot.adapters.discord.message import (
 )
 from nonebot_plugin_alconna import uniseg as u
 
-from src.plugins.upload_cos import upload_cos
 from src.service.cache import get_cache
+from src.service.s3 import get_s3_service
 
 from ..adapter import converts
 from ..utils import guess_url_type
@@ -121,7 +121,11 @@ class MessageConverter(
             mime = info and info.mime
 
             try:
-                url = await upload_cos(url, self.get_cos_key(attachment.filename))
+                url = await get_s3_service().upload_temporary(
+                    url,
+                    key=self.get_s3_key(attachment.filename),
+                    expires_in=3600,
+                )
             except Exception as err:
                 self.logger.opt(exception=err).debug("上传文件失败，使用原始链接")
             media = u.File

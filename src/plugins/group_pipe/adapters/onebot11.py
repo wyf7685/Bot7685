@@ -20,7 +20,7 @@ from nonebot.compat import type_validate_python
 from nonebot.utils import escape_tag
 from nonebot_plugin_alconna import uniseg as u
 
-from src.plugins.upload_cos import upload_cos
+from src.service.s3 import get_s3_service
 from src.service.task import call_soon
 
 from ..adapter import converts
@@ -122,14 +122,18 @@ class MessageConverter(
             return None
 
         name = f"{hash(url)}.{info.extension}"
-        key = self.get_cos_key(name)
+        key = self.get_s3_key(name)
 
         try:
-            url = await upload_cos(url, key)
+            url = await get_s3_service().upload_temporary(
+                url,
+                key=key,
+                expires_in=3600,
+            )
         except Exception as err:
             self.logger.opt(exception=err).debug("上传图片失败，使用原始链接")
 
-        self.logger.debug(f"上传图片: {escape_tag(url)}")
+        self.logger.debug(f"已缓存图片: {escape_tag(key)}")
         return u.Image(url=url, mimetype=info.mime, name=name)
 
     async def cache_forward(
@@ -189,14 +193,18 @@ class MessageConverter(
         return [u.Text(f"[json消息:{json.dumps(data)}]")]
 
     async def url_to_video(self, url: str) -> u.Video | None:
-        key = self.get_cos_key(f"{hash(url)}.mp4")
+        key = self.get_s3_key(f"{hash(url)}.mp4")
 
         try:
-            url = await upload_cos(url, key)
+            url = await get_s3_service().upload_temporary(
+                url,
+                key=key,
+                expires_in=3600,
+            )
         except Exception as err:
             self.logger.opt(exception=err).debug("上传视频失败，使用原始链接")
 
-        self.logger.debug(f"上传视频: {escape_tag(url)}")
+        self.logger.debug(f"已缓存视频: {escape_tag(key)}")
         return u.Video(url=url)
 
     @converts("at")

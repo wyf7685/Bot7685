@@ -7,7 +7,7 @@ from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_apscheduler import scheduler
 
 from src.highlight import Highlight
-from src.plugins.upload_cos import upload_cos
+from src.service.s3 import get_s3_service
 
 from .api import calc_stream_size, detector_client
 from .config import pkg_subs
@@ -23,10 +23,14 @@ async def daily_package() -> None:
 
     dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     since = dt.astimezone(UTC)
-    cos_key = f"detector/daily-package-{dt:%Y-%m-%d}.zip"
+    s3_key = f"detector/daily-package-{dt:%Y-%m-%d}.zip"
     async with calc_stream_size(detector_client.package(since)) as (stream, get_size):
         try:
-            url = await upload_cos(stream, cos_key, ttl=DAILY_PACKAGE_TTL)
+            url = await get_s3_service().upload_temporary(
+                stream,
+                key=s3_key,
+                expires_in=DAILY_PACKAGE_TTL,
+            )
         except Exception:
             logger.exception("上传打包结果失败")
             return
@@ -36,7 +40,7 @@ async def daily_package() -> None:
                 f"每日打包完成 "
                 f"| 起始时间: <lg>{since.astimezone():%Y-%m-%d %H:%M:%S}</> "
                 f"| 文件大小: <c>{size:.3f}</>MB "
-                f"| URL: <y><i>{escape_tag(url)}</></>"
+                f"| Key: <y><i>{escape_tag(s3_key)}</></>"
             )
 
     url_exp = datetime.now() + timedelta(seconds=DAILY_PACKAGE_TTL)

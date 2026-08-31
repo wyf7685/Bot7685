@@ -12,7 +12,7 @@ from nonebot_plugin_alconna import (
     on_alconna,
 )
 
-from src.plugins.upload_cos import upload_cos
+from src.service.s3 import get_s3_service
 
 from .api import calc_stream_size, detector_client
 from .config import pkg_subs
@@ -35,10 +35,14 @@ async def assign_package(duration: str) -> None:
     delta = timedelta(**{kwd: num})
 
     since = (datetime.now() - delta).astimezone(UTC)
-    cos_key = f"detector/package-{datetime.now():%Y-%m-%d_%H-%M-%S}.zip"
+    s3_key = f"detector/package-{datetime.now():%Y-%m-%d_%H-%M-%S}.zip"
     async with calc_stream_size(detector_client.package(since)) as (stream, get_size):
         try:
-            url = await upload_cos(stream, key=cos_key, ttl=PACKAGE_TTL)
+            url = await get_s3_service().upload_temporary(
+                stream,
+                key=s3_key,
+                expires_in=PACKAGE_TTL,
+            )
         except Exception:
             logger.exception("上传打包结果失败")
             await UniMessage.text("上传打包结果失败").finish()
@@ -48,7 +52,7 @@ async def assign_package(duration: str) -> None:
                 f"打包完成(<c>{num}</>{time_unit}) "
                 f"| 起始时间: <lg>{since.astimezone():%Y-%m-%d %H:%M:%S}</> "
                 f"| 文件大小: <c>{size:.3f}</>MB "
-                f"| URL: <y><i>{escape_tag(url)}</></>"
+                f"| Key: <y><i>{escape_tag(s3_key)}</></>"
             )
 
     url_exp = datetime.now() + timedelta(seconds=PACKAGE_TTL)

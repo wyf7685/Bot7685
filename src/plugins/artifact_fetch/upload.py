@@ -4,7 +4,7 @@ import anyio
 from nonebot import logger
 from nonebot_plugin_alconna import Target, UniMessage
 
-from src.plugins.upload_cos import upload_cos
+from src.service.s3 import get_s3_service
 
 from .data_source import DownloadedArtifact
 
@@ -23,10 +23,10 @@ async def upload_artifacts(
 
     async def upload(artifact: DownloadedArtifact) -> None:
         try:
-            url = await upload_cos(
+            url = await get_s3_service().upload_temporary(
                 artifact.path,
                 key=f"{key_prefix}/{artifact.artifact_id}.zip",
-                ttl=ARTIFACT_TTL_SECS,
+                expires_in=ARTIFACT_TTL_SECS,
             )
         except Exception:
             logger.exception(f"Failed to upload artifact {artifact.name}")

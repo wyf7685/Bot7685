@@ -13,7 +13,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 
-from src.plugins.upload_cos import upload_cos
+from src.service.s3 import get_s3_service
 
 from ..adapter import get_sender
 from ..adapters.onebot11 import MessageConverter
@@ -27,11 +27,16 @@ async def url_to_image(url: str) -> Image | None:
         return None
 
     try:
-        url = await upload_cos(url, f"{hash(url)}.{info.extension}")
+        key = f"group_pipe/forward/{hash(url)}.{info.extension}"
+        url = await get_s3_service().upload_temporary(
+            url,
+            key=key,
+            expires_in=3600,
+        )
     except Exception as err:
         logger.opt(exception=err).debug("上传图片失败，使用原始链接")
 
-    logger.debug(f"上传图片: {url}")
+    logger.debug(f"已缓存转发图片: {key}")
     return Image(url=url, mimetype=info.mime)
 
 
