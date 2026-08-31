@@ -15,12 +15,16 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
-from nonebot_plugin_localstore import get_plugin_config_file, get_plugin_data_file
+from nonebot_plugin_localstore import (
+    get_plugin_config_file,
+    get_plugin_data_dir,
+    get_plugin_data_file,
+)
 from pydantic import BaseModel
 
-from src.plugins.neuro_schedule.models import ScheduleData
 from src.utils import ConfigModelFile
 
+from .models import ScheduleData
 from .parser import merge_schedule_data, parse_schedule
 from .render import render_schedule
 
@@ -41,7 +45,7 @@ class Config(BaseModel):
 config_file = ConfigModelFile(get_plugin_config_file("config.json"), Config)
 schedule_data_file = get_plugin_data_file("schedule.json")
 
-cmd = on_alconna(
+matcher = on_alconna(
     Alconna(
         "neuro_schedule",
         Subcommand("recv", help_text="设置当前会话为接收端"),
@@ -52,7 +56,7 @@ cmd = on_alconna(
 IsSuperUser = Annotated[bool, Depends(SuperUser())]
 
 
-@cmd.assign("~recv")
+@matcher.assign("~recv")
 async def assign_recv(bot: Bot, target: MsgTarget, is_superuser: IsSuperUser) -> None:
     if not is_superuser:
         await UniMessage.text("只有管理员可以设置接收端").finish()
@@ -65,7 +69,7 @@ async def assign_recv(bot: Bot, target: MsgTarget, is_superuser: IsSuperUser) ->
     await UniMessage.text("设置当前会话为接收端").finish()
 
 
-@cmd.assign("~send")
+@matcher.assign("~send")
 async def assign_send(target: MsgTarget, is_superuser: IsSuperUser) -> None:
     if not is_superuser:
         await UniMessage.text("只有管理员可以设置发送端").finish()
@@ -78,7 +82,7 @@ async def assign_send(target: MsgTarget, is_superuser: IsSuperUser) -> None:
     await UniMessage.text("设置当前会话为发送端").finish()
 
 
-@cmd.handle()
+@matcher.handle()
 async def handle_cmd() -> None:
     if not schedule_data_file.exists():
         await UniMessage.text("当前没有存档的日程数据").finish()
@@ -122,6 +126,15 @@ forward = on_message(_forward_rule, priority=5)
 
 @forward.handle()
 async def handle_forward(event: discord.MessageCreateEvent, state: T_State) -> None:
+    try:
+        event_dump_file = (
+            get_plugin_data_dir() / "event" / f"{event.timestamp.timestamp()}.json"
+        )
+        event_dump_file.parent.mkdir(parents=True, exist_ok=True)
+        event_dump_file.write_text(event.model_dump_json(), encoding="utf-8")
+    except Exception:
+        logger.opt(exception=True).warning("事件数据转存失败")
+
     data = await parse_schedule(event.get_message())
     if not data.entries:
         return
