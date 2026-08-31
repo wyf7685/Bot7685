@@ -30,6 +30,16 @@ async def _workflow_run_repos(
     return Repos(owner=owner, repo=repo)
 
 
+def _workflow_specificity(sub: Subscription) -> int:
+    match sub.workflow_id:
+        case None:
+            return 0
+        case int():
+            return 2
+        case str():
+            return 1
+
+
 async def _matching_sub(
     event: WorkflowRunRequested | WorkflowRunCompleted,
     repos: Annotated[Repos, Depends(_workflow_run_repos)],
@@ -44,11 +54,22 @@ async def _matching_sub(
             continue
         match sub.workflow_id:
             case None:
-                matched.append(sub)
-            case int() as wid if wid == workflow_id:
-                matched.append(sub)
-            case str() as wname if workflow_name is not None and wname == workflow_name:
-                matched.append(sub)
+                is_match = True
+            case int() as wid:
+                is_match = wid == workflow_id
+            case str() as wname:
+                is_match = workflow_name is not None and wname == workflow_name
+        if not is_match:
+            continue
+
+        for index, existing in enumerate(matched):
+            if not sub.target.verify(existing.target):
+                continue
+            if _workflow_specificity(sub) > _workflow_specificity(existing):
+                matched[index] = sub
+            break
+        else:
+            matched.append(sub)
     return matched
 
 

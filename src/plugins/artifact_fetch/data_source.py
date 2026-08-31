@@ -88,19 +88,42 @@ class ArtifactConfig(BaseModel):
     def validate_match_references(self) -> Self:
         if self.rename_template is None:
             return self
-        group_count = (
-            re.compile(self.filter_regex).groups if self.filter_regex is not None else 0
+        pattern = (
+            re.compile(self.filter_regex) if self.filter_regex is not None else None
         )
+        group_count = pattern.groups if pattern is not None else 0
+        group_names = pattern.groupindex if pattern is not None else {}
         for _, field_name, _, _ in _FORMATTER.parse(self.rename_template):
             if field_name is None:
                 continue
             root = field_name.split(".", 1)[0].split("[", 1)[0]
+            if root == "match" and field_name != "match":
+                if pattern is None:
+                    raise ValueError(
+                        "rename_template references match without filter_regex"
+                    )
+                if field_name.startswith("match["):
+                    item = re.match(r"match\[([^\]]+)\]", field_name)
+                    if item is None:
+                        raise ValueError(
+                            f"invalid match reference in rename_template: {field_name}"
+                        )
+                    group = item.group(1)
+                    if re.fullmatch(r"[0-9]+", group):
+                        group_index = int(group)
+                        available = group_index <= group_count
+                    else:
+                        available = group in group_names
+                    if not available:
+                        raise ValueError(
+                            "rename_template references unavailable match "
+                            f"capture group: {field_name}"
+                        )
+                continue
             if not (match := re.fullmatch(r"\$(\d+)", root)):
                 continue
             group_index = int(match.group(1))
-            if self.filter_regex is None or (
-                group_index > group_count and group_index != 0
-            ):
+            if pattern is None or (group_index > group_count and group_index != 0):
                 raise ValueError(
                     f"rename_template references unavailable capture group: {root}"
                 )
