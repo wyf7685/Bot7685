@@ -1971,7 +1971,7 @@ yaml = [
 [[package]]
 name = "nonebot-plugin-rollpig"
 version = "0.2.9"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git#c23bbf9ca37967f0d72d9b778d98f146e31ac5df" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git#344d15e658867ae8b23bcbb54679f8d03012b6d2" }
 dependencies = [
     { name = "httpx" },
     { name = "nonebot-plugin-alconna" },
