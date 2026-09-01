@@ -1,6 +1,6 @@
 FROM python:3.12-slim-bookworm AS runtime
 
-ARG PLAYWRIGHT_VERSION=latest
+ARG PLAYWRIGHT_VERSION
 ARG PLAYWRIGHT_BROWSER=chromium
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
