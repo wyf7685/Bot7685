@@ -1,5 +1,4 @@
 import asyncio
-import re
 import unicodedata
 from collections.abc import Iterator, Sequence
 from typing import TYPE_CHECKING
@@ -9,6 +8,7 @@ from nonebot_plugin_alconna import CustomNode, UniMessage
 
 from src.service.llm import LLMCapabilityError, ModelCapability, TokenUsage
 
+from .citation_markers import iter_citation_ids
 from .config import RenderingConfig
 from .contracts.output import (
     RenderFailure,
@@ -21,7 +21,6 @@ from .contracts.run import RunStatistics, ToolDisplayEntry
 if TYPE_CHECKING:
     from src.service.llm import LLMServiceError
 
-_CITATION_RE = re.compile(r"\[(s[1-9][0-9]*)\]")
 _REDIRECT_PATH_PARTS = frozenset({"ck", "l", "link", "redirect", "redir", "url"})
 _REDIRECT_HOSTS = frozenset(
     {
@@ -151,7 +150,7 @@ def _source_content(model: RenderModel, config: RenderingConfig) -> str | None:
     if not config.include_sources:
         return None
 
-    referenced = set(_CITATION_RE.findall(model.answer))
+    referenced = set(iter_citation_ids(model.answer))
     sources = tuple(
         source for source in model.sources if source.citation_id in referenced
     )

@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 
 from src.service.llm import AgentLimits, AgentRunResult, LLMService, ModelCapability
 
+from .citation_markers import normalize_citation_markers
 from .config import ZssmConfig
 from .contracts.output import RenderModel, SourceEntry
 from .contracts.run import (
@@ -37,7 +38,6 @@ from .tools import (
 )
 from .vision import route_vision
 
-_CITATION_RE = re.compile(r"\[(s[1-9][0-9]*)\]")
 _KEYWORD_LINE_RE = re.compile(r"^关键词[:：]\s*(.*)$")
 _KEYWORD_SEPARATOR_RE = re.compile(r"\s*(?:\||｜|,|，|、)\s*")
 _OUTPUT_LINE_PREFIX_RE = re.compile(r"^(?:#{1,6}\s*|[-*•]\s+|\d+[.)、]\s+)")
@@ -123,12 +123,7 @@ def _normalize_body(lines: list[str]) -> str:
 
 
 def _safe_answer(answer: str, citations: CitationRegistry) -> str:
-    answer = answer.strip()
-
-    def replace(match: re.Match[str]) -> str:
-        return match.group(0) if citations.get(match.group(1)) is not None else ""
-
-    answer = _CITATION_RE.sub(replace, answer).strip()
+    answer = normalize_citation_markers(answer.strip(), citations.get).strip()
     keyword_value = ""
     body_lines: list[str] = []
     for line in answer.splitlines():
