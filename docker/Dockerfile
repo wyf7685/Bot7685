@@ -35,4 +35,4 @@ RUN chmod +x /entrypoint.sh
 COPY --from=venv /opt/venv /opt/venv
 
 VOLUME [ "/app" ]
-CMD [ "/bin/sh", "-c", "/entrypoint.sh" ]
+ENTRYPOINT [ "/entrypoint.sh" ]
