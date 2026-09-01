@@ -232,6 +232,7 @@ dependencies = [
     { name = "nonebot-plugin-kawaii-status" },
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm", extra = ["aiosqlite", "asyncpg"] },
+    { name = "nonebot-plugin-permission" },
     { name = "nonebot-plugin-picmenu-next", extra = ["rjieba", "yaml"] },
     { name = "nonebot-plugin-rollpig" },
     { name = "nonebot-plugin-skland" },
@@ -305,6 +306,7 @@ requires-dist = [
     { name = "nonebot-plugin-kawaii-status", specifier = ">=0.2.0" },
     { name = "nonebot-plugin-localstore", specifier = ">=0.7.4" },
     { name = "nonebot-plugin-orm", extras = ["asyncpg", "aiosqlite"], specifier = ">=0.8.3" },
+    { name = "nonebot-plugin-permission", git = "https://github.com/wyf7685/nonebot-plugin-permission.git?rev=f9410769973fa43d5cc1ac37c93271916c63ed5d" },
     { name = "nonebot-plugin-picmenu-next", extras = ["yaml", "toml", "rjieba"], git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git" },
     { name = "nonebot-plugin-rollpig", git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git" },
     { name = "nonebot-plugin-skland", specifier = ">=0.7.1" },
@@ -1957,17 +1959,13 @@ asyncpg = [
 [[package]]
 name = "nonebot-plugin-permission"
 version = "0.3.1"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-permission.git?rev=f9410769973fa43d5cc1ac37c93271916c63ed5d#f9410769973fa43d5cc1ac37c93271916c63ed5d" }
 dependencies = [
     { name = "arclet-cithun" },
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-orm" },
     { name = "nonebot-plugin-user" },
     { name = "nonebot2" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/df/35/70fbdcbbf0ef6e13629c1ef15965d35e3c9a04851dea0bf938ab5890639a/nonebot_plugin_permission-0.3.1.tar.gz", hash = "sha256:187fe1da6a432530976ff057d4a9dcff407ba870202678d85fb70df33d23422b", size = 17135, upload-time = "2026-07-11T14:58:11.129Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/d4/34a1a0888eed4a9a4ace0574d00e220ee29cbd47247cb2edb6cdcb2e211f/nonebot_plugin_permission-0.3.1-py3-none-any.whl", hash = "sha256:58425880e38c5eb1b1289ecf3c46059741b5552b9215f8c3957cc8c3fb3d1a44", size = 19280, upload-time = "2026-07-11T14:58:09.814Z" },
 ]
 
 [[package]]

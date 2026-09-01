@@ -20,6 +20,7 @@ dependencies = [
   "nonebot-plugin-kawaii-status>=0.2.0",
   "nonebot-plugin-localstore>=0.7.4",
   "nonebot-plugin-orm[asyncpg,aiosqlite]>=0.8.3",
+  "nonebot-plugin-permission>=0.3.1",
   "nonebot-plugin-rollpig>=0.2.9",
   "nonebot-plugin-skland>=0.7.1",
   "nonebot-plugin-uninfo>=0.11.1",
@@ -78,6 +79,7 @@ nonebot-plugin-exe-code = { git = "https://github.com/wyf7685/nonebot-plugin-exe
 nonebot-plugin-talk-stats = { git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git", rev = "6f0ef8e061b31eba5251d17ae9667a5eb01de4a4" }
 nonebot-plugin-werewolf = { git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" }
 nonebot-plugin-chatrecorder = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" }
+nonebot-plugin-permission = { git = "https://github.com/wyf7685/nonebot-plugin-permission.git", rev = "f9410769973fa43d5cc1ac37c93271916c63ed5d" }
 nonebot-plugin-rollpig = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git" }
 nonebot-plugin-picmenu-next = { git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git" }
 
