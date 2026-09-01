@@ -52,13 +52,13 @@ logconfig_dict = {
         "gunicorn.error": {
             "level": "INFO",
             "handlers": ["default"],
-            "propagate": True,
+            "propagate": False,
             "qualname": "gunicorn.error",
         },
         "gunicorn.access": {
             "level": "INFO",
             "handlers": ["default"],
-            "propagate": True,
+            "propagate": False,
             "qualname": "gunicorn.access",
         },
     },
