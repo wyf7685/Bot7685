@@ -111,12 +111,15 @@ async def prepare_images(
     normalized_outcomes = await _normalize_all(unique_acquired, config)
     prepared: list[PreparedImage] = []
     normalization_failed = 0
+    remaining_qr_urls = config.max_qr_urls
     for outcome in normalized_outcomes:
         if isinstance(outcome, ImageFailure):
             failures.append(outcome)
             normalization_failed += 1
         else:
-            prepared.append(_to_prepared_image(outcome))
+            qr_urls = outcome.qr_urls[:remaining_qr_urls]
+            remaining_qr_urls -= len(qr_urls)
+            prepared.append(_to_prepared_image(outcome, qr_urls=qr_urls))
 
     statistics = ImageStageStatistics(
         requested=requested,

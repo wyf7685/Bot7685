@@ -6,13 +6,14 @@ from dataclasses import dataclass, field
 from io import BytesIO
 from typing import Final
 
+import zxingcpp
 from PIL import Image as PILImage
 from PIL import ImageOps, UnidentifiedImageError
 
 from src.service.llm import ImagePart
 
 from ..config import ImagesConfig
-from ..contracts._validation import _image_label, _sha256
+from ..contracts._validation import _http_url, _image_label, _sha256
 from ..contracts.images import (
     ImageFailure,
     ImageFailureCategory,
@@ -36,10 +37,15 @@ class NormalizedImage:
     width: int
     height: int
     sha256: str
+    qr_urls: tuple[str, ...]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "label", _image_label(self.label))
         object.__setattr__(self, "sha256", _sha256(self.sha256))
+        qr_urls = tuple(_http_url(url, "QR URL") for url in self.qr_urls)
+        if len(set(qr_urls)) != len(qr_urls):
+            raise ValueError("QR URLs must be unique")
+        object.__setattr__(self, "qr_urls", qr_urls)
         if not self.jpeg_bytes or self.source_bytes <= 0:
             raise ValueError("normalized image byte counts must be positive")
         if self.width <= 0 or self.height <= 0:
@@ -102,6 +108,7 @@ def _normalize_image(image: _AcquiredImage, config: ImagesConfig) -> NormalizedI
             if transposed.width * transposed.height > config.max_pixels:
                 raise _SourceTooLargeError
             rgb = _composite_rgb(transposed)
+            qr_urls = _extract_qr_urls(rgb, config)
 
     if max(rgb.size) > config.max_edge_px:
         rgb.thumbnail(
@@ -116,7 +123,40 @@ def _normalize_image(image: _AcquiredImage, config: ImagesConfig) -> NormalizedI
         width=width,
         height=height,
         sha256=image.sha256,
+        qr_urls=qr_urls,
     )
+
+
+def _extract_qr_urls(
+    image: PILImage.Image,
+    config: ImagesConfig,
+) -> tuple[str, ...]:
+    try:
+        barcodes = zxingcpp.read_barcodes(
+            image,
+            formats=zxingcpp.BarcodeFormats(zxingcpp.BarcodeFormat.QRCode),
+            text_mode=zxingcpp.TextMode.Plain,
+        )
+    except Exception:
+        return ()
+
+    urls: list[str] = []
+    seen: set[str] = set()
+    for barcode in barcodes:
+        value = barcode.text.strip()
+        if not value or len(value) > config.max_qr_url_chars:
+            continue
+        try:
+            url = _http_url(value, "QR URL")
+        except ValueError:
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        urls.append(url)
+        if len(urls) >= config.max_qr_urls_per_image:
+            break
+    return tuple(urls)
 
 
 def _composite_rgb(image: PILImage.Image) -> PILImage.Image:
@@ -191,7 +231,11 @@ def _model_payload_size(jpeg_size: int) -> int:
     return len(_DATA_URL_PREFIX) + 4 * ((jpeg_size + 2) // 3)
 
 
-def _to_prepared_image(image: NormalizedImage) -> PreparedImage:
+def _to_prepared_image(
+    image: NormalizedImage,
+    *,
+    qr_urls: tuple[str, ...],
+) -> PreparedImage:
     encoded = base64.b64encode(image.jpeg_bytes).decode("ascii")
     data_url = f"{_DATA_URL_PREFIX}{encoded}"
     return PreparedImage(
@@ -201,4 +245,5 @@ def _to_prepared_image(image: NormalizedImage) -> PreparedImage:
         width=image.width,
         height=image.height,
         sha256=image.sha256,
+        qr_urls=qr_urls,
     )

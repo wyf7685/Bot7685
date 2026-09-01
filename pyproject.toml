@@ -40,6 +40,7 @@ dependencies = [
   "mcstatus>=12.2.1,<13.0.0",
   "msgspec[toml,yaml]>=0.20.0",
   "pillow>=10.0.0",
+  "zxing-cpp>=3.1.1,<4",
   "openai>=3.3,<4",
   "playwright==1.62.0",
   "pydantic>=2.12.5",

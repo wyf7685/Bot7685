@@ -226,6 +226,7 @@ async def _handle_inspect_message_images(
                 attachment,
                 images_by_label[image.label][0],
                 images_by_label[image.label][1],
+                qr_urls=image.qr_urls,
             )
             for attachment, image in zip(attachments, routed.prepared, strict=True)
         ]
@@ -233,20 +234,31 @@ async def _handle_inspect_message_images(
     else:
         attachments = ()
         observations = {item.label: item.text for item in routed.stage.observations}
-        image_values = [
-            {
-                "image_id": images_by_label[label][0],
-                "kind": _image_kind(images_by_label[label][1]),
-                "observation": observation,
+        image_values = []
+        for image in routed.prepared:
+            observation = observations.get(image.label)
+            if observation is None and not image.qr_urls:
+                continue
+            image_id, segment = images_by_label[image.label]
+            image_value: dict[str, JSONValue] = {
+                "image_id": image_id,
+                "kind": _image_kind(segment),
             }
-            for label, observation in observations.items()
-        ]
+            if observation is not None:
+                image_value["observation"] = observation
+            if image.qr_urls:
+                image_value["qr_urls"] = list(image.qr_urls)
+            image_values.append(image_value)
         delivery = "fallback_observation"
-        observed_labels = set(observations)
+        usable_labels = {
+            image.label
+            for image in routed.prepared
+            if image.label in observations or image.qr_urls
+        }
         failed_vision = tuple(
             image_id
             for label, (image_id, _segment) in images_by_label.items()
-            if label in prepared_labels and label not in observed_labels
+            if label in prepared_labels and label not in usable_labels
         )
         failed = tuple(dict.fromkeys((*failed, *failed_vision)))
         await context.release(failed_vision)
@@ -329,8 +341,10 @@ def _direct_image_value(
     attachment: ToolImageAttachment,
     image_id: str,
     segment: Image,
+    *,
+    qr_urls: tuple[str, ...],
 ) -> dict[str, JSONValue]:
-    return {
+    value: dict[str, JSONValue] = {
         "image_id": image_id,
         "kind": _image_kind(segment),
         "label": attachment.label,
@@ -338,6 +352,9 @@ def _direct_image_value(
         "height": attachment.height,
         "sha256": attachment.sha256,
     }
+    if qr_urls:
+        value["qr_urls"] = list(qr_urls)
+    return value
 
 
 def _image_kind(segment: Image) -> str:

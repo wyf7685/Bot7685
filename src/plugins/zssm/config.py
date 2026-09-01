@@ -31,6 +31,9 @@ class ImagesConfig(_FrozenConfig):
     jpeg_quality: int = Field(default=85, ge=1, le=100)
     max_parallel: PositiveInt = 2
     vision_output_chars: PositiveInt = 2000
+    max_qr_urls: int = Field(default=8, ge=1, le=32)
+    max_qr_urls_per_image: int = Field(default=4, ge=1, le=8)
+    max_qr_url_chars: int = Field(default=2048, ge=1, le=4096)
 
     @model_validator(mode="after")
     def validate_limits(self) -> Self:
@@ -38,6 +41,8 @@ class ImagesConfig(_FrozenConfig):
             raise ValueError("max_payload_bytes must not exceed max_source_bytes")
         if self.max_parallel > self.max_count:
             raise ValueError("max_parallel must not exceed max_count")
+        if self.max_qr_urls_per_image > self.max_qr_urls:
+            raise ValueError("max_qr_urls_per_image must not exceed max_qr_urls")
         return self
 
 

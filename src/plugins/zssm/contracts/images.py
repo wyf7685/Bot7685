@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from ._validation import _image_label, _sha256
+from ._validation import _http_url, _image_label, _sha256
 
 if TYPE_CHECKING:
     from src.service.llm import ImagePart
@@ -16,10 +16,15 @@ class PreparedImage:
     width: int
     height: int
     sha256: str
+    qr_urls: tuple[str, ...]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "label", _image_label(self.label))
         object.__setattr__(self, "sha256", _sha256(self.sha256))
+        qr_urls = tuple(_http_url(url, "QR URL") for url in self.qr_urls)
+        if len(set(qr_urls)) != len(qr_urls):
+            raise ValueError("QR URLs must be unique")
+        object.__setattr__(self, "qr_urls", qr_urls)
         if self.payload_bytes <= 0 or self.width <= 0 or self.height <= 0:
             raise ValueError("prepared image sizes must be positive")
 

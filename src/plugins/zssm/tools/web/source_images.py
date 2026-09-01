@@ -201,7 +201,11 @@ async def _handle_inspect_source_images(
             for image in routed.prepared
         )
         image_values = [
-            _direct_image_value(attachment, media_by_label[image.label].page)
+            _direct_image_value(
+                attachment,
+                media_by_label[image.label].page,
+                qr_urls=image.qr_urls,
+            )
             for attachment, image in zip(attachments, routed.prepared, strict=True)
         ]
         delivery = "primary_vision"
@@ -209,19 +213,28 @@ async def _handle_inspect_source_images(
         attachments = ()
         observations = {item.label: item.text for item in routed.stage.observations}
         image_values = []
-        for label, observation in observations.items():
-            image_values.append(
-                {
-                    "page": media_by_label[label].page,
-                    "observation": observation,
-                }
-            )
+        for image in routed.prepared:
+            observation = observations.get(image.label)
+            if observation is None and not image.qr_urls:
+                continue
+            image_value: dict[str, JSONValue] = {
+                "page": media_by_label[image.label].page,
+            }
+            if observation is not None:
+                image_value["observation"] = observation
+            if image.qr_urls:
+                image_value["qr_urls"] = list(image.qr_urls)
+            image_values.append(image_value)
         delivery = "fallback_observation"
-        observed_labels = set(observations)
+        usable_labels = {
+            image.label
+            for image in routed.prepared
+            if image.label in observations or image.qr_urls
+        }
         failed_vision_pages = tuple(
             item.page
             for label, item in media_by_label.items()
-            if label in prepared_labels and label not in observed_labels
+            if label in prepared_labels and label not in usable_labels
         )
         failed_pages = tuple(dict.fromkeys((*failed_pages, *failed_vision_pages)))
         await context.release(arguments.media_id, failed_vision_pages)
@@ -336,14 +349,19 @@ def _inspection_value(
 def _direct_image_value(
     attachment: ToolImageAttachment,
     page: int,
+    *,
+    qr_urls: tuple[str, ...],
 ) -> dict[str, JSONValue]:
-    return {
+    value: dict[str, JSONValue] = {
         "label": attachment.label,
         "page": page,
         "width": attachment.width,
         "height": attachment.height,
         "sha256": attachment.sha256,
     }
+    if qr_urls:
+        value["qr_urls"] = list(qr_urls)
+    return value
 
 
 def _tool_image_label(media_id: str, page: int) -> str:
