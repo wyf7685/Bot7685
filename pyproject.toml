@@ -26,7 +26,7 @@ dependencies = [
   "nonebot-plugin-user>=0.6.0",
   "nonebot-plugin-waiter>=0.8.1",
   "nonebot-plugin-wakatime>=0.3.1",
-  "nonebot-plugin-wordcloud>=0.10.0",
+  "nonebot-plugin-wordcloud>=0.11.1",
   # plugin deps
   "anyio>=4.12.1",
   "ayafileio>=1.4.4",
