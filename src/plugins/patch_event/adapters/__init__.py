@@ -18,6 +18,6 @@ logger = nonebot.logger.opt(colors=True)
 for adapter in nonebot.get_adapters():
     if not (module_name := ADAPTER_PLUGINS.get(adapter)):
         continue
-    logger.info(f"Loading patchers for adapter <g>{adapter}</>")
+    logger.debug(f"Loading patchers for adapter <g>{adapter}</>")
     if nonebot.load_plugin(f"{__package__}.{module_name}") is None:
         raise RuntimeError(f"Failed to load the {adapter} patch-event plugin")
