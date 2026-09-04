@@ -1,0 +1,198 @@
+networks:
+  bot7685:
+    driver: bridge
+
+services:
+  bot7685:
+    image: wyf7685/bot7685:latest
+    tty: true
+    container_name: bot7685
+    ports:
+      - 8090:8090
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8090
+    volumes:
+      - ./bot7685:/app
+    restart: unless-stopped
+    networks:
+      - bot7685
+    stop_grace_period: 5s
+    depends_on:
+      milky:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      playwright:
+        condition: service_healthy
+      # cpa:
+      #   condition: service_started
+
+  osubot:
+    image: wyf7685/bot7685:osubot
+    environment:
+      - UID=1002
+      - GID=1002
+    volumes:
+      - ./osubot:/app
+    tty: true
+    restart: unless-stopped
+    networks:
+      - bot7685
+    depends_on:
+      milky:
+        condition: service_started
+
+  memes-bot:
+    image: wyf7685/bot7685:memes
+    tty: true
+    env_file: ./memes-bot/.env
+    volumes:
+      - ./memes-bot:/app
+    restart: unless-stopped
+    networks:
+      - bot7685
+    depends_on:
+      milky:
+        condition: service_started
+      memes:
+        condition: service_started
+
+  milky:
+    image: ghcr.io/wyf7685/yogurt-docker:latest
+    tty: true
+    volumes:
+      - ./yogurt:/data
+    restart: unless-stopped
+    networks:
+      - bot7685
+
+  memes:
+    image: meetwq/meme-generator-rs:main
+    tty: true
+    environment:
+      - MEME_DIRS=["/data/memes","/data/meme-generator-contrib/memes"]
+    env_file: ./memes/.env
+    volumes:
+      - "./memes:/data"
+    restart: unless-stopped
+    networks:
+      - bot7685
+
+  cpa:
+    image: eceasy/cli-proxy-api:latest
+    restart: unless-stopped
+    ports:
+      - "18317:8317"
+    volumes:
+      - ./cpa/config.yaml:/CLIProxyAPI/config.yaml
+      - ./cpa/auths:/root/.cli-proxy-api
+      - ./cpa/logs:/CLIProxyAPI/logs
+    networks:
+      - bot7685
+
+  cpa-keeper:
+    image: ghcr.io/willxup/cpa-usage-keeper:latest
+    restart: unless-stopped
+    depends_on:
+      cpa:
+        condition: service_started
+    ports:
+      - "18318:8080"
+    environment:
+      TZ: Asia/Shanghai
+      CPA_BASE_URL: http://cpa:8317
+      CPA_MANAGEMENT_KEY: ${CPA_MANAGEMENT_KEY}
+      REDIS_QUEUE_ADDR: cpa:8317
+      AUTH_ENABLED: true
+      LOGIN_PASSWORD: ${CPA_KEEPER_LOGIN_PASSWORD}
+      NO_PROXY: localhost,127.0.0.1,cpa
+    volumes:
+      - ./cpa/keeper:/data
+    networks:
+      - bot7685
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - bot7685
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.postgres
+    image: wyf7685/bot7685:postgres
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bot
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+      POSTGRES_DB: bot
+      PGPASSWORD: "${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}"
+      TZ: Asia/Shanghai
+      PGBACKREST_STANZA: bot7685
+      PGBACKREST_PG1_PATH: /var/lib/postgresql/data
+      PGBACKREST_PG1_SOCKET_PATH: /var/run/postgresql
+      PGBACKREST_PG1_USER: bot
+      PGBACKREST_REPO1_TYPE: s3
+      PGBACKREST_REPO1_PATH: "${PGBACKREST_REPO_PATH:-/bot7685/postgres}"
+      PGBACKREST_REPO1_S3_BUCKET: "${PGBACKREST_S3_BUCKET:?PGBACKREST_S3_BUCKET is required}"
+      PGBACKREST_REPO1_S3_ENDPOINT: "${PGBACKREST_S3_ENDPOINT:?PGBACKREST_S3_ENDPOINT is required}"
+      PGBACKREST_REPO1_S3_REGION: "${PGBACKREST_S3_REGION:?PGBACKREST_S3_REGION is required}"
+      PGBACKREST_REPO1_S3_KEY_TYPE: shared
+      PGBACKREST_REPO1_S3_KEY: "${PGBACKREST_S3_ACCESS_KEY:?PGBACKREST_S3_ACCESS_KEY is required}"
+      PGBACKREST_REPO1_S3_KEY_SECRET: "${PGBACKREST_S3_SECRET_KEY:?PGBACKREST_S3_SECRET_KEY is required}"
+      PGBACKREST_REPO1_S3_URI_STYLE: "${PGBACKREST_S3_URI_STYLE:-host}"
+      PGBACKREST_REPO1_STORAGE_PORT: "${PGBACKREST_S3_PORT:-443}"
+      PGBACKREST_REPO1_STORAGE_VERIFY_TLS: "${PGBACKREST_S3_VERIFY_TLS:-y}"
+      PGBACKREST_REPO1_RETENTION_FULL: "${PGBACKREST_RETENTION_FULL:-4}"
+      PGBACKREST_REPO1_RETENTION_FULL_TYPE: count
+      PGBACKREST_START_FAST: "y"
+      PGBACKREST_PROCESS_MAX: "${PGBACKREST_PROCESS_MAX:-2}"
+      PGBACKREST_LOG_LEVEL_CONSOLE: warn
+      PGBACKREST_LOG_LEVEL_FILE: "off"
+      BACKUP_AT: "${PGBACKREST_BACKUP_AT:-03:00}"
+      BACKUP_FULL_DAY: "${PGBACKREST_FULL_BACKUP_DAY:-7}"
+      BACKUP_RETRY_SECONDS: "${PGBACKREST_RETRY_SECONDS:-60}"
+    command:
+      - postgres
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=pgbackrest --stanza=bot7685 archive-push %p
+      - -c
+      - archive_timeout=60s
+    volumes:
+      - ./postgres:/var/lib/postgresql/data
+    networks:
+      - bot7685
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB &&
+          test -r /var/run/pgbackrest/scheduler.pid &&
+          kill -0 $$(cat /var/run/pgbackrest/scheduler.pid)
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  playwright:
+    image: wyf7685/bot7685:playwright
+    restart: unless-stopped
+    networks:
+      - bot7685
+
+volumes:
+  redis_data:

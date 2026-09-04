@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1
+
+FROM postgres:17-bookworm
+
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates pgbackrest tzdata && \
+    update-ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY docker/pgbackrest/entrypoint.sh /usr/local/bin/pgbackrest-entrypoint
+COPY docker/pgbackrest/scheduler.sh /usr/local/bin/pgbackrest-scheduler
+
+RUN chmod 755 \
+    /usr/local/bin/pgbackrest-entrypoint \
+    /usr/local/bin/pgbackrest-scheduler
+
+ENTRYPOINT ["pgbackrest-entrypoint"]
+CMD ["postgres"]

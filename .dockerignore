@@ -6,5 +6,8 @@
 !docker/
 !docker/Dockerfile
 !docker/Dockerfile.playwright
+!docker/Dockerfile.postgres
 !docker/assets/
 !docker/assets/**
+!docker/pgbackrest/
+!docker/pgbackrest/**
