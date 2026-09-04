@@ -14,7 +14,10 @@ from nonebot_plugin_alconna import (
     UniMessage,
     on_alconna,
 )
+from nonebot_plugin_uninfo import Uninfo
 from pydantic import ValidationError
+
+from src.service.uninfo_target import persist_session_reference
 
 from ..artifact_helper import Helper, RequestedArtifacts, RequestedRun
 from ..data_source import (
@@ -22,7 +25,10 @@ from ..data_source import (
     CacheDirectory,
     Subscription,
     WorkflowID,
-    subscriptions,
+    add_subscription,
+    list_subscriptions,
+    remove_subscription,
+    subscription_exists,
 )
 from ..depends import Repository
 from ..upload import upload_artifacts
@@ -80,15 +86,17 @@ async def assign_fetch(
 
 
 async def _extract_sub(
-    target: MsgTarget,
+    session: Uninfo,
     repos: Repository,
     workflow_id: WorkflowID | None = None,
 ) -> Subscription:
-    return Subscription(
+    ref = await persist_session_reference(session)
+    return Subscription.create(
+        session_persist_id=ref.session_persist_id,
+        scene_persist_id=ref.scene_persist_id,
         owner=repos.owner,
         repo=repos.repo,
         workflow_id=workflow_id,
-        target_data=target.dump(),
     )
 
 
@@ -97,9 +105,8 @@ async def _verify_new_sub(
     helper: Helper,
     workflow_id: WorkflowID | None = None,
 ) -> Subscription:
-    for sub in subscriptions.load():
-        if sub.verify(new_sub):
-            await UniMessage.text("已存在相同订阅").finish(reply_to=True)
+    if await subscription_exists(new_sub):
+        await UniMessage.text("已存在相同订阅").finish(reply_to=True)
 
     if workflow_id is not None:
         workflow = await helper.get_workflow(workflow_id)
@@ -131,7 +138,7 @@ async def assign_subscribe_add_upload(
 async def assign_subscribe_add(
     sub: Annotated[Subscription, Depends(_verify_new_sub)],
 ) -> None:
-    subscriptions.add(sub)
+    await add_subscription(sub)
     logger.info(f"Added subscription: {sub!r}")
     msg = (
         f"已订阅仓库 {sub.owner}/{sub.repo} 的工作流"
@@ -149,28 +156,31 @@ async def assign_subscribe_add(
 async def assign_subscribe_remove(
     sub: Annotated[Subscription, Depends(_extract_sub)],
 ) -> None:
-    for existing in subscriptions.load()[:]:
-        if existing.verify(sub):
-            subscriptions.remove(existing.verify)
-            logger.info(f"Removed subscription: {existing!r}")
-            msg = (
-                f"已取消订阅仓库 {sub.owner}/{sub.repo} 的工作流"
-                + (f"（ID: {sub.workflow_id}）" if sub.workflow_id else "")
-                + "的运行状态更新"
-            )
-            await UniMessage.text(msg).finish(reply_to=True)
+    if await remove_subscription(sub):
+        logger.info(f"Removed subscription: {sub!r}")
+        msg = (
+            f"已取消订阅仓库 {sub.owner}/{sub.repo} 的工作流"
+            + (f"（ID: {sub.workflow_id}）" if sub.workflow_id else "")
+            + "的运行状态更新"
+        )
+        await UniMessage.text(msg).finish(reply_to=True)
 
     await UniMessage.text("未找到匹配的订阅").finish(reply_to=True)
 
 
 @matcher.assign("~subscribe.list")
-async def assign_subscribe_list(bot: Bot, target: MsgTarget) -> None:
-    subs = subscriptions.load()
+async def assign_subscribe_list(
+    bot: Bot,
+    session: Uninfo,
+    target: MsgTarget,
+) -> None:
+    ref = await persist_session_reference(session)
+    subs = await list_subscriptions(scene_persist_id=ref.scene_persist_id)
     if not subs:
-        await UniMessage.text("当前没有任何订阅").finish(reply_to=True)
+        await UniMessage.text("当前会话没有任何订阅").finish(reply_to=True)
 
     msgs: list[str] = []
-    for sub in filter(lambda sub: target.verify(sub.target), subs):
+    for sub in subs:
         msg = (
             f"- 仓库: {sub.owner}/{sub.repo}\n"
             f"  工作流{f" ID: {sub.workflow_id}" if sub.workflow_id else ": 全部"}\n"

@@ -185,6 +185,7 @@ def _calculate_statistics(messages: list[UnifiedMessage]) -> GroupStatistics:
 async def run_incremental_analysis(
     bot: Bot,
     session: Session,
+    scene_persist_id: int,
     days: int | None = None,
 ) -> IncrementalBatch | None:
     """执行一次增量分析，将结果保存为独立批次。
@@ -201,7 +202,7 @@ async def run_incremental_analysis(
     days = days or config.analysis_days
 
     # 1. 获取水位线
-    last_ts = await _incremental_store.get_last_analyzed_timestamp(group_id)
+    last_ts = await _incremental_store.get_last_analyzed_timestamp(scene_persist_id)
 
     # 2. 拉取新消息
     messages, members = await fetch_group_messages(
@@ -249,7 +250,7 @@ async def run_incremental_analysis(
 
     # 7. 构建批次
     batch = IncrementalBatch(
-        group_id=group_id,
+        scene_persist_id=scene_persist_id,
         timestamp=time_mod.time(),
         messages_count=len(messages),
         characters_count=characters_count,
@@ -268,7 +269,10 @@ async def run_incremental_analysis(
     # 8. 保存批次并更新水位线
     await _incremental_store.save_batch(batch)
     safe_ts = min(last_message_timestamp, int(time_mod.time()) + 60)
-    await _incremental_store.update_last_analyzed_timestamp(group_id, safe_ts)
+    await _incremental_store.update_last_analyzed_timestamp(
+        scene_persist_id,
+        safe_ts,
+    )
 
     logger.info(
         f"群 {group_id} 增量分析完成: "
@@ -281,6 +285,7 @@ async def run_incremental_analysis(
 
 async def run_incremental_final_report(
     session: Session,
+    scene_persist_id: int,
     days: int | None = None,
 ) -> AnalysisResult | None:
     """基于滑动窗口内的增量批次生成最终报告。
@@ -301,7 +306,11 @@ async def run_incremental_final_report(
     window_start = window_end - (days * 24 * 3600)
 
     # 2. 查询窗口内的批次
-    batches = await _incremental_store.query_batches(group_id, window_start, window_end)
+    batches = await _incremental_store.query_batches(
+        scene_persist_id,
+        window_start,
+        window_end,
+    )
 
     if not batches:
         logger.warning(f"群 {group_id} 滑动窗口内无增量分析数据")

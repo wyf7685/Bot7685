@@ -2,8 +2,10 @@ import anyio
 from nonebot import logger
 from nonebot.adapters import Bot, Event, Message
 from nonebot.message import event_preprocessor
-from nonebot_plugin_alconna import Target, UniMessage, get_target
+from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_uninfo import get_session
+from nonebot_plugin_uninfo.orm import get_scene_persist_id
+from nonebot_plugin_uninfo.target import to_target
 
 from .adapter import get_converter, get_sender
 from .database import display_pipe, get_pipes
@@ -52,18 +54,14 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         return
 
     try:
-        listen = get_target(event, bot)
-    except Exception as err:
-        logger.opt(exception=err).debug(f"获取监听目标失败: {err}")
-        return
-
-    try:
         info = await get_session(bot, event)
     except Exception as err:
         logger.opt(exception=err).debug(f"获取消息信息失败: {err}")
-        info = None
+        return
 
-    pipes = await get_pipes(listen=listen)
+    listen = to_target(info)
+    scene_persist_id = await get_scene_persist_id(info.basic, info.scene)
+    pipes = await get_pipes(listen_scene_persist_id=scene_persist_id)
     if not pipes:
         logger.trace("没有监听当前群组的管道")
         return
@@ -85,13 +83,10 @@ async def handle_pipe_msg(bot: Bot, event: Event) -> None:
         logger.opt(exception=err).debug(f"获取消息 ID 失败: {err}")
         return
 
-    if info is None:
-        group_name = user_name = "<Unknown>"
-    else:
-        group_name = (
-            (g := info.group or info.channel or info.guild) and g.name
-        ) or listen.id
-        user_name = info.user.nick or info.user.name or info.user.id
+    group_name = (
+        (group := info.group or info.channel or info.guild) and group.name
+    ) or listen.id
+    user_name = info.user.nick or info.user.name or info.user.id
     msg_head = UniMessage.text(f"[ {group_name} - {user_name} ]\n")
 
     async def _send(target: Target) -> None:

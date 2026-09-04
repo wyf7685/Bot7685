@@ -311,7 +311,7 @@ requires-dist = [
     { name = "nonebot-plugin-rollpig", git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git" },
     { name = "nonebot-plugin-skland", specifier = ">=0.7.1" },
     { name = "nonebot-plugin-talk-stats", git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git?rev=6f0ef8e061b31eba5251d17ae9667a5eb01de4a4" },
-    { name = "nonebot-plugin-uninfo", specifier = ">=0.11.1" },
+    { name = "nonebot-plugin-uninfo", git = "https://github.com/wyf7685/nonebot-plugin-uninfo.git?rev=5e7d93423d8dcd57830be83258b8edb538154103" },
     { name = "nonebot-plugin-user", specifier = ">=0.6.0" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.1" },
     { name = "nonebot-plugin-wakatime", specifier = ">=0.3.1" },
@@ -2059,16 +2059,11 @@ dependencies = [
 
 [[package]]
 name = "nonebot-plugin-uninfo"
-version = "0.11.1"
-source = { registry = "https://pypi.org/simple" }
+version = "0.11.2"
+source = { git = "https://github.com/wyf7685/nonebot-plugin-uninfo.git?rev=5e7d93423d8dcd57830be83258b8edb538154103#5e7d93423d8dcd57830be83258b8edb538154103" }
 dependencies = [
     { name = "importlib-metadata" },
-    { name = "nonebot-adapter-qq" },
     { name = "nonebot2" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/29/02/7a6b5a35014b408d599b2e2904932fe7c10b56c15c7c5d32f6b84ad0c9bd/nonebot_plugin_uninfo-0.11.1.tar.gz", hash = "sha256:fe421ad3aebaf2138ec3922cbb2da1cb0f4fb4c98fe63016d0355a5a8c5041b0", size = 42468, upload-time = "2026-06-22T06:59:57.663Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/fc/12b8968b9d780fa09c1c9771aa674336ce94fda6501922b3e4821fa62cf5/nonebot_plugin_uninfo-0.11.1-py3-none-any.whl", hash = "sha256:73c915d74a91ac13fe75a9fe048722622a8219c3aece35e974564d9ff77a0b3c", size = 68197, upload-time = "2026-06-22T06:59:56.613Z" },
 ]
 
 [[package]]

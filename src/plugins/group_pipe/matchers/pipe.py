@@ -1,5 +1,5 @@
+import secrets
 from collections.abc import Sequence
-from typing import Any
 
 from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import (
@@ -7,13 +7,19 @@ from nonebot_plugin_alconna import (
     Args,
     CommandMeta,
     Subcommand,
-    Target,
     UniMessage,
     on_alconna,
 )
 from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExtension
+from nonebot_plugin_uninfo import Uninfo
+from nonebot_plugin_uninfo.target import to_target
 
 from src.service.cache import get_cache
+from src.service.uninfo_target import (
+    get_session_reference,
+    persist_session_reference,
+    resolve_target,
+)
 
 from ..database import (
     PipeTuple,
@@ -93,8 +99,9 @@ def show_pipes(
 
 
 @pipe_cmd.assign("list.listen")
-async def assign_list_listen(target: MsgTarget) -> None:
-    pipes = await get_pipes(listen=target)
+async def assign_list_listen(session: Uninfo) -> None:
+    ref = await persist_session_reference(session)
+    pipes = await get_pipes(listen_scene_persist_id=ref.scene_persist_id)
     if not pipes:
         await UniMessage.text("没有监听当前群组的管道").finish(reply_to=True)
 
@@ -103,8 +110,9 @@ async def assign_list_listen(target: MsgTarget) -> None:
 
 
 @pipe_cmd.assign("list.target")
-async def assign_list_target(target: MsgTarget) -> None:
-    pipes = await get_pipes(target=target)
+async def assign_list_target(session: Uninfo) -> None:
+    ref = await persist_session_reference(session)
+    pipes = await get_pipes(target_scene_persist_id=ref.scene_persist_id)
     if not pipes:
         await UniMessage.text("没有目标为当前群组的管道").finish(reply_to=True)
 
@@ -113,8 +121,9 @@ async def assign_list_target(target: MsgTarget) -> None:
 
 
 @pipe_cmd.assign("list")
-async def assign_list(target: MsgTarget) -> None:
-    listen_pipes, target_pipes = await get_linked_pipes(target)
+async def assign_list(session: Uninfo) -> None:
+    ref = await persist_session_reference(session)
+    listen_pipes, target_pipes = await get_linked_pipes(ref.scene_persist_id)
     if not listen_pipes and not target_pipes:
         await UniMessage.text("没有链接到当前群组的管道").finish(reply_to=True)
 
@@ -122,35 +131,52 @@ async def assign_list(target: MsgTarget) -> None:
     await UniMessage.text(msg.rstrip("\n")).finish(reply_to=True)
 
 
-cache = get_cache("pipe:link", dict[str, Any], mode="json")
+cache = get_cache("pipe:link", int)
+
+
+async def _create_link_code() -> int:
+    for _ in range(10):
+        code = 100000 + secrets.randbelow(900000)
+        if not await cache.exists(str(code)):
+            return code
+    raise RuntimeError("failed to allocate pipe link code")
 
 
 @pipe_cmd.assign("create")
-async def assign_create(target: MsgTarget) -> None:
-    key = str(hash(target))
-    await cache.set(key, target.dump(), ttl=60 * 5)
+async def assign_create(session: Uninfo) -> None:
+    ref = await persist_session_reference(session)
+    code = await _create_link_code()
+    await cache.set(str(code), ref.session_persist_id, ttl=60 * 5)
 
     await (
         UniMessage.text("请在5分钟内向目标群组中发送以下命令:\n")
-        .text(f"/pipe link {key}")
+        .text(f"/pipe link {code}")
         .finish(reply_to=True)
     )
 
 
 @pipe_cmd.assign("link")
-async def assign_link(target: MsgTarget, code: int) -> None:
-    if not (data := await cache.get(str(code))):
+async def assign_link(session: Uninfo, code: int) -> None:
+    listen_session_id = await cache.get(str(code))
+    if listen_session_id is None:
         await UniMessage.text("链接码无效或已过期").finish(reply_to=True)
 
-    listen = Target.load(data)
-    await create_pipe(listen, target)
-    msg = f"管道创建成功:\n{display_pipe(listen, target)}"
+    listen_ref = await get_session_reference(listen_session_id)
+    listen_target = await resolve_target(listen_session_id)
+    if listen_ref is None or listen_target is None:
+        await UniMessage.text("链接码对应的会话已失效").finish(reply_to=True)
+
+    target_ref = await persist_session_reference(session)
+    target = to_target(session)
+    await create_pipe(listen_ref, target_ref)
+    msg = f"管道创建成功:\n{display_pipe(listen_target, target)}"
     await UniMessage.text(msg).finish(reply_to=True)
 
 
 @pipe_cmd.assign("remove")
-async def assign_remove(target: MsgTarget, idx: int) -> None:
-    listen_pipes, target_pipes = await get_linked_pipes(target)
+async def assign_remove(session: Uninfo, idx: int) -> None:
+    ref = await persist_session_reference(session)
+    listen_pipes, target_pipes = await get_linked_pipes(ref.scene_persist_id)
     if idx < 1 or idx > len(listen_pipes) + len(target_pipes):
         await UniMessage.text("管道序号无效").finish(reply_to=True)
 

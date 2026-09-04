@@ -3,21 +3,21 @@ from datetime import UTC, datetime, timedelta
 from apscheduler.triggers.cron import CronTrigger
 from nonebot import logger
 from nonebot.utils import escape_tag
-from nonebot_plugin_alconna import Target, UniMessage
+from nonebot_plugin_alconna import UniMessage
 from nonebot_plugin_apscheduler import scheduler
 
-from src.highlight import Highlight
 from src.service.s3 import get_s3_service
+from src.service.uninfo_target import resolve_target
 
 from .api import calc_stream_size, detector_client
-from .config import pkg_subs
+from .database import list_subscriptions
 
 DAILY_PACKAGE_TTL = 60 * 60 * 24 * 7  # 7 days
 
 
 @scheduler.scheduled_job(CronTrigger(hour=23, minute=55), misfire_grace_time=60 * 4)
 async def daily_package() -> None:
-    subs = pkg_subs.load()
+    subs = await list_subscriptions()
     if not subs:
         return
 
@@ -53,8 +53,14 @@ async def daily_package() -> None:
 
     for sub in subs:
         try:
-            await UniMessage.text(message).send(Target.load(sub))
+            target = await resolve_target(sub.session_persist_id)
+            if target is None:
+                logger.warning(
+                    f"截图订阅引用了不存在的 Session: {sub.session_persist_id}"
+                )
+                continue
+            await UniMessage.text(message).send(target)
         except Exception:
             logger.opt(colors=True).exception(
-                f"发送打包结果失败: {Highlight.apply(sub)}"
+                f"发送打包结果失败: subscription scene={sub.scene_persist_id}"
             )

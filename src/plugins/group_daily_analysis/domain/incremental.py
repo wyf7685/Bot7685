@@ -53,7 +53,7 @@ class IncrementalBatch(ModelMixin):
     包含该批次的所有统计数据和 LLM 分析结果，独立存储到 KV。
     """
 
-    group_id: str = ""
+    scene_persist_id: int = 0
     batch_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: float = field(default_factory=time_mod.time)
 
@@ -95,7 +95,7 @@ class IncrementalState(ModelMixin):
     IncrementalMergeService.merge_batches() 负责从批次列表构建此对象。
     """
 
-    group_id: str = ""
+    scene_persist_id: int = 0
     window_start: float = 0.0
     window_end: float = 0.0
 

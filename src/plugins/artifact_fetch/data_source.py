@@ -4,7 +4,6 @@ import re
 import shutil
 import uuid
 from collections.abc import AsyncIterator
-from copy import deepcopy
 from pathlib import Path
 from string import Formatter
 from typing import Annotated, Any, NamedTuple, Self
@@ -12,13 +11,14 @@ from typing import Annotated, Any, NamedTuple, Self
 import anyio
 import anyio.to_thread
 from nonebot.params import Depends
-from nonebot_plugin_alconna import Target
-from nonebot_plugin_localstore import get_plugin_cache_dir, get_plugin_data_dir
+from nonebot_plugin_localstore import get_plugin_cache_dir
+from nonebot_plugin_orm import AsyncSession, Model, get_session
 from pydantic import BaseModel, field_validator, model_validator
+from sqlalchemy import Boolean, Integer, String, Text, UniqueConstraint, func, select
+from sqlalchemy.orm import Mapped, mapped_column
 
-from src.utils import ConfigListFile
+from src.utils import attach_async_context
 
-DATA_DIR = get_plugin_data_dir()
 CACHE_DIR = get_plugin_cache_dir()
 
 
@@ -140,30 +140,164 @@ class ArtifactConfig(BaseModel):
         return self.rename_template.format(name=artifact_name, **format_data)
 
 
-class Subscription(BaseModel):
-    owner: str
-    repo: str
-    workflow_id: WorkflowID | None = None
-    target_data: dict[str, Any]
-    artifact_upload_config: ArtifactConfig | None = None
+class Subscription(Model):
+    __table_args__ = (
+        UniqueConstraint(
+            "scene_persist_id",
+            "owner",
+            "repo",
+            "workflow_kind",
+            "workflow_value",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_persist_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    scene_persist_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    owner: Mapped[str] = mapped_column(String(255), nullable=False)
+    repo: Mapped[str] = mapped_column(String(255), nullable=False)
+    workflow_kind: Mapped[int] = mapped_column(Integer, nullable=False)
+    workflow_value: Mapped[str] = mapped_column(String(255), nullable=False)
+    upload_artifacts: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    filter_regex: Mapped[str | None] = mapped_column(Text)
+    rename_template: Mapped[str | None] = mapped_column(Text)
+
+    @classmethod
+    def create(
+        cls,
+        *,
+        session_persist_id: int,
+        scene_persist_id: int,
+        owner: str,
+        repo: str,
+        workflow_id: WorkflowID | None,
+    ) -> Self:
+        workflow_kind, workflow_value = _dump_workflow_id(workflow_id)
+        return cls(
+            session_persist_id=session_persist_id,
+            scene_persist_id=scene_persist_id,
+            owner=owner,
+            repo=repo,
+            workflow_kind=workflow_kind,
+            workflow_value=workflow_value,
+        )
 
     @property
     def repos(self) -> Repos:
         return Repos(owner=self.owner, repo=self.repo)
 
     @property
-    def target(self) -> Target:
-        return Target.load(deepcopy(self.target_data))
+    def workflow_id(self) -> WorkflowID | None:
+        match self.workflow_kind:
+            case 0:
+                return None
+            case 1:
+                return int(self.workflow_value)
+            case 2:
+                return self.workflow_value
+            case value:
+                raise ValueError(f"unsupported workflow kind: {value}")
 
-    def verify(self, other: Subscription) -> bool:
-        return (
-            self.target.verify(other.target)
-            and self.repos == other.repos
-            and self.workflow_id == other.workflow_id
+    @property
+    def artifact_upload_config(self) -> ArtifactConfig | None:
+        if not self.upload_artifacts:
+            return None
+        return ArtifactConfig(
+            filter_regex=self.filter_regex,
+            rename_template=self.rename_template,
         )
 
+    @artifact_upload_config.setter
+    def artifact_upload_config(self, value: ArtifactConfig | None) -> None:
+        self.upload_artifacts = value is not None
+        self.filter_regex = value.filter_regex if value is not None else None
+        self.rename_template = value.rename_template if value is not None else None
 
-subscriptions = ConfigListFile(DATA_DIR / "subscriptions.json", Subscription)
+
+def _dump_workflow_id(workflow_id: WorkflowID | None) -> tuple[int, str]:
+    match workflow_id:
+        case None:
+            return 0, ""
+        case int() as value:
+            return 1, str(value)
+        case str() as value:
+            return 2, value
+
+
+def _subscription_identity(sub: Subscription) -> tuple[int, str]:
+    return sub.workflow_kind, sub.workflow_value
+
+
+@attach_async_context(get_session)
+async def list_subscriptions(
+    session: AsyncSession,
+    *,
+    scene_persist_id: int | None = None,
+    repos: Repos | None = None,
+) -> list[Subscription]:
+    statement = select(Subscription).order_by(Subscription.id)
+    if scene_persist_id is not None:
+        statement = statement.where(Subscription.scene_persist_id == scene_persist_id)
+    if repos is not None:
+        statement = statement.where(
+            Subscription.owner == repos.owner,
+            Subscription.repo == repos.repo,
+        )
+    return list((await session.scalars(statement)).all())
+
+
+@attach_async_context(get_session)
+async def subscription_exists(
+    session: AsyncSession,
+    sub: Subscription,
+) -> bool:
+    workflow_kind, workflow_value = _subscription_identity(sub)
+    statement = select(Subscription.id).where(
+        Subscription.scene_persist_id == sub.scene_persist_id,
+        Subscription.owner == sub.owner,
+        Subscription.repo == sub.repo,
+        Subscription.workflow_kind == workflow_kind,
+        Subscription.workflow_value == workflow_value,
+    )
+    return await session.scalar(statement) is not None
+
+
+@attach_async_context(get_session)
+async def add_subscription(
+    session: AsyncSession,
+    sub: Subscription,
+) -> None:
+    session.add(sub)
+    await session.commit()
+    await session.refresh(sub)
+
+
+@attach_async_context(get_session)
+async def remove_subscription(
+    session: AsyncSession,
+    sub: Subscription,
+) -> bool:
+    workflow_kind, workflow_value = _subscription_identity(sub)
+    statement = select(Subscription).where(
+        Subscription.scene_persist_id == sub.scene_persist_id,
+        Subscription.owner == sub.owner,
+        Subscription.repo == sub.repo,
+        Subscription.workflow_kind == workflow_kind,
+        Subscription.workflow_value == workflow_value,
+    )
+    existing = await session.scalar(statement)
+    if existing is None:
+        return False
+    await session.delete(existing)
+    await session.commit()
+    return True
+
+
+@attach_async_context(get_session)
+async def count_subscriptions(session: AsyncSession) -> int:
+    return int(await session.scalar(select(func.count(Subscription.id))) or 0)
 
 
 async def _get_cache_directory() -> AsyncIterator[Path]:

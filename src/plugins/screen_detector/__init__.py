@@ -1,5 +1,6 @@
 from nonebot import logger, require
 
+from . import database as database
 from .config import plugin_config
 
 if plugin_config.api_base_url:

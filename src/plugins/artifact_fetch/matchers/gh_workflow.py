@@ -8,7 +8,9 @@ from nonebot.adapters.github.event import WorkflowRunCompleted, WorkflowRunReque
 from nonebot.matcher import Matcher
 from nonebot.params import Depends
 from nonebot.rule import Rule
-from nonebot_plugin_alconna import UniMessage
+from nonebot_plugin_alconna import Target, UniMessage
+
+from src.service.uninfo_target import resolve_target
 
 from ..artifact_helper import ArtifactHelper
 from ..config import AppGitHub
@@ -17,7 +19,7 @@ from ..data_source import (
     Repos,
     Subscription,
     get_cache_directory,
-    subscriptions,
+    list_subscriptions,
 )
 from ..upload import upload_artifacts
 
@@ -49,9 +51,7 @@ async def _matching_sub(
         event.payload.workflow and event.payload.workflow.path.rsplit("/", 1)[-1]
     )
     matched: list[Subscription] = []
-    for sub in subscriptions.load():
-        if sub.repos != repos:
-            continue
+    for sub in await list_subscriptions(repos=repos):
         match sub.workflow_id:
             case None:
                 is_match = True
@@ -63,7 +63,7 @@ async def _matching_sub(
             continue
 
         for index, existing in enumerate(matched):
-            if not sub.target.verify(existing.target):
+            if sub.scene_persist_id != existing.scene_persist_id:
                 continue
             if _workflow_specificity(sub) > _workflow_specificity(existing):
                 matched[index] = sub
@@ -81,6 +81,16 @@ async def _is_subscribed(
 
 
 SubscriptionMatched = Annotated[list[Subscription], Depends(_matching_sub)]
+
+
+async def _resolve_subscription_target(sub: Subscription) -> Target | None:
+    target = await resolve_target(sub.session_persist_id)
+    if target is None:
+        logger.warning(
+            f"Subscription {sub.id} references missing uninfo session "
+            f"{sub.session_persist_id}"
+        )
+    return target
 
 
 async def _get_artifact_helper(
@@ -138,10 +148,12 @@ async def handle_requested(
         )
         for sub in subs:
             try:
-                await UniMessage.text(msg).send(sub.target)
+                if target := await _resolve_subscription_target(sub):
+                    await UniMessage.text(msg).send(target)
             except Exception:
                 logger.exception(
-                    f"Failed to notify workflow run {run_id} start for {sub.target}"
+                    f"Failed to notify workflow run {run_id} start "
+                    f"for subscription {sub.id}"
                 )
 
 
@@ -194,7 +206,7 @@ async def _track_workflow_run(
             except Exception:
                 logger.exception(
                     "Failed to notify workflow run "
-                    f"{run_id} completion for {sub.target}"
+                    f"{run_id} completion for subscription {sub.id}"
                 )
         for sub in subs:
             if sub.artifact_upload_config is None:
@@ -205,7 +217,7 @@ async def _track_workflow_run(
             except Exception:
                 logger.exception(
                     f"Failed to upload artifacts for workflow run {run_id} "
-                    f"to {sub.target}"
+                    f"for subscription {sub.id}"
                 )
 
     async def wrapper() -> None:
@@ -246,6 +258,9 @@ async def notify_workflow_run_completed(
     repo_name: str,
     sub: Subscription,
 ) -> None:
+    target = await _resolve_subscription_target(sub)
+    if target is None:
+        return
     msg = (
         f"{"✅" if run.conclusion == "success" else "❌"} Workflow 已完成\n"
         f"📦 仓库: {repo_name}\n"
@@ -254,7 +269,7 @@ async def notify_workflow_run_completed(
         f"📊 状态: {run.conclusion}\n"
         f"🔗 链接: {run.html_url}"
     )
-    await UniMessage.text(msg).send(sub.target)
+    await UniMessage.text(msg).send(target)
 
 
 async def upload_artifacts_for_run(
@@ -263,7 +278,9 @@ async def upload_artifacts_for_run(
     run_id: int,
     cache_dir: CacheDirectory,
 ) -> None:
-    target = sub.target
+    target = await _resolve_subscription_target(sub)
+    if target is None:
+        return
     assert sub.artifact_upload_config is not None
     cfg = sub.artifact_upload_config
 
@@ -324,7 +341,8 @@ async def handle_completed(
             await notify_workflow_run_completed(run, repo.full_name, sub)
         except Exception:
             logger.exception(
-                f"Failed to notify workflow run {run.id} completion for {sub.target}"
+                f"Failed to notify workflow run {run.id} completion "
+                f"for subscription {sub.id}"
             )
 
 
@@ -348,5 +366,6 @@ async def handle_completed_with_artifact(
             await upload_artifacts_for_run(helper, sub, run_id, cache_dir)
         except Exception:
             logger.exception(
-                f"Failed to upload artifacts for workflow run {run_id} to {sub.target}"
+                f"Failed to upload artifacts for workflow run {run_id} "
+                f"for subscription {sub.id}"
             )

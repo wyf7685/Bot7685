@@ -2,20 +2,14 @@ from datetime import UTC, datetime, timedelta
 
 from nonebot import logger
 from nonebot.utils import escape_tag
-from nonebot_plugin_alconna import (
-    Alconna,
-    Args,
-    MsgTarget,
-    Subcommand,
-    Target,
-    UniMessage,
-    on_alconna,
-)
+from nonebot_plugin_alconna import Alconna, Args, Subcommand, UniMessage, on_alconna
+from nonebot_plugin_uninfo import Uninfo
 
 from src.service.s3 import get_s3_service
+from src.service.uninfo_target import persist_session_reference
 
 from .api import calc_stream_size, detector_client
-from .config import pkg_subs
+from .database import add_subscription, remove_subscription
 
 alc = Alconna(
     "detector",
@@ -65,18 +59,20 @@ async def assign_package(duration: str) -> None:
 
 
 @matcher.assign("~subscribe")
-async def assign_subscribe(target: MsgTarget) -> None:
-    subs = pkg_subs.load()
-    if any(target.verify(Target.load(sub)) for sub in subs):
+async def assign_subscribe(session: Uninfo) -> None:
+    ref = await persist_session_reference(session)
+    created = await add_subscription(
+        scene_persist_id=ref.scene_persist_id,
+        session_persist_id=ref.session_persist_id,
+    )
+    if not created:
         await UniMessage.text("当前会话已订阅打包结果").finish()
-    subs.append(target.dump())
-    pkg_subs.save(subs)
     await UniMessage.text("订阅成功").finish()
 
 
 @matcher.assign("~unsubscribe")
-async def assign_unsubscribe(target: MsgTarget) -> None:
-    pkg_subs.save(
-        [sub for sub in pkg_subs.load() if not target.verify(Target.load(sub))]
-    )
-    await UniMessage.text("退订成功").finish()
+async def assign_unsubscribe(session: Uninfo) -> None:
+    ref = await persist_session_reference(session)
+    if await remove_subscription(ref.scene_persist_id):
+        await UniMessage.text("退订成功").finish()
+    await UniMessage.text("当前会话未订阅打包结果").finish()

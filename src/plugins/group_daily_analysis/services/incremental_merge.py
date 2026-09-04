@@ -44,7 +44,7 @@ class IncrementalMergeService:
         window_end: float,
     ) -> IncrementalState:
         state = IncrementalState(
-            group_id=batches[0].group_id if batches else "",
+            scene_persist_id=batches[0].scene_persist_id if batches else 0,
             window_start=window_start,
             window_end=window_end,
             total_analysis_count=len(batches),
@@ -108,7 +108,7 @@ class IncrementalMergeService:
                     state.chat_quality_review = batch.chat_quality_review
 
         logger.info(
-            f"合并批次完成: 群={state.group_id}, "
+            f"合并批次完成: scene={state.scene_persist_id}, "
             f"窗口={state.get_window_date_str()}, "
             f"批次数={len(batches)}, "
             f"总消息={state.total_message_count}, "

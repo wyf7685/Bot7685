@@ -7,9 +7,10 @@ from nonebot.params import Depends
 from nonebot_plugin_alconna import Match, MsgTarget, UniMessage
 from nonebot_plugin_uninfo import Uninfo
 
+from src.service.uninfo_target import persist_session_reference
 from src.utils import schedule_recall
 
-from .data_source import Repos, subscriptions
+from .data_source import Repos, list_subscriptions
 
 processing_repos: set[Repos] = set()
 
@@ -49,18 +50,18 @@ async def _request_admin_approval(
 
 
 async def _select_repos(
-    target: MsgTarget,
+    session: Uninfo,
     owner: Match[str],
     repo: Match[str],
 ) -> Repos:
     if owner.available and repo.available:
         return Repos(owner=owner.result, repo=repo.result)
 
+    ref = await persist_session_reference(session)
     subs = [
         sub
-        for sub in subscriptions.load()
-        if sub.target.verify(target)
-        and (not owner.available or sub.owner == owner.result)
+        for sub in await list_subscriptions(scene_persist_id=ref.scene_persist_id)
+        if (not owner.available or sub.owner == owner.result)
         and (not repo.available or sub.repo == repo.result)
     ]
     if not subs:

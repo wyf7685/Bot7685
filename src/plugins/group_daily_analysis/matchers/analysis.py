@@ -16,14 +16,15 @@ from nonebot_plugin_alconna.builtins.extensions.telegram import TelegramSlashExt
 from nonebot_plugin_uninfo import Uninfo
 
 from src.plugins.trusted import TrustedUser
+from src.service.uninfo_target import persist_session_reference, resolve_session
 
 from ..config import config
 from ..persistence.subscription import (
     AnalysisSubscription,
     add_subscription,
+    count_subscriptions,
     list_subscriptions,
     remove_subscription,
-    subscriptions,
 )
 from ..rendering import render_image
 from ..services.analysis_service import AnalysisResult, run_daily_analysis
@@ -100,16 +101,18 @@ async def assign_subscribe(
         await UniMessage.text("时间格式错误，请输入正确的时间 (0-23 0-59)").finish()
 
     incremental = arp.find("subscribe.incremental")
+    ref = await persist_session_reference(session)
     sub = AnalysisSubscription(
-        target_data=target.dump(),
-        session_data=session,
+        session_persist_id=ref.session_persist_id,
+        scene_persist_id=ref.scene_persist_id,
         incremental_enabled=incremental,
     )
-    add_subscription(sub)
+    await add_subscription(sub)
+    total = await count_subscriptions()
     await UniMessage.text(
         f"已订阅每日 {hour:02d}:{minute:02d} 的群聊分析"
         f" (增量模式: {"启用" if incremental else "关闭"})\n"
-        f"当前共 {len(subscriptions.load())} 个订阅"
+        f"当前共 {total} 个订阅"
     ).finish()
 
 
@@ -117,8 +120,9 @@ async def assign_subscribe(
 
 
 @matcher.assign("~unsubscribe")
-async def assign_unsubscribe(target: MsgTarget) -> None:
-    removed = remove_subscription(target)
+async def assign_unsubscribe(session: Uninfo) -> None:
+    ref = await persist_session_reference(session)
+    removed = await remove_subscription(ref.scene_persist_id)
     if removed:
         await UniMessage.text("已取消当前会话的分析订阅").finish()
     await UniMessage.text("当前会话没有分析订阅").finish()
@@ -128,17 +132,21 @@ async def assign_unsubscribe(target: MsgTarget) -> None:
 
 
 @matcher.assign("~list")
-async def assign_list(target: MsgTarget) -> None:
-    subs = list_subscriptions()
+async def assign_list(session: Uninfo) -> None:
+    current = await persist_session_reference(session)
+    subs = await list_subscriptions()
     if not subs:
         await UniMessage.text("暂无分析订阅").finish()
 
     lines = ["📊 分析订阅列表:\n"]
     for i, sub in enumerate(subs, 1):
-        scene = sub.session_data.scene
-        name = scene.name or scene.id
-        is_current = target.verify(sub.target)
-        mark = " ✦" if is_current else ""
+        saved_session = await resolve_session(sub.session_persist_id)
+        name = (
+            saved_session.scene.name or saved_session.scene.id
+            if saved_session is not None
+            else f"Session {sub.session_persist_id}"
+        )
+        mark = " ✦" if sub.scene_persist_id == current.scene_persist_id else ""
         lines.append(f"  {i}. {name} ({sub.analysis_days}天){mark}")
     await UniMessage.text("\n".join(lines)).finish()
 

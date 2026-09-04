@@ -1,115 +1,134 @@
-import hashlib
-from collections.abc import Iterable
-from copy import deepcopy
-from typing import NamedTuple
+import asyncio
+from dataclasses import dataclass
 
+from nonebot import logger
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_orm import AsyncSession, Model, get_session
-from sqlalchemy import JSON, Integer, delete, select
+from sqlalchemy import Integer, or_, select
 from sqlalchemy.orm import Mapped, mapped_column
 
+from src.service.uninfo_target import SessionReference, resolve_target
 from src.utils import attach_async_context
 
-type TargetDict = dict[str, object]
 
-
-class PipeTuple(NamedTuple):
+@dataclass(frozen=True, slots=True)
+class PipeTuple:
+    listen_scene_persist_id: int
+    target_scene_persist_id: int
     listen: Target
     target: Target
 
-    @classmethod
-    def from_scalars(
-        cls, pipes: Iterable[tuple[TargetDict, TargetDict]]
-    ) -> list[PipeTuple]:
-        return [
-            cls(Target.load(deepcopy(listen)), Target.load(deepcopy(target)))
-            for listen, target in pipes
-        ]
-
-
-def make_key(target: Target, /) -> int:
-    args = (target.id, target.channel, target.private, target.self_id)
-    for k, v in target.extra.items():
-        args += (k, v)
-    key = "".join(map(str, args)).encode("utf-8")
-    h = hashlib.md5(key).hexdigest()  # noqa: S324
-    # NOTE: unsafe hash
-    return int(h, 16) % (1 << 31)
-
 
 class Pipe(Model):
-    listen: Mapped[int] = mapped_column(Integer(), nullable=False, primary_key=True)
-    """ 监听群组 """
-    target: Mapped[int] = mapped_column(Integer(), nullable=False, primary_key=True)
-    """ 目标群组 """
-    listen_t: Mapped[TargetDict] = mapped_column(JSON(), nullable=False)
-    """ 监听群组的 Target """
-    target_t: Mapped[TargetDict] = mapped_column(JSON(), nullable=False)
-    """ 目标群组的 Target """
+    __tablename__ = "group_pipe_pipe"
 
-    def get_listen(self) -> Target:
-        return Target.load(self.listen_t)
+    listen_scene_persist_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+    target_scene_persist_id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+    )
+    listen_session_persist_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    target_session_persist_id: Mapped[int] = mapped_column(Integer, nullable=False)
 
-    def get_target(self) -> Target:
-        return Target.load(self.target_t)
+
+async def _resolve_pipe(pipe: Pipe) -> PipeTuple | None:
+    listen, target = await asyncio.gather(
+        resolve_target(pipe.listen_session_persist_id),
+        resolve_target(pipe.target_session_persist_id),
+    )
+    if listen is None or target is None:
+        logger.warning(
+            "Pipe references missing uninfo session: "
+            f"listen={pipe.listen_session_persist_id}, "
+            f"target={pipe.target_session_persist_id}"
+        )
+        return None
+    return PipeTuple(
+        listen_scene_persist_id=pipe.listen_scene_persist_id,
+        target_scene_persist_id=pipe.target_scene_persist_id,
+        listen=listen,
+        target=target,
+    )
+
+
+async def _resolve_pipes(pipes: list[Pipe]) -> list[PipeTuple]:
+    resolved = await asyncio.gather(*map(_resolve_pipe, pipes))
+    return [pipe for pipe in resolved if pipe is not None]
 
 
 @attach_async_context(get_session)
 async def get_pipes(
     session: AsyncSession,
     *,
-    listen: Target | None = None,
-    target: Target | None = None,
+    listen_scene_persist_id: int | None = None,
+    target_scene_persist_id: int | None = None,
 ) -> list[PipeTuple]:
-    statement = select(Pipe.listen_t, Pipe.target_t)
-    if listen is not None:
-        statement = statement.where(Pipe.listen == make_key(listen))
-    if target is not None:
-        statement = statement.where(Pipe.target == make_key(target))
-
-    result = await session.execute(statement)
-    return PipeTuple.from_scalars(row.tuple() for row in result.all())
+    statement = select(Pipe)
+    if listen_scene_persist_id is not None:
+        statement = statement.where(
+            Pipe.listen_scene_persist_id == listen_scene_persist_id
+        )
+    if target_scene_persist_id is not None:
+        statement = statement.where(
+            Pipe.target_scene_persist_id == target_scene_persist_id
+        )
+    pipes = list((await session.scalars(statement)).all())
+    return await _resolve_pipes(pipes)
 
 
 @attach_async_context(get_session)
 async def get_linked_pipes(
     session: AsyncSession,
-    query: Target,
+    scene_persist_id: int,
 ) -> tuple[list[PipeTuple], list[PipeTuple]]:
-    key = make_key(query)
-
-    statement = select(Pipe.listen_t, Pipe.target_t).where(Pipe.listen == key)
-    result = await session.execute(statement)
-    listen_pipes = PipeTuple.from_scalars(row.tuple() for row in result.all())
-
-    statement = select(Pipe.listen_t, Pipe.target_t).where(Pipe.target == key)
-    result = await session.execute(statement)
-    target_pipes = PipeTuple.from_scalars(row.tuple() for row in result.all())
-
-    return listen_pipes, target_pipes
+    statement = select(Pipe).where(
+        or_(
+            Pipe.listen_scene_persist_id == scene_persist_id,
+            Pipe.target_scene_persist_id == scene_persist_id,
+        )
+    )
+    pipes = await _resolve_pipes(list((await session.scalars(statement)).all()))
+    return (
+        [pipe for pipe in pipes if pipe.listen_scene_persist_id == scene_persist_id],
+        [pipe for pipe in pipes if pipe.target_scene_persist_id == scene_persist_id],
+    )
 
 
 @attach_async_context(get_session)
-async def create_pipe(session: AsyncSession, listen: Target, target: Target) -> None:
-    session.add(
-        Pipe(
-            listen=make_key(listen),
-            target=make_key(target),
-            listen_t=listen.dump(),
-            target_t=target.dump(),
+async def create_pipe(
+    session: AsyncSession,
+    listen: SessionReference,
+    target: SessionReference,
+) -> None:
+    key = (listen.scene_persist_id, target.scene_persist_id)
+    pipe = await session.get(Pipe, key)
+    if pipe is None:
+        session.add(
+            Pipe(
+                listen_scene_persist_id=listen.scene_persist_id,
+                target_scene_persist_id=target.scene_persist_id,
+                listen_session_persist_id=listen.session_persist_id,
+                target_session_persist_id=target.session_persist_id,
+            )
         )
-    )
+    else:
+        pipe.listen_session_persist_id = listen.session_persist_id
+        pipe.target_session_persist_id = target.session_persist_id
+    await session.commit()
 
 
 @attach_async_context(get_session)
 async def delete_pipe(session: AsyncSession, pipe: PipeTuple) -> None:
-    stmt = (
-        delete(Pipe)
-        .where(Pipe.listen == make_key(pipe.listen))
-        .where(Pipe.target == make_key(pipe.target))
+    row = await session.get(
+        Pipe,
+        (pipe.listen_scene_persist_id, pipe.target_scene_persist_id),
     )
-
-    await session.execute(stmt)
+    if row is not None:
+        await session.delete(row)
+        await session.commit()
 
 
 def display_pipe(listen: Target, target: Target) -> str:

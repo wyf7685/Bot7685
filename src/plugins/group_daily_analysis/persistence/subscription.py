@@ -1,54 +1,71 @@
-"""分析订阅管理 — 基于 ConfigListFile 持久化。"""
+from nonebot_plugin_orm import AsyncSession, Model, get_session
+from sqlalchemy import Boolean, Integer, func, select
+from sqlalchemy.orm import Mapped, mapped_column
 
-from copy import deepcopy
-from typing import Any
-
-from nonebot_plugin_alconna import MsgTarget, Target
-from nonebot_plugin_localstore import get_plugin_data_file
-from nonebot_plugin_uninfo import Session
-from pydantic import BaseModel, Field
-
-from src.utils import ConfigListFile
+from src.utils import attach_async_context
 
 
-class AnalysisSubscription(BaseModel):
-    """一条分析订阅记录"""
+class AnalysisSubscription(Model):
+    __tablename__ = "group_daily_analysis_subscription"
 
-    target_data: dict[str, Any] = Field(description="MsgTarget.dump() 序列化数据")
-    session_data: Session = Field(description="uninfo Session 对象，用于查询消息")
-    analysis_days: int = Field(default=1, description="分析天数")
-    incremental_enabled: bool = Field(default=False, description="是否使用增量分析模式")
-
-    @property
-    def target(self) -> Target:
-        return Target.load(deepcopy(self.target_data))
-
-
-# 全局订阅文件实例
-subscriptions = ConfigListFile(
-    get_plugin_data_file("subscriptions.json"),
-    AnalysisSubscription,
-)
-
-
-def add_subscription(sub: AnalysisSubscription) -> None:
-    """添加订阅，如果已存在则更新。"""
-    # 去重：同一个 target 只保留一条
-    subscriptions.save(
-        [s for s in subscriptions.load() if not s.target.verify(sub.target)] + [sub]
+    scene_persist_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_persist_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    analysis_days: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    incremental_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
     )
 
 
-def remove_subscription(target: MsgTarget) -> bool:
-    """移除当前会话的订阅。返回是否有移除。"""
-    before = len(subscriptions.load())
-    subscriptions.remove(lambda s: target.verify(s.target))
-    return len(subscriptions.load()) < before
+@attach_async_context(get_session)
+async def add_subscription(
+    session: AsyncSession,
+    sub: AnalysisSubscription,
+) -> None:
+    existing = await session.get(AnalysisSubscription, sub.scene_persist_id)
+    if existing is None:
+        session.add(sub)
+    else:
+        existing.session_persist_id = sub.session_persist_id
+        existing.analysis_days = sub.analysis_days
+        existing.incremental_enabled = sub.incremental_enabled
+    await session.commit()
 
 
-def list_subscriptions(target: MsgTarget | None = None) -> list[AnalysisSubscription]:
-    """列出订阅。传入 target 时只返回匹配的。"""
-    all_subs = subscriptions.load()
-    if target is None:
-        return all_subs
-    return [s for s in all_subs if target.verify(s.target)]
+@attach_async_context(get_session)
+async def remove_subscription(
+    session: AsyncSession,
+    scene_persist_id: int,
+) -> bool:
+    existing = await session.get(AnalysisSubscription, scene_persist_id)
+    if existing is None:
+        return False
+    await session.delete(existing)
+    await session.commit()
+    return True
+
+
+@attach_async_context(get_session)
+async def list_subscriptions(
+    session: AsyncSession,
+    *,
+    scene_persist_id: int | None = None,
+    incremental_only: bool = False,
+) -> list[AnalysisSubscription]:
+    statement = select(AnalysisSubscription).order_by(
+        AnalysisSubscription.scene_persist_id
+    )
+    if scene_persist_id is not None:
+        statement = statement.where(
+            AnalysisSubscription.scene_persist_id == scene_persist_id
+        )
+    if incremental_only:
+        statement = statement.where(AnalysisSubscription.incremental_enabled)
+    return list((await session.scalars(statement)).all())
+
+
+@attach_async_context(get_session)
+async def count_subscriptions(session: AsyncSession) -> int:
+    return int(
+        await session.scalar(select(func.count(AnalysisSubscription.scene_persist_id)))
+        or 0
+    )

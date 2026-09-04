@@ -6,10 +6,13 @@ from apscheduler.triggers.cron import CronTrigger
 from nonebot.log import logger
 from nonebot_plugin_alconna import Target, UniMessage
 from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_uninfo.target import to_target
+
+from src.service.uninfo_target import resolve_session
 
 from ..config import config
 from ..persistence.incremental_store import IncrementalStore
-from ..persistence.subscription import subscriptions
+from ..persistence.subscription import list_subscriptions
 from ..rendering import render_image
 from ..services.analysis_service import (
     AnalysisResult,
@@ -86,7 +89,7 @@ def _register_incremental_jobs() -> None:
 
 async def _auto_analysis_job() -> None:
     """定时分析任务 — 遍历所有订阅执行分析（支持传统+增量双模式）。"""
-    subs = subscriptions.load()
+    subs = await list_subscriptions()
     if not subs:
         return
 
@@ -94,8 +97,13 @@ async def _auto_analysis_job() -> None:
 
     for sub in subs:
         try:
-            target = sub.target
-            session = sub.session_data
+            session = await resolve_session(sub.session_persist_id)
+            if session is None:
+                logger.warning(
+                    f"分析订阅引用了不存在的 Session: {sub.session_persist_id}"
+                )
+                continue
+            target = to_target(session)
             bot = await target.select()
 
             # 判断模式：订阅级别增量开关 + 全局增量开关
@@ -103,7 +111,9 @@ async def _auto_analysis_job() -> None:
 
             if use_incremental:
                 result = await run_incremental_final_report(
-                    session, days=sub.analysis_days
+                    session,
+                    sub.scene_persist_id,
+                    days=sub.analysis_days,
                 )
                 if result is None:
                     logger.warning(
@@ -116,8 +126,10 @@ async def _auto_analysis_job() -> None:
                 # 清理过期批次
                 try:
                     before_ts = time_mod.time() - (sub.analysis_days * 2 * 24 * 3600)
-                    group_id = session.scene.id
-                    await _incremental_store.cleanup_old_batches(group_id, before_ts)
+                    await _incremental_store.cleanup_old_batches(
+                        sub.scene_persist_id,
+                        before_ts,
+                    )
                 except Exception as cleanup_err:
                     logger.warning(f"过期批次清理失败: {cleanup_err}")
 
@@ -142,32 +154,36 @@ async def _auto_analysis_job() -> None:
                 )
         except Exception as e:
             logger.opt(colors=True).error(
-                f"定时分析失败 ({sub.session_data.scene.id}): {e}"
+                f"定时分析失败 (scene={sub.scene_persist_id}): {e}"
             )
 
 
 async def _incremental_analysis_job() -> None:
     """增量分析任务 — 遍历所有增量模式订阅执行小批量分析。"""
-    subs = subscriptions.load()
+    subs = await list_subscriptions(incremental_only=True)
     if not subs:
         return
 
     for sub in subs:
-        if not sub.incremental_enabled:
-            continue
-
         try:
-            session = sub.session_data
-            bot = await sub.target.select()
+            session = await resolve_session(sub.session_persist_id)
+            if session is None:
+                logger.warning(
+                    f"增量订阅引用了不存在的 Session: {sub.session_persist_id}"
+                )
+                continue
+            target = to_target(session)
+            bot = await target.select()
 
             await run_incremental_analysis(
                 bot,
                 session,
+                sub.scene_persist_id,
                 days=sub.analysis_days,
             )
         except Exception as e:
             logger.opt(colors=True).error(
-                f"增量分析失败 ({sub.session_data.scene.id}): {e}"
+                f"增量分析失败 (scene={sub.scene_persist_id}): {e}"
             )
 
 
