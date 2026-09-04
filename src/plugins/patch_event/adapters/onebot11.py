@@ -3,6 +3,8 @@ from typing import Literal, override
 
 import anyio
 import nonebot
+from apscheduler.job import Job as SchedulerJob
+from apscheduler.triggers.cron import CronTrigger
 from nonebot.adapters.onebot.utils import rich_escape, truncate
 from nonebot.adapters.onebot.v11 import Adapter, Bot, Event, Message, MessageSegment
 from nonebot.adapters.onebot.v11.event import (
@@ -22,16 +24,10 @@ from nonebot.adapters.onebot.v11.event import (
 from nonebot.adapters.onebot.v11.exception import ActionFailed, NoLogException
 from nonebot.compat import model_dump, type_validate_python
 from nonebot.utils import escape_tag
+from nonebot_plugin_apscheduler import scheduler
 from pydantic import BaseModel
 
 from src.highlight import Highlight
-
-nonebot.require("nonebot_plugin_apscheduler")
-from apscheduler.job import Job as SchedulerJob
-from apscheduler.triggers.cron import CronTrigger
-from nonebot_plugin_apscheduler import scheduler
-
-nonebot.require("src.service.task")
 from src.service.task import call_later, call_soon
 
 from ..patcher import patcher

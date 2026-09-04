@@ -9,5 +9,5 @@ import contextlib
 
 from . import reaction as reaction
 
-with contextlib.suppress(ImportError):
+with contextlib.suppress(ImportError, RuntimeError):
     from . import forward as forward

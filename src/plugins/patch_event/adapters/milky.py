@@ -3,6 +3,8 @@ import contextlib
 from typing import Literal, Protocol, cast, overload, override
 
 import nonebot
+from apscheduler.job import Job as SchedulerJob
+from apscheduler.triggers.cron import CronTrigger
 from nonebot.adapters.milky import Bot
 from nonebot.adapters.milky.event import (
     Event,
@@ -21,15 +23,9 @@ from nonebot.adapters.milky.model.base import ModelBase
 from nonebot.adapters.milky.model.common import Friend, Group, Member
 from nonebot.adapters.milky.model.message import IncomingMessage
 from nonebot.utils import escape_tag
-
-from src.highlight import Highlight
-
-nonebot.require("nonebot_plugin_apscheduler")
-from apscheduler.job import Job as SchedulerJob
-from apscheduler.triggers.cron import CronTrigger
 from nonebot_plugin_apscheduler import scheduler
 
-nonebot.require("src.service.task")
+from src.highlight import Highlight
 from src.service.task import call_later
 
 from ..patcher import patcher

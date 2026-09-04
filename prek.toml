@@ -25,6 +25,6 @@ types_or = ["python", "pyi"]
 [[repos.hooks]]
 id = "resolve-plugin-requires"
 name = "resolve plugin requires"
-entry = "uv run --script scripts/resolve_plugin_requires.py"
+entry = "uv run python -m scripts.resolve_plugin_requires"
 language = "python"
 types_or = ["python"]

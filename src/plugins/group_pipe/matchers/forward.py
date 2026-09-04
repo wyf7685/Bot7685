@@ -1,6 +1,6 @@
 import json
 
-from nonebot import logger
+from nonebot import logger, require
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot import v11
 from nonebot_plugin_alconna import (
@@ -13,6 +13,7 @@ from nonebot_plugin_alconna import (
 )
 from nonebot_plugin_alconna.uniseg import Image, Text, UniMessage, reply_fetch
 
+require("src.service.s3")
 from src.service.s3 import get_s3_service
 
 from ..adapter import get_sender

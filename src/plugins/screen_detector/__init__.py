@@ -13,6 +13,7 @@ if plugin_config.api_base_url:
     require("src.service.s3")
     require("src.service.cache")
     require("src.service.task")
+    require("src.service.uninfo_target")
     from . import command as command
     from . import detect as detect
     from . import reaction as reaction

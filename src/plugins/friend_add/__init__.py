@@ -1,6 +1,4 @@
-import importlib
-
-from nonebot import get_adapters
+from nonebot import get_adapters, load_plugin
 from nonebot.plugin import PluginMetadata
 
 __plugin_meta__ = PluginMetadata(
@@ -11,12 +9,13 @@ __plugin_meta__ = PluginMetadata(
     supported_adapters={"~onebot.v11", "~milky"},
 )
 
-_ADAPTERS = {
+ADAPTER_PLUGINS = {
     "Milky": "milky",
     "OneBot V11": "ob11",
 }
 
-
 for adapter in get_adapters():
-    if module := _ADAPTERS.get(adapter):
-        importlib.import_module(f"{__package__}.{module}")
+    if (module_name := ADAPTER_PLUGINS.get(adapter)) and load_plugin(
+        f"{__package__}.{module_name}"
+    ) is None:
+        raise RuntimeError(f"Failed to load the {adapter} friend-add plugin")

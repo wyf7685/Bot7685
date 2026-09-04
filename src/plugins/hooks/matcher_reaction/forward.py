@@ -1,10 +1,11 @@
 import asyncio
 from collections.abc import Generator, Iterable
 
-from nonebot import on_type
+from nonebot import on_type, require
 from nonebot.adapters.milky.event import GroupMessageReactionEvent
 from nonebot_plugin_alconna import CustomNode, UniMessage
 
+require("nonebot_plugin_htmlrender")
 from . import store
 from .render import safe_render_traceback
 

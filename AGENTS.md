@@ -155,7 +155,7 @@ infrastructure.
 Generate `src/bootstrap/patches/plugin_requires.json` with:
 
 ```bash
-uv run --script scripts/resolve_plugin_requires.py
+uv run python -m scripts.resolve_plugin_requires
 ```
 
 Never edit it manually. Regenerate it after changing imports between

@@ -1,8 +1,8 @@
 from nonebot.plugin import PluginMetadata
 
-from . import adapters, hooks, matchers
-
-_ = adapters, hooks, matchers
+from . import adapters as adapters
+from . import hooks as hooks
+from . import matchers as matchers
 
 __plugin_meta__ = PluginMetadata(
     name="group_pipe",
