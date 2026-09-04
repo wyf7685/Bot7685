@@ -22,14 +22,8 @@ class PipeTuple:
 class Pipe(Model):
     __tablename__ = "group_pipe_pipe"
 
-    listen_scene_persist_id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-    )
-    target_scene_persist_id: Mapped[int] = mapped_column(
-        Integer,
-        primary_key=True,
-    )
+    listen_scene_persist_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    target_scene_persist_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     listen_session_persist_id: Mapped[int] = mapped_column(Integer, nullable=False)
     target_session_persist_id: Mapped[int] = mapped_column(Integer, nullable=False)
 

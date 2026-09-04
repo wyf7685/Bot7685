@@ -2,10 +2,7 @@ from dataclasses import dataclass
 
 from nonebot_plugin_alconna import Target
 from nonebot_plugin_uninfo import Session
-from nonebot_plugin_uninfo.orm import (
-    get_session_model,
-    get_session_persist_id,
-)
+from nonebot_plugin_uninfo.orm import get_session_model, persist_session
 from nonebot_plugin_uninfo.target import to_target
 from sqlalchemy.exc import NoResultFound
 
@@ -17,17 +14,14 @@ class SessionReference:
 
 
 async def persist_session_reference(session: Session) -> SessionReference:
-    session_persist_id = await get_session_persist_id(session)
-    session_model = await get_session_model(session_persist_id)
+    session_model = await persist_session(session)
     return SessionReference(
         session_persist_id=session_model.id,
         scene_persist_id=session_model.scene_persist_id,
     )
 
 
-async def get_session_reference(
-    session_persist_id: int,
-) -> SessionReference | None:
+async def get_session_reference(session_persist_id: int) -> SessionReference | None:
     try:
         session_model = await get_session_model(session_persist_id)
     except NoResultFound:
