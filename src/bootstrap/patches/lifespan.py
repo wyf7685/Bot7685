@@ -28,7 +28,7 @@ type LifespanFunc = Callable[[], object] | Callable[[], Awaitable[object]]
 KNOWN_HOOKS = {
     ("nonebot_plugin_alconna.matcher", "AlconnaMatcher._run_tests"): "<alconna>",
     ("nonebot.adapters", None): "<nonebot.adapters>",
-    ("src.service.cache.impl.adapter", "StatsTracker._do_sync"): "src.service.cache",
+    ("src.service.cache.impl.adapter", "StatsTracker._do_sync"): "cache",
 }
 _HOOK_DISPLAY = "<lk><u>{plugin_id}</></>::<lm>{module}</>:<lg>{qualname}</>"
 
