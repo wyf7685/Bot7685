@@ -24,7 +24,7 @@ from src.service.s3 import get_s3_service
 from src.service.task import call_soon
 
 from ..adapter import converts
-from ..database import set_cache_value
+from ..cache import set_cache_value
 from ..utils import async_client, check_url_ok, guess_url_type, solve_url_302
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender

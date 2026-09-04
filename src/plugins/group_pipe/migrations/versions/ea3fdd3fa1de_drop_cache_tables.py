@@ -1,0 +1,54 @@
+"""Drop database-backed cache tables.
+
+Revision ID: ea3fdd3fa1de
+Revises: af98c6217d40
+Created: 2026-09-04
+"""
+
+from collections.abc import Sequence
+
+import sqlalchemy as sa
+from alembic import op
+
+revision: str = "ea3fdd3fa1de"
+down_revision: str | Sequence[str] | None = "af98c6217d40"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
+
+
+def upgrade(name: str = "") -> None:
+    if name:
+        return
+    op.drop_table("group_pipe_kvcache")
+    op.drop_table("group_pipe_msgidcache")
+
+
+def downgrade(name: str = "") -> None:
+    if name:
+        return
+    op.create_table(
+        "group_pipe_msgidcache",
+        sa.Column("src_adapter", sa.String(), nullable=False),
+        sa.Column("src_id", sa.String(), nullable=False),
+        sa.Column("dst_adapter", sa.String(), nullable=False),
+        sa.Column("dst_id", sa.String(), nullable=False),
+        sa.Column("created_at", sa.Integer(), nullable=False),
+        sa.PrimaryKeyConstraint(
+            "src_adapter",
+            "src_id",
+            "dst_adapter",
+            "dst_id",
+            name=op.f("pk_group_pipe_msgidcache"),
+        ),
+        info={"bind_key": "group_pipe"},
+    )
+    op.create_table(
+        "group_pipe_kvcache",
+        sa.Column("adapter", sa.String(), nullable=False),
+        sa.Column("key", sa.String(), nullable=False),
+        sa.Column("value", sa.String(), nullable=False),
+        sa.Column("created_at", sa.Integer(), nullable=False),
+        sa.Column("expire", sa.Integer(), nullable=False),
+        sa.PrimaryKeyConstraint("adapter", "key", name=op.f("pk_group_pipe_kvcache")),
+        info={"bind_key": "group_pipe"},
+    )

@@ -8,7 +8,7 @@ from nonebot_plugin_alconna import uniseg as u
 
 from ..adapter import MessageConverter as AbstractMessageConverter
 from ..adapter import MessageSender as AbstractMessageSender
-from ..database import get_reply_id, set_msg_dst_id
+from ..cache import get_reply_id, set_msg_dst_id
 
 
 class MessageConverter[

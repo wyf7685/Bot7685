@@ -1,7 +1,3 @@
-from .kv_cache import get_cache_value as get_cache_value
-from .kv_cache import set_cache_value as set_cache_value
-from .msg_id_cache import get_reply_id as get_reply_id
-from .msg_id_cache import set_msg_dst_id as set_msg_dst_id
 from .pipe import PipeTuple as PipeTuple
 from .pipe import create_pipe as create_pipe
 from .pipe import delete_pipe as delete_pipe

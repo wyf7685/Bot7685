@@ -17,7 +17,7 @@ from src.service.s3 import get_s3_service
 
 from ..adapter import get_sender
 from ..adapters.onebot11 import MessageConverter
-from ..database import get_cache_value
+from ..cache import get_cache_value
 from ..utils import guess_url_type
 from .depends import MsgTarget
 
