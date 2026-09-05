@@ -36,6 +36,11 @@ class Downloader[Index, Task](ABC):
         raise NotImplementedError
 
     async def get_httpx_client(self) -> httpx.AsyncClient:
+        if type(self).create_httpx_client is Downloader.create_httpx_client:
+            raise NotImplementedError(
+                f"{type(self).__name__}.create_httpx_client() is not implemented"
+            )
+
         if self.httpx_client is None:
             self.httpx_client = self.create_httpx_client()
             if self.stack is not None:

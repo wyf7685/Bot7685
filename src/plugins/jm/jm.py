@@ -8,7 +8,7 @@ import httpx
 import jmcomic
 import PIL.Image
 from nonebot.log import logger
-from nonebot.utils import escape_tag, run_sync
+from nonebot.utils import escape_tag
 from nonebot_plugin_localstore import get_plugin_cache_dir
 
 from src.service.cache import get_cache
@@ -21,17 +21,25 @@ logger = logger.opt(colors=True)
 
 
 @copy_signature(jmcomic.JmModuleConfig.EXECUTOR_LOG)
-def jm_log(topic: str, msg: str, exc: Exception | None = None) -> None:
-    log = logger.info if exc is None else logger.opt(exception=exc).warning
-    log(f"[<m>{topic}</m>] {escape_tag(str(msg))}")
+def jm_log(
+    topic: str,
+    msg: object,
+    exc: BaseException | None = None,
+) -> None:
+    if isinstance(msg, BaseException):
+        exc = msg
+        msg = repr(msg)
+    (logger.info if exc is None else logger.opt(exception=exc).warning)(
+        f"[<m>{topic}</m>] {escape_tag(str(msg))}"
+    )
 
 
-CACHE_DIR = get_plugin_cache_dir()
-DOWNLOAD_DIR = CACHE_DIR / "download"
-PDF_DIR = CACHE_DIR / "pdf"
 OPTION = {
     "version": "2.1",
-    "dir_rule": {"base_dir": str(DOWNLOAD_DIR), "rule": "Bd_Pid"},
+    "dir_rule": {
+        "base_dir": str(get_plugin_cache_dir() / "download"),
+        "rule": "Bd_Pid",
+    },
     "download": {"threading": {"image": 4, "photo": 4}},
 }
 
@@ -45,7 +53,7 @@ photo_cache = get_cache("jmcomic_option:photo", jmcomic.JmPhotoDetail, mode="pic
 async def get_album_detail(album_id: int) -> jmcomic.JmAlbumDetail:
     if cached := await album_cache.get(f"album_{album_id}"):
         return cached
-    detail = await run_sync(option.new_jm_client().get_album_detail)(album_id)
+    detail = await option.new_jm_async_client().get_album_detail(album_id)
     await album_cache.set(f"album_{album_id}", detail)
     return detail
 
@@ -104,7 +112,7 @@ async def download_image(
 async def check_album(
     album: jmcomic.JmAlbumDetail,
 ) -> Iterable[tuple[int, jmcomic.JmPhotoDetail]]:
-    check_photo = run_sync(option.new_jm_client().check_photo)
+    client = option.new_jm_async_client()
 
     @with_semaphore(8)
     async def check(p: int, photo: jmcomic.JmPhotoDetail) -> None:
@@ -112,7 +120,7 @@ async def check_album(
             if (cache := await photo_cache.get(photo.photo_id)) is not None:
                 checked[p] = cache
             else:
-                await check_photo(photo)
+                await client.check_photo(photo)
                 await photo_cache.set(photo.photo_id, photo)
                 checked[p] = photo
         except Exception as err:
