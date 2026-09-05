@@ -11,6 +11,7 @@ from sqlalchemy.exc import NoResultFound
 class SessionReference:
     session_persist_id: int
     scene_persist_id: int
+    user_persist_id: int
 
 
 async def persist_session_reference(session: Session) -> SessionReference:
@@ -18,6 +19,7 @@ async def persist_session_reference(session: Session) -> SessionReference:
     return SessionReference(
         session_persist_id=session_model.id,
         scene_persist_id=session_model.scene_persist_id,
+        user_persist_id=session_model.user_persist_id,
     )
 
 
@@ -29,6 +31,7 @@ async def get_session_reference(session_persist_id: int) -> SessionReference | N
     return SessionReference(
         session_persist_id=session_model.id,
         scene_persist_id=session_model.scene_persist_id,
+        user_persist_id=session_model.user_persist_id,
     )
 
 
