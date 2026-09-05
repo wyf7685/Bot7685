@@ -1,11 +1,11 @@
 from nonebot_plugin_alconna import MsgTarget, UniMessage
 
+from src.service.interaction import confirm
 from src.service.llm import LLMConfig
 
 from .common import config_operation, configured_snapshot, replace_configuration
 from .formatting import format_endpoint
 from .forms import ask_endpoint
-from .interaction import confirm
 from .matcher import model_admin
 
 

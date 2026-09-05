@@ -1,12 +1,12 @@
 from nonebot_plugin_alconna import MsgTarget, UniMessage
 from pydantic import ValidationError
 
+from src.service.interaction import confirm
 from src.service.s3 import get_s3_service
 
 from .common import config_operation, replace_configuration, reset_configuration
 from .formatting import format_config
 from .forms import ask_s3_config
-from .interaction import confirm
 from .matcher import s3_admin
 
 

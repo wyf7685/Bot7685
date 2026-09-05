@@ -5,21 +5,22 @@ from typing import Annotated, cast
 from nonebot.params import Depends
 from pydantic import AnyHttpUrl, TypeAdapter
 
+from src.service.interaction import (
+    MISSING,
+    ask_bool,
+    ask_choice,
+    ask_float,
+    ask_int,
+    ask_secret,
+    ask_text,
+    ask_value,
+)
 from src.service.llm import (
     EndpointConfig,
     ModelCapabilities,
     ModelConfig,
     ReasoningEffort,
     StructuredOutputMode,
-)
-
-from .interaction import (
-    ask_bool,
-    ask_choice,
-    ask_float,
-    ask_int,
-    ask_text,
-    ask_value,
 )
 
 _HTTP_URL = TypeAdapter(AnyHttpUrl)
@@ -157,15 +158,12 @@ async def ask_endpoint(
         f"请输入 endpoint {alias!r} 的 Base URL"
         + (f"，回复“默认”保留 {existing.base_url}" if existing else ""),
         _parse_url,
-        default=existing.base_url if existing else None,
-        allow_default=existing is not None,
+        default=existing.base_url if existing else MISSING,
         error_message="请输入有效的 HTTP 或 HTTPS URL。",
     )
-    api_key = await ask_text(
-        f"请输入 endpoint {alias!r} 的 API Key"
-        + ("，回复“默认”保留当前值" if existing else ""),
-        default=existing.api_key.get_secret_value() if existing else None,
-        allow_default=existing is not None,
+    api_key = await ask_secret(
+        f"请输入 endpoint {alias!r} 的 API Key",
+        default=existing.api_key if existing else MISSING,
     )
     timeout_prompt = (
         f"，回复“默认”保留 {float(existing.timeout_seconds):g}"
@@ -176,7 +174,6 @@ async def ask_endpoint(
         "请输入请求超时秒数" + timeout_prompt,
         minimum_exclusive=0,
         default=float(existing.timeout_seconds) if existing else 60.0,
-        allow_default=True,
     )
     max_retries = await ask_int(
         "请输入最大重试次数"
@@ -187,7 +184,6 @@ async def ask_endpoint(
         ),
         minimum=0,
         default=int(existing.max_retries) if existing else 1,
-        allow_default=True,
     )
     return EndpointConfig(
         base_url=base_url,
@@ -208,7 +204,6 @@ async def ask_capabilities(
         tools = await ask_bool(
             "模型是否支持工具调用",
             default=existing.tools if existing else False,
-            allow_default=True,
         )
 
     vision = options.vision
@@ -216,7 +211,6 @@ async def ask_capabilities(
         vision = await ask_bool(
             "模型是否支持图片输入",
             default=existing.vision if existing else False,
-            allow_default=True,
         )
 
     reasoning_default = existing.reasoning_efforts if existing else ()
@@ -231,7 +225,6 @@ async def ask_capabilities(
             "none,minimal,low,medium,high,xhigh,max 顺序用逗号分隔" + reasoning_hint,
             _parse_reasoning_efforts,
             default=reasoning_default,
-            allow_default=True,
             error_message="reasoning effort 无效或顺序错误。",
         )
     else:
@@ -255,7 +248,6 @@ async def ask_capabilities(
             "json_schema,json_object,none 顺序用逗号分隔" + structured_hint,
             _parse_structured_modes,
             default=structured_default,
-            allow_default=True,
             error_message="structured output modes 无效或顺序错误。",
         )
     else:
@@ -276,7 +268,6 @@ async def ask_capabilities(
                     if existing and existing.tools
                     else False
                 ),
-                allow_default=True,
             )
     else:
         if options.parallel_tool_calls:
@@ -307,8 +298,7 @@ async def ask_model(
         endpoint_alias = await ask_choice(
             f"请选择模型 {alias!r} 使用的 endpoint",
             [(endpoint_alias, endpoint_alias) for endpoint_alias in sorted(endpoints)],
-            default=existing.endpoint if existing else None,
-            allow_default=existing is not None,
+            default=existing.endpoint if existing else MISSING,
         )
     else:
         endpoint_alias = endpoint_alias.strip()
@@ -320,8 +310,7 @@ async def ask_model(
         model_id = await ask_text(
             "请输入 Provider 模型 ID"
             + (f"，回复“默认”保留 {existing.model}" if existing else ""),
-            default=existing.model if existing else None,
-            allow_default=existing is not None,
+            default=existing.model if existing else MISSING,
         )
     else:
         model_id = model_id.strip()
@@ -339,7 +328,6 @@ async def ask_model(
             ),
             minimum=1,
             default=int(existing.max_concurrent) if existing else 1,
-            allow_default=True,
         )
     elif max_concurrent < 1:
         raise ModelOptionError("模型最大并发数必须不小于 1。")
@@ -357,7 +345,6 @@ async def ask_model(
         selectable = await ask_bool(
             "模型是否允许作为全局活动模型",
             default=existing.selectable if existing else True,
-            allow_default=True,
         )
     else:
         selectable = options.selectable

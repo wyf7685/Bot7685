@@ -4,6 +4,13 @@ from typing import Never
 from nonebot import logger
 from nonebot_plugin_alconna import MsgTarget, UniMessage
 
+from src.service.interaction import (
+    InteractionBusy,
+    InteractionCancelled,
+    InteractionLimited,
+    InteractionTimeout,
+    SessionGuard,
+)
 from src.service.llm import (
     LLMConfig,
     LLMConfigurationConflictError,
@@ -12,13 +19,7 @@ from src.service.llm import (
     get_llm_service,
 )
 
-from .interaction import (
-    InteractionBusy,
-    InteractionCancelled,
-    InteractionLimited,
-    InteractionTimeout,
-    configuration_session,
-)
+_CONFIGURATION_GUARD = SessionGuard()
 
 
 @asynccontextmanager
@@ -26,7 +27,7 @@ async def config_operation(target: MsgTarget):
     if not target.private:
         await UniMessage.text("请在私聊中执行 LLM 配置，避免凭据泄漏。").finish()
     try:
-        async with configuration_session():
+        async with _CONFIGURATION_GUARD.acquire():
             yield
     except InteractionBusy:
         await UniMessage.text("已有 LLM 配置会话正在进行，请稍后重试。").finish()

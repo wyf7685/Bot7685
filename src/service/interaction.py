@@ -1,15 +1,35 @@
 import asyncio
-from collections.abc import Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import asynccontextmanager
-from typing import cast
+from enum import Enum, auto
+from typing import Final, Literal, overload
 
 import nonebot_plugin_waiter.unimsg as waiter
+from nonebot.plugin import PluginMetadata
 from nonebot_plugin_alconna import UniMessage
+from pydantic import SecretStr
+
+__plugin_meta__ = PluginMetadata(
+    name="Interaction",
+    description="Typed conversational input and fail-fast session guards",
+    usage="ask_value / ask_text / ask_secret / SessionGuard",
+    type="library",
+)
 
 _CANCEL_WORDS = {"取消", "cancel", "quit", "exit"}
 _DEFAULT_WORDS = {"默认", "default", "保留", "keep"}
-_SESSION_GUARD = asyncio.Lock()
-_SESSION_ACTIVE = False
+_SECRET_EMPTY_WORDS = {"空", "none", "null", "-"}
+_TRUTHY_WORDS = {"是", "y", "yes", "true", "1", "on"}
+_FALSY_WORDS = {"否", "n", "no", "false", "0", "off"}
+
+
+class Missing(Enum):
+    """Distinguish an omitted default from an explicit None default."""
+
+    VALUE = auto()
+
+
+MISSING: Final = Missing.VALUE
 
 
 class InteractionCancelled(Exception):
@@ -28,26 +48,26 @@ class InteractionBusy(Exception):
     pass
 
 
-@asynccontextmanager
-async def configuration_session():
-    global _SESSION_ACTIVE
-    async with _SESSION_GUARD:
-        if _SESSION_ACTIVE:
+class SessionGuard:
+    """Reject overlapping operations within this guard's scope."""
+
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+
+    @asynccontextmanager
+    async def acquire(self) -> AsyncIterator[None]:
+        # An uncontended asyncio lock acquires without suspending this task.
+        if self._lock.locked():
             raise InteractionBusy
-        _SESSION_ACTIVE = True
-    try:
-        yield
-    finally:
-        async with _SESSION_GUARD:
-            _SESSION_ACTIVE = False
+        async with self._lock:
+            yield
 
 
 async def ask_value[T](
     prompt: str,
     parser: Callable[[str], T],
     *,
-    default: T | None = None,
-    allow_default: bool = False,
+    default: T | Missing = MISSING,
     retries: int = 3,
     timeout_seconds: float = 60,
     error_message: str = "输入无效，请重新输入。",
@@ -63,8 +83,8 @@ async def ask_value[T](
         normalized = text.casefold()
         if normalized in _CANCEL_WORDS:
             raise InteractionCancelled
-        if allow_default and normalized in _DEFAULT_WORDS:
-            return cast("T", default)
+        if normalized in _DEFAULT_WORDS and not isinstance(default, Missing):
+            return default
         try:
             return parser(text)
         except ValueError:
@@ -75,8 +95,7 @@ async def ask_value[T](
 async def ask_text(
     prompt: str,
     *,
-    default: str | None = None,
-    allow_default: bool = False,
+    default: str | Missing = MISSING,
 ) -> str:
     def parse(value: str) -> str:
         value = value.strip()
@@ -88,7 +107,6 @@ async def ask_text(
         prompt,
         parse,
         default=default,
-        allow_default=allow_default,
         error_message="输入不能为空。",
     )
 
@@ -97,8 +115,7 @@ async def ask_int(
     prompt: str,
     *,
     minimum: int,
-    default: int | None = None,
-    allow_default: bool = False,
+    default: int | Missing = MISSING,
 ) -> int:
     def parse(value: str) -> int:
         parsed = int(value)
@@ -110,7 +127,6 @@ async def ask_int(
         prompt,
         parse,
         default=default,
-        allow_default=allow_default,
         error_message=f"请输入不小于 {minimum} 的整数。",
     )
 
@@ -119,8 +135,7 @@ async def ask_float(
     prompt: str,
     *,
     minimum_exclusive: float,
-    default: float | None = None,
-    allow_default: bool = False,
+    default: float | Missing = MISSING,
 ) -> float:
     def parse(value: str) -> float:
         parsed = float(value)
@@ -132,7 +147,6 @@ async def ask_float(
         prompt,
         parse,
         default=default,
-        allow_default=allow_default,
         error_message=f"请输入大于 {minimum_exclusive:g} 的数字。",
     )
 
@@ -140,30 +154,23 @@ async def ask_float(
 async def ask_bool(
     prompt: str,
     *,
-    default: bool | None = None,
-    allow_default: bool = False,
+    default: bool | Missing = MISSING,
 ) -> bool:
-    truthy = {"是", "y", "yes", "true", "1", "on"}
-    falsy = {"否", "n", "no", "false", "0", "off"}
-
     def parse(value: str) -> bool:
         normalized = value.casefold()
-        if normalized in truthy:
+        if normalized in _TRUTHY_WORDS:
             return True
-        if normalized in falsy:
+        if normalized in _FALSY_WORDS:
             return False
         raise ValueError
 
     default_hint = (
-        f"，回复“默认”选择{"是" if default else "否"}"
-        if allow_default and default is not None
-        else ""
+        f"，回复“默认”选择{"是" if default else "否"}" if default is not MISSING else ""
     )
     return await ask_value(
         f"{prompt} [是/否{default_hint}]",
         parse,
         default=default,
-        allow_default=allow_default,
         error_message="请回复“是”或“否”。",
     )
 
@@ -172,15 +179,18 @@ async def ask_choice[T](
     prompt: str,
     choices: Sequence[tuple[str, T]],
     *,
-    default: T | None = None,
-    allow_default: bool = False,
+    default: T | Missing = MISSING,
 ) -> T:
     if not choices:
         raise ValueError("choices must not be empty")
     lines = [prompt]
     lines.extend(
         f"{index}. {label}"
-        f"{"（默认；回复“默认”选择）" if allow_default and value == default else ""}"
+        + (
+            "（默认；回复“默认”选择）"
+            if default is not MISSING and value == default
+            else ""
+        )
         for index, (label, value) in enumerate(choices, 1)
     )
     by_label = {label.casefold(): value for label, value in choices}
@@ -197,8 +207,52 @@ async def ask_choice[T](
         "\n".join(lines),
         parse,
         default=default,
-        allow_default=allow_default,
         error_message="请输入候选项编号或名称。",
+    )
+
+
+@overload
+async def ask_secret(
+    prompt: str,
+    *,
+    default: SecretStr | Missing = MISSING,
+    optional: Literal[False] = False,
+) -> SecretStr: ...
+
+
+@overload
+async def ask_secret(
+    prompt: str,
+    *,
+    default: SecretStr | Missing | None = MISSING,
+    optional: Literal[True],
+) -> SecretStr | None: ...
+
+
+async def ask_secret(
+    prompt: str,
+    *,
+    default: SecretStr | Missing | None = MISSING,
+    optional: bool = False,
+) -> SecretStr | None:
+    if not optional and default is None:
+        raise ValueError("A required secret cannot have a None default")
+
+    def parse(value: str) -> SecretStr | None:
+        value = value.strip()
+        if optional and value.casefold() in _SECRET_EMPTY_WORDS:
+            return None
+        if not value:
+            raise ValueError
+        return SecretStr(value)
+
+    default_hint = "；回复“默认”保留当前值" if default is not MISSING else ""
+    empty_hint = "；回复“空”清空" if optional else ""
+    return await ask_value(
+        f"{prompt}{default_hint}{empty_hint}",
+        parse,
+        default=default,
+        error_message="输入不能为空。",
     )
 
 
@@ -207,15 +261,19 @@ async def confirm(prompt: str) -> bool:
 
 
 __all__ = [
+    "MISSING",
     "InteractionBusy",
     "InteractionCancelled",
     "InteractionLimited",
     "InteractionTimeout",
+    "Missing",
+    "SessionGuard",
     "ask_bool",
     "ask_choice",
     "ask_float",
     "ask_int",
+    "ask_secret",
     "ask_text",
-    "configuration_session",
+    "ask_value",
     "confirm",
 ]
