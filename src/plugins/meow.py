@@ -42,24 +42,36 @@ def fix_meow_word(word: str) -> str:
 toggle = on_alconna(
     Alconna(
         "meow",
+        Subcommand("status", help_text="状态"),
         Subcommand("enable", alias={"e"}, help_text="启用"),
         Subcommand("disable", alias={"d"}, help_text="禁用"),
-        Subcommand("set", Args["word#内容", str], alias={"s"}, help_text="设置"),
+        Subcommand("set", Args["word#内容", str], help_text="设置"),
         meta=CommandMeta(
             description="meow?",
-            usage="/meow <enable|disable>",
+            usage="/meow <status|enable|disable|set>",
         ),
     )
 )
 
 
+@toggle.assign("status")
+async def handle_meow_status() -> None:
+    await (
+        UniMessage.text("meow: ")
+        .text("已启用" if config.load().enabled else "已禁用")
+        .text("\n当前内容: [")
+        .text(config.load().word)
+        .text("]")
+    ).finish(reply_to=True)
+
+
 @toggle.assign("enable")
-def handle_meow_enable() -> None:
+async def handle_meow_enable() -> None:
     config.load().enabled = True
 
 
 @toggle.assign("disable")
-def handle_meow_disable() -> None:
+async def handle_meow_disable() -> None:
     config.load().enabled = False
 
 
