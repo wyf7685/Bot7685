@@ -111,6 +111,7 @@ LOGGING_CONFIG = {
             "propagate": False,
         },
         "httpx": {"handlers": ["default"], "level": "INFO", "propagate": False},
+        "httpx2": {"handlers": ["default"], "level": "INFO", "propagate": False},
     },
 }
 

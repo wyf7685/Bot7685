@@ -46,7 +46,7 @@ def log_level_filter() -> Callable[[loguru.Record], bool]:
     return filter_func
 
 
-_HIDDEN_NAMES = ("uvicorn", "starlette", "httpx")
+_HIDDEN_NAMES = ("uvicorn", "starlette", "httpx2", "httpx")
 
 
 def _hide_upstream(record: loguru.Record) -> None:
