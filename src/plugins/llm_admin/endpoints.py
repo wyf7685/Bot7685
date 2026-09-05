@@ -1,11 +1,12 @@
 from nonebot_plugin_alconna import MsgTarget, UniMessage
+from pydantic import ValidationError
 
 from src.service.interaction import confirm
 from src.service.llm import LLMConfig
 
 from .common import config_operation, configured_snapshot, replace_configuration
 from .formatting import format_endpoint
-from .forms import ask_endpoint
+from .forms import EndpointOptionError, EndpointOptions, ask_endpoint
 from .matcher import model_admin
 
 
@@ -20,46 +21,79 @@ async def handle_endpoint_list() -> None:
 
 
 @model_admin.assign("config.endpoint.add")
-async def handle_endpoint_add(target: MsgTarget, alias: str) -> None:
+async def handle_endpoint_add(
+    target: MsgTarget,
+    alias: str,
+    options: EndpointOptions,
+) -> None:
     async with config_operation(target):
         snapshot, config = await configured_snapshot()
         alias = alias.strip()
         if not alias or alias in config.endpoints:
             await UniMessage.text("Endpoint 别名为空或已存在。").finish()
-        endpoint = await ask_endpoint(alias=alias)
-        if not await confirm(
-            f"确认添加 endpoint {alias!r}？\n{format_endpoint(alias, endpoint)}"
-        ):
-            await UniMessage.text("未添加 endpoint。").finish()
+        try:
+            endpoint = await ask_endpoint(alias=alias, options=options)
+        except EndpointOptionError as error:
+            await UniMessage.text(str(error)).finish()
         candidate = LLMConfig(
             active_model=config.active_model,
             endpoints={**config.endpoints, alias: endpoint},
             models=dict(config.models),
         )
+        if not await confirm(
+            f"确认添加 endpoint {alias!r}？\n{format_endpoint(alias, endpoint)}"
+        ):
+            await UniMessage.text("未添加 endpoint。").finish()
         await replace_configuration(candidate, snapshot.revision)
         await UniMessage.text(f"已添加 endpoint：{alias}").finish()
 
 
 @model_admin.assign("config.endpoint.edit")
-async def handle_endpoint_edit(target: MsgTarget, alias: str) -> None:
+async def handle_endpoint_edit(
+    target: MsgTarget,
+    alias: str,
+    options: EndpointOptions,
+) -> None:
     async with config_operation(target):
         snapshot, config = await configured_snapshot()
         alias = alias.strip()
         endpoint = config.endpoints.get(alias)
         if endpoint is None:
             await UniMessage.text("未找到该 endpoint。").finish()
-        updated = await ask_endpoint(alias=alias, existing=endpoint)
+        try:
+            updated = await ask_endpoint(
+                alias=alias,
+                existing=endpoint,
+                options=options,
+            )
+        except EndpointOptionError as error:
+            await UniMessage.text(str(error)).finish()
+        endpoints = dict(config.endpoints)
+        endpoints[alias] = updated
+        try:
+            candidate = LLMConfig(
+                active_model=config.active_model,
+                endpoints=endpoints,
+                models=dict(config.models),
+            )
+        except ValidationError:
+            incompatible: list[str] = []
+            for model_alias, model in config.models.items():
+                if model.endpoint != alias:
+                    continue
+                try:
+                    model.validate_for_protocol(updated.protocol)
+                except ValueError:
+                    incompatible.append(model_alias)
+            affected = "、".join(sorted(incompatible))
+            await UniMessage.text(
+                "该协议与引用此 endpoint 的模型配置不兼容；原配置保持不变。"
+                + (f"\n受影响模型：{affected}" if affected else "")
+            ).finish()
         if not await confirm(
             f"确认更新 endpoint {alias!r}？\n{format_endpoint(alias, updated)}"
         ):
             await UniMessage.text("未更新 endpoint。").finish()
-        endpoints = dict(config.endpoints)
-        endpoints[alias] = updated
-        candidate = LLMConfig(
-            active_model=config.active_model,
-            endpoints=endpoints,
-            models=dict(config.models),
-        )
         await replace_configuration(candidate, snapshot.revision)
         await UniMessage.text(f"已更新 endpoint：{alias}").finish()
 

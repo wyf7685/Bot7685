@@ -37,9 +37,10 @@ class CompletionTokensDetails:
 class PromptTokensDetails:
     audio_tokens: int = 0
     cached_tokens: int = 0
+    cache_creation_tokens: int = 0
 
     def __post_init__(self) -> None:
-        counts = (self.audio_tokens, self.cached_tokens)
+        counts = (self.audio_tokens, self.cached_tokens, self.cache_creation_tokens)
         if any(
             isinstance(value, bool) or not isinstance(value, int) for value in counts
         ):
@@ -51,6 +52,8 @@ class PromptTokensDetails:
         return PromptTokensDetails(
             audio_tokens=self.audio_tokens + other.audio_tokens,
             cached_tokens=self.cached_tokens + other.cached_tokens,
+            cache_creation_tokens=self.cache_creation_tokens
+            + other.cache_creation_tokens,
         )
 
 

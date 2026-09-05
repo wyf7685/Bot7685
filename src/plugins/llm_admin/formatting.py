@@ -19,6 +19,7 @@ def format_capabilities(capabilities: ModelCapabilities) -> str:
     )
     return (
         f"tools={capabilities.tools}, vision={capabilities.vision}, "
+        f"temperature={capabilities.temperature}, "
         f"parallel_tools={capabilities.parallel_tool_calls}, "
         f"reasoning=[{reasoning}], structured=[{structured}]"
     )
@@ -27,17 +28,24 @@ def format_capabilities(capabilities: ModelCapabilities) -> str:
 def format_endpoint(alias: str, endpoint: EndpointConfig) -> str:
     return (
         f"- {alias}: {endpoint.base_url}\n"
-        f"  timeout={float(endpoint.timeout_seconds):g}s, "
+        f"  protocol={endpoint.protocol.value}, "
+        f"timeout={float(endpoint.timeout_seconds):g}s, "
         f"retries={int(endpoint.max_retries)}, api_key=已配置"
     )
 
 
 def format_model(alias: str, model: ModelConfig, *, active: bool) -> str:
     marker = "（当前）" if active else ""
+    max_output = model.default_max_output_tokens or "未设置"
+    thinking = model.anthropic_thinking
+    thinking_display = thinking.type if thinking is not None else "未设置"
+    if thinking is not None and thinking.budget_tokens is not None:
+        thinking_display += f"({thinking.budget_tokens})"
     return (
         f"- {alias}{marker}: {model.model}\n"
         f"  endpoint={model.endpoint}, max_concurrent={int(model.max_concurrent)}, "
-        f"selectable={model.selectable}\n"
+        f"default_max_output_tokens={max_output}, selectable={model.selectable}\n"
+        f"  anthropic_thinking={thinking_display}\n"
         f"  {format_capabilities(model.capabilities)}"
     )
 

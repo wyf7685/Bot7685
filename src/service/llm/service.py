@@ -1,4 +1,4 @@
-"""Public one-shot LLM service backed by the process-local SDK runtime."""
+"""Public LLM calls against atomically replaceable, protocol-neutral runtimes."""
 
 import asyncio
 from collections.abc import AsyncIterator, Mapping, Sequence
@@ -12,26 +12,20 @@ from typing import Any, cast
 from nonebot import get_driver, logger
 from pydantic import ValidationError
 
-from ._openai_adapter import (
-    InvalidSDKResponseError,
-    OpenAIAgentCompletionBackend,
+from ._backend import (
+    CompletionRequest,
+    StructuredOutputRequest,
+    UnsupportedStructuredMode,
+)
+from ._structured import (
     StructuredOutputValidationError,
-    build_messages,
-    create_completion,
-    extract_text,
-    is_response_format_unsupported,
     make_envelope_schema,
     make_output_adapter,
-    make_response_format,
-    normalize_rejected_usage,
-    normalize_usage,
     parse_structured_output,
-    provider_error_category,
 )
 from .config import LLMConfig
 from .conversation import run_agent as run_agent_conversation
 from .exceptions import (
-    LLMCapabilityError,
     LLMConfigurationConflictError,
     LLMConfigurationError,
     LLMErrorCategory,
@@ -278,53 +272,21 @@ class LLMService:
         reasoning_effort: ReasoningEffort | None = None,
     ) -> RunResult[str]:
         async with self._lease_model(model) as handle:
-            self._enforce_capabilities(handle, prompt)
-            effective_reasoning_effort = self._resolve_reasoning_effort(
-                handle, reasoning_effort
+            turn = await handle.complete(
+                CompletionRequest(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                    max_output_tokens=max_output_tokens,
+                    reasoning_effort=reasoning_effort,
+                )
             )
-            messages = build_messages(
-                prompt,
-                system_prompt,
-                structured_schema=None,
-            )
-            started = perf_counter()
-
-            async with handle.semaphore:
-                try:
-                    completion = await create_completion(
-                        handle.client,
-                        model_id=handle.model_id,
-                        messages=messages,
-                        temperature=temperature,
-                        max_output_tokens=max_output_tokens,
-                        reasoning_effort=effective_reasoning_effort,
-                    )
-                    output = extract_text(completion)
-                    usage = normalize_usage(completion)
-                except asyncio.CancelledError:
-                    raise
-                except InvalidSDKResponseError as error:
-                    raise LLMRunError(
-                        category=LLMErrorCategory.INVALID_RESPONSE,
-                        model_alias=handle.alias,
-                        cause=error,
-                    ) from error
-                except Exception as error:
-                    category = provider_error_category(error)
-                    if category is None:
-                        raise
-                    raise LLMRunError(
-                        category=category,
-                        model_alias=handle.alias,
-                        cause=error,
-                    ) from error
-
             return RunResult(
-                output=output,
+                output=cast("str", turn.reply.content).strip(),
                 model_alias=handle.alias,
                 model_id=handle.model_id,
-                usage=usage,
-                elapsed=perf_counter() - started,
+                usage=turn.reply.usage,
+                elapsed=turn.trace.elapsed,
             )
 
     async def complete_structured[T](
@@ -339,109 +301,74 @@ class LLMService:
         reasoning_effort: ReasoningEffort | None = None,
     ) -> StructuredRunResult[T]:
         async with self._lease_model(model) as handle:
-            self._enforce_capabilities(handle, prompt)
-            effective_reasoning_effort = self._resolve_reasoning_effort(
-                handle, reasoning_effort
-            )
             handle.require_capability(ModelCapability.STRUCTURED_OUTPUT)
             try:
                 output_adapter = make_output_adapter(output_type)
                 envelope_schema = make_envelope_schema(output_adapter)
             except Exception as error:
                 raise LLMConfigurationError(
-                    model_alias=handle.alias,
-                    cause=error,
-                ) from error
+                    model_alias=handle.alias, cause=error
+                ) from None
 
-            messages = build_messages(
-                prompt,
-                system_prompt,
-                structured_schema=envelope_schema,
-            )
             attempted_modes: list[StructuredOutputMode] = []
             fallback_reasons: list[FallbackReason] = []
             rejected_usage = TokenUsage()
             mode = handle.effective_structured_mode()
             started = perf_counter()
-
-            async with handle.semaphore:
-                while True:
-                    attempted_modes.append(mode)
-                    response_format = make_response_format(mode, envelope_schema)
-
-                    try:
-                        completion = await create_completion(
-                            handle.client,
-                            model_id=handle.model_id,
-                            messages=messages,
+            while True:
+                attempted_modes.append(mode)
+                try:
+                    turn = await handle.complete(
+                        CompletionRequest(
+                            prompt=prompt,
+                            system_prompt=system_prompt,
                             temperature=temperature,
                             max_output_tokens=max_output_tokens,
-                            response_format=response_format,
-                            reasoning_effort=effective_reasoning_effort,
+                            reasoning_effort=reasoning_effort,
+                            structured=StructuredOutputRequest(
+                                schema=envelope_schema, mode=mode
+                            ),
                         )
-                    except asyncio.CancelledError:
-                        raise
-                    except Exception as error:
-                        if is_response_format_unsupported(error, mode):
-                            try:
-                                rejected_usage += normalize_rejected_usage(error)
-                            except InvalidSDKResponseError as usage_error:
-                                raise LLMRunError(
-                                    category=LLMErrorCategory.INVALID_RESPONSE,
-                                    model_alias=handle.alias,
-                                    cause=usage_error,
-                                ) from usage_error
-                            next_mode = handle.downgrade_structured_mode(mode)
-                            if next_mode == mode:
-                                raise LLMRunError(
-                                    category=LLMErrorCategory.STRUCTURED_OUTPUT,
-                                    model_alias=handle.alias,
-                                    cause=error,
-                                ) from error
-                            fallback_reasons.append(
-                                FallbackReason.RESPONSE_FORMAT_UNSUPPORTED
-                            )
-                            mode = next_mode
-                            continue
-                        category = provider_error_category(error)
-                        if category is None:
-                            raise
-                        raise LLMRunError(
-                            category=category,
-                            model_alias=handle.alias,
-                            cause=error,
-                        ) from error
-
-                    try:
-                        text = extract_text(completion)
-                        usage = rejected_usage + normalize_usage(completion)
-                    except InvalidSDKResponseError as error:
+                    )
+                except UnsupportedStructuredMode as error:
+                    if mode is None or error.mode != mode:
                         raise LLMRunError(
                             category=LLMErrorCategory.INVALID_RESPONSE,
                             model_alias=handle.alias,
                             cause=error,
-                        ) from error
-
-                    try:
-                        output = parse_structured_output(text, output_adapter)
-                    except StructuredOutputValidationError as error:
+                        ) from None
+                    rejected_usage += error.usage
+                    next_mode = handle.downgrade_structured_mode(mode)
+                    if next_mode == mode:
                         raise LLMRunError(
                             category=LLMErrorCategory.STRUCTURED_OUTPUT,
                             model_alias=handle.alias,
-                            cause=error,
-                        ) from error
-                    break
+                            cause=error.cause or error,
+                        ) from None
+                    fallback_reasons.append(FallbackReason.RESPONSE_FORMAT_UNSUPPORTED)
+                    mode = next_mode
+                    continue
 
-            return StructuredRunResult(
-                output=cast("T", output),
-                model_alias=handle.alias,
-                model_id=handle.model_id,
-                usage=usage,
-                elapsed=perf_counter() - started,
-                mode_used=mode,
-                attempted_modes=tuple(attempted_modes),
-                fallback_reasons=tuple(fallback_reasons),
-            )
+                try:
+                    output = parse_structured_output(
+                        cast("str", turn.reply.content), output_adapter
+                    )
+                except StructuredOutputValidationError as error:
+                    raise LLMRunError(
+                        category=LLMErrorCategory.STRUCTURED_OUTPUT,
+                        model_alias=handle.alias,
+                        cause=error,
+                    ) from None
+                return StructuredRunResult(
+                    output=cast("T", output),
+                    model_alias=handle.alias,
+                    model_id=handle.model_id,
+                    usage=rejected_usage + turn.reply.usage,
+                    elapsed=perf_counter() - started,
+                    mode_used=mode,
+                    attempted_modes=tuple(attempted_modes),
+                    fallback_reasons=tuple(fallback_reasons),
+                )
 
     async def run_agent(
         self,
@@ -458,38 +385,16 @@ class LLMService:
         """Run one bounded conversation under a single runtime lease."""
 
         async with self._lease_model(model) as handle:
-            effective_reasoning_effort = self._resolve_reasoning_effort(
-                handle, reasoning_effort
-            )
             return await run_agent_conversation(
-                OpenAIAgentCompletionBackend(handle),
+                handle,
                 prompt,
                 tools=tools,
                 system_prompt=system_prompt,
                 temperature=temperature,
                 limits=limits,
-                reasoning_effort=effective_reasoning_effort,
+                reasoning_effort=reasoning_effort,
                 correlation_id=correlation_id,
             )
-
-    @staticmethod
-    def _resolve_reasoning_effort(
-        handle: _ModelHandle,
-        requested: ReasoningEffort | None,
-    ) -> ReasoningEffort | None:
-        try:
-            return handle.capabilities.resolve_reasoning_effort(requested)
-        except ValueError as error:
-            raise LLMCapabilityError(
-                model_alias=handle.alias,
-                capability=ModelCapability.REASONING_EFFORT,
-                cause=error,
-            ) from error
-
-    @staticmethod
-    def _enforce_capabilities(handle: _ModelHandle, prompt: ChatInput) -> None:
-        if prompt.has_images:
-            handle.require_capability(ModelCapability.VISION)
 
 
 _service: LLMService | None = None

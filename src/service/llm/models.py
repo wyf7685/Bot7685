@@ -53,6 +53,7 @@ class ModelCapability(StrEnum):
     STRUCTURED_OUTPUT = "structured_output"
     PARALLEL_TOOL_CALLS = "parallel_tool_calls"
     REASONING_EFFORT = "reasoning_effort"
+    TEMPERATURE = "temperature"
 
 
 class ModelCapabilities(BaseModel):
@@ -62,6 +63,7 @@ class ModelCapabilities(BaseModel):
 
     tools: bool
     vision: bool
+    temperature: bool
     reasoning_efforts: tuple[ReasoningEffort, ...] = ()
     structured_output_modes: tuple[StructuredOutputMode, ...]
     parallel_tool_calls: bool
@@ -100,6 +102,8 @@ class ModelCapabilities(BaseModel):
                 return self.tools
             case ModelCapability.VISION:
                 return self.vision
+            case ModelCapability.TEMPERATURE:
+                return self.temperature
             case ModelCapability.REASONING_EFFORT:
                 return bool(self.reasoning_efforts)
             case ModelCapability.STRUCTURED_OUTPUT:

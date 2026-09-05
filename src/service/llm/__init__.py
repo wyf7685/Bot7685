@@ -1,6 +1,12 @@
 """Stable public contracts for Bot7685 LLM consumers."""
 
-from .config import EndpointConfig, LLMConfig, ModelConfig
+from .config import (
+    AnthropicThinkingConfig,
+    EndpointConfig,
+    EndpointProtocol,
+    LLMConfig,
+    ModelConfig,
+)
 from .exceptions import (
     LLMCapabilityError,
     LLMConfigurationConflictError,
@@ -48,11 +54,13 @@ __all__ = [
     "AgentLimits",
     "AgentRunResult",
     "AgentTrace",
+    "AnthropicThinkingConfig",
     "BoundTool",
     "ChatInput",
     "ChatInputPart",
     "CompletionTokensDetails",
     "EndpointConfig",
+    "EndpointProtocol",
     "ImagePart",
     "JSONObject",
     "JSONScalar",

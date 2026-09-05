@@ -4,11 +4,22 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from time import perf_counter
-from typing import Any, Protocol
+from typing import Any
 
 from nonebot import logger
 from nonebot.utils import escape_tag
 
+from ._backend import (
+    CompletionReply,
+    CompletionRequest,
+    CompletionStop,
+    HistoryItem,
+    ModelBackend,
+    ModelTurn,
+    ToolCall,
+    ToolResult,
+    UserTurn,
+)
 from .exceptions import LLMErrorCategory, LLMRunError, LLMServiceError
 from .models import (
     AgentLimits,
@@ -16,7 +27,6 @@ from .models import (
     AgentTrace,
     ChatInput,
     ChatInputPart,
-    ImagePart,
     ModelCallTrace,
     ModelCapabilities,
     ModelCapability,
@@ -36,8 +46,6 @@ from .tools import (
 )
 from .usage import TokenUsage
 
-_TOOL_NAME_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
-_MAX_CALL_ID_CHARS = 256
 _DEFAULT_AGENT_LIMITS = AgentLimits()
 
 
@@ -68,131 +76,14 @@ def _log_event(
 
 
 @dataclass(frozen=True, slots=True)
-class AgentToolCall:
-    """One neutral assistant-requested function call."""
-
-    id: str
-    name: str
-    arguments: str
-
-    def __post_init__(self) -> None:
-        call_id = self.id.strip()
-        name = self.name.strip()
-        if not call_id:
-            raise ValueError("tool call id must not be empty")
-        if len(call_id) > _MAX_CALL_ID_CHARS:
-            raise ValueError("tool call id is too long")
-        if any(ord(character) < 32 or ord(character) == 127 for character in call_id):
-            raise ValueError("tool call id must be printable")
-        if not _TOOL_NAME_PATTERN.fullmatch(name):
-            raise ValueError("tool call name is invalid")
-        if not isinstance(self.arguments, str):
-            raise TypeError("tool call arguments must be JSON text")
-        object.__setattr__(self, "id", call_id)
-        object.__setattr__(self, "name", name)
-
-
-@dataclass(frozen=True, slots=True)
-class AgentModelTurn:
-    """A provider-neutral assistant turn plus its model statistics."""
-
-    content: str | None
-    tool_calls: tuple[AgentToolCall, ...]
-    model_alias: str
-    model_id: str
-    usage: TokenUsage
-    elapsed: float
-    finish_reason: str | None = None
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "tool_calls", tuple(self.tool_calls))
-        if self.content is not None and not isinstance(self.content, str):
-            raise TypeError("assistant content must be text or null")
-        if any(not isinstance(call, AgentToolCall) for call in self.tool_calls):
-            raise TypeError("tool_calls contains an unsupported value")
-        call_ids = tuple(call.id for call in self.tool_calls)
-        if len(call_ids) != len(set(call_ids)):
-            raise ValueError("tool call ids must be unique within a model turn")
-        model_alias = self.model_alias.strip()
-        model_id = self.model_id.strip()
-        if not model_alias:
-            raise ValueError("model_alias must not be empty")
-        if not model_id:
-            raise ValueError("model_id must not be empty")
-        if not isinstance(self.usage, TokenUsage):
-            raise TypeError("usage must be TokenUsage")
-        if self.elapsed < 0:
-            raise ValueError("elapsed must not be negative")
-        object.__setattr__(self, "model_alias", model_alias)
-        object.__setattr__(self, "model_id", model_id)
-
-
-@dataclass(frozen=True, slots=True)
-class AgentToolResult:
-    """One role=tool history item paired to an assistant tool call."""
-
-    call_id: str
-    name: str
-    content: str
-
-    def __post_init__(self) -> None:
-        if not self.call_id:
-            raise ValueError("tool result call_id must not be empty")
-        if not _TOOL_NAME_PATTERN.fullmatch(self.name):
-            raise ValueError("tool result name is invalid")
-        if not isinstance(self.content, str) or not self.content:
-            raise ValueError("tool result content must not be empty")
-
-
-@dataclass(frozen=True, slots=True)
-class AgentUserTurn:
-    """One application-generated user turn inserted between agent rounds."""
-
-    parts: tuple[ChatInputPart, ...]
-
-    def __post_init__(self) -> None:
-        object.__setattr__(self, "parts", tuple(self.parts))
-        if not self.parts:
-            raise ValueError("agent user turn must contain at least one part")
-        if any(not isinstance(part, (TextPart, ImagePart)) for part in self.parts):
-            raise TypeError("agent user turn contains an unsupported part")
-
-
-type AgentHistoryItem = AgentModelTurn | AgentToolResult | AgentUserTurn
-
-
-class AgentCompletionBackend(Protocol):
-    """Minimal adapter contract required by the provider-neutral agent loop."""
-
-    @property
-    def model_alias(self) -> str: ...
-
-    @property
-    def capabilities(self) -> ModelCapabilities: ...
-
-    async def complete_turn(
-        self,
-        *,
-        prompt: ChatInput,
-        system_prompt: str | None,
-        history: tuple[AgentHistoryItem, ...],
-        tools: tuple[ToolDefinition, ...],
-        temperature: float | None,
-        reasoning_effort: ReasoningEffort | None,
-        max_output_tokens: int,
-        parallel_tool_calls: bool,
-    ) -> AgentModelTurn: ...
-
-
-@dataclass(frozen=True, slots=True)
 class _DispatchedToolCall:
-    result: AgentToolResult
+    result: ToolResult
     trace: ToolCallTrace
     images: tuple[ToolImageAttachment, ...] = ()
 
 
 async def run_agent(
-    backend: AgentCompletionBackend,
+    backend: ModelBackend,
     prompt: ChatInput,
     *,
     tools: Sequence[BoundTool[Any, Any]] = (),
@@ -207,7 +98,7 @@ async def run_agent(
     started = perf_counter()
     bound_tools = tuple(tools)
     _validate_bound_tools(bound_tools)
-    model_alias = backend.model_alias.strip()
+    model_alias = backend.alias.strip()
     if not model_alias:
         raise ValueError("backend model alias must not be empty")
     capabilities = backend.capabilities
@@ -306,7 +197,7 @@ async def run_agent(
 
 async def _run_bounded_conversation(
     *,
-    backend: AgentCompletionBackend,
+    backend: ModelBackend,
     prompt: ChatInput,
     system_prompt: str | None,
     definitions: tuple[ToolDefinition, ...],
@@ -319,7 +210,7 @@ async def _run_bounded_conversation(
     started: float,
     correlation_id: str | None,
 ) -> AgentRunResult:
-    history: list[AgentHistoryItem] = []
+    history: list[HistoryItem] = []
     model_traces: list[ModelCallTrace] = []
     tool_traces: list[ToolCallTrace] = []
     usage = TokenUsage()
@@ -345,15 +236,17 @@ async def _run_bounded_conversation(
         )
         call_started = perf_counter()
         try:
-            turn = await backend.complete_turn(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                history=tuple(history),
-                tools=definitions,
-                temperature=temperature,
-                reasoning_effort=reasoning_effort,
-                max_output_tokens=limits.max_output_tokens,
-                parallel_tool_calls=capabilities.parallel_tool_calls,
+            turn = await backend.complete(
+                CompletionRequest(
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    history=tuple(history),
+                    tools=definitions,
+                    temperature=temperature,
+                    reasoning_effort=reasoning_effort,
+                    max_output_tokens=limits.max_output_tokens,
+                    parallel_tool_calls=capabilities.parallel_tool_calls,
+                )
             )
         except asyncio.CancelledError:
             raise
@@ -381,54 +274,62 @@ async def _run_bounded_conversation(
             )
             raise
 
-        if not isinstance(turn, AgentModelTurn):
-            raise LLMRunError(
-                category=LLMErrorCategory.INVALID_RESPONSE,
-                model_alias=model_alias,
-            )
-        if turn.model_alias != model_alias:
+        if (
+            not isinstance(turn, ModelTurn)
+            or not isinstance(turn.reply, CompletionReply)
+            or not isinstance(turn.trace, ModelCallTrace)
+        ):
             raise LLMRunError(
                 category=LLMErrorCategory.INVALID_RESPONSE,
                 model_alias=model_alias,
             )
 
-        model_traces.append(
-            ModelCallTrace(
-                model_alias=turn.model_alias,
-                model_id=turn.model_id,
-                usage=turn.usage,
-                elapsed=turn.elapsed,
-                finish_reason=turn.finish_reason,
-                reasoning_effort=reasoning_effort,
+        reply = turn.reply
+        trace = turn.trace
+        if trace.model_alias != model_alias:
+            raise LLMRunError(
+                category=LLMErrorCategory.INVALID_RESPONSE,
+                model_alias=model_alias,
             )
-        )
-        usage = usage + turn.usage
+        if reply.stop is CompletionStop.LENGTH:
+            raise LLMRunError(
+                category=LLMErrorCategory.LIMITS,
+                model_alias=model_alias,
+            )
+        if reply.stop in {CompletionStop.REFUSAL, CompletionStop.FAILED}:
+            raise LLMRunError(
+                category=LLMErrorCategory.PROVIDER,
+                model_alias=model_alias,
+            )
+
+        model_traces.append(trace)
+        usage = usage + trace.usage
         history.append(turn)
-        finish_reason = _safe_log_text(turn.finish_reason or "none")
+        finish_reason = _safe_log_text(trace.finish_reason or "none")
         _log_event(
             correlation_id,
             "INFO",
             "LLM::Agent",
             f"model_call=<y>{model_call}/{limits.max_model_calls}</> "
             f"<g>completed</> | finish=<c>{finish_reason}</> "
-            f"tool_requests=<c>{len(turn.tool_calls)}</> "
-            f"answer_chars=<c>{len(turn.content or "")}</> "
-            f"elapsed=<c>{turn.elapsed * 1000:.1f}ms</> "
-            f"tokens_norm=<c>{turn.usage.prompt_tokens}/{turn.usage.completion_tokens}/"
-            f"{turn.usage.total_tokens}</> cumulative=<c>{usage.prompt_tokens}/"
+            f"tool_requests=<c>{len(reply.tool_calls)}</> "
+            f"answer_chars=<c>{len(reply.content or "")}</> "
+            f"elapsed=<c>{trace.elapsed * 1000:.1f}ms</> "
+            f"tokens_norm=<c>{trace.usage.prompt_tokens}/{trace.usage.completion_tokens}/"
+            f"{trace.usage.total_tokens}</> cumulative=<c>{usage.prompt_tokens}/"
             f"{usage.completion_tokens}/{usage.total_tokens}</>",
         )
 
-        if not turn.tool_calls:
-            if turn.content is None or not turn.content.strip():
+        if reply.stop is CompletionStop.COMPLETE:
+            if reply.content is None or not reply.content.strip():
                 raise LLMRunError(
                     category=LLMErrorCategory.INVALID_RESPONSE,
                     model_alias=model_alias,
                 )
             return AgentRunResult(
-                output=turn.content,
-                model_alias=turn.model_alias,
-                model_id=turn.model_id,
+                output=reply.content,
+                model_alias=trace.model_alias,
+                model_id=trace.model_id,
                 usage=usage,
                 elapsed=perf_counter() - started,
                 trace=AgentTrace(
@@ -436,13 +337,18 @@ async def _run_bounded_conversation(
                     tool_calls=tuple(tool_traces),
                 ),
             )
-
-        if not capabilities.parallel_tool_calls and len(turn.tool_calls) > 1:
+        if reply.stop is not CompletionStop.TOOL_CALLS or not definitions:
             raise LLMRunError(
                 category=LLMErrorCategory.INVALID_RESPONSE,
                 model_alias=model_alias,
             )
-        if tool_call_count + len(turn.tool_calls) > limits.max_tool_calls:
+
+        if not capabilities.parallel_tool_calls and len(reply.tool_calls) > 1:
+            raise LLMRunError(
+                category=LLMErrorCategory.INVALID_RESPONSE,
+                model_alias=model_alias,
+            )
+        if tool_call_count + len(reply.tool_calls) > limits.max_tool_calls:
             raise LLMRunError(
                 category=LLMErrorCategory.LIMITS,
                 model_alias=model_alias,
@@ -450,7 +356,7 @@ async def _run_bounded_conversation(
 
         tool_round += 1
         dispatched = await _dispatch_tool_round(
-            turn.tool_calls,
+            reply.tool_calls,
             registry=registry,
             max_parallel_tools=limits.max_parallel_tools,
             max_result_bytes=limits.max_tool_result_bytes,
@@ -521,7 +427,7 @@ def _build_tool_image_turn(
     *,
     omitted_for_limit: int,
     omitted_for_capability: int,
-) -> AgentUserTurn:
+) -> UserTurn:
     parts: list[ChatInputPart] = []
     if images:
         parts.append(
@@ -548,11 +454,11 @@ def _build_tool_image_turn(
                 "does not support vision."
             )
         )
-    return AgentUserTurn(parts=tuple(parts))
+    return UserTurn(parts=tuple(parts))
 
 
 async def _dispatch_tool_round(
-    calls: tuple[AgentToolCall, ...],
+    calls: tuple[ToolCall, ...],
     *,
     registry: dict[str, BoundTool[Any, Any]],
     max_parallel_tools: int,
@@ -574,7 +480,7 @@ async def _dispatch_tool_round(
         f"ordinals=<c>{first_ordinal}-{last_ordinal}</>",
     )
 
-    async def dispatch(index: int, call: AgentToolCall) -> _DispatchedToolCall:
+    async def dispatch(index: int, call: ToolCall) -> _DispatchedToolCall:
         scheduled = perf_counter()
         async with semaphore:
             queue_elapsed = perf_counter() - scheduled
@@ -614,7 +520,7 @@ async def _dispatch_tool_round(
 
 
 async def _dispatch_tool_call(
-    call: AgentToolCall,
+    call: ToolCall,
     *,
     registry: dict[str, BoundTool[Any, Any]],
     max_result_bytes: int,
@@ -727,10 +633,11 @@ async def _dispatch_tool_call(
             f"summary=<c>{_safe_log_text(output.summary, 160)}</>{diagnostic}",
         )
     return _DispatchedToolCall(
-        result=AgentToolResult(
+        result=ToolResult(
             call_id=call.id,
             name=call.name,
             content=content,
+            is_error=reported_error is not None,
         ),
         trace=ToolCallTrace(
             name=call.name,
@@ -749,7 +656,7 @@ async def _dispatch_tool_call(
 
 
 def _failed_tool_call(
-    call: AgentToolCall,
+    call: ToolCall,
     *,
     category: ToolErrorCategory,
     summary: str,
@@ -776,10 +683,11 @@ def _failed_tool_call(
         separators=(",", ":"),
     )
     return _DispatchedToolCall(
-        result=AgentToolResult(
+        result=ToolResult(
             call_id=call.id,
             name=call.name,
             content=content,
+            is_error=True,
         ),
         trace=ToolCallTrace(
             name=call.name,

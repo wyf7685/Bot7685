@@ -5,7 +5,13 @@ from src.service.llm import LLMConfig, get_llm_service
 
 from .common import config_operation, replace_configuration, reset_configuration
 from .formatting import format_configuration
-from .forms import ask_alias, ask_endpoint, ask_model
+from .forms import (
+    EndpointOptionError,
+    ModelOptionError,
+    ask_alias,
+    ask_endpoint,
+    ask_model,
+)
 from .matcher import model_admin
 
 
@@ -19,13 +25,19 @@ async def handle_setup(target: MsgTarget) -> None:
             ).finish()
 
         endpoint_alias = await ask_alias("请输入第一个 endpoint 别名", {})
-        endpoint = await ask_endpoint(alias=endpoint_alias)
+        try:
+            endpoint = await ask_endpoint(alias=endpoint_alias)
+        except EndpointOptionError as error:
+            await UniMessage.text(str(error)).finish()
         model_alias = await ask_alias("请输入第一个模型别名", {})
-        model = await ask_model(
-            alias=model_alias,
-            endpoints={endpoint_alias: endpoint},
-            force_selectable=True,
-        )
+        try:
+            model = await ask_model(
+                alias=model_alias,
+                endpoints={endpoint_alias: endpoint},
+                force_selectable=True,
+            )
+        except ModelOptionError as error:
+            await UniMessage.text(str(error)).finish()
         config = LLMConfig(
             active_model=model_alias,
             endpoints={endpoint_alias: endpoint},

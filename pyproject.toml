@@ -58,6 +58,7 @@ dependencies = [
   "nonebot-plugin-picmenu-next[yaml,toml,rjieba]",
   # Bot7685 Extensions
   "bot7685-ext[nonebot]==0.5.3",
+  "anthropic>=1,<2",
 ]
 
 [dependency-groups]

@@ -1,17 +1,39 @@
-"""Process-local OpenAI SDK clients and model execution state."""
+"""Endpoint backends, alias-local execution policy, and runtime leases."""
 
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from threading import Lock
+from time import perf_counter
 from typing import Self
 
-from openai import AsyncOpenAI
-
-from .config import LLMConfig
-from .exceptions import LLMConfigurationError
-from .models import ModelCapabilities, ModelCapability, StructuredOutputMode
+from ._adapters import create_backend
+from ._backend import (
+    BackendError,
+    CompletionReply,
+    CompletionRequest,
+    CompletionStop,
+    EndpointBackend,
+    ModelTurn,
+    UnsupportedStructuredMode,
+    UserTurn,
+)
+from .config import AnthropicThinkingConfig, EndpointProtocol, LLMConfig
+from .exceptions import (
+    LLMCapabilityError,
+    LLMConfigurationError,
+    LLMErrorCategory,
+    LLMRunError,
+)
+from .models import (
+    ChatInputPart,
+    ImagePart,
+    ModelCallTrace,
+    ModelCapabilities,
+    ModelCapability,
+    StructuredOutputMode,
+)
 
 
 class _EffectiveStructuredMode:
@@ -43,14 +65,17 @@ class _EffectiveStructuredMode:
 
 @dataclass(frozen=True, slots=True)
 class _ModelHandle:
-    """Immutable model snapshot with shared endpoint and alias-local state."""
+    """Immutable model policy sharing one stateless endpoint backend."""
 
     alias: str
     model_id: str
     capabilities: ModelCapabilities
-    client: AsyncOpenAI
-    semaphore: asyncio.Semaphore
+    protocol: EndpointProtocol
+    backend: EndpointBackend = field(repr=False, compare=False)
+    semaphore: asyncio.Semaphore = field(repr=False, compare=False)
     _structured_mode: _EffectiveStructuredMode = field(repr=False, compare=False)
+    default_max_output_tokens: int | None = None
+    anthropic_thinking: AnthropicThinkingConfig | None = None
 
     def require_capability(self, capability: ModelCapability) -> Self:
         self.capabilities.require(capability, model_alias=self.alias)
@@ -64,18 +89,139 @@ class _ModelHandle:
     ) -> StructuredOutputMode:
         return self._structured_mode.downgrade(expected)
 
+    def _validate_images(self, parts: tuple[ChatInputPart, ...]) -> None:
+        for part in parts:
+            if isinstance(part, ImagePart):
+                self.require_capability(ModelCapability.VISION)
+                if (
+                    self.protocol is EndpointProtocol.ANTHROPIC_MESSAGES
+                    and part.detail != "auto"
+                ):
+                    raise LLMCapabilityError(
+                        model_alias=self.alias,
+                        capability=ModelCapability.VISION,
+                    )
+
+    def _prepare_request(self, request: CompletionRequest) -> CompletionRequest:
+        self._validate_images(request.prompt.parts)
+        for item in request.history:
+            if isinstance(item, UserTurn):
+                self._validate_images(item.parts)
+        if request.tools:
+            self.require_capability(ModelCapability.TOOLS)
+            if request.parallel_tool_calls:
+                self.require_capability(ModelCapability.PARALLEL_TOOL_CALLS)
+        if request.temperature is not None:
+            self.require_capability(ModelCapability.TEMPERATURE)
+        if request.structured is not None:
+            self.require_capability(ModelCapability.STRUCTURED_OUTPUT)
+        try:
+            effort = self.capabilities.resolve_reasoning_effort(
+                request.reasoning_effort
+            )
+        except ValueError as error:
+            raise LLMCapabilityError(
+                model_alias=self.alias,
+                capability=ModelCapability.REASONING_EFFORT,
+                cause=error,
+            ) from None
+
+        maximum = (
+            request.max_output_tokens
+            if request.max_output_tokens is not None
+            else self.default_max_output_tokens
+        )
+        thinking = self.anthropic_thinking
+        if self.protocol is EndpointProtocol.ANTHROPIC_MESSAGES and effort == "none":
+            thinking = AnthropicThinkingConfig(type="disabled")
+        if thinking is not None and thinking.type != "disabled":
+            if request.temperature is not None and request.temperature != 1:
+                raise LLMCapabilityError(
+                    model_alias=self.alias,
+                    capability=ModelCapability.TEMPERATURE,
+                )
+            if thinking.type == "enabled" and (
+                maximum is None
+                or thinking.budget_tokens is None
+                or thinking.budget_tokens >= maximum
+            ):
+                raise LLMRunError(
+                    category=LLMErrorCategory.LIMITS,
+                    model_alias=self.alias,
+                )
+        return replace(
+            request,
+            reasoning_effort=effort,
+            max_output_tokens=maximum,
+            thinking=thinking,
+        )
+
+    async def complete(self, request: CompletionRequest) -> ModelTurn:
+        request = self._prepare_request(request)
+        started = perf_counter()
+        async with self.semaphore:
+            try:
+                reply = await self.backend.complete(self.model_id, request)
+            except UnsupportedStructuredMode:
+                raise
+            except BackendError as error:
+                cause = error.cause or error
+                if error.category is LLMErrorCategory.CONFIGURATION:
+                    raise LLMConfigurationError(
+                        model_alias=self.alias, cause=cause
+                    ) from None
+                if error.category is LLMErrorCategory.CAPABILITY:
+                    raise LLMCapabilityError(
+                        model_alias=self.alias,
+                        capability=ModelCapability.VISION,
+                        cause=cause,
+                    ) from None
+                raise LLMRunError(
+                    category=error.category,
+                    model_alias=self.alias,
+                    cause=cause,
+                ) from None
+
+        if not isinstance(reply, CompletionReply):
+            raise LLMRunError(
+                category=LLMErrorCategory.INVALID_RESPONSE, model_alias=self.alias
+            )
+        if reply.stop is CompletionStop.LENGTH:
+            raise LLMRunError(category=LLMErrorCategory.LIMITS, model_alias=self.alias)
+        if reply.stop in {CompletionStop.REFUSAL, CompletionStop.FAILED}:
+            raise LLMRunError(
+                category=LLMErrorCategory.PROVIDER, model_alias=self.alias
+            )
+        if (
+            reply.stop is CompletionStop.COMPLETE
+            and (reply.content is None or not reply.content.strip())
+        ) or (reply.stop is CompletionStop.TOOL_CALLS and not request.tools):
+            raise LLMRunError(
+                category=LLMErrorCategory.INVALID_RESPONSE, model_alias=self.alias
+            )
+        return ModelTurn(
+            reply=reply,
+            trace=ModelCallTrace(
+                model_alias=self.alias,
+                model_id=self.model_id,
+                usage=reply.usage,
+                elapsed=perf_counter() - started,
+                finish_reason=reply.finish_reason,
+                reasoning_effort=request.reasoning_effort,
+                structured_mode=(
+                    request.structured.mode if request.structured is not None else None
+                ),
+            ),
+        )
+
 
 class LLMRuntime:
-    """Own shared endpoint SDK clients and immutable model handles."""
+    """Own endpoint backends and immutable model handles until leases drain."""
 
     def __init__(self, config: LLMConfig) -> None:
-        self._clients = {
-            alias: AsyncOpenAI(
-                api_key=endpoint.api_key.get_secret_value(),
-                base_url=str(endpoint.base_url),
-                timeout=float(endpoint.timeout_seconds),
-                max_retries=int(endpoint.max_retries),
-            )
+        # Backends allocate clients lazily; snapshot construction owns no I/O resources.
+        self._backends = {
+            alias: create_backend(endpoint)
             for alias, endpoint in config.endpoints.items()
         }
         self._handles = {
@@ -83,11 +229,14 @@ class LLMRuntime:
                 alias=alias,
                 model_id=model.model,
                 capabilities=model.capabilities,
-                client=self._clients[model.endpoint],
+                protocol=config.endpoints[model.endpoint].protocol,
+                backend=self._backends[model.endpoint],
                 semaphore=asyncio.Semaphore(model.max_concurrent),
                 _structured_mode=_EffectiveStructuredMode(
                     model.capabilities.structured_output_modes
                 ),
+                default_max_output_tokens=model.default_max_output_tokens,
+                anthropic_thinking=model.anthropic_thinking,
             )
             for alias, model in config.models.items()
         }
@@ -140,7 +289,7 @@ class LLMRuntime:
     async def _drain_and_close_clients(self) -> None:
         await self._drained.wait()
         results = await asyncio.gather(
-            *(client.close() for client in self._clients.values()),
+            *(backend.aclose() for backend in self._backends.values()),
             return_exceptions=True,
         )
         if exceptions := [

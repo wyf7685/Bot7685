@@ -3,6 +3,31 @@ from nonebot.permission import SUPERUSER
 from nonebot_plugin_alconna import on_alconna
 
 
+def _endpoint_options() -> tuple[Option, ...]:
+    return (
+        Option(
+            "--protocol|-p",
+            Args["protocol#Endpoint 协议", str],
+            help_text="openai-completions、openai-responses 或 anthropic-messages",
+        ),
+        Option(
+            "--base-url|-u",
+            Args["base_url#Endpoint Base URL", str],
+            help_text="Provider API Base URL",
+        ),
+        Option(
+            "--timeout",
+            Args["timeout_seconds#请求超时秒数", float],
+            help_text="请求超时秒数",
+        ),
+        Option(
+            "--max-retries",
+            Args["max_retries#最大重试次数", int],
+            help_text="SDK 最大重试次数",
+        ),
+    )
+
+
 def _model_options() -> tuple[Option, ...]:
     return (
         Option(
@@ -21,6 +46,11 @@ def _model_options() -> tuple[Option, ...]:
             help_text="模型最大并发请求数",
         ),
         Option(
+            "--default-max-output-tokens",
+            Args["default_max_output_tokens#默认最大输出 token", str],
+            help_text="正整数；使用“空”清空（Anthropic Messages 必填）",
+        ),
+        Option(
             "--tools",
             Args["tools#true/false", bool],
             help_text="是否支持工具调用",
@@ -29,6 +59,11 @@ def _model_options() -> tuple[Option, ...]:
             "--vision",
             Args["vision#true/false", bool],
             help_text="是否支持图片输入",
+        ),
+        Option(
+            "--temperature",
+            Args["temperature#true/false", bool],
+            help_text="是否支持 temperature 参数",
         ),
         Option(
             "--reasoning",
@@ -44,6 +79,16 @@ def _model_options() -> tuple[Option, ...]:
             "--parallel-tools",
             Args["parallel_tool_calls#true/false", bool],
             help_text="是否支持并行工具调用",
+        ),
+        Option(
+            "--anthropic-thinking",
+            Args["anthropic_thinking#thinking 设置", str],
+            help_text="none、disabled、adaptive 或 enabled",
+        ),
+        Option(
+            "--anthropic-thinking-budget",
+            Args["anthropic_thinking_budget#thinking token 预算", int],
+            help_text="enabled thinking 的固定 token 预算",
         ),
         Option(
             "--selectable",
@@ -77,11 +122,13 @@ model_admin = on_alconna(
                 Subcommand(
                     "add",
                     Args["alias#Endpoint 别名", str],
+                    *_endpoint_options(),
                     help_text="通过私聊向导添加 Endpoint",
                 ),
                 Subcommand(
                     "edit",
                     Args["alias#Endpoint 别名", str],
+                    *_endpoint_options(),
                     help_text="通过私聊向导编辑 Endpoint",
                 ),
                 Subcommand(
@@ -89,7 +136,7 @@ model_admin = on_alconna(
                     Args["alias#Endpoint 别名", str],
                     help_text="删除未被模型引用的 Endpoint",
                 ),
-                help_text="管理 OpenAI 兼容 Endpoint",
+                help_text="管理多协议 LLM Endpoint",
             ),
             Subcommand(
                 "model",
@@ -129,8 +176,9 @@ model_admin = on_alconna(
                 "llm model use gpt\n"
                 "llm config setup\n"
                 "llm config endpoint edit local\n"
+                "llm config endpoint add claude --protocol anthropic-messages\n"
                 "llm config model add vision --endpoint local --model-id gpt-vision "
-                "--vision true --tools true --parallel-tools true"
+                "--vision true --temperature true --tools true --parallel-tools true"
             ),
             author="wyf7685",
         ),
