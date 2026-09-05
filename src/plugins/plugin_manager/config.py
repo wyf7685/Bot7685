@@ -3,13 +3,14 @@ from pathlib import Path
 from threading import RLock
 from typing import Any, cast
 
+from nonebot_plugin_localstore import get_plugin_config_file
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 from .models import PluginState, PluginSwitch, SwitchConfig, normalize_state
 
-CONFIG_FILE = Path.cwd() / "config" / "plugin-switch.yml"
+CONFIG_FILE = get_plugin_config_file("plugin-switch.yml")
 
 _yaml = YAML(typ="rt")
 _yaml.preserve_quotes = True
