@@ -1,4 +1,4 @@
-import httpx
+import httpx2
 
 from ....config import WebSearchConfig
 from ....contracts.web import CitationRegistry, WebSearchProvider
@@ -11,7 +11,7 @@ def create_web_search_provider(
     config: WebSearchConfig,
     citation_registry: CitationRegistry,
     *,
-    client: httpx.AsyncClient | None = None,
+    client: httpx2.AsyncClient | None = None,
 ) -> WebSearchProvider:
     """Create the configured provider."""
 

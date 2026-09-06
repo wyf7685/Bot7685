@@ -6,7 +6,7 @@ from typing import Protocol, cast
 
 import anyio
 import bot7685_ext.wplace
-import httpx
+import httpx2
 from bot7685_ext.wplace import ColorEntry, compose_tiles
 from nonebot import logger
 from nonebot.utils import run_sync
@@ -53,7 +53,7 @@ async def download_preview(
 
     @with_semaphore(4)
     @with_retry(
-        *(httpx.ConnectError, httpx.TimeoutException, httpx.HTTPStatusError),
+        *(httpx2.ConnectError, httpx2.TimeoutException, httpx2.HTTPStatusError),
         delay=1,
     )
     async def fetch_tile(x: int, y: int) -> None:
@@ -64,7 +64,7 @@ async def download_preview(
 
     async with (
         PerfLog.for_action("downloading tiles") as perf,
-        httpx.AsyncClient(proxy=proxy) as client,
+        httpx2.AsyncClient(proxy=proxy) as client,
         anyio.create_task_group() as tg,
     ):
         for x, y in coord1.all_tile_coords(coord2):

@@ -11,7 +11,7 @@ from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
 import anyio
-import httpx
+import httpx2
 from anyio.to_thread import run_sync
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -127,7 +127,7 @@ class HttpxSafePageFetcher:
         citation_registry: InvocationCitationRegistry,
         *,
         resolver: AddressResolver | None = None,
-        transport: httpx.AsyncBaseTransport | None = None,
+        transport: httpx2.AsyncBaseTransport | None = None,
         clock: Callable[[], float] = monotonic,
         source_registry: SourceRegistry | None = None,
         media_registry: InvocationMediaRegistry | None = None,
@@ -140,28 +140,28 @@ class HttpxSafePageFetcher:
         self._media_registry = media_registry
         self._robots_cache: dict[tuple[str, bool], _RobotsCacheEntry] = {}
         if transport is None:
-            transport = httpx.AsyncHTTPTransport(
+            transport = httpx2.AsyncHTTPTransport(
                 trust_env=False,
                 http1=True,
                 http2=False,
-                limits=httpx.Limits(max_keepalive_connections=0),
+                limits=httpx2.Limits(max_keepalive_connections=0),
             )
-        self._client = httpx.AsyncClient(
+        self._client = httpx2.AsyncClient(
             transport=transport,
             trust_env=False,
             follow_redirects=False,
-            timeout=httpx.Timeout(None),
+            timeout=httpx2.Timeout(None),
         )
-        self._source_client: httpx.AsyncClient | None = None
+        self._source_client: httpx2.AsyncClient | None = None
         if self._config.source_proxy is not None:
-            self._source_client = httpx.AsyncClient(
+            self._source_client = httpx2.AsyncClient(
                 proxy=self._config.source_proxy.get_secret_value(),
                 trust_env=False,
                 follow_redirects=False,
-                timeout=httpx.Timeout(None),
+                timeout=httpx2.Timeout(None),
                 http1=True,
                 http2=False,
-                limits=httpx.Limits(max_keepalive_connections=0),
+                limits=httpx2.Limits(max_keepalive_connections=0),
             )
 
     @property
@@ -259,7 +259,7 @@ class HttpxSafePageFetcher:
                         addresses[0],
                         method="HEAD",
                     )
-                    response: httpx.Response | None = None
+                    response: httpx2.Response | None = None
                     try:
                         try:
                             response = await self._client.send(
@@ -268,9 +268,9 @@ class HttpxSafePageFetcher:
                                 follow_redirects=False,
                                 auth=None,
                             )
-                        except httpx.TimeoutException:
+                        except httpx2.TimeoutException:
                             raise SafePageFetchError("timeout") from None
-                        except httpx.HTTPError:
+                        except httpx2.HTTPError:
                             raise SafePageFetchError("network") from None
                         _verify_expected_peer(response, addresses)
                         if response.status_code not in _REDIRECT_STATUSES:
@@ -435,7 +435,7 @@ class HttpxSafePageFetcher:
                     referer=referer,
                 )
                 client = self._client
-            response: httpx.Response | None = None
+            response: httpx2.Response | None = None
             try:
                 try:
                     response = await client.send(
@@ -444,9 +444,9 @@ class HttpxSafePageFetcher:
                         follow_redirects=False,
                         auth=None,
                     )
-                except httpx.TimeoutException:
+                except httpx2.TimeoutException:
                     raise SafePageFetchError("timeout") from None
-                except httpx.HTTPError:
+                except httpx2.HTTPError:
                     raise SafePageFetchError("network") from None
 
                 if not use_source_proxy:
@@ -517,21 +517,21 @@ class HttpxSafePageFetcher:
 
     async def _read_wire_body(
         self,
-        response: httpx.Response,
+        response: httpx2.Response,
         limit: int,
     ) -> bytes:
         try:
             return await read_bounded_body(response, limit)
         except ResponseTooLargeError, InvalidResponseHeaderError:
             raise SafePageFetchError("too_large") from None
-        except httpx.TimeoutException:
+        except httpx2.TimeoutException:
             raise SafePageFetchError("timeout") from None
-        except httpx.HTTPError:
+        except httpx2.HTTPError:
             raise SafePageFetchError("network") from None
 
     def _validate_content_type(
         self,
-        headers: httpx.Headers,
+        headers: httpx2.Headers,
         *,
         allowed_content_types: Sequence[str] | None = None,
     ) -> tuple[str, str | None]:
@@ -558,7 +558,7 @@ class HttpxSafePageFetcher:
         return media_type, charset
 
     @staticmethod
-    def _content_encoding(headers: httpx.Headers) -> str:
+    def _content_encoding(headers: httpx2.Headers) -> str:
         values = headers.get_list("content-encoding")
         if not values:
             return "identity"
@@ -751,8 +751,8 @@ def _build_source_proxy_request(
     accept: str,
     accept_encoding: str,
     referer: str | None = None,
-) -> httpx.Request:
-    return httpx.Request(
+) -> httpx2.Request:
+    return httpx2.Request(
         "GET",
         target.url,
         headers=_request_headers(
@@ -771,7 +771,7 @@ def _build_direct_request(
     accept: str = "text/html,application/xhtml+xml,text/plain,text/markdown",
     accept_encoding: str = "gzip, deflate",
     referer: str | None = None,
-) -> httpx.Request:
+) -> httpx2.Request:
     return build_pinned_request(
         target,
         address,
@@ -785,7 +785,7 @@ def _build_direct_request(
 
 
 def _verify_expected_peer(
-    response: httpx.Response, expected: Sequence[IPAddress]
+    response: httpx2.Response, expected: Sequence[IPAddress]
 ) -> None:
     try:
         verify_peer(response, expected)

@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Final
 from urllib.parse import urljoin
 
-import httpx
+import httpx2
 from nonebot_plugin_alconna.uniseg import Image
 
 from ..config import ImagesConfig
@@ -58,7 +58,7 @@ class _ResolvedImageTarget:
 @dataclass(frozen=True, slots=True)
 class _SafeImageFetcher:
     resolver: ImageURLResolver
-    transport: httpx.AsyncBaseTransport = field(repr=False, compare=False)
+    transport: httpx2.AsyncBaseTransport = field(repr=False, compare=False)
 
     async def fetch(self, url: str, limit: int) -> bytes:
         fetch_task = asyncio.create_task(self._fetch(url, limit))
@@ -250,7 +250,7 @@ async def _acquire_outcome(
         return _AcquiredImage(collected=image, data=data, sha256=digest)
     except _SourceTooLargeError:
         category = ImageFailureCategory.TOO_LARGE
-    except httpx.TransportError, _ImageDownloadError:
+    except httpx2.TransportError, _ImageDownloadError:
         category = ImageFailureCategory.DOWNLOAD
     except _InvalidImageError:
         category = ImageFailureCategory.INVALID
@@ -343,9 +343,9 @@ async def _resolve_image_target(
 
 async def _send_pinned_request(
     target: _ResolvedImageTarget,
-    transport: httpx.AsyncBaseTransport,
-) -> tuple[httpx.Response, int]:
-    last_error: httpx.TransportError | None = None
+    transport: httpx2.AsyncBaseTransport,
+) -> tuple[httpx2.Response, int]:
+    last_error: httpx2.TransportError | None = None
     for attempts, address in enumerate(target.addresses, 1):
         request = build_pinned_request(
             target.target,
@@ -364,14 +364,14 @@ async def _send_pinned_request(
         )
         try:
             return await transport.handle_async_request(request), attempts
-        except httpx.TransportError as error:
+        except httpx2.TransportError as error:
             last_error = error
     if last_error is not None:
         raise last_error
     raise _SourceUnavailableError
 
 
-async def _read_response_bounded(response: httpx.Response, limit: int) -> bytes:
+async def _read_response_bounded(response: httpx2.Response, limit: int) -> bytes:
     _validate_content_encoding(response)
     try:
         return await read_bounded_body(response, limit)
@@ -381,7 +381,7 @@ async def _read_response_bounded(response: httpx.Response, limit: int) -> bytes:
         raise _ImageDownloadError from None
 
 
-def _validate_content_encoding(response: httpx.Response) -> None:
+def _validate_content_encoding(response: httpx2.Response) -> None:
     content_encoding = response.headers.get("Content-Encoding", "").strip().lower()
     if content_encoding and content_encoding != "identity":
         raise _ImageDownloadError

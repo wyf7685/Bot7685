@@ -10,7 +10,7 @@ from collections.abc import (
 from datetime import UTC, datetime
 from typing import Any, Concatenate
 
-import httpx
+import httpx2
 from nonebot import get_driver, logger
 from pydantic import BaseModel
 
@@ -70,10 +70,10 @@ def _check_api[**P, R](
             return None
         try:
             result = await method(self, *args, **kwargs)
-        except httpx.RequestError:
+        except httpx2.RequestError:
             self._mark_api_status(False)
             return None
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             try:
                 detail = exc.response.json().get("detail")
             except Exception:
@@ -104,10 +104,10 @@ def _check_api_gen[**P, R](
         try:
             async for item in method(self, *args, **kwargs):
                 yield item
-        except httpx.RequestError:
+        except httpx2.RequestError:
             self._mark_api_status(False)
             raise
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             try:
                 detail = exc.response.json().get("detail")
             except Exception:
@@ -125,7 +125,7 @@ def _check_api_gen[**P, R](
 class DetectorClient:
     def __init__(self) -> None:
         self.endpoints = Endpoints()
-        self._client: httpx.AsyncClient | None = None
+        self._client: httpx2.AsyncClient | None = None
         self._api_available = False
         self._last_health_check = datetime.fromtimestamp(0, tz=UTC)
 
@@ -133,9 +133,9 @@ class DetectorClient:
     def is_available(self) -> bool:
         return self.endpoints.available and self._api_available
 
-    def _get_client(self) -> httpx.AsyncClient:
+    def _get_client(self) -> httpx2.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient()
+            self._client = httpx2.AsyncClient()
         return self._client
 
     async def close(self) -> None:
@@ -146,7 +146,7 @@ class DetectorClient:
     async def _check_health(self) -> bool:
         try:
             response = await self._get_client().get(self.endpoints.health, timeout=5)
-        except httpx.RequestError, httpx.HTTPStatusError:
+        except httpx2.RequestError, httpx2.HTTPStatusError:
             return False
         else:
             return response.status_code == 200

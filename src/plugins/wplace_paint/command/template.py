@@ -1,6 +1,6 @@
 import random
 
-import httpx
+import httpx2
 from nonebot import logger
 from nonebot.adapters import Bot, Event
 from nonebot.exception import MatcherException
@@ -64,7 +64,7 @@ async def assign_template_bind_revoke(sid: SceneID) -> None:
 
 async def extract_image(bot: Bot, event: Event) -> bytes | None:
     async def download_from_url(url: str) -> bytes:
-        async with httpx.AsyncClient() as client:
+        async with httpx2.AsyncClient() as client:
             resp = await client.get(url)
             return resp.raise_for_status().content
 
@@ -131,7 +131,7 @@ async def assign_template_preview_overlay(
 
     try:
         img_bytes = await render_template_overlay(cfg, overlay_alpha)
-    except* httpx.HTTPError as exc_group:
+    except* httpx2.HTTPError as exc_group:
         await finish(
             "获取模板预览失败:\n"
             + "\n".join(f"- {e!r}" for e in flatten_exception_group(exc_group))
@@ -154,7 +154,7 @@ async def assign_template_preview(
 
     try:
         img_bytes = await download_template_preview(cfg, background, pixels)
-    except* httpx.HTTPError as exc_group:
+    except* httpx2.HTTPError as exc_group:
         await finish(
             "获取模板预览失败:\n"
             + "\n".join(f"- {e!r}" for e in flatten_exception_group(exc_group))

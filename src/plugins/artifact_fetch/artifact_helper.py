@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Self
 import anyio
 import anyio.lowlevel
 import ayafileio
-import httpx
+import httpx2
 from githubkit.exception import RequestFailed
 from githubkit.versions.latest.models import Artifact, Workflow, WorkflowRun
 from nonebot import logger
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 async def download_artifact(
-    client: httpx.AsyncClient,
+    client: httpx2.AsyncClient,
     artifact: Artifact,
     save_path: Path,
     chunk_size: int = plugin_config.download.chunk_size,
@@ -123,7 +123,7 @@ async def download_artifact(
             except Exception as e:
                 logger.opt(
                     colors=True,
-                    exception=not isinstance(e, httpx.HTTPError),
+                    exception=not isinstance(e, httpx2.HTTPError),
                 ).warning(
                     f"{colored_name}: Error downloading chunk:"
                     f" seq=<c>{chunk_seq}</>, range=<c>{chunk_range}</>"
@@ -286,7 +286,7 @@ class ArtifactHelper:
             else {}
         )
 
-        async def download(client: httpx.AsyncClient, artifact: Artifact) -> None:
+        async def download(client: httpx2.AsyncClient, artifact: Artifact) -> None:
             save_path = save_dir / f"{artifact.id}.zip"
             try:
                 await download_artifact(client, artifact, save_path)

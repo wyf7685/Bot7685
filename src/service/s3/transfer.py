@@ -7,7 +7,7 @@ from typing import Self, assert_never, cast
 import anyio
 import anyio.lowlevel
 import ayafileio
-import httpx
+import httpx2
 from nonebot.utils import escape_tag
 
 from src.utils import logger_wrapper
@@ -64,7 +64,7 @@ class MultipartUploadTask:
 
     @staticmethod
     def _is_retryable(error: BaseException) -> bool:
-        if isinstance(error, httpx.RequestError):
+        if isinstance(error, httpx2.RequestError):
             return True
         return isinstance(error, S3HttpStatusError) and (
             error.status_code == 429 or error.status_code >= 500
@@ -81,7 +81,7 @@ class MultipartUploadTask:
                     part_number=part_number,
                     upload_id=self.upload_id,
                 )
-            except (httpx.RequestError, S3HttpStatusError) as error:
+            except (httpx2.RequestError, S3HttpStatusError) as error:
                 if not self._is_retryable(error):
                     raise
                 last_error = error

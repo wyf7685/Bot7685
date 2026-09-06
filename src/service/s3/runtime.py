@@ -2,7 +2,7 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-import httpx
+import httpx2
 
 from .client import AsyncS3Client
 from .config import S3Config
@@ -15,7 +15,7 @@ class S3Runtime:
     def __init__(self, config: S3Config) -> None:
         self.config = config
         self.client = AsyncS3Client(config)
-        self.source_client: httpx.AsyncClient | None = None
+        self.source_client: httpx2.AsyncClient | None = None
         self._state_lock = asyncio.Lock()
         self._close_task: asyncio.Task[None] | None = None
         self._started = False
@@ -46,7 +46,7 @@ class S3Runtime:
             return
         try:
             await self.client.__aenter__()
-            self.source_client = httpx.AsyncClient(
+            self.source_client = httpx2.AsyncClient(
                 follow_redirects=True,
                 timeout=float(self.config.timeout_seconds),
             )
@@ -56,7 +56,7 @@ class S3Runtime:
             raise
         self._started = True
 
-    def require_source_client(self) -> httpx.AsyncClient:
+    def require_source_client(self) -> httpx2.AsyncClient:
         if self.source_client is None:
             raise S3ConfigurationError
         return self.source_client

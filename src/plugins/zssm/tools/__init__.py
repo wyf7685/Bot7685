@@ -3,7 +3,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
-import httpx
+import httpx2
 from nonebot_plugin_uninfo import Session
 
 from src.service.llm import BoundTool, LLMService
@@ -63,13 +63,13 @@ async def open_zssm_tool_resources(
         citations = InvocationCitationRegistry()
         media_registry = InvocationMediaRegistry()
         message_images = InvocationMessageImageRegistry(deferred_images)
-        search_client: httpx.AsyncClient | None = None
+        search_client: httpx2.AsyncClient | None = None
         if config.web_search.backend != "ddgs":
             search_client = await stack.enter_async_context(
-                httpx.AsyncClient(
+                httpx2.AsyncClient(
                     trust_env=False,
                     follow_redirects=False,
-                    timeout=httpx.Timeout(None),
+                    timeout=httpx2.Timeout(None),
                 )
             )
 

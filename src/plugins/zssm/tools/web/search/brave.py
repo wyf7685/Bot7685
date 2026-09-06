@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-import httpx
+import httpx2
 
 from ....config import WebSearchConfig
 from ....contracts.web import (
@@ -22,7 +22,7 @@ class BraveSearchProvider(WebSearchProvider):
         self,
         config: WebSearchConfig,
         citation_registry: CitationRegistry,
-        client: httpx.AsyncClient,
+        client: httpx2.AsyncClient,
     ) -> None:
         if config.backend != "brave" or config.brave_api_key is None:
             raise ValueError(
@@ -30,7 +30,7 @@ class BraveSearchProvider(WebSearchProvider):
             )
         self._client = client
         self._api_key = config.brave_api_key
-        self._timeout = httpx.Timeout(config.timeout_seconds)
+        self._timeout = httpx2.Timeout(config.timeout_seconds)
         self._safe_search = config.safe_search
         self._citations = citation_registry
 
@@ -65,9 +65,9 @@ class BraveSearchProvider(WebSearchProvider):
                 timeout=self._timeout,
                 follow_redirects=False,
             )
-        except httpx.TimeoutException as error:
+        except httpx2.TimeoutException as error:
             raise WebSearchError("timeout", cause_type=type(error).__name__) from None
-        except httpx.HTTPError as error:
+        except httpx2.HTTPError as error:
             raise WebSearchError(
                 "unavailable", cause_type=type(error).__name__
             ) from None

@@ -4,7 +4,7 @@ import asyncio
 import base64
 import functools
 
-import httpx
+import httpx2
 from nonebot.log import logger
 from nonebot.utils import escape_tag
 from nonebot_plugin_alconna.uniseg.utils import fleep
@@ -59,9 +59,9 @@ class AvatarManager:
         user = self._members.get(uid)
         return user.display_name if user else None
 
-    def _get_client(self) -> httpx.AsyncClient:
+    def _get_client(self) -> httpx2.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=10.0, follow_redirects=True)
+            self._client = httpx2.AsyncClient(timeout=10.0, follow_redirects=True)
         return self._client
 
     async def _get_avatar_data_uri(self, uid: str) -> str:

@@ -6,7 +6,7 @@ from contextvars import ContextVar
 from types import TracebackType
 from typing import NamedTuple, Self
 
-import httpx
+import httpx2
 import yarl
 from nonebot.utils import run_sync
 from nonebot_plugin_alconna.uniseg import Segment, UniMessage
@@ -18,11 +18,11 @@ from src.utils import attach_async_context
 
 class _ContextClientHolder:
     def __init__(self) -> None:
-        self.client: httpx.AsyncClient | None = None
+        self.client: httpx2.AsyncClient | None = None
 
-    async def get(self) -> httpx.AsyncClient:
+    async def get(self) -> httpx2.AsyncClient:
         if self.client is None:
-            self.client = httpx.AsyncClient()
+            self.client = httpx2.AsyncClient()
             await self.client.__aenter__()
         return self.client
 
@@ -46,12 +46,12 @@ _ctx_client = ContextVar[_ContextClientHolder | None](
 
 
 @contextlib.asynccontextmanager
-async def async_client() -> AsyncIterator[httpx.AsyncClient]:
+async def async_client() -> AsyncIterator[httpx2.AsyncClient]:
     if holder := _ctx_client.get():
         yield await holder.get()
         return
 
-    async with httpx.AsyncClient() as client:
+    async with httpx2.AsyncClient() as client:
         yield client
 
 
@@ -77,24 +77,24 @@ def fix_url(url: str) -> str:
 
 
 @attach_async_context(async_client)
-async def download_url(client: httpx.AsyncClient, url: str) -> bytes:
+async def download_url(client: httpx2.AsyncClient, url: str) -> bytes:
     url = fix_url(url)
     try:
         resp = await client.get(url)
         resp.raise_for_status()
-    except httpx.ConnectError, httpx.HTTPError:
+    except httpx2.ConnectError, httpx2.HTTPError:
         return b""
     else:
         return resp.read()
 
 
 @attach_async_context(async_client)
-async def check_url_ok(client: httpx.AsyncClient, url: str) -> bool:
+async def check_url_ok(client: httpx2.AsyncClient, url: str) -> bool:
     url = fix_url(url)
     try:
         async with client.stream("GET", url) as resp:
             resp.raise_for_status()
-    except httpx.ConnectError, httpx.HTTPError:
+    except httpx2.ConnectError, httpx2.HTTPError:
         return False
     else:
         return True
@@ -107,7 +107,7 @@ class _FileType(NamedTuple):
 
 
 @attach_async_context(async_client)
-async def guess_url_type(client: httpx.AsyncClient, url: str) -> _FileType | None:
+async def guess_url_type(client: httpx2.AsyncClient, url: str) -> _FileType | None:
     url = fix_url(url)
     async with client.stream("GET", url) as resp:
         size = resp.headers.get("Content-Length")
@@ -123,7 +123,7 @@ async def guess_url_type(client: httpx.AsyncClient, url: str) -> _FileType | Non
 
 
 @attach_async_context(async_client)
-async def solve_url_302(client: httpx.AsyncClient, url: str) -> str:
+async def solve_url_302(client: httpx2.AsyncClient, url: str) -> str:
     url = fix_url(url)
     async with client.stream("GET", url) as resp:
         if resp.status_code == 302:

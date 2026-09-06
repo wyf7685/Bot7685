@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
-import httpx
+import httpx2
 from nonebot import logger
 from nonebot.adapters.discord.api.types import TimeStampStyle
 from nonebot.adapters.discord.message import (
@@ -51,7 +51,7 @@ def _extract_segs(msg: Message) -> list[tuple[SegType, Any]]:
 
 async def _download_image(url: str) -> Path:
     path = get_plugin_cache_dir() / f"{uuid.uuid4().hex}.png"
-    async with httpx.AsyncClient() as client:
+    async with httpx2.AsyncClient() as client:
         resp = await client.get(url, follow_redirects=True)
         resp.raise_for_status()
         path.write_bytes(resp.content)

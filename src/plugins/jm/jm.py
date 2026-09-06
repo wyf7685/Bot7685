@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator, Iterable
 from typing import override
 
 import anyio
-import httpx
+import httpx2
 import jmcomic
 import PIL.Image
 from nonebot.log import logger
@@ -89,7 +89,7 @@ def _decode_image(raw: bytes, num: int) -> bytes:
 
 
 async def download_image(
-    client: httpx.AsyncClient,
+    client: httpx2.AsyncClient,
     image: jmcomic.JmImageDetail,
 ) -> bytes:
     num = jmcomic.JmImageTool.get_num_by_detail(image)
@@ -148,9 +148,9 @@ async def fetch_album_images(
 
 class JmDownloader(Downloader[jmcomic.JmAlbumDetail, jmcomic.JmImageDetail]):
     @override
-    def create_httpx_client(self) -> httpx.AsyncClient:
-        transport = httpx.AsyncHTTPTransport(retries=3, http2=True)
-        return httpx.AsyncClient(transport=transport)
+    def create_client(self) -> httpx2.AsyncClient:
+        transport = httpx2.AsyncHTTPTransport(retries=3, http2=True)
+        return httpx2.AsyncClient(transport=transport)
 
     @override
     async def fetch_index(self, album_id: int) -> jmcomic.JmAlbumDetail:
@@ -175,4 +175,4 @@ class JmDownloader(Downloader[jmcomic.JmAlbumDetail, jmcomic.JmImageDetail]):
             yield f"P_{p}_{i}", image
 
     async def execute_task(self, task: jmcomic.JmImageDetail) -> bytes:
-        return await download_image(await self.get_httpx_client(), task)
+        return await download_image(await self.get_client(), task)

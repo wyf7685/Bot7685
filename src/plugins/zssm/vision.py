@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from time import perf_counter
 from typing import Final
 
-import httpx
+import httpx2
 
 from src.service.llm import (
     ChatInput,
@@ -137,7 +137,7 @@ async def route_vision(
     llm_service: LLMService,
     adapter_image_fetcher: AdapterImageFetcher | None = None,
     url_resolver: ImageURLResolver | None = None,
-    url_transport: httpx.AsyncBaseTransport | None = None,
+    url_transport: httpx2.AsyncBaseTransport | None = None,
 ) -> VisionRoutingResult:
     """Prepare images and route them directly or through the fallback vision model."""
 

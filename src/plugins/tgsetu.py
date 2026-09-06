@@ -1,6 +1,6 @@
 from enum import Enum
 
-import httpx
+import httpx2
 from nonebot.adapters import Bot
 from nonebot.compat import type_validate_json
 from nonebot.exception import ActionFailed
@@ -72,11 +72,11 @@ async def _(arp: Arparma) -> None:
     base_url = "https://api.lolicon.app/setu/v2"
     params = {"r18": int("r18" in arp.options), "excludeAI": "noai" in arp.options}
 
-    async with httpx.AsyncClient() as client:
+    async with httpx2.AsyncClient() as client:
         try:
             resp = await client.get(base_url, params=params)
             resp.raise_for_status()
-        except httpx.HTTPStatusError as err:
+        except httpx2.HTTPStatusError as err:
             await UniMessage.text(f"接口请求失败: {err}").finish(reply_to=True)
         except Exception as err:
             await UniMessage.text(f"接口请求出错: {err}").finish(reply_to=True)

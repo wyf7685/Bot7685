@@ -1,3 +1,7 @@
+import httpx2
+
+httpx2.alias_httpx()
+
 from src.bootstrap import init_nonebot
 
 app = init_nonebot()

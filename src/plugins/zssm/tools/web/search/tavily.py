@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-import httpx
+import httpx2
 
 from ....config import WebSearchConfig
 from ....contracts.web import (
@@ -14,7 +14,7 @@ from .common import SearchDiagnosticReason, WebSearchError, normalize_search_row
 _TAVILY_ENDPOINT = "https://api.tavily.com/search"
 
 
-def _tavily_error_reason(response: httpx.Response) -> SearchDiagnosticReason:
+def _tavily_error_reason(response: httpx2.Response) -> SearchDiagnosticReason:
     defaults: dict[int, SearchDiagnosticReason] = {
         401: "invalid_api_key",
         403: "forbidden",
@@ -64,7 +64,7 @@ class TavilySearchProvider(WebSearchProvider):
         self,
         config: WebSearchConfig,
         citation_registry: CitationRegistry,
-        client: httpx.AsyncClient,
+        client: httpx2.AsyncClient,
     ) -> None:
         if config.backend != "tavily" or config.tavily_api_key is None:
             raise ValueError(
@@ -72,7 +72,7 @@ class TavilySearchProvider(WebSearchProvider):
             )
         self._client = client
         self._api_key = config.tavily_api_key
-        self._timeout = httpx.Timeout(config.timeout_seconds)
+        self._timeout = httpx2.Timeout(config.timeout_seconds)
         # Tavily's enhanced safe search is boolean and enterprise-only. The
         # shared "moderate" setting must not opt into that strict feature.
         self._safe_search = config.safe_search == "strict"
@@ -110,9 +110,9 @@ class TavilySearchProvider(WebSearchProvider):
                 timeout=self._timeout,
                 follow_redirects=False,
             )
-        except httpx.TimeoutException as error:
+        except httpx2.TimeoutException as error:
             raise WebSearchError("timeout", cause_type=type(error).__name__) from None
-        except httpx.HTTPError as error:
+        except httpx2.HTTPError as error:
             raise WebSearchError(
                 "unavailable", cause_type=type(error).__name__
             ) from None

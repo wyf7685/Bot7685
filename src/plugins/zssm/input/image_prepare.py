@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-import httpx
+import httpx2
 
 from ..config import ImagesConfig
 from ..contracts.images import ImageFailure, ImageStageStatistics, PreparedImage
@@ -41,7 +41,7 @@ async def prepare_images(
     config: ImagesConfig,
     adapter_image_fetcher: AdapterImageFetcher | None = None,
     url_resolver: ImageURLResolver | None = None,
-    url_transport: httpx.AsyncBaseTransport | None = None,
+    url_transport: httpx2.AsyncBaseTransport | None = None,
 ) -> ImagePreparationResult:
     """Acquire, deduplicate, and normalize collected images in stable order."""
 
@@ -59,12 +59,12 @@ async def prepare_images(
     )
     if needs_http:
         owned_transport = url_transport is None
-        active_transport = url_transport or httpx.AsyncHTTPTransport(
+        active_transport = url_transport or httpx2.AsyncHTTPTransport(
             trust_env=False,
             http1=True,
             http2=False,
             retries=0,
-            limits=httpx.Limits(
+            limits=httpx2.Limits(
                 max_connections=config.max_parallel,
                 max_keepalive_connections=0,
             ),

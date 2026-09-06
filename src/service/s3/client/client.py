@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 import anyio
 import anyio.lowlevel
-import httpx
+import httpx2
 
 from ..config import S3Config
 from .auth import (
@@ -60,7 +60,7 @@ class AsyncS3Client:
         self._presign_host = self._compute_host(presign_endpoint)
         self._base_url = f"{config.scheme}://{self._request_host}"
         self._presign_base_url = f"{config.scheme}://{self._presign_host}"
-        self._client: httpx.AsyncClient | None = None
+        self._client: httpx2.AsyncClient | None = None
         self._signer = AWSSigV4Signer(
             access_key_id=config.access_key_id.get_secret_value(),
             secret_access_key=config.secret_access_key.get_secret_value(),
@@ -77,8 +77,8 @@ class AsyncS3Client:
 
     async def __aenter__(self) -> Self:
         if self._client is None:
-            transport = httpx.AsyncHTTPTransport(retries=3, http2=True)
-            self._client = httpx.AsyncClient(
+            transport = httpx2.AsyncHTTPTransport(retries=3, http2=True)
+            self._client = httpx2.AsyncClient(
                 base_url=self._base_url,
                 timeout=float(self._config.timeout_seconds),
                 transport=transport,
@@ -98,7 +98,7 @@ class AsyncS3Client:
             await self._client.aclose()
             self._client = None
 
-    def _require_client(self) -> httpx.AsyncClient:
+    def _require_client(self) -> httpx2.AsyncClient:
         if self._client is None:
             raise S3ClientError("AsyncS3Client must be used with 'async with'")
         return self._client
@@ -163,7 +163,7 @@ class AsyncS3Client:
         params: Mapping[str, str | int] | None = None,
         headers: Mapping[str, str] | None = None,
         content: bytes | None = None,
-    ) -> httpx.Response:
+    ) -> httpx2.Response:
         query = self._normalize_params(params)
         request_path = self._build_request_path(key)
         canonical_query = _format_query_kv(_encode_query_kv(query))
@@ -320,7 +320,7 @@ class AsyncS3Client:
         key: str,
         *,
         range_start: int | None = None,
-    ) -> AsyncIterator[httpx.Response]:
+    ) -> AsyncIterator[httpx2.Response]:
         headers: dict[str, str] = {}
         if range_start is not None and range_start > 0:
             headers["Range"] = f"bytes={range_start}-"
@@ -358,7 +358,7 @@ class AsyncS3Client:
 
     @staticmethod
     async def _read_limited_body(
-        response: httpx.Response,
+        response: httpx2.Response,
         *,
         limit: int,
     ) -> bytes:

@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator
 from typing import ClassVar
 
 import anyio
-import httpx
+import httpx2
 from nonebot import logger
 from nonebot.exception import NetworkError
 from nonebot_plugin_alconna import CustomNode, UniMessage
@@ -28,25 +28,25 @@ async def send_nodes(nodes: list[CustomNode]) -> None:
 class Downloader[Index, Task](ABC):
     concurrency: ClassVar[int] = 10
 
-    httpx_client: httpx.AsyncClient | None = None
+    httpx2_client: httpx2.AsyncClient | None = None
     stack: contextlib.AsyncExitStack | None = None
 
     @abstractmethod
-    def create_httpx_client(self) -> httpx.AsyncClient:
+    def create_client(self) -> httpx2.AsyncClient:
         raise NotImplementedError
 
-    async def get_httpx_client(self) -> httpx.AsyncClient:
-        if type(self).create_httpx_client is Downloader.create_httpx_client:
+    async def get_client(self) -> httpx2.AsyncClient:
+        if type(self).create_client is Downloader.create_client:
             raise NotImplementedError(
-                f"{type(self).__name__}.create_httpx_client() is not implemented"
+                f"{type(self).__name__}.create_httpx2_client() is not implemented"
             )
 
-        if self.httpx_client is None:
-            self.httpx_client = self.create_httpx_client()
+        if self.httpx2_client is None:
+            self.httpx2_client = self.create_client()
             if self.stack is not None:
-                await self.stack.enter_async_context(self.httpx_client)
+                await self.stack.enter_async_context(self.httpx2_client)
 
-        return self.httpx_client
+        return self.httpx2_client
 
     @abstractmethod
     async def fetch_index(self, id: int, /) -> Index:

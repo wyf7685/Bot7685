@@ -7,7 +7,7 @@ from typing import Any, Literal, cast
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 import anyio
-import httpx
+import httpx2
 
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 _MAX_URL_CHARS = 4096
@@ -180,7 +180,7 @@ def build_pinned_request(
     method: Literal["GET", "HEAD"] = "GET",
     headers: Mapping[str, str] | None = None,
     timeout: Mapping[str, float] | None = None,
-) -> httpx.Request:
+) -> httpx2.Request:
     parsed = urlsplit(target.url)
     connect_host = f"[{address}]" if address.version == 6 else str(address)
     connect_url = urlunsplit(
@@ -193,7 +193,7 @@ def build_pinned_request(
         extensions["timeout"] = dict(timeout)
     request_headers = dict(headers or ())
     request_headers["Host"] = target.host_header
-    return httpx.Request(
+    return httpx2.Request(
         method,
         connect_url,
         headers=request_headers,
@@ -201,7 +201,7 @@ def build_pinned_request(
     )
 
 
-def verify_peer(response: httpx.Response, expected: Sequence[IPAddress]) -> None:
+def verify_peer(response: httpx2.Response, expected: Sequence[IPAddress]) -> None:
     stream = response.extensions.get("network_stream")
     if stream is None or not hasattr(stream, "get_extra_info"):
         return
@@ -219,7 +219,7 @@ def verify_peer(response: httpx.Response, expected: Sequence[IPAddress]) -> None
         raise PeerMismatchError
 
 
-async def read_bounded_body(response: httpx.Response, limit: int) -> bytes:
+async def read_bounded_body(response: httpx2.Response, limit: int) -> bytes:
     if limit <= 0:
         raise ValueError("response body limit must be positive")
     lengths = response.headers.get_list("content-length")
@@ -249,7 +249,7 @@ async def read_bounded_body(response: httpx.Response, limit: int) -> bytes:
 
 
 async def close_response_bounded(
-    response: httpx.Response,
+    response: httpx2.Response,
     *,
     close_timeout: float = 1.0,
 ) -> None:

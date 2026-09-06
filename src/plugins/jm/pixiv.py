@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import override
 from urllib.parse import urlencode
 
-import httpx
+import httpx2
 import PIL.Image
 from pydantic import BaseModel
 
@@ -72,7 +72,7 @@ async def oauth_login(code: str, code_verifier: str) -> OauthResult:
         "redirect_uri": f"{APP_BASE_URL}/web/v1/users/auth/pixiv/callback",
     }
 
-    async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
+    async with httpx2.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
         resp = await client.post(f"{OAUTH_BASE_URL}/auth/token", data=data)
         resp.raise_for_status()
         return OauthResult.model_validate(resp.json())
@@ -87,7 +87,7 @@ async def oauth_refresh(refresh_token: str) -> OauthResult:
         "refresh_token": refresh_token,
     }
 
-    async with httpx.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
+    async with httpx2.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
         resp = await client.post(f"{OAUTH_BASE_URL}/auth/token", data=data)
         resp.raise_for_status()
         return OauthResult.model_validate(resp.json())
@@ -166,7 +166,7 @@ class PixivClient:
             "refresh_token": self.refresh_token,
         }
 
-        async with httpx.AsyncClient(headers=headers) as client:
+        async with httpx2.AsyncClient(headers=headers) as client:
             resp = await client.post(f"{OAUTH_BASE_URL}/auth/token", data=data)
             resp.raise_for_status()
             oauth_result = OauthResult.model_validate(resp.json())
@@ -189,7 +189,7 @@ class PixivClient:
         params = {"illust_id": illust_id}
         headers = await self.get_headers()
 
-        async with httpx.AsyncClient(headers=headers) as client:
+        async with httpx2.AsyncClient(headers=headers) as client:
             resp = await client.get(url, params=params)
             resp.raise_for_status()
             return IllustDetail.model_validate(resp.json())
@@ -197,13 +197,13 @@ class PixivClient:
     async def download_image(
         self,
         url: str,
-        client: httpx.AsyncClient | None = None,
+        client: httpx2.AsyncClient | None = None,
     ) -> bytes:
         headers = {
             "Referer": "https://www.pixiv.net/",
             "User-Agent": "PixivIOSApp/7.6.2 (iOS 12.2; iPhone9,1)",
         }
-        cm = contextlib.nullcontext(client) if client else httpx.AsyncClient()
+        cm = contextlib.nullcontext(client) if client else httpx2.AsyncClient()
         async with cm as client:
             resp = await client.get(url, headers=headers)
             resp.raise_for_status()
@@ -219,8 +219,8 @@ class PixivDownloader(Downloader[Illust, str]):
         self.pixiv_client = PixivClient(refresh_token)
 
     @override
-    def create_httpx_client(self) -> httpx.AsyncClient:
-        return httpx.AsyncClient()
+    def create_client(self) -> httpx2.AsyncClient:
+        return httpx2.AsyncClient()
 
     @override
     async def fetch_index(self, pid: int) -> Illust:
@@ -244,7 +244,7 @@ class PixivDownloader(Downloader[Illust, str]):
 
     @override
     async def execute_task(self, url: str) -> bytes:
-        raw = await self.pixiv_client.download_image(url, await self.get_httpx_client())
+        raw = await self.pixiv_client.download_image(url, await self.get_client())
         im = PIL.Image.open(io.BytesIO(raw)).convert("RGB")
         im.info["comment"] = generate_random_ascii_string(16)
         with io.BytesIO() as output:
