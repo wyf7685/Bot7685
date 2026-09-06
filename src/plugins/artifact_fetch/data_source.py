@@ -3,7 +3,7 @@ import functools
 import re
 import shutil
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from pathlib import Path
 from string import Formatter
 from typing import Annotated, Any, NamedTuple, Self
@@ -300,7 +300,7 @@ async def count_subscriptions(session: AsyncSession) -> int:
     return int(await session.scalar(select(func.count(Subscription.id))) or 0)
 
 
-async def _get_cache_directory() -> AsyncIterator[Path]:
+async def _get_cache_directory() -> AsyncGenerator[Path]:
     cache_dir = CACHE_DIR / uuid.uuid4().hex
     cache_dir.mkdir(parents=True, exist_ok=True)
     try:

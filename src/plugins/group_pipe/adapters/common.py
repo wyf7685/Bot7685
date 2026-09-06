@@ -15,7 +15,7 @@ class MessageConverter[
     TMS: MessageSegment = MessageSegment,
     TB: Bot = Bot,
     TM: Message = Message,
-](AbstractMessageConverter[TB, TM], adapter=None):  # ty: ignore[invalid-argument-type]
+](AbstractMessageConverter[TB, TM], adapter=None):
     logger: ClassVar[loguru.Logger] = nonebot.logger.opt(colors=True)
 
     def get_s3_key(self, key: str) -> str:
