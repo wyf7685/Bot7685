@@ -3,7 +3,6 @@ import re
 from copy import deepcopy
 from typing import assert_never, override
 
-import humanize
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.discord import Adapter, Bot, MessageEvent
 from nonebot.adapters.discord.api import AttachmentSend
@@ -25,6 +24,7 @@ from nonebot_plugin_alconna import uniseg as u
 
 from src.service.cache import get_cache
 from src.service.s3 import get_s3_service
+from src.utils import humanize_relative_time
 
 from ..adapter import converts
 from ..utils import guess_url_type
@@ -57,7 +57,7 @@ def humanize_time(time: dt.datetime, style: TimeStampStyle | None) -> str:
         case TimeStampStyle.LongDateTime:
             return time.strftime(f"%Y年%m月%d日{_weekday(time.weekday())} %H:%M")
         case TimeStampStyle.RelativeTime:
-            return humanize.naturaltime(dt.datetime.now(tz=UTC8) - time)
+            return humanize_relative_time(time - dt.datetime.now(tz=UTC8))
         case x:
             assert_never(x)
 

@@ -6,6 +6,8 @@ from typing import Literal
 from pydantic import BaseModel
 from tzlocal import get_localzone
 
+from src.utils import humanize_relative_time
+
 
 class Text(BaseModel):
     type: Literal["text"] = "text"
@@ -52,23 +54,7 @@ class ScheduleEntry(BaseModel):
     def relative_str(self) -> str:
         now = datetime.now(UTC)
         delta = self.timestamp - now
-        total_seconds = int(delta.total_seconds())
-        is_past = total_seconds < 0
-        abs_seconds = abs(total_seconds)
-
-        if abs_seconds < 3600:
-            minutes = max(abs_seconds // 60, 1)
-            text = f"{minutes} 分钟"
-        elif abs_seconds < 86400:
-            hours = abs_seconds // 3600
-            text = f"{hours} 小时"
-        else:
-            days = abs_seconds // 86400
-            text = f"{days} 天"
-
-        if is_past:
-            return f"{text}前"
-        return f"{text}后" if abs_seconds < 86400 else f"{text}内"
+        return humanize_relative_time(delta)
 
 
 class ScheduleData(BaseModel):

@@ -1,4 +1,5 @@
 import contextlib
+import datetime as dt
 import functools
 import inspect
 import threading
@@ -329,11 +330,21 @@ def attach_async_context[T, **P, R](
     return decorator
 
 
-def _setup() -> None:
-    with contextlib.suppress(ImportError):
-        import humanize
+def humanize_relative_time(delta: dt.timedelta) -> str:
+    total_seconds = int(delta.total_seconds())
+    is_past = total_seconds < 0
+    abs_seconds = abs(total_seconds)
 
-        humanize.activate("zh_CN")
+    if abs_seconds < 3600:
+        minutes = max(abs_seconds // 60, 1)
+        text = f"{minutes} 分钟"
+    elif abs_seconds < 86400:
+        hours = abs_seconds // 3600
+        text = f"{hours} 小时"
+    else:
+        days = abs_seconds // 86400
+        text = f"{days} 天"
 
-
-_setup()
+    if is_past:
+        return f"{text}前"
+    return f"{text}后" if abs_seconds < 86400 else f"{text}内"
