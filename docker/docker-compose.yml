@@ -27,6 +27,8 @@ services:
         condition: service_healthy
       playwright:
         condition: service_healthy
+      screen-detector:
+        condition: service_healthy
       # cpa:
       #   condition: service_started
 
@@ -114,6 +116,19 @@ services:
     networks:
       - bot7685
 
+  screen-detector:
+    image: ghcr.io/zgyj4532/opencv-screen-detector/inference:latest
+    restart: unless-stopped
+    volumes:
+      - screen_detector_data:/app/data
+    networks:
+      - bot7685
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8325/api/health', timeout=2).close()"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   redis:
     image: redis:alpine
     restart: unless-stopped
@@ -196,3 +211,4 @@ services:
 
 volumes:
   redis_data:
+  screen_detector_data:
