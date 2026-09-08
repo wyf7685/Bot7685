@@ -125,9 +125,11 @@ services:
       - bot7685
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8325/api/health', timeout=2).close()"]
-      interval: 5s
+      start_interval: 1s
+      start_period: 15s
+      interval: 1m
       timeout: 3s
-      retries: 5
+      retries: 3
 
   redis:
     image: redis:alpine
