@@ -4,9 +4,7 @@ ARG PLAYWRIGHT_VERSION
 ARG PLAYWRIGHT_BROWSER=chromium
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-RUN apt-get update && \
-    apt-get install -y curl && \
-    pip install playwright==${PLAYWRIGHT_VERSION} --no-cache-dir && \
+RUN pip install playwright==${PLAYWRIGHT_VERSION} --no-cache-dir && \
     playwright install --with-deps ${PLAYWRIGHT_BROWSER} && \
     rm -rf /var/lib/apt/lists/*
 
@@ -15,4 +13,4 @@ EXPOSE 3000
 ENTRYPOINT ["/bin/sh", "-c", "playwright run-server --host 0.0.0.0 --port 3000"]
 
 HEALTHCHECK --interval=5s --timeout=3s --retries=5 --start-period=10s \
-    CMD curl -f http://localhost:3000 || exit 1
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:3000', timeout=2).close()"]
