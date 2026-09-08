@@ -3,6 +3,7 @@ import importlib
 import importlib.metadata
 import json
 from collections import defaultdict
+from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
 
@@ -24,8 +25,8 @@ def _patched_require(name: str) -> ModuleType:
     return module
 
 
-def get_plugin_deps() -> dict[str, set[str]]:
-    return _plugin_deps
+def get_plugin_deps() -> Mapping[str, frozenset[str]]:
+    return {k: frozenset(v) for k, v in _plugin_deps.items()}
 
 
 def patch_require() -> None:
