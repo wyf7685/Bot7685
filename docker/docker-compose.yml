@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
     networks:
       - bot7685
-    stop_grace_period: 5s
+    stop_grace_period: 10s
     depends_on:
       milky:
         condition: service_started

@@ -6,7 +6,6 @@ on:
       - master
     paths:
       - "docker/Dockerfile"
-      - "docker/assets/**"
       - ".github/workflows/docker-bot7685.yml"
       - "uv.lock"
       - ".dockerignore"
