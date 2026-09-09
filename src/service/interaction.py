@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncGenerator, Callable, Sequence
 from contextlib import asynccontextmanager
 from enum import Enum, auto
 from typing import Final, Literal, overload
@@ -55,7 +55,7 @@ class SessionGuard:
         self._lock = asyncio.Lock()
 
     @asynccontextmanager
-    async def acquire(self) -> AsyncIterator[None]:
+    async def acquire(self) -> AsyncGenerator[None]:
         # An uncontended asyncio lock acquires without suspending this task.
         if self._lock.locked():
             raise InteractionBusy

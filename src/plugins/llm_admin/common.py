@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Never
 
@@ -23,7 +24,7 @@ _CONFIGURATION_GUARD = SessionGuard()
 
 
 @asynccontextmanager
-async def config_operation(target: MsgTarget):
+async def config_operation(target: MsgTarget) -> AsyncGenerator[None]:
     if not target.private:
         await UniMessage.text("请在私聊中执行 LLM 配置，避免凭据泄漏。").finish()
     try:

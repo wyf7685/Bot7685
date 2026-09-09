@@ -1,6 +1,6 @@
 import asyncio
 import contextlib
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 
 from nonebot import logger
 from nonebot.adapters import Adapter
@@ -69,7 +69,7 @@ class AdapterSession:
     @contextlib.asynccontextmanager
     async def get_session(
         self, driver: HTTPClientMixin
-    ) -> AsyncIterator[HTTPClientSession]:
+    ) -> AsyncGenerator[HTTPClientSession]:
         session = await self._create_session(driver)
         try:
             yield session

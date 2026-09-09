@@ -1,6 +1,6 @@
 import contextlib
 import xml.etree.ElementTree as ET
-from collections.abc import AsyncGenerator, AsyncIterator, Iterable, Mapping
+from collections.abc import AsyncGenerator, Iterable, Mapping
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from types import TracebackType
@@ -320,7 +320,7 @@ class AsyncS3Client:
         key: str,
         *,
         range_start: int | None = None,
-    ) -> AsyncIterator[httpx2.Response]:
+    ) -> AsyncGenerator[httpx2.Response]:
         headers: dict[str, str] = {}
         if range_start is not None and range_start > 0:
             headers["Range"] = f"bytes={range_start}-"

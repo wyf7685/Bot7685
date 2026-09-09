@@ -1,6 +1,6 @@
 import asyncio
 import contextlib
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from pathlib import PurePosixPath
@@ -134,7 +134,7 @@ class S3Service:
     @asynccontextmanager
     async def _lease_runtime(
         self,
-    ) -> AsyncIterator[tuple[S3Config, S3Runtime]]:
+    ) -> AsyncGenerator[tuple[S3Config, S3Runtime]]:
         stack = AsyncExitStack()
         try:
             async with self._state_lock:
@@ -199,7 +199,7 @@ class S3Service:
         *,
         key: str,
         offset: int = 0,
-    ) -> AsyncIterator[bytes]:
+    ) -> AsyncGenerator[bytes]:
         if offset < 0:
             raise ValueError("offset must not be negative")
         async with self._lease_runtime() as (config, runtime):

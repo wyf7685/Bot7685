@@ -1,7 +1,7 @@
 """Public LLM calls against atomically replaceable, protocol-neutral runtimes."""
 
 import asyncio
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncGenerator, Mapping, Sequence
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from threading import Lock
@@ -212,7 +212,7 @@ class LLMService:
             return model
 
     @asynccontextmanager
-    async def _lease_model(self, model: str | None) -> AsyncIterator[_ModelHandle]:
+    async def _lease_model(self, model: str | None) -> AsyncGenerator[_ModelHandle]:
         stack = AsyncExitStack()
         try:
             async with self._state_lock:

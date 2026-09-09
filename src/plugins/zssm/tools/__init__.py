@@ -1,4 +1,4 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
@@ -56,7 +56,7 @@ async def open_zssm_tool_resources(
     llm_service: LLMService,
     deferred_images: tuple[DeferredImageInput, ...],
     adapter_image_fetcher: AdapterImageFetcher | None,
-) -> AsyncIterator[ZssmToolResources]:
+) -> AsyncGenerator[ZssmToolResources]:
     """Own every invocation-bound tool resource and close it exactly once."""
 
     async with AsyncExitStack() as stack:

@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import httpx2
@@ -25,7 +25,7 @@ class S3Runtime:
         self._drained.set()
 
     @asynccontextmanager
-    async def lease(self) -> AsyncIterator[S3Runtime]:
+    async def lease(self) -> AsyncGenerator[S3Runtime]:
         async with self._state_lock:
             if self._closing:
                 raise S3ConfigurationError

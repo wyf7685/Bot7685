@@ -1,5 +1,5 @@
 import contextlib
-from collections.abc import AsyncGenerator, AsyncIterable, AsyncIterator, Buffer
+from collections.abc import AsyncGenerator, AsyncIterable, Buffer
 from os import PathLike
 from pathlib import Path
 from typing import Self, assert_never, cast
@@ -142,7 +142,7 @@ class MultipartUploadTask:
 async def _coalesce_chunks(
     source: AsyncIterable[Buffer],
     chunk_size: int = UPLOAD_CHUNK_SIZE,
-) -> AsyncIterator[bytes]:
+) -> AsyncGenerator[bytes]:
     buffer = bytearray()
     async for chunk in source:
         view = memoryview(chunk)
@@ -156,14 +156,14 @@ async def _coalesce_chunks(
         yield bytes(buffer)
 
 
-async def _buffer_source(data: Buffer) -> AsyncIterator[memoryview[int]]:
+async def _buffer_source(data: Buffer) -> AsyncGenerator[memoryview[int]]:
     view = memoryview(data).toreadonly()
     for offset in range(0, len(view), UPLOAD_CHUNK_SIZE):
         yield view[offset : offset + UPLOAD_CHUNK_SIZE]
         await anyio.lowlevel.checkpoint()
 
 
-async def _path_source(path: Path) -> AsyncIterator[bytes]:
+async def _path_source(path: Path) -> AsyncGenerator[bytes]:
     async with ayafileio.open(path, "rb") as stream:
         while chunk := await stream.read(UPLOAD_CHUNK_SIZE):
             yield chunk
@@ -173,7 +173,7 @@ async def _path_source(path: Path) -> AsyncIterator[bytes]:
 async def _url_source(
     runtime: S3Runtime,
     url: str,
-) -> AsyncIterator[AsyncIterable[bytes]]:
+) -> AsyncGenerator[AsyncIterable[bytes]]:
     async with runtime.require_source_client().stream("GET", url) as response:
         response.raise_for_status()
         yield response.aiter_bytes(UPLOAD_CHUNK_SIZE)

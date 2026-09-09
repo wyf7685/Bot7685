@@ -105,8 +105,11 @@ class CacheAdapter[T]:
         self._tracker.record_hit()
         return self._serializer.loads(value)
 
-    async def multi_get(self, keys: Iterable[str]) -> list[bytes | None]:
-        result = await self._backend.multi_get(map(self._format_key, keys))
+    async def multi_get(self, keys: Iterable[str]) -> list[T | None]:
+        result = [
+            self._serializer.loads(value) if value is not None else None
+            for value in await self._backend.multi_get(map(self._format_key, keys))
+        ]
         misses = sum(1 for x in result if x is None)
         hits = len(result) - misses
         self._tracker.record(hits, misses)

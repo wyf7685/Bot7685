@@ -1,6 +1,6 @@
 import asyncio
 import contextlib
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Final
 
@@ -57,7 +57,7 @@ async def _run_reaction_timeline(bot: Bot, event: Event) -> None:
 
 
 @asynccontextmanager
-async def zssm_reaction_timeline(bot: Bot, event: Event) -> AsyncIterator[None]:
+async def zssm_reaction_timeline(bot: Bot, event: Event) -> AsyncGenerator[None]:
     """Run and reliably clean up ZSSM-owned progress reactions."""
 
     if not _should_react(bot, event):

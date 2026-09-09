@@ -1,7 +1,7 @@
 import contextlib
 import copy
 import io
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextvars import ContextVar
 from types import TracebackType
 from typing import NamedTuple, Self
@@ -46,7 +46,7 @@ _ctx_client = ContextVar[_ContextClientHolder | None](
 
 
 @contextlib.asynccontextmanager
-async def async_client() -> AsyncIterator[httpx2.AsyncClient]:
+async def async_client() -> AsyncGenerator[httpx2.AsyncClient]:
     if holder := _ctx_client.get():
         yield await holder.get()
         return
@@ -56,7 +56,7 @@ async def async_client() -> AsyncIterator[httpx2.AsyncClient]:
 
 
 @contextlib.asynccontextmanager
-async def enter_client_ctx() -> AsyncIterator[None]:
+async def enter_client_ctx() -> AsyncGenerator[None]:
     if _ctx_client.get() is not None:
         yield
         return

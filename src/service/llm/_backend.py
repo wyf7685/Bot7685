@@ -38,10 +38,8 @@ class ReplayPayload(Protocol):
 
     @property
     def protocol(self) -> EndpointProtocol: ...
-
     @property
     def owner(self) -> object: ...
-
     @property
     def model_id(self) -> str: ...
 

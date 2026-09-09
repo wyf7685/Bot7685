@@ -1,7 +1,7 @@
 """Endpoint backends, alias-local execution policy, and runtime leases."""
 
 import asyncio
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field, replace
 from threading import Lock
@@ -253,7 +253,7 @@ class LLMRuntime:
             return self._resolve_locked(alias)
 
     @asynccontextmanager
-    async def lease(self, alias: str) -> AsyncIterator[_ModelHandle]:
+    async def lease(self, alias: str) -> AsyncGenerator[_ModelHandle]:
         """Atomically accept one explicit model call until it finishes."""
         with self._lifecycle_lock:
             handle = self._resolve_locked(alias)
