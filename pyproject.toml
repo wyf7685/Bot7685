@@ -10,7 +10,7 @@ dependencies = [
   # adapters
   "nonebot-adapter-discord>=1.1.7",
   "nonebot-adapter-github>=0.6.0",
-  "nonebot-adapter-milky>=1.2.0",
+  "nonebot-adapter-milky>=1.3.0",
   "nonebot-adapter-qq>=1.7.2",
   "nonebot-adapter-telegram>=0.1.0b20",
   # plugins
@@ -63,7 +63,7 @@ dev = [
   { include-group = "lint" },
   { include-group = "dev-runtime" },
 ]
-lint = ["ruff>=0.16.6", "prek>=0.5.2", "ty>=0.0.78"]
+lint = ["ruff>=0.16.6", "prek>=0.5.2", "ty>=0.0.79"]
 dev-runtime = [
   "ddgs>=9.15,<10",
   "nonebot-adapter-feishu>=2.7.1",
