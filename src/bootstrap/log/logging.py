@@ -100,18 +100,14 @@ LOGGING_CONFIG = {
     "handlers": {
         "default": {"class": f"{__name__}.LoguruHandler"},
         "uvicorn": {"class": f"{__name__}.UvicornDefaultHandler"},
-        "uvicorn.access": {"class": f"{__name__}.UvicornAccessHandler"},
+        "access": {"class": f"{__name__}.UvicornAccessHandler"},
     },
     "loggers": {
         "uvicorn": {"handlers": ["uvicorn"], "level": "INFO", "propagate": False},
         "uvicorn.error": {"level": "INFO"},
-        "uvicorn.access": {
-            "handlers": ["uvicorn.access"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "httpx": {"handlers": ["default"], "level": "INFO", "propagate": False},
-        "httpx2": {"handlers": ["default"], "level": "INFO", "propagate": False},
+        "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
+        "httpx": {"handlers": ["default"], "level": "WARNING", "propagate": False},
+        "httpx2": {"handlers": ["default"], "level": "WARNING", "propagate": False},
     },
 }
 
