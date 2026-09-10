@@ -81,6 +81,8 @@ nonebot-plugin-uninfo = { git = "https://github.com/wyf7685/nonebot-plugin-uninf
 nonebot-plugin-permission = { git = "https://github.com/wyf7685/nonebot-plugin-permission.git", rev = "f9410769973fa43d5cc1ac37c93271916c63ed5d" }
 nonebot-plugin-rollpig = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git", rev = "d4f05bd5f7c5a43c5910143991df0fd36dc880dd" }
 nonebot-plugin-picmenu-next = { git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git" }
+# Not released yet
+nonebot-plugin-skland = { git = "https://github.com/FrostN0v0/nonebot-plugin-skland.git", rev = "a33bf84199f2511ed0716fa4eb80cf89dbce9f45"}
 
 [tool.pyright]
 pythonVersion = "3.14"

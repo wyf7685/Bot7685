@@ -315,7 +315,7 @@ requires-dist = [
     { name = "nonebot-plugin-permission", git = "https://github.com/wyf7685/nonebot-plugin-permission.git?rev=f9410769973fa43d5cc1ac37c93271916c63ed5d" },
     { name = "nonebot-plugin-picmenu-next", extras = ["yaml", "toml", "rjieba"], git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git" },
     { name = "nonebot-plugin-rollpig", git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git?rev=d4f05bd5f7c5a43c5910143991df0fd36dc880dd" },
-    { name = "nonebot-plugin-skland", specifier = ">=0.7.1" },
+    { name = "nonebot-plugin-skland", git = "https://github.com/FrostN0v0/nonebot-plugin-skland.git?rev=a33bf84199f2511ed0716fa4eb80cf89dbce9f45" },
     { name = "nonebot-plugin-talk-stats", git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git?rev=bf26df74cf85d827529734d30cdd9f9ea4e6af03" },
     { name = "nonebot-plugin-uninfo", git = "https://github.com/wyf7685/nonebot-plugin-uninfo.git?rev=5e7d93423d8dcd57830be83258b8edb538154103" },
     { name = "nonebot-plugin-user", specifier = ">=0.6.0" },
@@ -2108,7 +2108,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-skland"
 version = "0.7.1"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/FrostN0v0/nonebot-plugin-skland.git?rev=a33bf84199f2511ed0716fa4eb80cf89dbce9f45#a33bf84199f2511ed0716fa4eb80cf89dbce9f45" }
 dependencies = [
     { name = "arclet-alconna" },
     { name = "httpx" },
@@ -2123,10 +2123,6 @@ dependencies = [
     { name = "nonebot2" },
     { name = "qrcode", extra = ["pil"] },
     { name = "rich" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/22/37/06453e7241df391756dda8e88b847eb3aec478f339450bbee2b4c3750cd2/nonebot_plugin_skland-0.7.1.tar.gz", hash = "sha256:48a4ae9e473c3a704f6f5832ba3a2fb7e4359c0ed22ceccb0b55f5f984ad9129", size = 22361360, upload-time = "2026-08-01T07:16:51.85Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/0f/c80ca7b28b9163d241ec2732eee9a5f1956f84a33d06b92ccb090b2ffddd/nonebot_plugin_skland-0.7.1-py3-none-any.whl", hash = "sha256:232384fb428bb75e3072b22e00c21e87545b15d8eb163634b5031c2a3b932ed7", size = 22413215, upload-time = "2026-08-01T07:16:49.284Z" },
 ]
 
 [[package]]
