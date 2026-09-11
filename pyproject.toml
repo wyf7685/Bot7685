@@ -59,10 +59,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-  { include-group = "lint" },
-  { include-group = "dev-runtime" },
-]
+dev = [{ include-group = "lint" }, { include-group = "dev-runtime" }]
 lint = ["ruff>=0.16.6", "prek>=0.5.2", "ty>=0.0.79"]
 dev-runtime = [
   "ddgs>=9.15,<10",
@@ -81,6 +78,7 @@ nonebot-plugin-uninfo = { git = "https://github.com/wyf7685/nonebot-plugin-uninf
 nonebot-plugin-permission = { git = "https://github.com/wyf7685/nonebot-plugin-permission.git", rev = "f9410769973fa43d5cc1ac37c93271916c63ed5d" }
 nonebot-plugin-rollpig = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git", rev = "d4f05bd5f7c5a43c5910143991df0fd36dc880dd" }
 nonebot-plugin-picmenu-next = { git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git" }
+nonebot-adapter-discord = { git = "https://github.com/wyf7685/nonebot-adapter-discord.git", rev = "4a65a9956178e9d7b8e2bef72a5100be79b6558b" }
 
 [tool.pyright]
 pythonVersion = "3.14"

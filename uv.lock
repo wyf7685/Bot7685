@@ -299,7 +299,7 @@ requires-dist = [
     { name = "imageio", extras = ["ffmpeg"], specifier = ">=2.37.3" },
     { name = "jmcomic", specifier = ">=2.7.5" },
     { name = "msgspec", extras = ["toml", "yaml"], specifier = ">=0.20.0" },
-    { name = "nonebot-adapter-discord", specifier = ">=1.1.7" },
+    { name = "nonebot-adapter-discord", git = "https://github.com/wyf7685/nonebot-adapter-discord.git?rev=4a65a9956178e9d7b8e2bef72a5100be79b6558b" },
     { name = "nonebot-adapter-github", specifier = ">=0.6.0" },
     { name = "nonebot-adapter-milky", specifier = ">=1.3.0" },
     { name = "nonebot-adapter-qq", specifier = ">=1.7.2" },
@@ -1777,13 +1777,9 @@ wheels = [
 [[package]]
 name = "nonebot-adapter-discord"
 version = "1.1.9"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/wyf7685/nonebot-adapter-discord.git?rev=4a65a9956178e9d7b8e2bef72a5100be79b6558b#4a65a9956178e9d7b8e2bef72a5100be79b6558b" }
 dependencies = [
     { name = "nonebot2" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/05/cd/25052d488689060470d9069d8354dcd9219eeb69418643d06929a6124bba/nonebot_adapter_discord-1.1.9.tar.gz", hash = "sha256:2c3975b5683a816e6d677a2341c0c32e48babd9c811d8dfc9702125e3188670a", size = 113756, upload-time = "2026-06-18T06:57:10.804Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/cc/5c87236d7a80589a1e3a6617d1ec23e439637cc387751941466f18ca6bf9/nonebot_adapter_discord-1.1.9-py3-none-any.whl", hash = "sha256:abca0842d448eb61b9fc8014a1654fd6ae8c1696b76846bf6a0b12eb925f38ae", size = 121281, upload-time = "2026-06-18T06:57:09.521Z" },
 ]
 
 [[package]]
