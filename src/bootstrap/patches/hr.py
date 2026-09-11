@@ -1,3 +1,5 @@
+# ruff: noqa: B010
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -147,13 +149,17 @@ def patch_htmlrender(_: object) -> None:
     if version == (0, 6, 7):
         import nonebot_plugin_htmlrender.browser as browser_mod  # ty: ignore[unresolved-import]
 
-        setattr(browser_mod, "_connect", _patched_connect)  # noqa: B010
+        setattr(browser_mod, "_connect", _patched_connect)
 
     if (0, 7, 0) <= version < (0, 9, 0):
         import nonebot_plugin_htmlrender as hr_mod
 
-        setattr(hr_mod, "get_new_page", _get_new_page)  # noqa: B010
+        setattr(hr_mod, "get_new_page", _get_new_page)
         if version >= (0, 8, 0):
-            setattr(hr_mod, "template_to_html", _template_to_html)  # noqa: B010
-            setattr(hr_mod, "html_to_pic", _html_to_pic)  # noqa: B010
-            setattr(hr_mod, "template_to_pic", _template_to_pic)  # noqa: B010
+            setattr(hr_mod, "template_to_html", _template_to_html)
+            setattr(hr_mod, "html_to_pic", _html_to_pic)
+            setattr(hr_mod, "template_to_pic", _template_to_pic)
+
+            import nonebot_plugin_htmlrender.preparation.materialize as materialize_mod
+
+            setattr(materialize_mod, "unquote", lambda x: x)
