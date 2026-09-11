@@ -315,7 +315,7 @@ requires-dist = [
     { name = "nonebot-plugin-permission", git = "https://github.com/wyf7685/nonebot-plugin-permission.git?rev=f9410769973fa43d5cc1ac37c93271916c63ed5d" },
     { name = "nonebot-plugin-picmenu-next", extras = ["yaml", "toml", "rjieba"], git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git" },
     { name = "nonebot-plugin-rollpig", git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git?rev=d4f05bd5f7c5a43c5910143991df0fd36dc880dd" },
-    { name = "nonebot-plugin-skland", git = "https://github.com/FrostN0v0/nonebot-plugin-skland.git?rev=a33bf84199f2511ed0716fa4eb80cf89dbce9f45" },
+    { name = "nonebot-plugin-skland", specifier = ">=0.7.2" },
     { name = "nonebot-plugin-talk-stats", git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git?rev=bf26df74cf85d827529734d30cdd9f9ea4e6af03" },
     { name = "nonebot-plugin-uninfo", git = "https://github.com/wyf7685/nonebot-plugin-uninfo.git?rev=5e7d93423d8dcd57830be83258b8edb538154103" },
     { name = "nonebot-plugin-user", specifier = ">=0.6.0" },
@@ -2107,15 +2107,15 @@ wheels = [
 
 [[package]]
 name = "nonebot-plugin-skland"
-version = "0.7.1"
-source = { git = "https://github.com/FrostN0v0/nonebot-plugin-skland.git?rev=a33bf84199f2511ed0716fa4eb80cf89dbce9f45#a33bf84199f2511ed0716fa4eb80cf89dbce9f45" }
+version = "0.7.2"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "arclet-alconna" },
     { name = "httpx" },
     { name = "nonebot-plugin-alconna" },
     { name = "nonebot-plugin-apscheduler" },
     { name = "nonebot-plugin-argot" },
-    { name = "nonebot-plugin-htmlrender" },
+    { name = "nonebot-plugin-htmlrender", extra = ["playwright"] },
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm" },
     { name = "nonebot-plugin-user" },
@@ -2123,6 +2123,10 @@ dependencies = [
     { name = "nonebot2" },
     { name = "qrcode", extra = ["pil"] },
     { name = "rich" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/91/ce/f74bda52bbf3a80568767376f8ae72e2e4f0f788cc9a68838e880c40364d/nonebot_plugin_skland-0.7.2.tar.gz", hash = "sha256:95972109f35e696ae7695261c1a9a3b7f5ea6b622d84e1ee92cdf85e15ce3bf4", size = 23256321, upload-time = "2026-09-11T06:58:00.867Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/c1/1f4d8b4fa564f9f713b0490988e62c25e4ccda1b7f8d0f6a6f7eed06cf22/nonebot_plugin_skland-0.7.2-py3-none-any.whl", hash = "sha256:a42bd1df839b1c04f8bbe96d7404a49f7d5010c5bc47ff36074c9f6a5c375ca1", size = 23356158, upload-time = "2026-09-11T06:57:57.46Z" },
 ]
 
 [[package]]
