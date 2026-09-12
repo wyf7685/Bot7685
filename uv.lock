@@ -314,7 +314,7 @@ requires-dist = [
     { name = "nonebot-plugin-orm", extras = ["asyncpg", "aiosqlite"], specifier = ">=0.8.3" },
     { name = "nonebot-plugin-permission", git = "https://github.com/wyf7685/nonebot-plugin-permission.git?rev=f9410769973fa43d5cc1ac37c93271916c63ed5d" },
     { name = "nonebot-plugin-picmenu-next", extras = ["yaml", "toml", "rjieba"], git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git" },
-    { name = "nonebot-plugin-rollpig", git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git?rev=78d5883d4e2798f30fef69dc82f24b25e7bc4fe8" },
+    { name = "nonebot-plugin-rollpig", git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git?rev=d244a8e1cf3863f05e0adaf32652a3e168dedc5e" },
     { name = "nonebot-plugin-skland", specifier = ">=0.7.2" },
     { name = "nonebot-plugin-talk-stats", git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git?rev=bf26df74cf85d827529734d30cdd9f9ea4e6af03" },
     { name = "nonebot-plugin-uninfo", git = "https://github.com/wyf7685/nonebot-plugin-uninfo.git?rev=5e7d93423d8dcd57830be83258b8edb538154103" },
@@ -2077,7 +2077,7 @@ yaml = [
 [[package]]
 name = "nonebot-plugin-rollpig"
 version = "0.2.9"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git?rev=78d5883d4e2798f30fef69dc82f24b25e7bc4fe8#78d5883d4e2798f30fef69dc82f24b25e7bc4fe8" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git?rev=d244a8e1cf3863f05e0adaf32652a3e168dedc5e#d244a8e1cf3863f05e0adaf32652a3e168dedc5e" }
 dependencies = [
     { name = "httpx" },
     { name = "nonebot-plugin-alconna" },
