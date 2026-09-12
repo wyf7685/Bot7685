@@ -3,17 +3,22 @@
 基于 src.service.kv 实现按批次独立存储，使用 uninfo SceneModel 的持久 ID
 隔离不同 Bot 和适配器中的同名场景。
 
-KV 键设计：
-- 批次索引: incr_batch_index_{scene_persist_id}
-- 批次数据: incr_batch_{scene_persist_id}_{batch_id}
-- 最后分析消息时间戳: incr_last_ts_{scene_persist_id}
+KV keys:
+- Batch index: incr_batch_index_{scene_persist_id}
+- Batch data: incr_batch_{scene_persist_id}_{batch_id}
+- Precise cursor: incr_last_cursor_{scene_persist_id}
+- Legacy timestamp during migration: incr_last_ts_{scene_persist_id}
 """
+
+import math
+from datetime import UTC, datetime, timedelta, timezone
 
 from nonebot.log import logger
 
 from src.service.kv import get_kv_store
 
 from ..domain.incremental import IncrementalBatch, IncrementalIndex
+from ..domain.value_objects import MessageCursor
 
 
 class IncrementalStore:
@@ -21,6 +26,7 @@ class IncrementalStore:
 
     INDEX_PREFIX = "incr_batch_index"
     BATCH_PREFIX = "incr_batch"
+    LAST_CURSOR_PREFIX = "incr_last_cursor"
     LAST_TS_PREFIX = "incr_last_ts"
 
     def __init__(self) -> None:
@@ -28,6 +34,7 @@ class IncrementalStore:
         self._batch_store = self._raw.with_type(IncrementalBatch)
         self._index_store = self._raw.with_type(list[IncrementalIndex])
         self._last_ts_store = self._raw.with_type(float)
+        self._cursor_store = self._raw.with_type(MessageCursor)
 
     # ================================================================
     # 键构建
@@ -45,6 +52,10 @@ class IncrementalStore:
     def _last_ts_key(scene_persist_id: int) -> str:
         return f"{IncrementalStore.LAST_TS_PREFIX}_{scene_persist_id}"
 
+    @staticmethod
+    def _cursor_key(scene_persist_id: int) -> str:
+        return f"{IncrementalStore.LAST_CURSOR_PREFIX}_{scene_persist_id}"
+
     # ================================================================
     # 批次索引操作
     # ================================================================
@@ -55,9 +66,9 @@ class IncrementalStore:
             return await self._index_store.read(key)
         except KeyError:
             return []
-        except Exception as e:
-            logger.error(f"读取批次索引失败 (Key: {key}): {e}")
-            return []
+        except Exception as error:
+            logger.error(f"读取批次索引失败 (Key: {key}): {error}")
+            raise
 
     async def _save_index(
         self,
@@ -75,7 +86,7 @@ class IncrementalStore:
     # 批次数据操作
     # ================================================================
 
-    async def save_batch(self, batch: IncrementalBatch) -> bool:
+    async def save_batch(self, batch: IncrementalBatch) -> None:
         scene_persist_id = batch.scene_persist_id
         batch_key = self._batch_key(scene_persist_id, batch.batch_id)
 
@@ -83,23 +94,25 @@ class IncrementalStore:
             await self._batch_store.write(batch_key, batch)
 
             index = await self._get_index(scene_persist_id)
-            index.append(
-                IncrementalIndex(batch_id=batch.batch_id, timestamp=batch.timestamp)
+            entry = IncrementalIndex(
+                batch_id=batch.batch_id,
+                timestamp=batch.timestamp,
             )
+            index = [current for current in index if current.batch_id != batch.batch_id]
+            index.append(entry)
+            index.sort(key=lambda item: item.timestamp)
             await self._save_index(scene_persist_id, index)
 
             logger.debug(
                 f"已保存批次 {batch.batch_id[:8]}... "
                 f"(scene={scene_persist_id}, 消息数={batch.messages_count})"
             )
-        except Exception as e:
+        except Exception as error:
             logger.error(
                 f"保存批次失败 (scene={scene_persist_id}, "
-                f"批次 {batch.batch_id[:8]}...): {e}"
+                f"批次 {batch.batch_id[:8]}...): {error}"
             )
-            return False
-        else:
-            return True
+            raise
 
     async def query_batches(
         self,
@@ -143,32 +156,62 @@ class IncrementalStore:
         return batches
 
     # ================================================================
-    # 最后分析消息时间戳（跨批次去重用）
+    # Precise message cursor with one-time legacy timestamp migration
     # ================================================================
 
-    async def get_last_analyzed_timestamp(self, scene_persist_id: int) -> float:
-        key = self._last_ts_key(scene_persist_id)
-        try:
-            return await self._last_ts_store.read(key)
-        except KeyError:
-            return 0.0
-        except Exception as e:
-            logger.error(f"读取最后分析时间戳失败 (Key: {key}): {e}")
-            return 0.0
-
-    async def update_last_analyzed_timestamp(
+    async def get_last_analyzed_cursor(
         self,
         scene_persist_id: int,
-        timestamp: float,
-    ) -> None:
-        key = self._last_ts_key(scene_persist_id)
+    ) -> MessageCursor | None:
+        cursor_key = self._cursor_key(scene_persist_id)
         try:
-            await self._last_ts_store.write(key, timestamp)
+            return await self._cursor_store.read(cursor_key)
+        except KeyError:
+            pass
+        except Exception as error:
+            logger.error(f"读取增量游标失败 (Key: {cursor_key}): {error}")
+            raise
+
+        legacy_key = self._last_ts_key(scene_persist_id)
+        try:
+            legacy_timestamp = await self._last_ts_store.read(legacy_key)
+        except KeyError:
+            return None
+        except Exception as error:
+            logger.error(f"读取旧增量时间戳失败 (Key: {legacy_key}): {error}")
+            raise
+
+        if legacy_timestamp <= 0:
+            await self._raw.delete(legacy_key)
+            return None
+
+        next_local_second = datetime.fromtimestamp(
+            math.floor(legacy_timestamp) + 1,
+            tz=timezone(timedelta(hours=8)),
+        )
+        cursor = MessageCursor(
+            time=next_local_second.replace(tzinfo=UTC),
+            record_id=0,
+        )
+        await self._cursor_store.write(cursor_key, cursor)
+        await self._raw.delete(legacy_key)
+        logger.info(f"已迁移增量游标: scene={scene_persist_id}")
+        return cursor
+
+    async def update_last_analyzed_cursor(
+        self,
+        scene_persist_id: int,
+        cursor: MessageCursor,
+    ) -> None:
+        key = self._cursor_key(scene_persist_id)
+        try:
+            await self._cursor_store.write(key, cursor)
             logger.debug(
-                f"更新最后分析时间戳: scene={scene_persist_id}, ts={timestamp}"
+                f"更新增量游标: scene={scene_persist_id}, "
+                f"time={cursor.time.isoformat()}, id={cursor.record_id}"
             )
-        except Exception as e:
-            logger.error(f"更新最后分析时间戳失败 (Key: {key}): {e}")
+        except Exception as error:
+            logger.error(f"更新增量游标失败 (Key: {key}): {error}")
             raise
 
     # ================================================================

@@ -1,10 +1,11 @@
 import anyio.to_thread
 from nonebot import logger
+from nonebot.adapters import Bot
 from nonebot_plugin_alconna import Alconna, Args, CommandMeta, UniMessage, on_alconna
 from nonebot_plugin_uninfo import Uninfo
 
 from .analyzer import ChatAnalyzer
-from .db_converter import fetch_analyzer_input
+from .db_converter import stream_analyzer_messages
 from .image_generator import ImageGenerator
 
 matcher = on_alconna(
@@ -22,17 +23,23 @@ matcher = on_alconna(
 
 
 @matcher.handle()
-async def _(session: Uninfo, year: int | None = None) -> None:
-    analyzer_input = await fetch_analyzer_input(session, year)
+async def _(bot: Bot, session: Uninfo, year: int | None = None) -> None:
+    analyzer = ChatAnalyzer(session.scene.name or session.id)
+    image_bytes: bytes | None = None
 
     try:
-        analyzer = ChatAnalyzer(analyzer_input)
-        await anyio.to_thread.run_sync(analyzer.analyze)
-        image_bytes = await ImageGenerator(analyzer).generate()
-    except Exception as e:
-        logger.exception("生成年度报告失败")
-        await matcher.finish(f"生成年度报告失败: {e}")
+        async for batch in stream_analyzer_messages(bot, session, year):
+            await anyio.to_thread.run_sync(analyzer.consume_batch, batch)
 
+        if analyzer.message_count:
+            await anyio.to_thread.run_sync(analyzer.finalize)
+            image_bytes = await ImageGenerator(analyzer).generate()
+    except Exception as error:
+        logger.exception("生成年度报告失败")
+        await matcher.finish(f"生成年度报告失败: {error}")
+
+    if analyzer.message_count == 0:
+        await matcher.finish("未找到该年度的群聊记录")
     if image_bytes is None:
         await matcher.finish("生成年度报告失败")
 

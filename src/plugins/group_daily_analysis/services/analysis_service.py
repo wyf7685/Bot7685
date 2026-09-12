@@ -5,6 +5,7 @@ import time as time_mod
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
+from uuid import NAMESPACE_URL, uuid5
 
 from nonebot.adapters import Bot
 from nonebot.log import logger
@@ -27,13 +28,33 @@ from ..domain.models import (
     SummaryTopic,
     UserTitle,
 )
-from ..domain.value_objects import UnifiedMember, UnifiedMessage
+from ..domain.value_objects import MessageCursor, UnifiedMember, UnifiedMessage
 from ..persistence.incremental_store import IncrementalStore
 from ..services.incremental_merge import IncrementalMergeService
-from ..services.message_service import fetch_group_messages
+from ..services.message_service import (
+    fetch_group_messages,
+    fetch_incremental_message_batch,
+)
 
 _incremental_store = IncrementalStore()
 _merge_service = IncrementalMergeService()
+_incremental_locks: dict[int, asyncio.Lock] = {}
+
+
+def _build_batch_id(
+    scene_persist_id: int,
+    start: MessageCursor | None,
+    stop: MessageCursor,
+) -> str:
+    if start is None:
+        start_value = "initial"
+    else:
+        start_value = f"{start.time.isoformat()}:{start.record_id}"
+    value = (
+        f"group-daily-analysis:{scene_persist_id}:{start_value}:"
+        f"{stop.time.isoformat()}:{stop.record_id}"
+    )
+    return str(uuid5(NAMESPACE_URL, value))
 
 
 @dataclass
@@ -188,32 +209,39 @@ async def run_incremental_analysis(
     scene_persist_id: int,
     days: int | None = None,
 ) -> IncrementalBatch | None:
-    """执行一次增量分析，将结果保存为独立批次。
+    """Analyze one ordered, bounded batch of messages for a scene."""
+    lock = _incremental_locks.setdefault(scene_persist_id, asyncio.Lock())
+    async with lock:
+        return await _run_incremental_analysis_locked(
+            bot,
+            session,
+            scene_persist_id,
+            days=days,
+        )
 
-    Args:
-        session: uninfo 注入的 Session
-        days: 分析天数
 
-    Returns:
-        IncrementalBatch 或 None（消息不足时）
-    """
+async def _run_incremental_analysis_locked(
+    bot: Bot,
+    session: Session,
+    scene_persist_id: int,
+    *,
+    days: int | None,
+) -> IncrementalBatch | None:
     incr_config = config.incremental
     group_id = session.scene.id
     days = days or config.analysis_days
 
-    # 1. 获取水位线
-    last_ts = await _incremental_store.get_last_analyzed_timestamp(scene_persist_id)
-
-    # 2. 拉取新消息
-    messages, members = await fetch_group_messages(
-        bot, session, days=days, since_timestamp=last_ts
+    start_cursor = await _incremental_store.get_last_analyzed_cursor(scene_persist_id)
+    fetched = await fetch_incremental_message_batch(
+        bot,
+        session,
+        days=days,
+        cursor=start_cursor,
+        limit=incr_config.safe_limit,
     )
+    messages = fetched.messages
+    members = fetched.members
 
-    # 3. 二次去重
-    if last_ts > 0:
-        messages = [m for m in messages if int(m.timestamp) > int(last_ts)]
-
-    # 4. 检查最小消息阈值
     if len(messages) < incr_config.min_messages:
         logger.info(
             f"群 {group_id} 增量分析: 新消息数 ({len(messages)}) "
@@ -221,7 +249,10 @@ async def run_incremental_analysis(
         )
         return None
 
-    # 5. 计算批次统计数据
+    stop_cursor = fetched.last_cursor
+    if stop_cursor is None:
+        raise RuntimeError("non-empty incremental batch has no cursor")
+
     hourly_msg_counts, hourly_char_counts = _compute_hourly_counts(messages)
     user_stats = _compute_user_stats(messages)
     emoji_stats = _compute_emoji_stats(messages)
@@ -229,12 +260,9 @@ async def run_incremental_analysis(
     participant_ids = list({msg.sender_id for msg in messages})
     last_message_timestamp = max((msg.timestamp for msg in messages), default=0)
 
-    # 6. LLM 增量分析（仅话题 + 金句）
     features = config.features
-
     topic_analyzer = TopicAnalyzer(max_topics=features.max_topics)
     golden_quote_analyzer = GoldenQuoteAnalyzer(max_quotes=features.max_golden_quotes)
-
     topic_analyzer.incremental_max_count = incr_config.topics_per_batch
     golden_quote_analyzer.incremental_max_count = incr_config.quotes_per_batch
 
@@ -248,9 +276,9 @@ async def run_incremental_analysis(
         else placeholder(),
     )
 
-    # 7. 构建批次
     batch = IncrementalBatch(
         scene_persist_id=scene_persist_id,
+        batch_id=_build_batch_id(scene_persist_id, start_cursor, stop_cursor),
         timestamp=time_mod.time(),
         messages_count=len(messages),
         characters_count=characters_count,
@@ -266,20 +294,18 @@ async def run_incremental_analysis(
         participant_ids=participant_ids,
     )
 
-    # 8. 保存批次并更新水位线
     await _incremental_store.save_batch(batch)
-    safe_ts = min(last_message_timestamp, int(time_mod.time()) + 60)
-    await _incremental_store.update_last_analyzed_timestamp(
+    await _incremental_store.update_last_analyzed_cursor(
         scene_persist_id,
-        safe_ts,
+        stop_cursor,
     )
 
     logger.info(
         f"群 {group_id} 增量分析完成: "
         f"本批次消息={len(messages)}, "
-        f"新话题={len(topics)}, 新金句={len(golden_quotes)}"
+        f"新话题={len(topics)}, 新金句={len(golden_quotes)}, "
+        f"仍有积压={fetched.has_more}"
     )
-
     return batch
 
 

@@ -1,22 +1,26 @@
-"""消息获取服务 — 基于 chatrecorder。"""
+"""Message retrieval service backed by chatrecorder."""
 
 import asyncio
 import contextlib
-from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta, timezone
 
 from nonebot.adapters import Bot
 from nonebot.exception import AdapterException
 from nonebot_plugin_alconna import At, Image, Reply, Text, UniMessage
-from nonebot_plugin_chatrecorder import MessageRecord, get_message_records
+from nonebot_plugin_chatrecorder import MessageRecord
 from nonebot_plugin_chatrecorder.message import deserialize_message
 from nonebot_plugin_orm import get_session
 from nonebot_plugin_uninfo import Session, get_interface
 from nonebot_plugin_uninfo.orm import SessionModel, UserModel
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
+
+from src.service.uninfo_target import persist_session_reference
 
 from ..domain.value_objects import (
     MessageContent,
     MessageContentType,
+    MessageCursor,
     UnifiedMember,
     UnifiedMessage,
 )
@@ -24,68 +28,124 @@ from ..domain.value_objects import (
 UTC8 = timezone(timedelta(hours=8))
 
 
+@dataclass(frozen=True, slots=True)
+class IncrementalMessageBatch:
+    messages: list[UnifiedMessage]
+    members: set[UnifiedMember]
+    last_cursor: MessageCursor | None
+    has_more: bool
+
+
+def _database_time(value: datetime) -> datetime:
+    return value.astimezone(UTC).replace(tzinfo=None)
+
+
+def _record_cursor(record: MessageRecord) -> MessageCursor:
+    recorded_at = record.time
+    if recorded_at.tzinfo is None:
+        recorded_at = recorded_at.replace(tzinfo=UTC)
+    return MessageCursor(time=recorded_at, record_id=record.id)
+
+
+async def _query_records(
+    session: Session,
+    *,
+    days: int,
+    cursor: MessageCursor | None = None,
+    limit: int | None = None,
+) -> tuple[list[MessageRecord], bool]:
+    now = datetime.now(UTC8)
+    reference = await persist_session_reference(session)
+    conditions = [
+        SessionModel.scene_persist_id == reference.scene_persist_id,
+        MessageRecord.type == "message",
+        MessageRecord.time >= _database_time(now - timedelta(days=days)),
+        MessageRecord.time <= _database_time(now),
+    ]
+    if cursor is not None:
+        cursor_time = _database_time(cursor.time)
+        conditions.append(
+            or_(
+                MessageRecord.time > cursor_time,
+                and_(
+                    MessageRecord.time == cursor_time,
+                    MessageRecord.id > cursor.record_id,
+                ),
+            )
+        )
+
+    statement = (
+        select(MessageRecord)
+        .join(SessionModel, SessionModel.id == MessageRecord.session_persist_id)
+        .where(*conditions)
+        .order_by(MessageRecord.time, MessageRecord.id)
+    )
+    if limit is not None:
+        statement = statement.limit(limit + 1)
+
+    async with get_session() as db_session:
+        records = list((await db_session.scalars(statement)).all())
+
+    has_more = limit is not None and len(records) > limit
+    if has_more:
+        records = records[:limit]
+    return records, has_more
+
+
+async def _convert_records(
+    bot: Bot,
+    session: Session,
+    records: list[MessageRecord],
+    exclude_self_ids: list[str] | None = None,
+) -> tuple[list[UnifiedMessage], set[UnifiedMember]]:
+    if not records:
+        return [], set()
+
+    users = await _resolve_users(
+        bot,
+        session,
+        {record.session_persist_id for record in records},
+    )
+    messages = [
+        _parse_record(bot, session, record, user)
+        for record in records
+        if (user := users[record.session_persist_id])
+        and (not exclude_self_ids or user.user_id not in exclude_self_ids)
+    ]
+    return messages, set(users.values())
+
+
 async def fetch_group_messages(
     bot: Bot,
     session: Session,
     days: int = 1,
     exclude_self_ids: list[str] | None = None,
-    since_timestamp: float | None = None,
 ) -> tuple[list[UnifiedMessage], set[UnifiedMember]]:
-    """从 chatrecorder 获取指定群组最近 N 天的消息并转换为统一格式。
+    records, _ = await _query_records(session, days=days)
+    return await _convert_records(bot, session, records, exclude_self_ids)
 
-    Args:
-        session: uninfo 注入的 Session
-        days: 回溯天数
-        exclude_self_ids: 需要排除的发送者 ID 列表（如机器人自身）
-        since_timestamp: epoch 时间戳，仅拉取此时间之后的消息（增量分析用）
 
-    Returns:
-        tuple[list[UnifiedMessage], set[UnifiedMember]]: 消息列表和成员列表
-    """
-    now = datetime.now(UTC8)
-    time_start = now - timedelta(days=days)
-
-    # 增量分析：确保起始时间不早于上次分析时间戳
-    if since_timestamp is not None:
-        since_dt = datetime.fromtimestamp(since_timestamp, tz=UTC8)
-        time_start = max(time_start, since_dt)
-
-    records = await get_message_records(
-        session=session,
-        filter_user=False,
-        time_start=time_start,
-        time_stop=now,
-        types=["message"],
+async def fetch_incremental_message_batch(
+    bot: Bot,
+    session: Session,
+    *,
+    days: int,
+    cursor: MessageCursor | None,
+    limit: int,
+) -> IncrementalMessageBatch:
+    records, has_more = await _query_records(
+        session,
+        days=days,
+        cursor=cursor,
+        limit=limit,
     )
-
-    if not records:
-        return [], set()
-
-    # 构建 session_persist_id -> (user_id, nickname) 映射
-    spids = {r.session_persist_id for r in records}
-    users = await _resolve_users(bot, session, spids)
-
-    # 转换为统一格式
-    messages: list[UnifiedMessage] = []
-
-    for record in records:
-        user = users[record.session_persist_id]
-
-        # 排除指定 ID
-        if exclude_self_ids and user.user_id in exclude_self_ids:
-            continue
-
-        # 解析消息内容
-        msg = _parse_record(bot, session, record, user)
-
-        # 二次去重：过滤时间戳不严格大于水位线的消息
-        if since_timestamp is not None and msg.timestamp <= since_timestamp:
-            continue
-
-        messages.append(msg)
-
-    messages.sort(key=lambda m: m.timestamp)
-    return messages, set(users.values())
+    messages, members = await _convert_records(bot, session, records)
+    return IncrementalMessageBatch(
+        messages=messages,
+        members=members,
+        last_cursor=_record_cursor(records[-1]) if records else None,
+        has_more=has_more,
+    )
 
 
 async def _resolve_users(

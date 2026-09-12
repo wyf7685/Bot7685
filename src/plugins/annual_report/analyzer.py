@@ -12,54 +12,49 @@ import random
 import re
 import string
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from typing import Any
 
 import jieba
 from nonebot import logger
 
 from .config import config
-from .schema import AnalyzerInput, Message
+from .schema import AnalyzableText, AnnualMessage
 from .utils import (
     analyze_single_chars,
     calculate_entropy,
     clean_text,
     extract_emojis,
     is_emoji,
-    parse_timestamp,
 )
 
 PUNCTUATION = string.punctuation + "，。！？；：、''（）【】"
 
 
 class ChatAnalyzer:
-    """QQ 群聊分析器"""
+    """Accumulate and analyze one group-year without retaining message objects."""
 
-    def __init__(self, data: AnalyzerInput) -> None:
-        """初始化分析器
+    def __init__(self, chat_name: str) -> None:
+        self.chat_name = chat_name or "未知群聊"
+        self.message_count = 0
+        self.text_samples: list[AnalyzableText] = []
+        self._skipped_text_count = 0
+        self._bot_filtered_count = 0
+        self._previous_clean: str | None = None
+        self._previous_sender: str | int | None = None
+        self._uin_names: defaultdict[str | int, list[str]] = defaultdict(list)
+        self._pending_replies: Counter[str] = Counter()
+        self._tokenizer = jieba.Tokenizer()
 
-        Args:
-            data: 符合 AnalyzerInput 模型的输入数据
-        """
-        self.data = data
-        self.messages = data.messages
-        self.chat_name: str = (
-            data.chatName
-            or (data.chatInfo.name if data.chatInfo else None)
-            or "未知群聊"
-        )
-
-        # 映射和统计
         self.uin_to_name: dict[str | int, str] = {}
         self.msgid_to_sender: dict[str, str | int] = {}
 
-        # 词频统计
         self.word_freq: Counter[str] = Counter()
         self.word_samples: defaultdict[str, list[str]] = defaultdict(list)
         self.word_contributors: defaultdict[str, Counter[str | int]] = defaultdict(
             Counter
         )
 
-        # 用户统计
         self.user_msg_count: Counter[str | int] = Counter()
         self.user_char_count: Counter[str | int] = Counter()
         self.user_char_per_msg: dict[str | int, float] = {}
@@ -75,101 +70,120 @@ class ChatAnalyzer:
         self.user_morning_count: Counter[str | int] = Counter()
         self.user_repeat_count: Counter[str | int] = Counter()
 
-        # 时间分布
         self.hour_distribution: Counter[int] = Counter()
-
-        # 新词发现和合并
         self.discovered_words: set[str] = set()
         self.merged_words: dict[str, tuple[str, str, int, float]] = {}
-
-        # 单字统计
         self.single_char_stats: dict[str, tuple[int, float, float]] = {}
-        self.cleaned_texts: list[str] = []
 
-        self._build_mappings()
+    @staticmethod
+    def _is_bot_message(msg: AnnualMessage) -> bool:
+        return config.filter.filter_bot_messages and msg.is_bot_message
 
-    def _is_bot_message(self, msg: Message) -> bool:
-        """判断是否为机器人消息（基于 subMsgType）
+    def consume_batch(self, messages: Iterable[AnnualMessage]) -> None:
+        for message in messages:
+            self._consume(message)
 
-        Args:
-            msg: 消息对象
+    def _consume(self, msg: AnnualMessage) -> None:
+        self.message_count += 1
+        if self._is_bot_message(msg):
+            self._bot_filtered_count += 1
+            return
 
-        Returns:
-            是否为机器人消息
-        """
-        if not config.filter.filter_bot_messages:
-            return False
+        sender_id = msg.sender_id
+        sender_name = msg.sender_name.strip()
+        names = self._uin_names[sender_id]
+        if sender_name and (not names or names[-1] != sender_name):
+            names.append(sender_name)
 
-        sub_msg_type: int = msg.rawMessage.subMsgType
-        return sub_msg_type in [577, 65]
+        if msg.message_id:
+            self.msgid_to_sender[msg.message_id] = sender_id
+            if pending := self._pending_replies.pop(msg.message_id, 0):
+                self.user_replied_count[sender_id] += pending
 
-    def _build_mappings(self) -> None:
-        """构建 UIN 到昵称的映射，优先保留有效的 name"""
-        uin_names: defaultdict[str | int, list[str]] = defaultdict(list)
-        uin_member_names: dict[str | int, str] = {}
+        text = msg.text
+        cleaned = clean_text(text)
+        if cleaned:
+            self.text_samples.append(AnalyzableText(sender_id=sender_id, text=cleaned))
+        elif text:
+            self._skipped_text_count += 1
 
-        for msg in self.messages:
-            if self._is_bot_message(msg):
-                continue
+        self.user_msg_count[sender_id] += 1
+        self.user_char_count[sender_id] += len(cleaned)
 
-            uin: str | int = msg.sender.uin
-            name: str = msg.sender.name.strip()
-            msg_id: str = msg.messageId
+        if "[图片:" in text and ".gif" not in text.lower():
+            self.user_image_count[sender_id] += 1
+        if "[合并转发:" in text:
+            self.user_forward_count[sender_id] += 1
 
-            # 收集 name
-            if uin and name and (not uin_names[uin] or uin_names[uin][-1] != name):
-                uin_names[uin].append(name)
+        if msg.reply_to_id:
+            self.user_reply_count[sender_id] += 1
+            if target_id := self.msgid_to_sender.get(msg.reply_to_id):
+                self.user_replied_count[target_id] += 1
+            else:
+                self._pending_replies[msg.reply_to_id] += 1
 
-            # 收集 sendMemberName（保留最后一个）
-            send_member_name: str | None = msg.rawMessage.sendMemberName
-            if uin and send_member_name:
-                uin_member_names[uin] = send_member_name.strip()
+        for target_id in msg.at_user_ids:
+            if target_id and target_id != "0":
+                self.user_at_count[sender_id] += 1
+                self.user_ated_count[target_id] += 1
 
-            # 构建消息 ID 到发送者的映射
-            if msg_id and uin:
-                self.msgid_to_sender[msg_id] = uin
+        emoji_count = (
+            len(extract_emojis(cleaned))
+            + text.count("[表情:")
+            + text.lower().count(".gif")
+        )
+        if emoji_count:
+            self.user_emoji_count[sender_id] += emoji_count
 
-        # 为每个 UIN 选择最合适的 name
-        for uin, names in uin_names.items():
-            chosen_name: str | None = None
+        if "[链接:" in text or re.search(r"https?://", text):
+            self.user_link_count[sender_id] += 1
 
-            # 从后往前找第一个不等于 uin 的 name
-            for name in reversed(names):
-                if name != str(uin):
-                    chosen_name = name
-                    break
+        hour = msg.occurred_at.hour
+        self.hour_distribution[hour] += 1
+        if hour in config.time.night_owl_hours:
+            self.user_night_count[sender_id] += 1
+        if hour in config.time.early_bird_hours:
+            self.user_morning_count[sender_id] += 1
 
-            # 如果所有 name 都等于 uin，使用 sendMemberName
-            if chosen_name is None:
-                if uin in uin_member_names:
-                    chosen_name = uin_member_names[uin]
-                elif names:
-                    chosen_name = names[-1]
+        if (
+            cleaned
+            and len(cleaned) >= 2
+            and cleaned == self._previous_clean
+            and sender_id != self._previous_sender
+        ):
+            self.user_repeat_count[sender_id] += 1
 
-            if chosen_name:
-                self.uin_to_name[uin] = chosen_name
+        self._previous_clean = cleaned or self._previous_clean
+        self._previous_sender = sender_id
+
+    def _finalize_names(self) -> None:
+        for sender_id, names in self._uin_names.items():
+            selected = next(
+                (name for name in reversed(names) if name != str(sender_id)),
+                names[-1] if names else None,
+            )
+            if selected:
+                self.uin_to_name[sender_id] = selected
 
     def get_name(self, uin: str | int) -> str:
-        """获取用户昵称
-
-        Args:
-            uin: 用户 UIN
-
-        Returns:
-            用户昵称
-        """
         return self.uin_to_name.get(uin, f"未知用户({uin})")
 
-    def analyze(self) -> None:
-        """执行完整分析流程"""
+    def finalize(self) -> None:
+        """Complete the multi-pass text analysis after all batches are consumed."""
         logger.info(f"📊 开始分析: {self.chat_name}")
-        logger.info(f"📝 消息数: {len(self.messages)}")
+        logger.info(f"📝 消息数: {self.message_count}")
+        logger.info(
+            f"   有效文本: {len(self.text_samples)} 条, "
+            f"跳过: {self._skipped_text_count} 条, "
+            f"过滤机器人: {self._bot_filtered_count} 条"
+        )
 
-        logger.info("\n🧹 预处理文本...")
-        self._preprocess_texts()
+        self._finalize_names()
 
         logger.info("🔤 分析单字独立性...")
-        self.single_char_stats = analyze_single_chars(self.cleaned_texts)
+        self.single_char_stats = analyze_single_chars(
+            sample.text for sample in self.text_samples
+        )
 
         logger.info("🔍 新词发现...")
         self._discover_new_words()
@@ -180,41 +194,15 @@ class ChatAnalyzer:
         logger.info("📈 分词统计...")
         self._tokenize_and_count()
 
-        logger.info("🎮 趣味统计...")
-        self._fun_statistics()
+        for sender_id, message_count in self.user_msg_count.items():
+            if message_count >= 10:
+                self.user_char_per_msg[sender_id] = (
+                    self.user_char_count[sender_id] / message_count
+                )
 
         logger.info("🧹 过滤整理...")
         self._filter_results()
-
         logger.info("✅ 完成!")
-
-    def _preprocess_texts(self) -> None:
-        """预处理所有文本"""
-        skipped: int = 0
-        bot_filtered: int = 0
-
-        for msg in self.messages:
-            if self._is_bot_message(msg):
-                bot_filtered += 1
-                continue
-
-            text: str = msg.content.text
-            cleaned: str = clean_text(text)
-
-            if cleaned and len(cleaned) >= 1:
-                self.cleaned_texts.append(cleaned)
-            elif text:
-                skipped += 1
-
-        if config.filter.filter_bot_messages and bot_filtered > 0:
-            logger.info(
-                f"   有效文本: {len(self.cleaned_texts)} 条, "
-                f"跳过: {skipped} 条, 过滤机器人: {bot_filtered} 条"
-            )
-        else:
-            logger.info(
-                f"   有效文本: {len(self.cleaned_texts)} 条, 跳过: {skipped} 条"
-            )
 
     def _discover_new_words(self) -> None:
         """新词发现"""
@@ -223,7 +211,8 @@ class ChatAnalyzer:
         right_neighbors: defaultdict[str, Counter[str]] = defaultdict(Counter)
         total_chars: int = 0
 
-        for text in self.cleaned_texts:
+        for sample in self.text_samples:
+            text = sample.text
             sentences: list[str] = re.split(
                 '[，。！？、；：""（）\\s\\n\\r,.!?()\\[\\]]', text
             )
@@ -292,7 +281,7 @@ class ChatAnalyzer:
 
         # 添加到 jieba 词典
         for word in self.discovered_words:
-            jieba.add_word(word, freq=1000)
+            self._tokenizer.add_word(word, freq=1000)
 
         logger.info(f"   发现 {len(self.discovered_words)} 个新词")
 
@@ -301,8 +290,10 @@ class ChatAnalyzer:
         bigram_counter: Counter[tuple[str, str]] = Counter()
         word_right_counter: Counter[str] = Counter()
 
-        for text in self.cleaned_texts:
-            words: list[str] = [w for w in jieba.cut(text) if w.strip()]
+        for sample in self.text_samples:
+            words: list[str] = [
+                word for word in self._tokenizer.cut(sample.text) if word.strip()
+            ]
 
             for i in range(len(words) - 1):
                 w1: str = words[i].strip()
@@ -331,7 +322,7 @@ class ChatAnalyzer:
                 prob: float = count / word_right_counter[w1]
                 if prob >= config.word_merge.merge_min_prob:
                     self.merged_words[merged] = (w1, w2, count, prob)
-                    jieba.add_word(merged, freq=count * 1000)
+                    self._tokenizer.add_word(merged, freq=count * 1000)
 
         logger.info(f"   合并 {len(self.merged_words)} 个词组")
 
@@ -344,120 +335,23 @@ class ChatAnalyzer:
                 logger.info(f"      {merged}: {w1}+{w2} ({cnt}次, {prob:.0%})")
 
     def _tokenize_and_count(self) -> None:
-        """分词统计"""
-        for msg in self.messages:
-            if self._is_bot_message(msg):
-                continue
+        """Tokenize retained text samples after the local dictionary is ready."""
+        for sample in self.text_samples:
+            words = list(self._tokenizer.cut(sample.text))
+            emojis = extract_emojis(sample.text)
+            tokens = [word for word in words if not is_emoji(word)] + emojis
 
-            sender_uin: str | int = msg.sender.uin
-            text: str = msg.content.text
-            cleaned: str = clean_text(text)
-
-            if not cleaned:
-                continue
-
-            words: list[str] = list(jieba.cut(cleaned))
-            emojis: list[str] = extract_emojis(cleaned)
-            words = [w for w in words if not is_emoji(w)]
-            all_tokens: list[str] = words + emojis
-
-            for word in all_tokens:
+            for word in tokens:
                 word = word.strip()
                 if not word:
                     continue
-
-                # 跳过纯数字/符号
                 if re.match(r"^[\d\W]+$", word) and not is_emoji(word):
                     continue
 
                 self.word_freq[word] += 1
-                self.word_contributors[word][sender_uin] += 1
-
+                self.word_contributors[word][sample.sender_id] += 1
                 if len(self.word_samples[word]) < config.analysis.sample_count * 3:
-                    self.word_samples[word].append(cleaned)
-
-    def _fun_statistics(self) -> None:
-        """趣味统计"""
-        prev_clean: str | None = None
-        prev_sender: str | int | None = None
-
-        for msg in self.messages:
-            if self._is_bot_message(msg):
-                continue
-
-            sender_uin: str | int = msg.sender.uin
-            text: str = msg.content.text
-            timestamp: str = msg.timestamp
-
-            self.user_msg_count[sender_uin] += 1
-            clean: str = clean_text(text)
-            self.user_char_count[sender_uin] += len(clean)
-
-            # 图片检测（排除 GIF）
-            if "[图片:" in text and ".gif" not in text.lower():
-                self.user_image_count[sender_uin] += 1
-
-            # 转发检测
-            if "[合并转发:" in text:
-                self.user_forward_count[sender_uin] += 1
-
-            # 回复统计
-            if msg.content.reply:
-                self.user_reply_count[sender_uin] += 1
-                ref_msg_id: str = msg.content.reply.referencedMessageId
-                if ref_msg_id in self.msgid_to_sender:
-                    target_uin: str | int = self.msgid_to_sender[ref_msg_id]
-                    self.user_replied_count[target_uin] += 1
-
-            # @ 统计
-            for elem in msg.rawMessage.elements:
-                if elem.elementType == 1 and elem.textElement:
-                    at_type: int = elem.textElement.atType
-                    at_uid: str = elem.textElement.atUid
-                    if at_type > 0 and at_uid and at_uid != "0":
-                        self.user_at_count[sender_uin] += 1
-                        self.user_ated_count[at_uid] += 1
-
-            # 表情统计（包括 emoji、[表情:]、GIF）
-            emojis: list[str] = extract_emojis(clean)
-            gif_count: int = text.lower().count(".gif")
-            bracket_emoji_count: int = text.count("[表情:")
-            emoji_count: int = len(emojis) + bracket_emoji_count + gif_count
-
-            if emoji_count > 0:
-                self.user_emoji_count[sender_uin] += emoji_count
-
-            # 链接统计
-            if "[链接:" in text or re.search(r"https?://", text):
-                self.user_link_count[sender_uin] += 1
-
-            # 时段统计
-            hour: int | None = parse_timestamp(timestamp)
-            if hour is not None:
-                self.hour_distribution[hour] += 1
-                if hour in config.time.night_owl_hours:
-                    self.user_night_count[sender_uin] += 1
-                if hour in config.time.early_bird_hours:
-                    self.user_morning_count[sender_uin] += 1
-
-            # 复读统计（用清理后文本，且内容要有意义）
-            if (
-                clean
-                and len(clean) >= 2
-                and clean == prev_clean
-                and sender_uin != prev_sender
-            ):
-                self.user_repeat_count[sender_uin] += 1
-
-            prev_clean = clean or prev_clean
-            prev_sender = sender_uin
-
-        # 计算人均字数
-        for uin in self.user_msg_count:
-            msg_count: int = self.user_msg_count[uin]
-            char_count: int = self.user_char_count[uin]
-            if msg_count >= 10:
-                self.user_char_per_msg[uin] = char_count / msg_count
+                    self.word_samples[word].append(sample.text)
 
     def _filter_results(self) -> None:
         """过滤结果"""
@@ -604,7 +498,7 @@ class ChatAnalyzer:
         """
         result: dict[str, Any] = {
             "chatName": self.chat_name,
-            "messageCount": len(self.messages),
+            "messageCount": self.message_count,
             "topWords": [
                 {
                     "word": word,

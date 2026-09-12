@@ -38,6 +38,21 @@ class ModelMixin:
 
 
 @dataclass(frozen=True, slots=True)
+class MessageCursor(ModelMixin):
+    """Stable position in chatrecorder's `(time, id)` ordering."""
+
+    time: datetime
+    record_id: int
+
+    def __post_init__(self) -> None:
+        if self.time.tzinfo is None:
+            raise ValueError("cursor time must be timezone-aware")
+        if self.record_id < 0:
+            raise ValueError("cursor record_id must not be negative")
+        object.__setattr__(self, "time", self.time.astimezone(UTC))
+
+
+@dataclass(frozen=True, slots=True)
 class MessageContent(ModelMixin):
     """消息内容片段"""
 

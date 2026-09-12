@@ -10,7 +10,7 @@ QQ 群年度热词分析工具函数
 import math
 import re
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from collections.abc import Iterable
 
 
 def extract_emojis(text: str) -> list[str]:
@@ -49,21 +49,6 @@ def is_emoji(char: str) -> bool:
         (0x2300, 0x23FF),
     ]
     return any(start <= code <= end for start, end in emoji_ranges)
-
-
-def parse_timestamp(ts: str) -> int | None:
-    """将时间戳解析为小时（CST 时区）
-
-    Args:
-        ts: ISO 8601 格式的时间戳字符串
-
-    Returns:
-        小时数 (0-23)，解析失败返回 None
-    """
-    try:
-        return datetime.fromisoformat(ts).astimezone(timezone(timedelta(hours=8))).hour
-    except Exception:
-        return None
 
 
 def clean_text(text: str) -> str:
@@ -146,7 +131,7 @@ def generate_time_bar(hour_counts: dict[int, int], width: int = 20) -> list[str]
     return lines
 
 
-def analyze_single_chars(texts: list[str]) -> dict[str, tuple[int, float, float]]:
+def analyze_single_chars(texts: Iterable[str]) -> dict[str, tuple[int, float, float]]:
     """分析单字的独立出现情况
 
     Args:

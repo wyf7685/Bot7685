@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
 from nonebot import get_plugin_config
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class FeatureToggles(BaseModel):
@@ -50,14 +50,20 @@ class IncrementalSettings(BaseModel):
     """增量分析配置"""
 
     enabled: bool = Field(default=False, description="启用增量分析模式")
-    interval_minutes: int = Field(default=120, description="增量分析间隔（分钟）")
-    max_daily_analyses: int = Field(default=8, description="每日最大增量分析次数")
-    safe_limit: int = Field(default=2000, description="单次拉取消息上限")
-    min_messages: int = Field(default=20, description="触发增量分析的最小消息数")
+    interval_minutes: int = Field(default=120, ge=1, description="增量分析间隔（分钟）")
+    max_daily_analyses: int = Field(default=8, ge=1, description="每日最大增量分析次数")
+    safe_limit: int = Field(default=2000, ge=1, description="单次拉取消息上限")
+    min_messages: int = Field(default=20, ge=1, description="触发增量分析的最小消息数")
     topics_per_batch: int = Field(default=3, description="每次增量分析的话题数")
     quotes_per_batch: int = Field(default=3, description="每次增量分析的金句数")
     active_start_hour: int = Field(default=8, description="活跃时段起始小时（含）")
     active_end_hour: int = Field(default=23, description="活跃时段结束小时（含）")
+
+    @model_validator(mode="after")
+    def validate_batch_limits(self) -> Self:
+        if self.safe_limit < self.min_messages:
+            raise ValueError("safe_limit must be greater than or equal to min_messages")
+        return self
 
 
 class PluginConfig(BaseModel):
