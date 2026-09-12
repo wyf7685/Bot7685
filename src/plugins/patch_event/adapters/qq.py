@@ -61,6 +61,6 @@ def patch_group_at_message_create_event(self: GroupAtMessageCreateEvent) -> str:
 def patch_ready_event(self: ReadyEvent) -> str:
     return (
         f"Bot {H.name(self.user.id, self.user.username)} ready: "
-        f"session={H.repr(self.session_id, "b", "e")}, "
-        f"shard={H.repr(self.shard, "b", "e")}"
+        f"session={H.apply(self.session_id)}, "
+        f"shard={H.apply(self.shard)}"
     )

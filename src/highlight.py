@@ -6,7 +6,7 @@ import functools
 from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from enum import Enum
-from typing import TYPE_CHECKING, ClassVar, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, Protocol, Self, cast
 
 from bot7685_ext import LRU
 from nonebot.adapters import Event, Message, MessageSegment
@@ -80,25 +80,78 @@ def with_struct_depth[F: Callable](fn: F) -> F:
     return cast("F", wrapper)
 
 
+type _Handler[TSelf, TResult, TValue = Any] = Callable[[type[TSelf], TValue], TResult]
+type _CacheKey[TSelf] = tuple[type[TSelf], type, object]
+
+
+class SingleDispatchClassMethod[TSelf, TResult]:
+    def __init__(self, default_handler: _Handler[TSelf, TResult, object]) -> None:
+        self._default_handler = self._unwrap_classmethod(default_handler)
+        self._handlers: dict[type, _Handler[TSelf, TResult]] = {}
+        self._dispatch_cache: dict[type, _Handler[TSelf, TResult]] = {}
+        self._cache: dict[_Handler[TSelf, TResult], LRU[_CacheKey[TSelf], TResult]] = {}
+
+    @staticmethod
+    def _unwrap_classmethod(fn: _Handler[TSelf, TResult]) -> _Handler[TSelf, TResult]:
+        if isinstance(fn, classmethod):
+            return fn.__func__
+        return fn
+
+    def register[T](
+        self,
+        type_: type[T],
+        /,
+        *,
+        cache: bool = False,
+    ) -> Callable[[_Handler[TSelf, TResult]], _Handler[TSelf, TResult, T]]:
+        def decorator(handler: _Handler[TSelf, TResult]) -> _Handler[TSelf, TResult, T]:
+            unwrapped = self._unwrap_classmethod(handler)
+            self._handlers[type_] = unwrapped
+            self._dispatch_cache.clear()
+            if cache:
+                self._cache[unwrapped] = LRU(64)
+            return handler
+
+        return decorator
+
+    def __handle(self, owner: type[TSelf], data: object) -> TResult:
+        key = type(data)
+        handler = self._handlers.get(key)
+        if handler is None:
+            handler = self._dispatch_cache.get(key)
+        if handler is None:
+            for type_ in key.__mro__[1:]:
+                if handler := self._handlers.get(type_):
+                    break
+            else:
+                handler = self._default_handler
+            self._dispatch_cache[key] = handler
+
+        cache = self._cache.get(handler)
+        if cache is None:
+            return handler(owner, data)
+
+        cache_key = (owner, key, data)
+        if cache_key not in cache:
+            cache[cache_key] = handler(owner, data)
+        return cache[cache_key]
+
+    def __get__(
+        self, instance: TSelf | None, owner: type[TSelf]
+    ) -> Callable[[object], TResult]:
+        return functools.partial(self.__handle, owner)
+
+
 class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
-    style: ClassVar[_Style] = style
+    style: Final[_Style] = style
     exclude_value: ClassVar[tuple[object, ...]] = ()
 
-    @classmethod
-    def repr(cls, data: object, /, *color: str) -> str:
-        text = escape_tag(repr(data))
-        if color:
-            prefix = "".join(f"<{tag}>" for tag in reversed(color))
-            suffix = "</>" * len(color)
-            text = f"{prefix}{text}{suffix}"
-        return text
-
-    @functools.singledispatchmethod
+    @SingleDispatchClassMethod[Self, str]
     @classmethod
     def _handle(cls, data: object) -> str:
         if dataclasses.is_dataclass(data) and not isinstance(data, type):
             return cls.__dataclass(data)
-        return cls.repr(data)
+        return escape_tag(repr(data))
 
     register = _handle.register
 
@@ -119,31 +172,21 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
                 stack.enter_context(_line_length.set(line_length))
             return cls._handle(data)
 
+    @register(Enum, cache=True)
     @classmethod
-    @functools.cache
     def enum(cls, data: Enum) -> str:
         return (
             f"<{style.g(type(data).__name__)}.{style.le(data.name)}: "
             f"{cls.apply(data.value)}>"
         )
 
-    @register(bool)  # ty: ignore[invalid-argument-type]
-    @classmethod
-    @functools.cache
-    def _(cls, data: bool) -> str:
-        return style.lg(data)
+    register(bool, cache=True)(lambda _, data: style.lg(data))
+    register(int, cache=True)(
+        lambda cls, data: (cls.enum if isinstance(data, Enum) else style.i_lc)(data)
+    )
+    register(float)(lambda _, data: style.i_lc(data))
 
-    @register(int)
-    @classmethod
-    def _(cls, data: int) -> str:
-        return cls.enum(data) if isinstance(data, Enum) else style.i_lc(data)
-
-    @register(float)
-    @classmethod
-    def _(cls, data: float) -> str:
-        return style.i_lc(data)
-
-    @register(str)
+    @register(str, cache=True)
     @classmethod
     def _(cls, data: str) -> str:
         if isinstance(data, Enum):
