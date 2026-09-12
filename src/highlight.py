@@ -127,7 +127,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
             f"{cls.apply(data.value)}>"
         )
 
-    @register(bool)
+    @register(bool)  # ty: ignore[invalid-argument-type]
     @classmethod
     @functools.cache
     def _(cls, data: bool) -> str:
