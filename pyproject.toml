@@ -73,7 +73,7 @@ dev-runtime = [
 nonebot-plugin-exe-code = { git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" }
 nonebot-plugin-talk-stats = { git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git", rev = "bf26df74cf85d827529734d30cdd9f9ea4e6af03" }
 nonebot-plugin-werewolf = { git = "https://github.com/wyf7685/nonebot-plugin-werewolf.git" }
-nonebot-plugin-chatrecorder = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" }
+nonebot-plugin-chatrecorder = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git", rev = "f5812960a1f38bc1ece2493367f5f70ce072ce0d" }
 nonebot-plugin-uninfo = { git = "https://github.com/wyf7685/nonebot-plugin-uninfo.git", rev = "5e7d93423d8dcd57830be83258b8edb538154103" }
 nonebot-plugin-permission = { git = "https://github.com/wyf7685/nonebot-plugin-permission.git", rev = "f9410769973fa43d5cc1ac37c93271916c63ed5d" }
 nonebot-plugin-rollpig = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git", rev = "d4f05bd5f7c5a43c5910143991df0fd36dc880dd" }

@@ -306,7 +306,7 @@ requires-dist = [
     { name = "nonebot-adapter-telegram", specifier = ">=0.1.0b20" },
     { name = "nonebot-plugin-alconna", specifier = ">=0.62.1" },
     { name = "nonebot-plugin-apscheduler", specifier = ">=0.5.0" },
-    { name = "nonebot-plugin-chatrecorder", git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git" },
+    { name = "nonebot-plugin-chatrecorder", git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git?rev=f5812960a1f38bc1ece2493367f5f70ce072ce0d" },
     { name = "nonebot-plugin-exe-code", git = "https://github.com/wyf7685/nonebot-plugin-exe-code.git" },
     { name = "nonebot-plugin-htmlrender", extras = ["playwright"], specifier = ">=0.8.0,<0.9" },
     { name = "nonebot-plugin-kawaii-status", specifier = ">=0.2.0" },
@@ -1932,7 +1932,7 @@ wheels = [
 [[package]]
 name = "nonebot-plugin-chatrecorder"
 version = "0.7.0"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git#e08aa95cd91cf91dd35c09b0c116e4cc57ba6b61" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-chatrecorder.git?rev=f5812960a1f38bc1ece2493367f5f70ce072ce0d#f5812960a1f38bc1ece2493367f5f70ce072ce0d" }
 dependencies = [
     { name = "nonebot-plugin-localstore" },
     { name = "nonebot-plugin-orm" },
