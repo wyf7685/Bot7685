@@ -8,7 +8,7 @@ from nonebot.log import logger
 from src.service.llm import TokenUsage
 
 from ..domain.value_objects import UnifiedMessage
-from ..services.llm_service import call_llm
+from ..services.llm_service import invoke_llm_service
 
 
 class BaseAnalyzer[
@@ -40,7 +40,7 @@ class BaseAnalyzer[
 
     @property
     def response_model(self) -> type[Response]:
-        return cast("type[Response]", list[self.data_object_model])
+        return cast("type[Response]", list[self.data_object_model])  # ty: ignore[invalid-type-form]
 
     def process_response(self, response: Response) -> list[DataObject]:
         if not isinstance(response, list):
@@ -76,7 +76,7 @@ class BaseAnalyzer[
             logger.warning(f"{self.data_type} 分析: prompt 为空，跳过")
             return [], TokenUsage()
 
-        response, token_usage = await call_llm(
+        response, token_usage = await invoke_llm_service(
             self.response_model, prompt, system_prompt
         )
         if response is None:

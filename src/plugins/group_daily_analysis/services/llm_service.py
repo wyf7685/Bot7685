@@ -10,7 +10,7 @@ from src.service.llm import (
 )
 
 
-async def call_llm[T](
+async def invoke_llm_service[T](
     response_model: type[T],
     prompt: str,
     system_prompt: str | None = None,
