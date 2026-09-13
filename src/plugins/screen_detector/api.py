@@ -23,11 +23,11 @@ class Endpoints:
 
     @property
     def available(self) -> bool:
-        return self._base_url is not None
+        return bool(self._base_url)
 
     @property
     def _base(self) -> str:
-        if self._base_url is None:
+        if not self._base_url:
             raise ValueError("API base URL is not set.")
         return self._base_url.rstrip("/")
 
@@ -126,7 +126,7 @@ class DetectorClient:
     def __init__(self) -> None:
         self.endpoints = Endpoints()
         self._client: httpx2.AsyncClient | None = None
-        self._api_available = False
+        self._api_available = self.endpoints.available
         self._last_health_check = datetime.fromtimestamp(0, tz=UTC)
 
     @property

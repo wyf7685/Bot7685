@@ -23,6 +23,9 @@ PACKAGE_TTL = 60 * 60  # 1 hour
 
 @matcher.assign("~package")
 async def assign_package(duration: str) -> None:
+    if not await detector_client.check_health():
+        await UniMessage.text("API 不可用").finish()
+
     time_unit = duration[-1]
     num = int(duration[:-1])
     kwd = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days"}[time_unit]

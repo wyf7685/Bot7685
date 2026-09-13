@@ -21,6 +21,10 @@ async def daily_package() -> None:
     if not subs:
         return
 
+    if not await detector_client.check_health():
+        logger.warning("每日打包失败: API 不可用")
+        return
+
     dt = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     since = dt.astimezone(UTC)
     s3_key = f"detector/daily-package-{dt:%Y-%m-%d}.zip"

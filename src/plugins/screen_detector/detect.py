@@ -91,7 +91,7 @@ async def detect_one(bot: Bot, event: Event, image: Image) -> bool:
     return await _cache_result(event, result, image.id, raw_hash)
 
 
-@event_preprocessor
+@(event_preprocessor if plugin_config.enabled_scenes else lambda f: f)
 async def detect_screen_photo(
     bot: Bot,
     event: Event,

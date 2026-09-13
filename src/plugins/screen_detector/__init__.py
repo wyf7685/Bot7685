@@ -1,25 +1,34 @@
-from nonebot import logger, require
+from nonebot import logger
+from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 
+from src.highlight import Highlight
+
+from .config import Config, plugin_config
+
+__plugin_meta__ = PluginMetadata(
+    name="Screen Detector",
+    description="识别指定群聊中的屏幕实拍图片，并支持人工反馈与检测数据打包",
+    usage=(
+        "自动检测 screen.enabled_scenes 指定群聊中的图片\n"
+        "detector package <duration>\n"
+        "detector subscribe|unsubscribe"
+    ),
+    type="application",
+    config=Config,
+    supported_adapters=inherit_supported_adapters(
+        "nonebot_plugin_alconna",
+        "nonebot_plugin_uninfo",
+    ),
+    extra={"author": "wyf7685"},
+)
+
+from . import command as command
 from . import database as database
-from .config import plugin_config
+from . import detect as detect
+from . import reaction as reaction
+from . import scheduler as scheduler
 
-if plugin_config.api_base_url:
-    logger.debug(
-        f"Screen Detector plugin loaded with API base URL: {plugin_config.api_base_url}"
-    )
-    require("nonebot_plugin_alconna")
-    require("nonebot_plugin_apscheduler")
-    require("nonebot_plugin_uninfo")
-    require("src.service.s3")
-    require("src.service.cache")
-    require("src.service.task")
-    require("src.service.uninfo_target")
-    from . import command as command
-    from . import detect as detect
-    from . import reaction as reaction
-    from . import scheduler as scheduler
-else:
-    logger.warning(
-        "Screen Detector plugin loaded without API base URL. "
-        "Detection will be disabled."
-    )
+logger.debug(
+    "Screen Detector plugin loaded "
+    f"(API configured: {Highlight.apply(bool(plugin_config.api_base_url))})"
+)
