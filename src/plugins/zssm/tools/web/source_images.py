@@ -16,7 +16,7 @@ from src.service.llm import (
 
 from ...config import ImagesConfig, SourceImagesConfig
 from ...contracts.input import CollectedImageInput, CollectedInput, InputLocation
-from ...vision import route_vision
+from ...vision import FALLBACK_OBSERVATION_NOTICE, route_vision
 from .fetch import HttpxSafePageFetcher
 from .media import InvocationMediaRegistry, RegisteredMediaSet
 from .sources.contracts import DownloadedSourceMedia
@@ -338,6 +338,8 @@ def _inspection_value(
         "images": list(images),
         "omitted": omitted,
     }
+    if delivery == "fallback_observation":
+        value["delivery_notice"] = FALLBACK_OBSERVATION_NOTICE
     if omitted_for_limit:
         value["notice"] = (
             "Only the first allowed images were processed; additional requested "

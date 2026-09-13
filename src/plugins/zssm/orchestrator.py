@@ -30,7 +30,7 @@ from .contracts.web import CitationRegistry
 from .forward import expand_forward_inputs
 from .input import AdapterImageFetcher, collect_input
 from .log import current_run_id, log_event, safe_log_text
-from .prompt import SYSTEM_PROMPT
+from .prompt import build_system_prompt
 from .tools import (
     InvocationParticipantResolver,
     open_zssm_tool_resources,
@@ -292,7 +292,7 @@ async def run_zssm(
             result = await service.run_agent(
                 routed.primary,
                 tools=resources.tools,
-                system_prompt=SYSTEM_PROMPT,
+                system_prompt=build_system_prompt(started_at),
                 model=primary_alias,
                 limits=limits,
                 reasoning_effort=config.agent_reasoning_effort,

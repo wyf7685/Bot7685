@@ -25,7 +25,7 @@ from ..contracts.input import (
     MessageImageRegistry,
 )
 from ..input import AdapterImageFetcher
-from ..vision import route_vision
+from ..vision import FALLBACK_OBSERVATION_NOTICE, route_vision
 
 _MAX_REQUESTED_IMAGES = 16
 
@@ -324,7 +324,7 @@ def _inspection_value(
     failed: tuple[str, ...],
 ) -> dict[str, JSONValue]:
     omitted_count = len(omitted_for_limit) + len(repeated) + len(unknown) + len(failed)
-    return {
+    value: dict[str, JSONValue] = {
         "status": "partial" if omitted_count else "ok",
         "delivery": delivery,
         "images": list(images),
@@ -335,6 +335,9 @@ def _inspection_value(
             "failed": list(failed),
         },
     }
+    if delivery == "fallback_observation":
+        value["delivery_notice"] = FALLBACK_OBSERVATION_NOTICE
+    return value
 
 
 def _direct_image_value(
