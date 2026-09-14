@@ -1,10 +1,9 @@
+import asyncio
 import contextlib
 from typing import Literal, override
 
-import anyio
 import nonebot
-from apscheduler.job import Job as SchedulerJob
-from apscheduler.triggers.cron import CronTrigger
+from expiringdictx import ExpiringDict
 from nonebot.adapters.onebot.utils import rich_escape, truncate
 from nonebot.adapters.onebot.v11 import Adapter, Bot, Event, Message, MessageSegment
 from nonebot.adapters.onebot.v11.event import (
@@ -24,11 +23,9 @@ from nonebot.adapters.onebot.v11.event import (
 from nonebot.adapters.onebot.v11.exception import ActionFailed, NoLogException
 from nonebot.compat import model_dump, type_validate_python
 from nonebot.utils import escape_tag
-from nonebot_plugin_apscheduler import scheduler
 from pydantic import BaseModel
 
 from src.highlight import Highlight
-from src.service.task import call_later, call_soon
 
 from ..patcher import patcher
 
@@ -40,62 +37,73 @@ class GroupInfo(BaseModel):
     max_member_count: int
 
 
+GROUP_NAME_CACHE_CAPACITY = 10_000
+GROUP_NAME_CACHE_TTL = 60 * 60
+USER_CARD_CACHE_CAPACITY = 10_000
+USER_CARD_CACHE_TTL = 5 * 60
+
 logger = nonebot.logger.opt(colors=True)
-scheduler_job: dict[Bot, tuple[SchedulerJob, ...]] = {}
-group_info_cache: dict[int, GroupInfo] = {}
-user_card_cache: dict[tuple[int, int | None], str | None] = {}
-update_retry_id: dict[str, int] = {}
+connected_bots: set[Bot] = set()
+cache_refresh_event = asyncio.Event()
+cache_refresh_task: asyncio.Task[None] | None = None
+user_cache_refresh_requested = False
+pending_group_ids: set[int] = set()
+pending_group_snapshots: set[Bot] = set()
+group_name_cache: ExpiringDict[int, str] = ExpiringDict(
+    capacity=GROUP_NAME_CACHE_CAPACITY,
+    default_age=GROUP_NAME_CACHE_TTL,
+)
+user_card_cache: ExpiringDict[tuple[int, int | None], str | None] = ExpiringDict(
+    capacity=USER_CARD_CACHE_CAPACITY,
+    default_age=USER_CARD_CACHE_TTL,
+)
 
 
-async def update_group_cache(
-    bot: Bot,
-    *,
-    _try_count: int = 1,
-    _wait_secs: int = 0,
-    _id: int = 0,
-) -> None:
-    key = repr(bot)
-    if _id == 0:
-        if key in update_retry_id:
-            return
-        _id = hash(f"{key}{id(bot)}")
-        update_retry_id[key] = _id
-    elif update_retry_id.get(key, 0) != _id:
-        return
-
-    await anyio.sleep(_wait_secs)
-
+async def update_group_cache(bot: Bot) -> None:
     try:
-        update = type_validate_python(list[GroupInfo], await bot.get_group_list())
+        groups = type_validate_python(list[GroupInfo], await bot.get_group_list())
     except Exception as err:
-        logger.warning(f"更新 {bot} 的群聊信息缓存时出错: {err!r}")
-        if _try_count <= 3:
-            wait_secs = 30
-            call_soon(
-                update_group_cache,
-                bot,
-                _try_count=_try_count + 1,
-                _wait_secs=wait_secs,
-                _id=_id,
-            )
-            logger.warning(f"{H.style.y(wait_secs)}s 后重试...")
+        logger.warning(
+            f"Failed to fetch group list with <c>{escape_tag(repr(bot))}</>: "
+            f"<r>{escape_tag(repr(err))}</>"
+        )
         return
 
-    logger.debug(f"更新 {bot} 的 {H.style.y(len(update))} 条群聊信息缓存")
-    group_info_cache.update({info.group_id: info for info in update})
-    del update_retry_id[key]
+    logger.debug(
+        f"Updated {H.style.y(len(groups))} group cache entries with "
+        f"<c>{escape_tag(repr(bot))}</>"
+    )
+    for group in groups:
+        group_name_cache.set(group.group_id, group.group_name)
+
+
+async def update_group_cache_entries(bot: Bot, group_ids: set[int]) -> set[int]:
+    async def update(group_id: int) -> int | None:
+        try:
+            data = await bot.get_group_info(group_id=group_id, no_cache=True)
+        except ActionFailed:
+            return None
+
+        group = type_validate_python(GroupInfo, data)
+        group_name_cache.set(group.group_id, group.group_name)
+        return group_id
+
+    return {
+        group_id
+        for group_id in await asyncio.gather(
+            *(update(group_id) for group_id in group_ids)
+        )
+        if group_id is not None
+    }
 
 
 async def update_user_card_cache(bot: Bot) -> None:
-    async def reset(user_id: int, group_id: int | None) -> None:
-        user_card_cache[(user_id, group_id)] = None
-
-    for (user_id, group_id), name in list(user_card_cache.items()):
-        if name is not None:
-            continue
+    async def update(user_id: int, group_id: int | None) -> None:
         if user_id == 0 or group_id == 0:
-            del user_card_cache[(user_id, group_id)]
-            continue
+            user_card_cache.pop((user_id, group_id), None)
+            return
+
+        name = None
         if group_id is not None:
             with contextlib.suppress(ActionFailed):
                 data = await bot.get_group_member_info(
@@ -106,37 +114,121 @@ async def update_user_card_cache(bot: Bot) -> None:
             with contextlib.suppress(ActionFailed):
                 data = await bot.get_stranger_info(user_id=user_id)
                 name = data.get("nickname") or str(user_id)
-        user_card_cache[(user_id, group_id)] = name
-        call_later(5 * 60, reset, user_id, group_id)
+
+        if name is not None:
+            user_card_cache.set((user_id, group_id), name)
+
+    coros = [
+        update(user_id, group_id)
+        for (user_id, group_id), name in user_card_cache.items()
+        if name is None
+    ]
+    await asyncio.gather(*coros)
+
+
+def request_user_cache_refresh() -> None:
+    global user_cache_refresh_requested
+
+    user_cache_refresh_requested = True
+    cache_refresh_event.set()
+
+
+def request_group_cache_refresh(group_id: int) -> None:
+    if group_id == 0:
+        return
+    pending_group_ids.add(group_id)
+    cache_refresh_event.set()
+
+
+def request_group_cache_snapshot(bot: Bot) -> None:
+    pending_group_snapshots.add(bot)
+    cache_refresh_event.set()
+
+
+async def run_cache_refresh() -> None:
+    global user_cache_refresh_requested
+
+    while True:
+        await cache_refresh_event.wait()
+        cache_refresh_event.clear()
+
+        refresh_users = user_cache_refresh_requested
+        user_cache_refresh_requested = False
+        group_ids = set(pending_group_ids)
+        pending_group_ids.difference_update(group_ids)
+        snapshot_bots = set(pending_group_snapshots)
+        pending_group_snapshots.difference_update(snapshot_bots)
+
+        for bot in snapshot_bots:
+            if bot in connected_bots:
+                await update_group_cache(bot)
+
+        remaining_group_ids = {
+            group_id for group_id in group_ids if group_id not in group_name_cache
+        }
+        for bot in tuple(connected_bots):
+            if not remaining_group_ids:
+                break
+            try:
+                resolved = await update_group_cache_entries(bot, remaining_group_ids)
+            except Exception as err:
+                logger.warning(
+                    f"Failed to refresh group cache with "
+                    f"<c>{escape_tag(repr(bot))}</>: "
+                    f"<r>{escape_tag(repr(err))}</>"
+                )
+            else:
+                remaining_group_ids.difference_update(resolved)
+
+        pending_group_ids.update(
+            group_id
+            for group_id in remaining_group_ids
+            if group_id not in group_name_cache
+        )
+
+        if refresh_users:
+            for bot in tuple(connected_bots):
+                try:
+                    await update_user_card_cache(bot)
+                except Exception as err:
+                    logger.warning(
+                        f"Failed to refresh user cache with "
+                        f"<c>{escape_tag(repr(bot))}</>: "
+                        f"<r>{escape_tag(repr(err))}</>"
+                    )
 
 
 @nonebot.get_driver().on_bot_connect
 async def on_bot_connect(bot: Bot) -> None:
-    scheduler_job[bot] = (
-        scheduler.add_job(
-            update_group_cache,
-            args=(bot,),
-            trigger=CronTrigger(hour="*", minute="0"),
-        ),
-        scheduler.add_job(
-            update_user_card_cache,
-            args=(bot,),
-            trigger=CronTrigger(minute="0/15"),
-        ),
-    )
+    global cache_refresh_task
 
-    async def update() -> None:
-        if bot in scheduler_job:
-            await update_group_cache(bot)
-
-    call_later(5, update)
+    connected_bots.add(bot)
+    if cache_refresh_task is None:
+        cache_refresh_task = asyncio.create_task(
+            run_cache_refresh(),
+            name="onebot-v11-cache-refresh",
+        )
+    request_user_cache_refresh()
+    request_group_cache_snapshot(bot)
+    await asyncio.sleep(0)
 
 
 @nonebot.get_driver().on_bot_disconnect
 async def on_bot_disconnect(bot: Bot) -> None:
-    for job in scheduler_job.pop(bot, ()):
-        with contextlib.suppress(Exception):
-            job.remove()
+    global cache_refresh_task
+
+    connected_bots.discard(bot)
+    pending_group_snapshots.discard(bot)
+    if connected_bots:
+        cache_refresh_event.set()
+        return
+
+    task = cache_refresh_task
+    cache_refresh_task = None
+    if task is not None:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
 
 @patcher.bind
@@ -175,9 +267,9 @@ class H(Highlight[MessageSegment, Message]):
         if (name := sender.card or sender.nickname) is None:
             return cls.id(sender.user_id)
 
-        user_card_cache[(sender.user_id, None)] = name
+        user_card_cache.set((sender.user_id, None), name)
         if group is not None:
-            user_card_cache[(sender.user_id, group)] = name
+            user_card_cache.set((sender.user_id, group), name)
 
         return cls.name(sender.user_id, name)
 
@@ -186,15 +278,23 @@ class H(Highlight[MessageSegment, Message]):
         if isinstance(user, Sender):
             return cls._user_card_sender(user, group)
 
-        name = user_card_cache.setdefault((user, group), None)
-        if name is None and (user, None) in user_card_cache:
-            name = user_card_cache[(user, None)]
+        key = (user, group)
+        try:
+            name = user_card_cache[key]
+        except KeyError:
+            user_card_cache.set(key, None)
+            name = None
+        if name is None:
+            request_user_cache_refresh()
+            name = user_card_cache.get((user, None))
 
         return cls.name(user, name)
 
     @classmethod
     def group(cls, group: int) -> str:
-        name = info.group_name if (info := group_info_cache.get(group)) else None
+        name = group_name_cache.get(group)
+        if name is None:
+            request_group_cache_refresh(group)
         return f"[Group:{cls.name(group, name)}]"
 
 
@@ -286,8 +386,7 @@ def patch_group_decrease_notice_event(self: GroupDecreaseNoticeEvent) -> str:
         f"@{H.group(self.group_id)} "
         f"by {H.user(self.operator_id, self.group_id)}"
     )
-    if (key := (self.user_id, self.group_id)) in user_card_cache:
-        del user_card_cache[key]
+    user_card_cache.pop((self.user_id, self.group_id), None)
     return result
 
 

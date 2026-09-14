@@ -3,15 +3,16 @@ import contextlib
 from typing import Literal, Protocol, cast, overload, override
 
 import nonebot
-from apscheduler.job import Job as SchedulerJob
-from apscheduler.triggers.cron import CronTrigger
+from expiringdictx import ExpiringDict
 from nonebot.adapters.milky import Bot
 from nonebot.adapters.milky.event import (
     Event,
     FriendMessageEvent,
     FriendNudgeEvent,
+    GroupDisbandEvent,
     GroupMessageReactionEvent,
     GroupMuteEvent,
+    GroupNameChangeEvent,
     GroupNudgeEvent,
     GroupWholeMuteEvent,
     MessageEvent,
@@ -22,18 +23,28 @@ from nonebot.adapters.milky.message import Message, MessageSegment
 from nonebot.adapters.milky.model.base import ModelBase
 from nonebot.adapters.milky.model.common import Friend, Group, Member
 from nonebot.adapters.milky.model.message import IncomingMessage
+from nonebot.message import event_preprocessor
 from nonebot.utils import escape_tag
-from nonebot_plugin_apscheduler import scheduler
 
 from src.highlight import Highlight
-from src.service.task import call_later
 
 from ..patcher import patcher
 
+USER_CARD_CACHE_CAPACITY = 10_000
+USER_CARD_CACHE_TTL = 5 * 60
+
 logger = nonebot.logger.opt(colors=True)
-scheduler_job: dict[Bot, tuple[SchedulerJob, ...]] = {}
+connected_bots: set[Bot] = set()
+cache_refresh_event = asyncio.Event()
+cache_refresh_task: asyncio.Task[None] | None = None
+user_cache_refresh_requested = False
+pending_group_ids: set[int] = set()
+pending_group_snapshots: set[Bot] = set()
 group_name_cache: dict[int, str] = {}
-user_card_cache: dict[tuple[int, int | None], str | None] = {}
+user_card_cache: ExpiringDict[tuple[int, int | None], str | None] = ExpiringDict(
+    capacity=USER_CARD_CACHE_CAPACITY,
+    default_age=USER_CARD_CACHE_TTL,
+)
 
 
 async def update_group_cache(bot: Bot) -> None:
@@ -47,13 +58,29 @@ async def update_group_cache(bot: Bot) -> None:
         group_name_cache[group.group_id] = group.group_name
 
 
-async def update_user_cache(bot: Bot) -> None:
-    async def reset(user_id: int, group_id: int | None) -> None:
-        user_card_cache[(user_id, group_id)] = None
+async def update_group_cache_entries(bot: Bot, group_ids: set[int]) -> set[int]:
+    async def update(group_id: int) -> int | None:
+        try:
+            group = await bot.get_group_info(group_id=group_id)
+        except ActionFailed:
+            return None
 
+        group_name_cache[group.group_id] = group.group_name
+        return group_id
+
+    return {
+        group_id
+        for group_id in await asyncio.gather(
+            *(update(group_id) for group_id in group_ids)
+        )
+        if group_id is not None
+    }
+
+
+async def update_user_cache(bot: Bot) -> None:
     async def update(user_id: int, group_id: int | None) -> None:
         if user_id == 0 or group_id == 0:
-            del user_card_cache[(user_id, group_id)]
+            user_card_cache.pop((user_id, group_id), None)
             return
 
         name = None
@@ -69,8 +96,7 @@ async def update_user_cache(bot: Bot) -> None:
                 name = data.nickname or str(user_id)
 
         if name is not None:
-            user_card_cache[(user_id, group_id)] = name
-            call_later(5 * 60, reset, user_id, group_id)
+            user_card_cache.set((user_id, group_id), name)
 
     coros = [
         update(user_id, group_id)
@@ -80,37 +106,121 @@ async def update_user_cache(bot: Bot) -> None:
     await asyncio.gather(*coros)
 
 
+def request_user_cache_refresh() -> None:
+    global user_cache_refresh_requested
+
+    user_cache_refresh_requested = True
+    cache_refresh_event.set()
+
+
+def request_group_cache_refresh(group_id: int) -> None:
+    if group_id == 0:
+        return
+    pending_group_ids.add(group_id)
+    cache_refresh_event.set()
+
+
+def request_group_cache_snapshot(bot: Bot) -> None:
+    pending_group_snapshots.add(bot)
+    cache_refresh_event.set()
+
+
+async def run_cache_refresh() -> None:
+    global user_cache_refresh_requested
+
+    while True:
+        await cache_refresh_event.wait()
+        cache_refresh_event.clear()
+
+        refresh_users = user_cache_refresh_requested
+        user_cache_refresh_requested = False
+        group_ids = set(pending_group_ids)
+        pending_group_ids.difference_update(group_ids)
+        snapshot_bots = set(pending_group_snapshots)
+        pending_group_snapshots.difference_update(snapshot_bots)
+
+        for bot in snapshot_bots:
+            if bot in connected_bots:
+                await update_group_cache(bot)
+
+        remaining_group_ids = {
+            group_id for group_id in group_ids if group_id not in group_name_cache
+        }
+        for bot in tuple(connected_bots):
+            if not remaining_group_ids:
+                break
+            try:
+                resolved = await update_group_cache_entries(bot, remaining_group_ids)
+            except Exception as err:
+                logger.warning(
+                    f"Failed to refresh group cache with "
+                    f"<c>{escape_tag(repr(bot))}</>: "
+                    f"<r>{escape_tag(repr(err))}</>"
+                )
+            else:
+                remaining_group_ids.difference_update(resolved)
+
+        pending_group_ids.update(
+            group_id
+            for group_id in remaining_group_ids
+            if group_id not in group_name_cache
+        )
+
+        if refresh_users:
+            for bot in tuple(connected_bots):
+                try:
+                    await update_user_cache(bot)
+                except Exception as err:
+                    logger.warning(
+                        f"Failed to refresh user cache with "
+                        f"<c>{escape_tag(repr(bot))}</>: "
+                        f"<r>{escape_tag(repr(err))}</>"
+                    )
+
+
 @nonebot.get_driver().on_bot_connect
 async def on_bot_connect(bot: Bot) -> None:
-    scheduler_job[bot] = (
-        scheduler.add_job(
-            update_group_cache,
-            args=(bot,),
-            trigger=CronTrigger(hour="*", minute="0"),
-            misfire_grace_time=30,
-            max_instances=1,
-        ),
-        scheduler.add_job(
-            update_user_cache,
-            args=(bot,),
-            trigger=CronTrigger(second="0/15"),
-            misfire_grace_time=15,
-            max_instances=1,
-        ),
-    )
+    global cache_refresh_task
 
-    async def update() -> None:
-        if bot in scheduler_job:
-            await update_group_cache(bot)
-
-    call_later(5, update)
+    connected_bots.add(bot)
+    if cache_refresh_task is None:
+        cache_refresh_task = asyncio.create_task(
+            run_cache_refresh(),
+            name="milky-cache-refresh",
+        )
+    request_user_cache_refresh()
+    request_group_cache_snapshot(bot)
+    await asyncio.sleep(0)
 
 
 @nonebot.get_driver().on_bot_disconnect
 async def on_bot_disconnect(bot: Bot) -> None:
-    for job in scheduler_job.pop(bot, ()):
-        with contextlib.suppress(Exception):
-            job.remove()
+    global cache_refresh_task
+
+    connected_bots.discard(bot)
+    pending_group_snapshots.discard(bot)
+    if connected_bots:
+        cache_refresh_event.set()
+        return
+
+    task = cache_refresh_task
+    cache_refresh_task = None
+    if task is not None:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
+@event_preprocessor
+async def update_group_cache_from_event(
+    event: GroupNameChangeEvent | GroupDisbandEvent,
+) -> None:
+    if isinstance(event, GroupNameChangeEvent):
+        group_name_cache[event.data.group_id] = event.data.new_group_name
+        pending_group_ids.discard(event.data.group_id)
+    elif isinstance(event, GroupDisbandEvent):
+        group_name_cache.pop(event.data.group_id, None)
+        pending_group_ids.discard(event.data.group_id)
 
 
 class ModelWithScene(Protocol):
@@ -147,19 +257,31 @@ class H(Highlight[MessageSegment, Message]):
         if isinstance(user, Friend):
             return cls.name(user.user_id, user.nickname)
 
-        name = user_card_cache.setdefault((user, group), None)
-        if name is None and (user, None) in user_card_cache:
-            name = user_card_cache[(user, None)]
+        key = (user, group)
+        try:
+            name = user_card_cache[key]
+        except KeyError:
+            user_card_cache.set(key, None)
+            name = None
+        if name is None:
+            request_user_cache_refresh()
+            name = user_card_cache.get((user, None))
         return cls.name(user, name)
 
     @classmethod
     def group(cls, group: int | Group, /) -> str:
-        name = (
-            cls.name(group.group_id, group.group_name)
-            if isinstance(group, Group)
-            else cls.name(group, group_name_cache.get(group))
-        )
-        return f"[Group:{name}]"
+        if isinstance(group, Group):
+            group_id = group.group_id
+            name = group.group_name
+            group_name_cache[group_id] = name
+            pending_group_ids.discard(group_id)
+        else:
+            group_id = group
+            name = group_name_cache.get(group_id)
+            if name is None:
+                request_group_cache_refresh(group_id)
+
+        return f"[Group:{cls.name(group_id, name)}]"
 
     @classmethod
     def group_member(cls, group: Group | int, member: Member | int, /) -> str:
@@ -270,6 +392,23 @@ def patch_friend_nudge_event(self: FriendNudgeEvent) -> str:
         f"{_nudge_action(self.data.display_action, self.data.display_action_img_url)} "
         f"{H.user(self.self_id if self.data.is_self_receive else self.data.user_id)} "
         f"{self.data.display_suffix}"
+    )
+
+
+@patcher
+def patch_group_name_change_event(self: GroupNameChangeEvent) -> str:
+    return (
+        f"{H.group(self.data.group_id)} renamed to "
+        f"{H.style.y(self.data.new_group_name, escape=True)} "
+        f"by {H.user(self.data.operator_id, self.data.group_id)}"
+    )
+
+
+@patcher
+def patch_group_disband_event(self: GroupDisbandEvent) -> str:
+    return (
+        f"{H.group(self.data.group_id)} disbanded "
+        f"by {H.user(self.data.operator_id, self.data.group_id)}"
     )
 
 

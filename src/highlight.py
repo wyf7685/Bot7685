@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from enum import Enum
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, Protocol, Self, cast
 
-from bot7685_ext import LRU
+from lru import LRU
 from nonebot.adapters import Event, Message, MessageSegment
 from nonebot.utils import escape_tag
 from pydantic import BaseModel
