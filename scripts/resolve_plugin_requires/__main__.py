@@ -16,6 +16,8 @@ def main() -> None:
     ):
         deps_json_file.write_text(deps_json, encoding="utf-8")
         print("Plugin dependencies updated.")
+    else:
+        print("Plugin dependencies are up to date.")
 
 
 if __name__ == "__main__":

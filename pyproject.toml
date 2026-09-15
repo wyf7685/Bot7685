@@ -61,8 +61,12 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [{ include-group = "lint" }, { include-group = "dev-runtime" }]
-lint = ["ruff>=0.16.7", "prek>=0.5.2", "ty>=0.0.80"]
+dev = [
+  { include-group = "lint" },
+  { include-group = "dev-runtime" },
+  "poethepoet>=0.48.0",
+]
+lint = ["ruff>=0.16.7", "prek>=0.5.3", "ty>=0.0.81"]
 dev-runtime = [
   "ddgs>=9.15,<10",
   "nonebot-adapter-feishu>=2.7.1",
@@ -81,13 +85,14 @@ nonebot-plugin-permission = { git = "https://github.com/wyf7685/nonebot-plugin-p
 nonebot-plugin-rollpig = { git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git", rev = "d244a8e1cf3863f05e0adaf32652a3e168dedc5e" }
 nonebot-plugin-picmenu-next = { git = "https://github.com/wyf7685/nonebot-plugin-picmenu-next.git" }
 
-[tool.pyright]
-pythonVersion = "3.14"
-pythonPlatform = "All"
-typeCheckingMode = "standard"
-ignore = [
-  ".venv",
-  "data",       # nbp-orm migration scripts
-  "**/scripts",
+[tool.poe]
+verbosity = -1
+
+[tool.poe.tasks]
+check.parallel = [
+  { cmd = "ruff check ." },
+  { cmd = "ruff format --check ." },
+  { cmd = "ty check ." },
+  { script = "scripts.resolve_plugin_requires" },
 ]
-disableBytesTypePromotions = true
+check.ignore_fail = "return_non_zero"

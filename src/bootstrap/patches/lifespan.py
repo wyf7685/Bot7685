@@ -5,7 +5,7 @@ from collections import Counter, defaultdict
 from collections.abc import Awaitable, Callable, Sequence
 from itertools import pairwise
 from types import TracebackType
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import anyio
 from nonebot import _resolve_combine_expr
@@ -275,10 +275,12 @@ def resolve_hook_execution_sequence(
 
 
 def create_patched_driver_class(combine_expr: str) -> type[Driver]:
-    class Driver(_resolve_combine_expr(combine_expr)):  # ty:ignore[unsupported-base]
+    class CombinedDriver(
+        Driver if TYPE_CHECKING else _resolve_combine_expr(combine_expr)
+    ):
         @override
         def __init__(self, env: Env, config: Config) -> None:
             super().__init__(env, config)
             self._lifespan = ExtendedLifespan()
 
-    return Driver
+    return CombinedDriver
