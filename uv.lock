@@ -321,7 +321,7 @@ requires-dist = [
     { name = "nonebot-plugin-rollpig", git = "https://github.com/wyf7685/nonebot-plugin-rollpig.git?rev=d244a8e1cf3863f05e0adaf32652a3e168dedc5e" },
     { name = "nonebot-plugin-skland", specifier = ">=0.7.2" },
     { name = "nonebot-plugin-talk-stats", git = "https://github.com/wyf7685/nonebot-plugin-talk-stats.git?rev=bf26df74cf85d827529734d30cdd9f9ea4e6af03" },
-    { name = "nonebot-plugin-uninfo", git = "https://github.com/wyf7685/nonebot-plugin-uninfo.git?rev=5e7d93423d8dcd57830be83258b8edb538154103" },
+    { name = "nonebot-plugin-uninfo", git = "https://github.com/wyf7685/nonebot-plugin-uninfo.git?rev=dec78df7823729210432bb96bc71d7e1191c886e" },
     { name = "nonebot-plugin-user", specifier = ">=0.6.0" },
     { name = "nonebot-plugin-waiter", specifier = ">=0.8.1" },
     { name = "nonebot-plugin-wakatime", specifier = ">=0.3.1" },
@@ -2149,7 +2149,7 @@ dependencies = [
 [[package]]
 name = "nonebot-plugin-uninfo"
 version = "0.11.2"
-source = { git = "https://github.com/wyf7685/nonebot-plugin-uninfo.git?rev=5e7d93423d8dcd57830be83258b8edb538154103#5e7d93423d8dcd57830be83258b8edb538154103" }
+source = { git = "https://github.com/wyf7685/nonebot-plugin-uninfo.git?rev=dec78df7823729210432bb96bc71d7e1191c886e#dec78df7823729210432bb96bc71d7e1191c886e" }
 dependencies = [
     { name = "importlib-metadata" },
     { name = "nonebot2" },

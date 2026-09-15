@@ -71,6 +71,28 @@ class H(Highlight):
         return f"[Guild:{guild} Channel:{channel}]"
 
 
+def _metadata_value(value: object) -> object:
+    if value is UNSET:
+        return "<unset>"
+    if value is None:
+        return "<none>"
+    return value
+
+
+def _message_metadata(
+    event: GuildMessageCreateEvent | GuildMessageUpdateEvent,
+) -> str:
+    return H.apply(
+        {
+            "type": _metadata_value(event.type),
+            "webhook_id": _metadata_value(event.webhook_id),
+            "member": _metadata_value(event.member),
+            "message_reference": _metadata_value(event.message_reference),
+            "referenced_message": _metadata_value(event.referenced_message),
+        }
+    )
+
+
 @patcher
 def patch_event(self: Event) -> str:
     return H.apply(model_dump(self))
@@ -111,7 +133,8 @@ def patch_direct_message_delete_event(self: DirectMessageDeleteEvent) -> str:
 def patch_guild_message_create_event(self: GuildMessageCreateEvent) -> str:
     return (
         f"Message {H.id(self.id)} "
-        f"from {H.user(self.author)}@{H.channel(self)}: "
+        f"from {H.user(self.author)}@{H.channel(self)} "
+        f"metadata={_message_metadata(self)}: "
         f"{H.apply(self.get_message())}"
     )
 
@@ -125,6 +148,7 @@ def patch_guild_message_update_event(self: GuildMessageUpdateEvent) -> str:
     return (
         f"Message {H.id(self.id)} "
         f"from {H.user(self.author)}@{H.channel(self)} "
+        f"metadata={_message_metadata(self)} "
         f"updated{f" to {H.apply(message)}" if message else ""}"
     )
 
