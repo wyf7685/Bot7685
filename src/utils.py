@@ -2,15 +2,16 @@ import contextlib
 import datetime as dt
 import functools
 import inspect
+import os
 import threading
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from types import CoroutineType
 from typing import TYPE_CHECKING, Any, Concatenate, Literal, cast, overload
+from uuid import uuid4
 
 import anyio
 import nonebot
-from msgspec import json as msgjson
 from nonebot.adapters import Event
 from nonebot.params import Depends
 from nonebot.typing import T_State
@@ -118,8 +119,7 @@ class ConfigFile[T]:
             return self._cache
 
         if self._file.exists():
-            obj = msgjson.decode(self._file.read_bytes())
-            self._cache = self._ta.validate_python(obj)
+            self._cache = self._ta.validate_json(self._file.read_bytes())
         else:
             self.save(self._default())
             assert self._cache is not None
@@ -127,9 +127,20 @@ class ConfigFile[T]:
         return self._cache
 
     def save(self, data: T | None = None) -> None:
-        self._cache = cast("T", data) if data is not None else self.load()
-        encoded = msgjson.encode(self._ta.dump_python(self._cache))
-        self._file.write_bytes(encoded)
+        value = cast("T", data) if data is not None else self.load()
+        encoded = self._ta.dump_json(value)
+        self._file.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self._file.with_name(f".{self._file.name}.{uuid4().hex}.tmp")
+        try:
+            with temporary.open("wb") as stream:
+                stream.write(encoded)
+                stream.flush()
+                os.fsync(stream.fileno())
+            temporary.replace(self._file)
+        finally:
+            with contextlib.suppress(FileNotFoundError):
+                temporary.unlink()
+        self._cache = value
 
 
 class ConfigModelFile[T: BaseModel](ConfigFile[T]):

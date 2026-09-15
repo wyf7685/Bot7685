@@ -1,5 +1,3 @@
-import json
-
 from nonebot import logger, require
 from nonebot.adapters import Bot
 from nonebot.adapters.onebot import v11
@@ -18,7 +16,7 @@ from src.service.s3 import get_s3_service
 
 from ..adapter import get_sender
 from ..adapters.onebot11 import MessageConverter
-from ..cache import get_cache_value
+from ..cache import get_forward_cache
 from ..utils import guess_url_type
 from .depends import MsgTarget
 
@@ -98,17 +96,15 @@ async def _convert_image(segment: Segment) -> bool | Segment:
 
 @matcher.assign("load")
 async def _(bot: Bot, target: MsgTarget, fwd_id: str) -> None:
-    cache = await get_cache_value(v11.Adapter.get_name(), f"forward_{fwd_id}")
+    cache_data = await get_forward_cache(v11.Adapter.get_name(), fwd_id)
 
-    if cache is None:
+    if cache_data is None:
         await UniMessage.text("未找到合并转发消息").finish(reply_to=True)
-
-    cache_data = json.loads(cache)
     send = get_sender(bot).send
 
     for item in cache_data:
-        nick = item["nick"]
-        msg: UniMessage = UniMessage.load(item["msg"])
+        nick = item.nick
+        msg: UniMessage = UniMessage.load(item.msg)
         msg = await msg.transform_async(_convert_image)
         msg.insert(0, Text(f"{nick}\n\n"))
         try:

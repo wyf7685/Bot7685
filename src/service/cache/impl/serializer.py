@@ -1,4 +1,3 @@
-import json
 import pickle
 from collections.abc import Callable
 from typing import Any, Literal, override
@@ -23,7 +22,7 @@ def _register_serializer[T, S: BaseSerializer = BaseSerializer[T]](
 
 def get_serializer[T](
     type: type[T],  # noqa: A002
-    mode: Literal["json", "pickle"] | None,
+    mode: Literal["pickle"] | None,
 ) -> BaseSerializer[T]:
     if mode is not None:
         return _serializers[mode]()
@@ -62,7 +61,11 @@ class BoolSerializer(BaseSerializer[bool]):
 
     @override
     def loads(self, value: bytes) -> bool:
-        return value == b"1"
+        if value == b"1":
+            return True
+        if value == b"0":
+            return False
+        raise ValueError("invalid cached boolean")
 
 
 @_register_serializer("pickle")
@@ -77,21 +80,6 @@ class PickleSerializer[T](BaseSerializer[T]):
     @override
     def loads(self, value: bytes) -> T:
         return pickle.loads(value)  # noqa: S301
-
-
-@_register_serializer("json")
-class JsonSerializer[T](BaseSerializer[T]):
-    @override
-    def dumps(self, value: T) -> bytes:
-        return json.dumps(
-            value,
-            ensure_ascii=False,
-            separators=(",", ":"),
-        ).encode("utf-8")
-
-    @override
-    def loads(self, value: bytes) -> T:
-        return json.loads(value.decode("utf-8"))
 
 
 class PydanticSerializer[T](BaseSerializer[T]):

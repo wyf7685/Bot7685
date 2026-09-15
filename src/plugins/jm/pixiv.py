@@ -75,7 +75,7 @@ async def oauth_login(code: str, code_verifier: str) -> OauthResult:
     async with httpx2.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
         resp = await client.post(f"{OAUTH_BASE_URL}/auth/token", data=data)
         resp.raise_for_status()
-        return OauthResult.model_validate(resp.json())
+        return OauthResult.model_validate_json(resp.content)
 
 
 async def oauth_refresh(refresh_token: str) -> OauthResult:
@@ -90,7 +90,7 @@ async def oauth_refresh(refresh_token: str) -> OauthResult:
     async with httpx2.AsyncClient(headers={"User-Agent": USER_AGENT}) as client:
         resp = await client.post(f"{OAUTH_BASE_URL}/auth/token", data=data)
         resp.raise_for_status()
-        return OauthResult.model_validate(resp.json())
+        return OauthResult.model_validate_json(resp.content)
 
 
 class ImageUrls(BaseModel):
@@ -169,7 +169,7 @@ class PixivClient:
         async with httpx2.AsyncClient(headers=headers) as client:
             resp = await client.post(f"{OAUTH_BASE_URL}/auth/token", data=data)
             resp.raise_for_status()
-            oauth_result = OauthResult.model_validate(resp.json())
+            oauth_result = OauthResult.model_validate_json(resp.content)
 
         await access_token_cache.set(
             cache_key,
@@ -192,7 +192,7 @@ class PixivClient:
         async with httpx2.AsyncClient(headers=headers) as client:
             resp = await client.get(url, params=params)
             resp.raise_for_status()
-            return IllustDetail.model_validate(resp.json())
+            return IllustDetail.model_validate_json(resp.content)
 
     async def download_image(
         self,

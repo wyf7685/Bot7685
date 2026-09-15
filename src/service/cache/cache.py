@@ -13,15 +13,6 @@ from .impl import CacheAdapter, get_cache_backend, get_serializer
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
 
-    type JsonSerializable = (
-        str
-        | int
-        | float
-        | bool
-        | Sequence["JsonSerializable"]
-        | Mapping[str, "JsonSerializable"]
-        | None
-    )
     type Serializable = (
         str
         | bytes
@@ -37,20 +28,6 @@ if TYPE_CHECKING:
         | None
     )
 
-    @overload
-    def get_cache[T: (bytes, str, bool)](
-        namespace: str,
-        type: type[T],
-        /,
-    ) -> Cache[T]: ...
-    @overload
-    def get_cache[T: JsonSerializable](
-        namespace: str,
-        type: type[T],
-        /,
-        *,
-        mode: Literal["json"],
-    ) -> Cache[T]: ...
     @overload
     def get_cache[T: Serializable](
         namespace: str,
@@ -72,7 +49,7 @@ def get_cache[T](
     type: type[T],
     /,
     *,
-    mode: Literal["json", "pickle"] | None = None,
+    mode: Literal["pickle"] | None = None,
 ) -> Cache[T]:
     logger.opt(colors=True).debug(
         f"Initializing cache for namespace '<y>{escape_tag(namespace)}</>' "

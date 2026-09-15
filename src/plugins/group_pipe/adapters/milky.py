@@ -1,6 +1,5 @@
-import json
 from copy import deepcopy
-from typing import Any, override
+from typing import override
 
 from nonebot.adapters import Event as BaseEvent
 from nonebot.adapters.milky import Adapter, Bot, Message, MessageSegment
@@ -8,14 +7,13 @@ from nonebot.adapters.milky.event import MessageEvent
 from nonebot.adapters.milky.model.api import MessageResponse
 from nonebot_plugin_alconna import uniseg as u
 
-from src.service.cache import get_cache
-
 from ..adapter import converts
 from ..utils import guess_url_type
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
 
-file_cache = get_cache("group_pipe:milky:file", str)
+_FILE_SCENE_KEY = "_group_pipe_message_scene"
+_FILE_PEER_ID_KEY = "_group_pipe_peer_id"
 
 
 class MessageConverter(
@@ -30,17 +28,8 @@ class MessageConverter(
 
         message = deepcopy(event.original_message)
         for file_seg in message.get("file"):
-            file_id: str = file_seg.data.get("file_id", "")
-            file_name: str = file_seg.data.get("file_name", "")
-            file_data: dict[str, Any] = {"file_id": file_id, "file_name": file_name}
-            if event.data.message_scene == "group":
-                file_data["method"] = "get_group_file_download_url"
-                file_data["group_id"] = event.data.peer_id
-            elif event.data.message_scene == "friend":
-                file_data["method"] = "get_private_file_download_url"
-                file_data["user_id"] = event.data.sender_id
-                file_data["file_hash"] = file_id.split("_")[0]
-            await file_cache.set(file_id, json.dumps(file_data))
+            file_seg.data[_FILE_SCENE_KEY] = event.data.message_scene
+            file_seg.data[_FILE_PEER_ID_KEY] = event.data.peer_id
 
         return message
 
@@ -48,20 +37,35 @@ class MessageConverter(
     async def file(self, segment: MessageSegment) -> u.Segment | None:
         file_info = segment.data
         file_id = file_info.get("file_id")
-        if not file_id:
+        if not isinstance(file_id, str) or not file_id:
             return None
 
-        file_data_json = await file_cache.get(file_id)
-        if not file_data_json:
-            return None
+        file_name = file_info.get("file_name")
+        if not isinstance(file_name, str) or not file_name:
+            file_name = file_id
 
-        file_data: dict[str, Any] = json.loads(file_data_json)
-        file_name = file_data.pop("file_name")
-        method = getattr(self.src_bot, file_data.pop("method"), None)
-        if method is None:
-            return None
+        peer_id = file_info.get(_FILE_PEER_ID_KEY)
+        if not isinstance(peer_id, int):
+            return u.Text(f"[file:{file_name}]")
 
-        url: str = await method(**file_data)
+        match file_info.get(_FILE_SCENE_KEY):
+            case "group":
+                url = await self.src_bot.get_group_file_download_url(
+                    group_id=peer_id,
+                    file_id=file_id,
+                )
+            case "friend":
+                file_hash = file_info.get("file_hash")
+                if not isinstance(file_hash, str) or not file_hash:
+                    return u.Text(f"[file:{file_name}]")
+                url = await self.src_bot.get_private_file_download_url(
+                    user_id=peer_id,
+                    file_id=file_id,
+                    file_hash=file_hash,
+                )
+            case _:
+                return u.Text(f"[file:{file_name}]")
+
         info = await guess_url_type(url)
         if info and info.mime.startswith("image/"):
             return u.Image(id=file_id, url=url, mimetype=info.mime, name=file_name)

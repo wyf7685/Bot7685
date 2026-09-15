@@ -1,6 +1,7 @@
 import io
 import math
 from collections.abc import AsyncGenerator, Iterable
+from importlib.metadata import version
 from typing import override
 
 import anyio
@@ -46,8 +47,17 @@ OPTION = {
 
 jmcomic.JmModuleConfig.EXECUTOR_LOG = jm_log
 option = jmcomic.JmOption.construct(OPTION)
-album_cache = get_cache("jmcomic_option:album", jmcomic.JmAlbumDetail, mode="pickle")
-photo_cache = get_cache("jmcomic_option:photo", jmcomic.JmPhotoDetail, mode="pickle")
+_JMCOMIC_CACHE_NAMESPACE = f"jmcomic_option:{version("jmcomic")}"
+album_cache = get_cache(
+    f"{_JMCOMIC_CACHE_NAMESPACE}:album",
+    jmcomic.JmAlbumDetail,
+    mode="pickle",
+)
+photo_cache = get_cache(
+    f"{_JMCOMIC_CACHE_NAMESPACE}:photo",
+    jmcomic.JmPhotoDetail,
+    mode="pickle",
+)
 
 
 async def get_album_detail(album_id: int) -> jmcomic.JmAlbumDetail:

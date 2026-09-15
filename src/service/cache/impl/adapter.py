@@ -7,6 +7,7 @@ import nonebot
 
 from ..abstract import PTTL, TTL, BaseCacheBackend, BaseSerializer, CacheStats
 from ..config import cache_config
+from ..exceptions import CacheDeserializationError, CacheSerializationError
 
 CACHE_PREFIX = cache_config.cache_prefix
 
@@ -92,26 +93,68 @@ class CacheAdapter[T]:
             return ttl.total_seconds()
         return float(ttl)
 
+    def _dumps(self, value: T) -> bytes:
+        try:
+            return self._serializer.dumps(value)
+        except CacheSerializationError:
+            raise
+        except Exception as error:
+            raise CacheSerializationError(
+                f"Failed to serialize value for cache namespace {self._namespace!r}"
+            ) from error
+
+    def _loads(self, value: bytes) -> T:
+        try:
+            return self._serializer.loads(value)
+        except CacheDeserializationError:
+            raise
+        except Exception as error:
+            raise CacheDeserializationError(
+                f"Failed to deserialize value for cache namespace {self._namespace!r}"
+            ) from error
+
+    def _loads_or_miss(self, value: bytes) -> tuple[bool, T | None]:
+        try:
+            return True, self._loads(value)
+        except CacheDeserializationError:
+            nonebot.logger.warning(
+                f"Failed to deserialize value for cache namespace "
+                f"{self._namespace!r}; treating it as a miss"
+            )
+            return False, None
+
     @overload
     async def get(self, key: str) -> T | None: ...
     @overload
     async def get[D](self, key: str, default: D) -> T | D: ...
 
     async def get[D](self, key: str, default: D | None = None) -> T | D | None:
-        value = await self._backend.get(self._format_key(key))
-        if value is None:
+        serialized = await self._backend.get(self._format_key(key))
+        if serialized is None:
+            self._tracker.record_miss()
+            return default
+        loaded, value = self._loads_or_miss(serialized)
+        if not loaded:
             self._tracker.record_miss()
             return default
         self._tracker.record_hit()
-        return self._serializer.loads(value)
+        return value
 
     async def multi_get(self, keys: Iterable[str]) -> list[T | None]:
-        result = [
-            self._serializer.loads(value) if value is not None else None
-            for value in await self._backend.multi_get(map(self._format_key, keys))
-        ]
-        misses = sum(1 for x in result if x is None)
-        hits = len(result) - misses
+        result: list[T | None] = []
+        hits = 0
+        misses = 0
+        for serialized in await self._backend.multi_get(map(self._format_key, keys)):
+            if serialized is None:
+                result.append(None)
+                misses += 1
+                continue
+            loaded, value = self._loads_or_miss(serialized)
+            result.append(value)
+            if loaded:
+                hits += 1
+            else:
+                misses += 1
         self._tracker.record(hits, misses)
         return result
 
@@ -123,7 +166,7 @@ class CacheAdapter[T]:
     ) -> bool:
         return await self._backend.set(
             self._format_key(key),
-            self._serializer.dumps(value),
+            self._dumps(value),
             self._normalize_ttl(ttl),
         )
 
@@ -133,8 +176,7 @@ class CacheAdapter[T]:
         ttl: TTL = cache_config.cache_default_ttl,
     ) -> int:
         serialized = {
-            self._format_key(key): self._serializer.dumps(value)
-            for key, value in mapping.items()
+            self._format_key(key): self._dumps(value) for key, value in mapping.items()
         }
         return await self._backend.multi_set(serialized, self._normalize_ttl(ttl))
 

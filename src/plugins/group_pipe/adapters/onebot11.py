@@ -24,7 +24,7 @@ from src.service.s3 import get_s3_service
 from src.service.task import call_soon
 
 from ..adapter import converts
-from ..cache import set_cache_value
+from ..cache import ForwardCacheItem, set_forward_cache
 from ..utils import async_client, check_url_ok, guess_url_type, solve_url_302
 from .common import MessageConverter as BaseMessageConverter
 from .common import MessageSender as BaseMessageSender
@@ -144,7 +144,7 @@ class MessageConverter(
         if not content:
             return False
 
-        cache_data: list[dict[str, object]] = []
+        cache_data: list[ForwardCacheItem] = []
         processor = MessageConverter(self.src_bot)
         processor.do_resolve_url = False
 
@@ -153,7 +153,7 @@ class MessageConverter(
             msg = item.get("message")
             if not msg:
                 continue
-            nick = (
+            nick = str(
                 sender.get("card")
                 or sender.get("nickname")
                 or sender.get("user_id")
@@ -162,14 +162,15 @@ class MessageConverter(
 
             msg = Message([MessageSegment(**seg) for seg in msg])
             unimsg = await processor.convert(msg)
-            cache_data.append({"nick": nick, "msg": unimsg.dump(media_save_dir=False)})
+            cache_data.append(
+                ForwardCacheItem(
+                    nick=nick,
+                    msg=unimsg.dump(media_save_dir=False),
+                )
+            )
 
         if cache_data:
-            await set_cache_value(
-                adapter=self.src_bot.type,
-                key=f"forward_{forward_id}",
-                value=json.dumps(cache_data),
-            )
+            await set_forward_cache(self.src_bot.type, forward_id, cache_data)
             self.logger.debug(f"缓存合并转发消息: {forward_id}")
             return True
 
