@@ -12,6 +12,9 @@ class SourceRegistry:
     def __init__(self, adapters: Sequence[SourceAdapter]) -> None:
         self._adapters = tuple(adapters)
 
+    def with_adapter(self, adapter: SourceAdapter) -> SourceRegistry:
+        return SourceRegistry((*self._adapters, adapter))
+
     def match(
         self,
         target: ValidatedHttpTarget,

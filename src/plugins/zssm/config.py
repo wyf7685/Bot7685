@@ -104,6 +104,7 @@ class WebSearchConfig(_FrozenConfig):
 
 class FetchPageConfig(_FrozenConfig):
     source_proxy: SecretStr | None = None
+    github_pat: SecretStr | None = None
     respect_robots: bool = True
     max_redirects: NonNegativeInt = 5
     max_wire_bytes: PositiveInt = 2 * 1024 * 1024
@@ -117,6 +118,13 @@ class FetchPageConfig(_FrozenConfig):
         "text/plain",
         "text/markdown",
     )
+
+    @field_validator("github_pat")
+    @classmethod
+    def validate_github_pat(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not value.get_secret_value().strip():
+            raise ValueError("github_pat must not be empty")
+        return value
 
     @field_validator("source_proxy")
     @classmethod

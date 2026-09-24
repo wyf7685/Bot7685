@@ -2,18 +2,20 @@ import codecs
 import hashlib
 import socket
 import zlib
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import partial
 from time import monotonic
-from typing import Literal, Self, cast
+from typing import TYPE_CHECKING, Any, Literal, Self, cast
 from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
 import anyio
 import httpx2
 from anyio.to_thread import run_sync
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from githubkit import GitHub
+from githubkit.exception import RequestError, RequestFailed, RequestTimeout
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from src.service.llm import BoundTool, JSONValue, ToolOutput
 
@@ -48,16 +50,21 @@ from .media import InvocationMediaRegistry
 from .sources.contracts import DownloadedPage as _DownloadedPage
 from .sources.contracts import ExtractedPage as _ExtractedPage
 from .sources.contracts import SourceAdapterError
+from .sources.github import GitHubAdapter, PrivateGitHubRepositoryError
 from .sources.registry import DEFAULT_SOURCE_REGISTRY, SourceRegistry
 from .text import normalize_page_text as _normalize_page_text
 from .text import normalize_single_line as _normalize_single_line
 from .text import optional_metadata as _optional_metadata
+
+if TYPE_CHECKING:
+    import httpx
 
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 _USER_AGENT = "Bot7685-ZSSM/1.0"
 _ROBOTS_CACHE_SECONDS = 300.0
 
 type FetchErrorCode = Literal[
+    "access_denied",
     "content_encoding",
     "decode",
     "dns",
@@ -118,6 +125,123 @@ class _RobotsCacheEntry:
     parser: RobotFileParser | None = None
 
 
+class _GitHubApiTransport(httpx2.AsyncBaseTransport):
+    """Pin GitHubKit requests to validated public peers with bounded responses."""
+
+    def __init__(
+        self,
+        config: FetchPageConfig,
+        resolve: Callable[[str, int], Awaitable[tuple[IPAddress, ...]]],
+        enforce_robots: Callable[..., Awaitable[None]],
+        *,
+        transport: httpx2.AsyncBaseTransport | None = None,
+    ) -> None:
+        self._config = config
+        self._resolve = resolve
+        self._enforce_robots = enforce_robots
+        self._proxy = config.source_proxy is not None
+        self._require_peer = transport is None and not self._proxy
+        self._transport = transport or httpx2.AsyncHTTPTransport(
+            proxy=config.source_proxy.get_secret_value()
+            if config.source_proxy
+            else None,
+            trust_env=False,
+            limits=httpx2.Limits(max_keepalive_connections=0),
+        )
+
+    async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
+        try:
+            target = _validate_target(str(request.url))
+        except SafePageFetchError:
+            raise SafePageFetchError("unsafe_url") from None
+        if (
+            request.method != "GET"
+            or target.scheme != "https"
+            or target.hostname != "api.github.com"
+            or not request.url.path.startswith("/repos/")
+        ):
+            raise SafePageFetchError("unsafe_url")
+        if self._config.respect_robots:
+            await self._enforce_robots(target, source_proxy=self._proxy)
+        addresses = await self._resolve(target.hostname, target.port)
+        headers = request.headers.copy()
+        headers["Host"] = target.host_header
+        headers["Accept-Encoding"] = "identity"
+        pinned = httpx2.Request(
+            "GET",
+            request.url
+            if self._proxy
+            else request.url.copy_with(host=str(addresses[0])),
+            headers=headers,
+            extensions={**request.extensions, "sni_hostname": target.hostname},
+        )
+        try:
+            response = await self._transport.handle_async_request(pinned)
+        except httpx2.TimeoutException:
+            raise SafePageFetchError("timeout") from None
+        except httpx2.HTTPError:
+            raise SafePageFetchError("network") from None
+        try:
+            if not self._proxy:
+                if self._require_peer:
+                    stream = response.extensions.get("network_stream")
+                    if (
+                        stream is None
+                        or not hasattr(stream, "get_extra_info")
+                        or stream.get_extra_info("server_addr") is None
+                    ):
+                        raise SafePageFetchError("peer_mismatch")
+                _verify_expected_peer(response, addresses)
+            if 300 <= response.status_code < 400:
+                raise SafePageFetchError("redirect")
+            if (
+                response.headers.get("content-encoding", "identity").casefold()
+                != "identity"
+            ):
+                raise SafePageFetchError("content_encoding")
+            content_types = response.headers.get_list("content-type")
+            if len(content_types) != 1 or content_types[0].split(";", 1)[
+                0
+            ].strip().casefold() not in {
+                "application/json",
+                "application/vnd.github+json",
+            }:
+                raise SafePageFetchError("unsupported_content")
+            lengths = response.headers.get_list("content-length")
+            if len(lengths) > 1:
+                raise SafePageFetchError("too_large")
+            if lengths:
+                try:
+                    length = int(lengths[0])
+                except ValueError:
+                    raise SafePageFetchError("too_large") from None
+                if length < 0 or length > self._config.max_wire_bytes:
+                    raise SafePageFetchError("too_large")
+            if response.is_stream_consumed:
+                body = response.content
+                if len(body) > self._config.max_wire_bytes:
+                    raise SafePageFetchError("too_large")
+            else:
+                buffer = bytearray()
+                async for chunk in response.aiter_raw():
+                    if len(buffer) + len(chunk) > self._config.max_wire_bytes:
+                        raise SafePageFetchError("too_large")
+                    buffer.extend(chunk)
+                body = bytes(buffer)
+            return httpx2.Response(
+                response.status_code,
+                headers=response.headers,
+                content=body,
+                request=request,
+            )
+        finally:
+            with anyio.move_on_after(1, shield=True):
+                await response.aclose()
+
+    async def aclose(self) -> None:
+        await self._transport.aclose()
+
+
 class HttpxSafePageFetcher:
     """SSRF-safe HTTP fetcher that connects only to prevalidated DNS answers."""
 
@@ -128,6 +252,7 @@ class HttpxSafePageFetcher:
         *,
         resolver: AddressResolver | None = None,
         transport: httpx2.AsyncBaseTransport | None = None,
+        github_transport: httpx2.AsyncBaseTransport | None = None,
         clock: Callable[[], float] = monotonic,
         source_registry: SourceRegistry | None = None,
         media_registry: InvocationMediaRegistry | None = None,
@@ -136,7 +261,31 @@ class HttpxSafePageFetcher:
         self._citations = citation_registry
         self._resolver = resolver or _resolve_system_addresses
         self._clock = clock
-        self._source_registry = source_registry or DEFAULT_SOURCE_REGISTRY
+        self._github: GitHub[Any] | None = None
+        self._github_entered = False
+        if source_registry is None:
+            self._github = GitHub(
+                config.github_pat.get_secret_value() if config.github_pat else None,
+                # The entrypoint aliases GitHubKit's transport classes at runtime.
+                async_transport=cast(
+                    "httpx.AsyncBaseTransport",
+                    _GitHubApiTransport(
+                        config,
+                        self._resolve,
+                        self._enforce_robots,
+                        transport=github_transport,
+                    ),
+                ),
+                follow_redirects=False,
+                trust_env=False,
+                auto_retry=False,
+                http_cache=False,
+                timeout=config.total_timeout_seconds,
+            )
+            source_registry = DEFAULT_SOURCE_REGISTRY.with_adapter(
+                GitHubAdapter(self._github)
+            )
+        self._source_registry = source_registry
         self._media_registry = media_registry
         self._robots_cache: dict[tuple[str, bool], _RobotsCacheEntry] = {}
         if transport is None:
@@ -172,13 +321,23 @@ class HttpxSafePageFetcher:
     def max_redirects(self) -> int:
         return self._config.max_redirects
 
+    @property
+    def source_registry(self) -> SourceRegistry:
+        return self._source_registry
+
     async def __aenter__(self) -> Self:
+        if self._github is not None:
+            await self._github.__aenter__()
+            self._github_entered = True
         return self
 
     async def __aexit__(self, *_exc: object) -> None:
         await self.aclose()
 
     async def aclose(self) -> None:
+        if self._github is not None and self._github_entered:
+            await self._github.__aexit__(None, None, None)
+            self._github_entered = False
         if self._source_client is not None:
             await self._source_client.aclose()
         await self._client.aclose()
@@ -343,7 +502,19 @@ class HttpxSafePageFetcher:
                     final_url=downloaded.final_url,
                     extracted=extracted,
                 )
-        except SourceAdapterError:
+        except PrivateGitHubRepositoryError:
+            raise SafePageFetchError("access_denied") from None
+        except RequestFailed as error:
+            raise SafePageFetchError(
+                "http_status", status_code=error.response.status_code
+            ) from None
+        except RequestTimeout:
+            raise SafePageFetchError("timeout") from None
+        except RequestError as error:
+            if isinstance(error.exc, SafePageFetchError):
+                raise error.exc from None
+            raise SafePageFetchError("network") from None
+        except SourceAdapterError, ValidationError:
             raise SafePageFetchError("extract") from None
         except TimeoutError:
             raise SafePageFetchError("timeout") from None
@@ -661,13 +832,12 @@ async def resolve_card_urls(
 ) -> Mapping[str, str]:
     """Resolve supported card URLs through registered source adapters."""
 
-    registry = source_registry or DEFAULT_SOURCE_REGISTRY
     async with HttpxSafePageFetcher(
         config,
         InvocationCitationRegistry(),
-        source_registry=registry,
+        source_registry=source_registry,
     ) as fetcher:
-        return await registry.resolve_card_urls(urls, fetcher)
+        return await fetcher.source_registry.resolve_card_urls(urls, fetcher)
 
 
 def build_fetch_page_tool(
