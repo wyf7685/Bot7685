@@ -13,6 +13,9 @@ from ....http_transport import (
 from .base import BaseSourceAdapter, normalize_page_text, optional_metadata
 from .contracts import ExtractedPage, SourceIO, SourceTarget, SpecializedPage
 
+type GitHubSourceValue = tuple[str, str, str, str]  # owner, repo, kind, reference
+type GitHubSourceTarget = SourceTarget[GitHubSourceValue]
+
 _OWNER_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?")
 _REPO_RE = re.compile(r"[A-Za-z0-9_.-]{1,100}")
 _NUMBER_RE = re.compile(r"[1-9][0-9]{0,12}")
@@ -24,13 +27,13 @@ class PrivateGitHubRepositoryError(RuntimeError):
     """Authenticated access must not expose a private repository to chat."""
 
 
-class GitHubAdapter(BaseSourceAdapter):
+class GitHubAdapter(BaseSourceAdapter[GitHubSourceValue]):
     source_id = "github"
 
     def __init__(self, github: GitHub[Any]) -> None:
         self._github = github
 
-    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None:
+    def recognize(self, target: ValidatedHttpTarget) -> GitHubSourceTarget | None:
         if target.scheme != "https" or target.hostname != "github.com":
             return None
         parts = urlsplit(target.url).path.strip("/").split("/")
@@ -77,7 +80,7 @@ class GitHubAdapter(BaseSourceAdapter):
 
     async def fetch_specialized(
         self,
-        target: SourceTarget,
+        target: GitHubSourceTarget,
         io: SourceIO,
     ) -> SpecializedPage | None:
         _ = io
@@ -85,70 +88,78 @@ class GitHubAdapter(BaseSourceAdapter):
         repository = await self._github.rest.repos.async_get(owner, repo)
         if repository.parsed_data.private:
             raise PrivateGitHubRepositoryError
-        if kind == "repository":
-            extracted = _repository_page(repository.parsed_data)
-        elif kind == "issues":
-            issue = (
-                await self._github.rest.issues.async_get(owner, repo, int(reference))
-            ).parsed_data
-            title = issue.title
-            author = issue.user.login if issue.user else None
-            extracted = _page(
-                title,
-                author,
-                issue.created_at.isoformat(),
-                f"State: {issue.state}",
-                issue.body,
-            )
-        elif kind == "pull":
-            pull = (
-                await self._github.rest.pulls.async_get(owner, repo, int(reference))
-            ).parsed_data
-            extracted = _page(
-                pull.title,
-                pull.user.login,
-                pull.created_at.isoformat(),
-                f"State: {"merged" if pull.merged else pull.state}",
-                pull.body,
-            )
-        elif kind == "commit":
-            commit = (
-                await self._github.rest.repos.async_get_commit(owner, repo, reference)
-            ).parsed_data
-            title = (
-                commit.commit.message.splitlines()[0]
-                if commit.commit.message
-                else "Commit"
-            )
-            author = (
-                commit.commit.author.name
-                if commit.commit.author and isinstance(commit.commit.author.name, str)
-                else None
-            )
-            extracted = _page(
-                title,
-                author,
-                (
-                    commit.commit.author.date.isoformat()
-                    if commit.commit.author and commit.commit.author.date
-                    else None
-                ),
-                f"Commit: {commit.sha}",
-                commit.commit.message,
-            )
-        else:
-            release = (
-                await self._github.rest.repos.async_get_release_by_tag(
-                    owner, repo, reference
+
+        match kind:
+            case "repository":
+                extracted = _repository_page(repository.parsed_data)
+            case "issues":
+                issue = (
+                    await self._github.rest.issues.async_get(
+                        owner, repo, int(reference)
+                    )
+                ).parsed_data
+                title = issue.title
+                author = issue.user.login if issue.user else None
+                extracted = _page(
+                    title,
+                    author,
+                    issue.created_at.isoformat(),
+                    f"State: {issue.state}",
+                    issue.body,
                 )
-            ).parsed_data
-            extracted = _page(
-                release.name or release.tag_name,
-                release.author.login,
-                release.published_at.isoformat() if release.published_at else None,
-                f"Tag: {release.tag_name}",
-                release.body,
-            )
+            case "pull":
+                pull = (
+                    await self._github.rest.pulls.async_get(owner, repo, int(reference))
+                ).parsed_data
+                extracted = _page(
+                    pull.title,
+                    pull.user.login,
+                    pull.created_at.isoformat(),
+                    f"State: {"merged" if pull.merged else pull.state}",
+                    pull.body,
+                )
+            case "commit":
+                commit = (
+                    await self._github.rest.repos.async_get_commit(
+                        owner, repo, reference
+                    )
+                ).parsed_data
+                title = (
+                    commit.commit.message.splitlines()[0]
+                    if commit.commit.message
+                    else "Commit"
+                )
+                author = (
+                    commit.commit.author.name
+                    if commit.commit.author
+                    and isinstance(commit.commit.author.name, str)
+                    else None
+                )
+                extracted = _page(
+                    title,
+                    author,
+                    (
+                        commit.commit.author.date.isoformat()
+                        if commit.commit.author and commit.commit.author.date
+                        else None
+                    ),
+                    f"Commit: {commit.sha}",
+                    commit.commit.message,
+                )
+            case _:
+                release = (
+                    await self._github.rest.repos.async_get_release_by_tag(
+                        owner, repo, reference
+                    )
+                ).parsed_data
+                extracted = _page(
+                    release.name or release.tag_name,
+                    release.author.login,
+                    release.published_at.isoformat() if release.published_at else None,
+                    f"Tag: {release.tag_name}",
+                    release.body,
+                )
+
         return SpecializedPage(target.canonical_url, extracted)
 
 

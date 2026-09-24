@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Protocol
 
 from ....http_transport import ValidatedHttpTarget
 
@@ -44,10 +44,10 @@ class ExtractedPage:
 
 
 @dataclass(frozen=True, slots=True)
-class SourceTarget:
+class SourceTarget[T]:
     source_id: str
     canonical_url: str
-    value: Any
+    value: T
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,14 +100,14 @@ class SourceIO(Protocol):
     ) -> str | None: ...
 
 
-class SourceAdapter(Protocol):
+class SourceAdapter[T = object](Protocol):
     source_id: str
 
-    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None: ...
+    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget[T] | None: ...
 
     async def fetch_specialized(
         self,
-        target: SourceTarget,
+        target: SourceTarget[T],
         io: SourceIO,
     ) -> SpecializedPage | None: ...
 
@@ -122,7 +122,7 @@ class SourceAdapter(Protocol):
 
     async def fetch_media(
         self,
-        target: SourceTarget,
+        target: SourceTarget[T],
         pages: Sequence[int],
         io: SourceIO,
         *,

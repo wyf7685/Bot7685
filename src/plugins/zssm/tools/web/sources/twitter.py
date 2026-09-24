@@ -19,6 +19,9 @@ from .contracts import (
     SpecializedPage,
 )
 
+type TwitterSourceValue = tuple[str, str | None]  # status_id, screen_name
+type TwitterSourceTarget = SourceTarget[TwitterSourceValue]
+
 _TWITTER_HOSTS = frozenset(
     {
         "x.com",
@@ -36,10 +39,10 @@ _TWITTER_STATUS_PATH_RE = re.compile(
 )
 
 
-class TwitterAdapter(BaseSourceAdapter):
+class TwitterAdapter(BaseSourceAdapter[TwitterSourceValue]):
     source_id = "twitter"
 
-    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None:
+    def recognize(self, target: ValidatedHttpTarget) -> TwitterSourceTarget | None:
         if target.hostname not in _TWITTER_HOSTS:
             return None
         match = _TWITTER_STATUS_PATH_RE.fullmatch(urlsplit(target.url).path)
@@ -48,28 +51,20 @@ class TwitterAdapter(BaseSourceAdapter):
         return SourceTarget(
             self.source_id,
             target.url,
-            {
-                "status_id": match.group("status_id"),
-                "screen_name": match.group("screen_name"),
-            },
+            (match.group("status_id"), match.group("screen_name")),
         )
 
     async def fetch_specialized(
         self,
-        target: SourceTarget,
+        target: TwitterSourceTarget,
         io: SourceIO,
     ) -> SpecializedPage | None:
-        value = target.value
-        if not isinstance(value, Mapping):
-            return None
-        status_id = value.get("status_id")
-        screen_name = value.get("screen_name")
-        if not isinstance(status_id, str):
-            return None
-        if not isinstance(screen_name, str):
-            vxtwitter_path = f"status/{status_id}"
-        else:
-            vxtwitter_path = f"{screen_name}/status/{status_id}"
+        status_id, screen_name = target.value
+        vxtwitter_path = (
+            f"{screen_name}/status/{status_id}"
+            if screen_name is not None
+            else f"status/{status_id}"
+        )
 
         candidates: tuple[tuple[str, Any], ...] = (
             (

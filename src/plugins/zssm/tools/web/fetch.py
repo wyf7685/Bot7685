@@ -6,14 +6,14 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import partial
 from time import monotonic
-from typing import TYPE_CHECKING, Any, Literal, Self, cast
+from typing import TYPE_CHECKING, Literal, Self, cast
 from urllib.parse import urljoin, urlsplit
 from urllib.robotparser import RobotFileParser
 
 import anyio
 import httpx2
 from anyio.to_thread import run_sync
-from githubkit import GitHub
+from githubkit import GitHub, TokenAuthStrategy, UnauthAuthStrategy
 from githubkit.exception import RequestError, RequestFailed, RequestTimeout
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -261,21 +261,27 @@ class HttpxSafePageFetcher:
         self._citations = citation_registry
         self._resolver = resolver or _resolve_system_addresses
         self._clock = clock
-        self._github: GitHub[Any] | None = None
+        self._github: GitHub[UnauthAuthStrategy | TokenAuthStrategy] | None = None
         self._github_entered = False
         if source_registry is None:
-            self._github = GitHub(
-                config.github_pat.get_secret_value() if config.github_pat else None,
-                # The entrypoint aliases GitHubKit's transport classes at runtime.
-                async_transport=cast(
-                    "httpx.AsyncBaseTransport",
-                    _GitHubApiTransport(
-                        config,
-                        self._resolve,
-                        self._enforce_robots,
-                        transport=github_transport,
-                    ),
+            github_auth = (
+                TokenAuthStrategy(config.github_pat.get_secret_value())
+                if config.github_pat
+                else UnauthAuthStrategy()
+            )
+            # The entrypoint aliases GitHubKit's transport classes at runtime.
+            github_api_transport = cast(
+                "httpx.AsyncBaseTransport",
+                _GitHubApiTransport(
+                    config,
+                    self._resolve,
+                    self._enforce_robots,
+                    transport=github_transport,
                 ),
+            )
+            self._github = GitHub(
+                github_auth,
+                async_transport=github_api_transport,
                 follow_redirects=False,
                 trust_env=False,
                 auto_retry=False,

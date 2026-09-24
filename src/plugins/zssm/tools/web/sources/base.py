@@ -11,16 +11,16 @@ from .contracts import (
 )
 
 
-class BaseSourceAdapter:
+class BaseSourceAdapter[T]:
     source_id = "unknown"
 
-    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None:
+    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget[T] | None:
         _ = target
         return None
 
     async def fetch_specialized(
         self,
-        target: SourceTarget,
+        target: SourceTarget[T],
         io: SourceIO,
     ) -> SpecializedPage | None:
         _ = target, io
@@ -41,7 +41,7 @@ class BaseSourceAdapter:
 
     async def fetch_media(
         self,
-        target: SourceTarget,
+        target: SourceTarget[T],
         pages: Sequence[int],
         io: SourceIO,
         *,

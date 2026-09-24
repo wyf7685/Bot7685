@@ -1,14 +1,15 @@
 from dataclasses import dataclass
+from typing import Any
 
 from ...contracts.web import MediaSetRef
 from .sources.contracts import SourceAdapter, SourceTarget
 
 
 @dataclass(frozen=True, slots=True)
-class RegisteredMediaSet:
+class RegisteredMediaSet[T]:
     ref: MediaSetRef
-    adapter: SourceAdapter
-    target: SourceTarget
+    adapter: SourceAdapter[T]
+    target: SourceTarget[T]
 
 
 class InvocationMediaRegistry:
@@ -16,14 +17,14 @@ class InvocationMediaRegistry:
 
     def __init__(self) -> None:
         self._next_id = 1
-        self._by_id: dict[str, RegisteredMediaSet] = {}
-        self._by_key: dict[tuple[str, str], RegisteredMediaSet] = {}
+        self._by_id: dict[str, RegisteredMediaSet[Any]] = {}
+        self._by_key: dict[tuple[str, str], RegisteredMediaSet[Any]] = {}
 
-    def register(
+    def register[T](
         self,
         *,
-        adapter: SourceAdapter,
-        target: SourceTarget,
+        adapter: SourceAdapter[T],
+        target: SourceTarget[T],
         count: int,
         restricted: bool,
     ) -> MediaSetRef:
@@ -40,7 +41,7 @@ class InvocationMediaRegistry:
         self._by_key[key] = registered
         return ref
 
-    def get(self, media_id: str) -> RegisteredMediaSet | None:
+    def get(self, media_id: str) -> RegisteredMediaSet[object] | None:
         return self._by_id.get(media_id)
 
 

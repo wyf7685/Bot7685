@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Mapping, Sequence
+from typing import Any
 
 from ....http_transport import ValidatedHttpTarget
 from .bilibili import BilibiliAdapter
@@ -9,16 +10,16 @@ from .twitter import TwitterAdapter
 
 
 class SourceRegistry:
-    def __init__(self, adapters: Sequence[SourceAdapter]) -> None:
+    def __init__(self, adapters: Sequence[SourceAdapter[Any]]) -> None:
         self._adapters = tuple(adapters)
 
-    def with_adapter(self, adapter: SourceAdapter) -> SourceRegistry:
+    def with_adapter(self, adapter: SourceAdapter[Any]) -> SourceRegistry:
         return SourceRegistry((*self._adapters, adapter))
 
     def match(
         self,
         target: ValidatedHttpTarget,
-    ) -> tuple[SourceAdapter, SourceTarget] | None:
+    ) -> tuple[SourceAdapter[object], SourceTarget[object]] | None:
         for adapter in self._adapters:
             source_target = adapter.recognize(target)
             if source_target is not None:

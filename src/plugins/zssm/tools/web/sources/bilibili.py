@@ -14,6 +14,9 @@ from .base import (
 )
 from .contracts import ExtractedPage, SourceIO, SourceTarget
 
+type BilibiliSourceValue = str  # video_id
+type BilibiliSourceTarget = SourceTarget[BilibiliSourceValue]
+
 _B23_HOST = "b23.tv"
 _BILIBILI_VIDEO_HOSTS = frozenset(
     {"bilibili.com", "m.bilibili.com", "www.bilibili.com"}
@@ -56,10 +59,10 @@ class _JSONLDScriptParser(HTMLParser):
         self._parts = []
 
 
-class BilibiliAdapter(BaseSourceAdapter):
+class BilibiliAdapter(BaseSourceAdapter[BilibiliSourceValue]):
     source_id = "bilibili"
 
-    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None:
+    def recognize(self, target: ValidatedHttpTarget) -> BilibiliSourceTarget | None:
         canonical = canonical_bilibili_video_url(target.url)
         if canonical is None:
             return None

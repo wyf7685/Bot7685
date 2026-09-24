@@ -21,6 +21,9 @@ from .contracts import (
     SpecializedPage,
 )
 
+type PixivSourceValue = str  # artwork_id
+type PixivSourceTarget = SourceTarget[PixivSourceValue]
+
 _PIXIV_HOSTS = frozenset({"pixiv.net", "www.pixiv.net"})
 _PIXIV_ARTWORK_PATH_RE = re.compile(
     r"^/(?:en/)?artworks/(?P<artwork_id>[1-9][0-9]{0,19})/?$"
@@ -111,10 +114,10 @@ class _CaptionHTMLParser(HTMLParser):
         return "".join(self._parts)
 
 
-class PixivAdapter(BaseSourceAdapter):
+class PixivAdapter(BaseSourceAdapter[PixivSourceValue]):
     source_id = "pixiv"
 
-    def recognize(self, target: ValidatedHttpTarget) -> SourceTarget | None:
+    def recognize(self, target: ValidatedHttpTarget) -> PixivSourceTarget | None:
         canonical = canonical_pixiv_artwork_url(target.url)
         if canonical is None:
             return None
@@ -123,7 +126,7 @@ class PixivAdapter(BaseSourceAdapter):
 
     async def fetch_specialized(
         self,
-        target: SourceTarget,
+        target: PixivSourceTarget,
         io: SourceIO,
     ) -> SpecializedPage | None:
         artwork_id = target.value
@@ -174,7 +177,7 @@ class PixivAdapter(BaseSourceAdapter):
 
     async def fetch_media(
         self,
-        target: SourceTarget,
+        target: PixivSourceTarget,
         pages: Sequence[int],
         io: SourceIO,
         *,
