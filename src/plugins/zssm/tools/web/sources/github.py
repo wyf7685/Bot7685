@@ -1,5 +1,5 @@
 import re
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urlsplit
 
 from githubkit import GitHub
@@ -13,7 +13,10 @@ from ....http_transport import (
 from .base import BaseSourceAdapter, normalize_page_text, optional_metadata
 from .contracts import ExtractedPage, SourceIO, SourceTarget, SpecializedPage
 
-type GitHubSourceValue = tuple[str, str, str, str]  # owner, repo, kind, reference
+type GitHubSourceKind = Literal["repository", "issues", "pull", "commit", "release"]
+type GitHubSourceValue = tuple[
+    str, str, GitHubSourceKind, str
+]  # owner, repo, kind, reference
 type GitHubSourceTarget = SourceTarget[GitHubSourceValue]
 
 _OWNER_RE = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?")
@@ -44,13 +47,15 @@ class GitHubAdapter(BaseSourceAdapter[GitHubSourceValue]):
             return None
         if repo in {".", ".."}:
             return None
-        kind = "repository"
+        kind: GitHubSourceKind = "repository"
         reference = ""
         match parts[2:]:
             case []:
                 pass
-            case ["issues" | "pull", number] if _NUMBER_RE.fullmatch(number):
-                kind, reference = parts[2], number
+            case [("issues" | "pull") as issue_kind, number] if _NUMBER_RE.fullmatch(
+                number
+            ):
+                kind, reference = issue_kind, number
             case ["commit", sha] if _SHA_RE.fullmatch(sha):
                 kind, reference = "commit", sha
             case ["releases", "tag", tag] if _TAG_RE.fullmatch(tag):
