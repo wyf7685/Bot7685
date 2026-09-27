@@ -12,7 +12,9 @@ from nonebot.plugin import PluginMetadata, inherit_supported_adapters
 from nonebot_plugin_alconna import (
     Alconna,
     Args,
+    Arparma,
     MsgTarget,
+    Option,
     SupportScope,
     UniMessage,
     on_alconna,
@@ -27,19 +29,19 @@ from .utils import format_exc_msg
 
 __plugin_meta__ = PluginMetadata(
     name="jmcomic",
-    description="jmcomic",
-    usage="/jm <album_id: int>",
+    description="查询 JM 和 Pixiv 作品信息；追加 get 下载并发送图片",
+    usage="jm <album_id: int> [get]\ngetpixiv <illust_id: int> [get]",
     supported_adapters=inherit_supported_adapters("nonebot_plugin_alconna"),
     type="application",
 )
 
 
 cmd_jm = on_alconna(
-    Alconna("jm", Args["album_id", int]),
+    Alconna("jm", Args["album_id", int], Option("get")),
     permission=TrustedUser(),
 )
 cmd_pixiv = on_alconna(
-    Alconna("getpixiv", Args["illust_id", int]),
+    Alconna("getpixiv", Args["illust_id", int], Option("get")),
     permission=TrustedUser(),
 )
 
@@ -98,11 +100,28 @@ async def send_as_forward(event: Event, id: int, downloader: Downloader) -> None
         await UniMessage.text(f"完成 {id} 的下载任务").finish(reply_to=True)
 
 
+async def send_summary(id: int, downloader: Downloader) -> None:
+    try:
+        index = await downloader.fetch_index(id)
+    except Exception as err:
+        await UniMessage.text(f"获取信息失败: 未知错误\n{err!r}").finish(reply_to=True)
+
+    await UniMessage.text(await downloader.format_summary(index)).finish(reply_to=True)
+
+
 @cmd_jm.assign("album_id", parameterless=[Depends(_check_qq_client)])
-async def handle_jm(event: Event, album_id: int) -> None:
-    await send_as_forward(event, album_id, JmDownloader())
+async def handle_jm(event: Event, album_id: int, arp: Arparma) -> None:
+    downloader = JmDownloader()
+    if arp.find("get"):
+        await send_as_forward(event, album_id, downloader)
+    else:
+        await send_summary(album_id, downloader)
 
 
 @cmd_pixiv.assign("illust_id", parameterless=[Depends(_check_qq_client)])
-async def handle_pixiv(event: Event, illust_id: int) -> None:
-    await send_as_forward(event, illust_id, PixivDownloader())
+async def handle_pixiv(event: Event, illust_id: int, arp: Arparma) -> None:
+    downloader = PixivDownloader()
+    if arp.find("get"):
+        await send_as_forward(event, illust_id, downloader)
+    else:
+        await send_summary(illust_id, downloader)
