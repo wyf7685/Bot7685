@@ -27,9 +27,9 @@ DATETIME_FIELDS = [
 class _StyleCall(Protocol):
     __name__: str
     __qualname__: str
+    cache_clear: Callable[[], None]
 
     def __call__(self, obj: object, /, *, escape: bool = False) -> str: ...
-    def cache_clear(self) -> None: ...
 
 
 class _Style:
@@ -45,13 +45,10 @@ class _Style:
                 lru[text] = f"{prefix}{text}{suffix}"
             return lru[text]
 
-        def cache_clear() -> None:
-            lru.clear()
-
-        call: _StyleCall = cast("_StyleCall", fn)
+        call = cast("_StyleCall", fn)
         call.__name__ = tag
         call.__qualname__ = f"Style.{tag}"
-        call.cache_clear = cache_clear  # ty:ignore[invalid-assignment]
+        call.cache_clear = lambda: lru.clear()
         setattr(self, tag, call)
         return call
 
@@ -153,7 +150,23 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
             return cls.__dataclass(data)
         return escape_tag(repr(data))
 
-    register = _handle.register
+    @classmethod
+    @with_struct_depth
+    def __dataclass(cls, data: object) -> str:
+        if TYPE_CHECKING:
+            assert dataclasses.is_dataclass(data)
+            assert not isinstance(data, type)
+
+        items = (
+            (field.name, getattr(data, field.name))
+            for field in dataclasses.fields(data)
+        )
+        return (
+            f"{style.lg(data.__class__.__name__)}"
+            f"{cls._seq(cls._kv(items, "=", style.i_y), "()")}"
+        )
+
+    register: ClassVar = _handle.register
 
     @classmethod
     def apply(
@@ -291,22 +304,6 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
         return cls.message(data)
 
     del _
-
-    @classmethod
-    @with_struct_depth
-    def __dataclass(cls, data: object) -> str:
-        if TYPE_CHECKING:
-            assert dataclasses.is_dataclass(data)
-            assert not isinstance(data, type)
-
-        items = (
-            (field.name, getattr(data, field.name))
-            for field in dataclasses.fields(data)
-        )
-        return (
-            f"{style.lg(type(data).__name__)}"
-            f"{cls._seq(cls._kv(items, "=", style.i_y), "()")}"
-        )
 
     @classmethod
     def segment(cls, segment: TMS) -> str:
