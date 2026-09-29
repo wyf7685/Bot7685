@@ -9,13 +9,11 @@ from nonebot.utils import escape_tag, is_coroutine_callable, run_sync
 from src.utils import caller_loc_repr
 
 __plugin_meta__ = PluginMetadata(
-    name="Tasks",
+    name="Task",
     description="提供任务调度工具",
     usage="call_later(delay, call) / call_soon(call)",
     type="library",
 )
-
-driver = nonebot.get_driver()
 
 
 def call_later[**P](
@@ -41,7 +39,7 @@ def call_later[**P](
                 f" (from <c>{escape_tag(loc)}</>):"
             )
 
-    driver.task_group.start_soon(task, name=f"Scheduled Task from {loc}")
+    nonebot.get_driver().task_group.start_soon(task, name=f"Scheduled Task from {loc}")
 
 
 def call_soon[**P](
@@ -64,4 +62,4 @@ def call_soon[**P](
                 f" (from <c>{escape_tag(loc)}</>):"
             )
 
-    driver.task_group.start_soon(task, name=f"Scheduled Task from {loc}")
+    nonebot.get_driver().task_group.start_soon(task, name=f"Scheduled Task from {loc}")
