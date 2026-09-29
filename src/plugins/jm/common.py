@@ -2,7 +2,7 @@ import contextlib
 from abc import ABC, abstractmethod
 from collections import deque
 from collections.abc import AsyncGenerator
-from typing import ClassVar
+from typing import ClassVar, cast, final
 
 import anyio
 import httpx2
@@ -28,25 +28,26 @@ async def send_nodes(nodes: list[CustomNode]) -> None:
 class Downloader[Index, Task](ABC):
     concurrency: ClassVar[int] = 10
 
-    httpx2_client: httpx2.AsyncClient | None = None
+    _http_client: httpx2.AsyncClient | None = None
     stack: contextlib.AsyncExitStack | None = None
 
     @abstractmethod
     def create_client(self) -> httpx2.AsyncClient:
         raise NotImplementedError
 
+    @final
     async def get_client(self) -> httpx2.AsyncClient:
-        if type(self).create_client is Downloader.create_client:
+        implemented = type(self).create_client is not Downloader.create_client
+        if not cast("bool", implemented):
             raise NotImplementedError(
                 f"{type(self).__name__}.create_httpx2_client() is not implemented"
             )
 
-        if self.httpx2_client is None:
-            self.httpx2_client = self.create_client()
+        if self._http_client is None:
+            self._http_client = self.create_client()
             if self.stack is not None:
-                await self.stack.enter_async_context(self.httpx2_client)
-
-        return self.httpx2_client
+                await self.stack.enter_async_context(self._http_client)
+        return self._http_client
 
     @abstractmethod
     async def fetch_index(self, id: int, /) -> Index:
@@ -99,13 +100,13 @@ class Downloader[Index, Task](ABC):
         except Exception as err:
             await UniMessage.text(f"获取信息失败: 未知错误\n{err!r}").finish()
 
-        formatted = await self.format_summary(index)
-        await UniMessage.text(formatted).send(reply_to=True)
+        summary = await self.format_summary(index)
+        await UniMessage.text(summary).send(reply_to=True)
         schedule_recall(receipt)
 
         async with (
             contextlib.aclosing(self.iter_items(index)) as agen,
-            anyio.create_task_group() as tg,
+            anyio.create_task_group() as task_group,
         ):
             async for idx, batch in aenumerate(abatched(agen, SEG_BATCH_SIZE), start=1):
                 nodes = [
@@ -119,4 +120,4 @@ class Downloader[Index, Task](ABC):
                     for name, raw in batch
                 ]
                 logger.opt(colors=True).info(f"开始发送合并转发: <c>{idx}</c>")
-                tg.start_soon(send_nodes, nodes)
+                task_group.start_soon(send_nodes, nodes)

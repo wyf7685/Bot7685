@@ -28,13 +28,14 @@ async def aenumerate[T](
 
 
 def flatten_exception_group(
-    exc_group: BaseExceptionGroup[BaseException],
+    exc: BaseException | BaseExceptionGroup[BaseException],
 ) -> Generator[BaseException]:
-    for exc in exc_group.exceptions:
-        if isinstance(exc, BaseExceptionGroup):
-            yield from flatten_exception_group(exc)
-        else:
-            yield exc
+    if not isinstance(exc, BaseExceptionGroup):
+        yield exc
+        return
+
+    for child in exc.exceptions:
+        yield from flatten_exception_group(child)
 
 
 def format_exc(exc: BaseException) -> str:
@@ -42,10 +43,8 @@ def format_exc(exc: BaseException) -> str:
 
 
 def format_exc_msg(msg: str, exc: BaseException) -> str:
-    return f"{msg}:\n" + (
-        "\n".join(format_exc(exc) for exc in flatten_exception_group(exc))
-        if isinstance(exc, BaseExceptionGroup)
-        else format_exc(exc)
+    return f"{msg}:\n" + "\n".join(
+        format_exc(exc) for exc in flatten_exception_group(exc)
     )
 
 
@@ -71,6 +70,3 @@ class Future[T]:
 
     def __await__(self) -> Generator[None, None, T]:
         return self.wait().__await__()
-
-
-DownloadTask = Future[bytes | str]

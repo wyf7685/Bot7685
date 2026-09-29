@@ -1,26 +1,29 @@
 # ruff: noqa: S105
 
+import asyncio
 import base64
 import contextlib
 import hashlib
 import io
+import os
 import secrets
 from collections.abc import AsyncGenerator
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import override
 from urllib.parse import urlencode
 
+import anyio
 import httpx2
 import PIL.Image
+from nonebot import get_driver, logger
+from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_localstore import get_plugin_data_file
 from pydantic import BaseModel
 
-from src.service.cache import get_cache
-
 from .common import Downloader
-from .config import plugin_cofig
 from .utils import generate_random_ascii_string
 
-access_token_cache = get_cache("pixiv:access_token", str)
+TOKEN_FILE = get_plugin_data_file("pixiv_refresh_token")
 
 # https://gist.github.com/ZipFile/c9ebedb224406f4f11845ab700124362
 # Latest app version can be found using GET /v1/application-info/android
@@ -93,6 +96,97 @@ async def oauth_refresh(refresh_token: str) -> OauthResult:
         return OauthResult.model_validate_json(resp.content)
 
 
+class PixivAuth:
+    def __init__(self) -> None:
+        self._refresh_token: str | None = None
+        self._access_token: str | None = None
+        self._expires_at: datetime | None = None
+        self._lock = asyncio.Lock()
+
+    def _schedule(self, delay: int) -> None:
+        scheduler.add_job(
+            self.scheduled_refresh,
+            "date",
+            run_date=datetime.now(UTC) + timedelta(seconds=delay),
+            id="jm_pixiv_refresh",
+            replace_existing=True,
+            misfire_grace_time=None,
+            max_instances=1,
+        )
+
+    @staticmethod
+    def _write_token(token: str) -> None:
+        temporary = TOKEN_FILE.with_name(
+            f".{TOKEN_FILE.name}.{secrets.token_hex(8)}.tmp"
+        )
+        try:
+            with temporary.open("w", encoding="utf-8") as stream:
+                stream.write(token)
+                stream.flush()
+                os.fsync(stream.fileno())
+            if os.name != "nt":
+                temporary.chmod(0o600)
+            temporary.replace(TOKEN_FILE)
+        finally:
+            with contextlib.suppress(FileNotFoundError):
+                temporary.unlink()
+
+    async def _accept(self, result: OauthResult) -> None:
+        await anyio.to_thread.run_sync(self._write_token, result.refresh_token)
+        self._refresh_token = result.refresh_token
+        self._access_token = result.access_token
+        self._expires_at = datetime.now(UTC) + timedelta(seconds=result.expires_in)
+        self._schedule(max(1, result.expires_in - 60))
+
+    async def startup(self) -> None:
+        try:
+            self._refresh_token = await anyio.to_thread.run_sync(
+                lambda: (
+                    TOKEN_FILE.read_text(encoding="utf-8").strip()
+                    if TOKEN_FILE.exists()
+                    else None
+                )
+            )
+        except OSError as exc:
+            logger.error(f"读取 Pixiv 凭据失败: {type(exc).__name__}")
+            return
+        if self._refresh_token:
+            self._schedule(0)
+
+    async def login(self, code: str, code_verifier: str) -> None:
+        async with self._lock:
+            await self._accept(await oauth_login(code, code_verifier))
+
+    async def refresh(self, *, force: bool = False) -> str:
+        async with self._lock:
+            if (
+                not force
+                and self._access_token
+                and self._expires_at
+                and datetime.now(UTC) < self._expires_at
+            ):
+                return self._access_token
+            if not self._refresh_token:
+                raise RuntimeError("Pixiv 尚未登录，请由超级用户私聊执行 pixivlogin")
+            try:
+                result = await oauth_refresh(self._refresh_token)
+                await self._accept(result)
+            except Exception:
+                self._schedule(300)
+                raise
+            return result.access_token
+
+    async def scheduled_refresh(self) -> None:
+        try:
+            await self.refresh(force=True)
+        except Exception as exc:
+            logger.error(f"刷新 Pixiv 凭据失败: {type(exc).__name__}")
+
+
+pixiv_auth = PixivAuth()
+get_driver().on_startup(pixiv_auth.startup)
+
+
 class ImageUrls(BaseModel):
     square_medium: str | None = None
     medium: str | None = None
@@ -143,8 +237,7 @@ class IllustDetail(BaseModel):
 
 
 class PixivClient:
-    def __init__(self, refresh_token: str) -> None:
-        self.refresh_token = refresh_token
+    def __init__(self) -> None:
         self._headers = {
             "App-OS": "ios",
             "App-OS-Version": "12.2",
@@ -152,34 +245,8 @@ class PixivClient:
             "User-Agent": "PixivIOSApp/7.6.2 (iOS 12.2; iPhone9,1)",
         }
 
-    async def get_access_token(self) -> str:
-        cache_key = hashlib.sha256(self.refresh_token.encode()).hexdigest()
-        if cached_token := await access_token_cache.get(cache_key):
-            return cached_token
-
-        headers = {"User-Agent": "PixivAndroidApp/6.66.1 (Android 11; Pixel 5)"}
-        data = {
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
-            "grant_type": "refresh_token",
-            "include_policy": "true",
-            "refresh_token": self.refresh_token,
-        }
-
-        async with httpx2.AsyncClient(headers=headers) as client:
-            resp = await client.post(f"{OAUTH_BASE_URL}/auth/token", data=data)
-            resp.raise_for_status()
-            oauth_result = OauthResult.model_validate_json(resp.content)
-
-        await access_token_cache.set(
-            cache_key,
-            oauth_result.access_token,
-            ttl=oauth_result.expires_in - 60,
-        )
-        return oauth_result.access_token
-
     async def get_headers(self) -> dict[str, str]:
-        access_token = await self.get_access_token()
+        access_token = await pixiv_auth.refresh()
         headers = self._headers.copy()
         headers["Authorization"] = f"Bearer {access_token}"
         return headers
@@ -212,11 +279,7 @@ class PixivClient:
 
 class PixivDownloader(Downloader[Illust, str]):
     def __init__(self) -> None:
-        if plugin_cofig.pixiv_refresh_token is None:
-            raise RuntimeError("Pixiv refresh token not configured")
-
-        refresh_token = plugin_cofig.pixiv_refresh_token.get_secret_value()
-        self.pixiv_client = PixivClient(refresh_token)
+        self.pixiv_client = PixivClient()
 
     @override
     def create_client(self) -> httpx2.AsyncClient:
