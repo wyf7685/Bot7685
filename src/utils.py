@@ -223,9 +223,7 @@ def caller_loc_repr(depth: int = 1) -> str:
         if frame.f_back is None:
             return "<unknown>"
         frame = frame.f_back
-    loc = f"{frame.f_code.co_filename}:{frame.f_lineno}"
-    del frame
-    return loc
+    return f"{frame.f_code.co_filename}:{frame.f_lineno}"
 
 
 def schedule_recall(receipt: Receipt) -> None:
