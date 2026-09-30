@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from nonebot.adapters import Bot, Event
@@ -169,12 +170,19 @@ async def expand_forward_inputs(
 ) -> tuple[UniMessage, UniMessage | None]:
     """Expand inline and adapter-backed Reference segments under shared limits."""
 
-    active_resolver = resolver or create_adapter_reference_resolver(
-        bot,
-        event,
-        timeout_seconds=config.fetch_timeout_seconds,
-    )
-    state = _ExpansionState(config=config, resolver=active_resolver)
+    active_resolver = resolver
+
+    async def resolve_reference(reference: Reference) -> Sequence[UniMessage]:
+        nonlocal active_resolver
+        if active_resolver is None:
+            active_resolver = create_adapter_reference_resolver(
+                bot,
+                event,
+                timeout_seconds=config.fetch_timeout_seconds,
+            )
+        return await active_resolver(reference)
+
+    state = _ExpansionState(config=config, resolver=resolve_reference)
     expanded_content = await state.expand(content.copy())
     expanded_quoted = await state.expand(quoted.copy()) if quoted is not None else None
     return expanded_content, expanded_quoted

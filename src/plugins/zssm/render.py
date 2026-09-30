@@ -126,7 +126,7 @@ def _safe_display_url(value: str) -> str | None:
         host = f"{host}:{port}"
 
     path = parsed.path or "/"
-    display = urlunsplit((parsed.scheme.lower(), host, path, "", ""))
+    display = urlunsplit((parsed.scheme.lower(), host, path, parsed.query, ""))
     return _display_text(display, 320) or None
 
 

@@ -16,6 +16,7 @@ from .config import get_zssm_config
 from .contracts.output import RenderFailure, RenderFailureCategory
 from .forward import ForwardFetchError, ForwardLimitError, ForwardUnsupportedError
 from .input import EmptyInputError, UnsupportedInputError
+from .input.adapters import fetch_image as fetch_adapter_resource_image
 from .log import cause_name, current_run_id, log_event, safe_log_text
 from .orchestrator import AllImagesFailedError, run_zssm
 from .reaction import zssm_reaction_timeline
@@ -178,7 +179,10 @@ async def _execute_zssm(
         )
 
     async def fetch_adapter_image(image: Image) -> bytes | None:
-        return await image_fetch(event, bot, state, image)
+        image_bytes = await image_fetch(event, bot, state, image)
+        if image_bytes is not None:
+            return image_bytes
+        return await fetch_adapter_resource_image(bot, image)
 
     try:
         model = await run_zssm(

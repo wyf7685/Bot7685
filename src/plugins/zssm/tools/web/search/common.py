@@ -70,6 +70,7 @@ def normalize_search_rows(
 ) -> WebSearchResult:
     normalized: list[SearchResult] = []
     seen_urls: set[str] = set()
+    seen_citation_ids: set[str] = set()
     truncated = len(rows) > max_results
     for raw in rows:
         if len(normalized) >= max_results:
@@ -100,6 +101,9 @@ def normalize_search_rows(
         except TypeError, ValueError, InvalidHttpTargetError:
             continue
         seen_urls.add(url)
+        if citation.citation_id in seen_citation_ids:
+            continue
+        seen_citation_ids.add(citation.citation_id)
         normalized.append(
             SearchResult(
                 rank=len(normalized) + 1,

@@ -150,7 +150,7 @@ async def collect_input(
                     unsupported = True
             source_index += 1
         rendered[location] = "".join(fragments)
-    unique_images = _deduplicate_source_references(tuple(images))
+    unique_images, _ = _deduplicate_source_references(tuple(images))
     omitted_images = max(0, len(unique_images) - config.max_count)
     images = [
         CollectedImageInput(

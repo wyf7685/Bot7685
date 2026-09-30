@@ -1,8 +1,10 @@
 import asyncio
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from time import perf_counter
+from types import MappingProxyType
 from typing import Final
 
 import httpx2
@@ -122,10 +124,14 @@ class VisionRoutingResult:
     stats: ImageStageStatistics
     prepared: tuple[PreparedImage, ...]
     failures: tuple[ImageFailure, ...]
+    canonical_labels: Mapping[str, str]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "prepared", tuple(self.prepared))
         object.__setattr__(self, "failures", tuple(self.failures))
+        object.__setattr__(
+            self, "canonical_labels", MappingProxyType(dict(self.canonical_labels))
+        )
         if len(self.prepared) != self.stats.prepared:
             raise ValueError("prepared image count does not match statistics")
         if self.stage is None and self.stage_usage is not None:
@@ -156,6 +162,7 @@ async def route_vision(
             stats=ImageStageStatistics(),
             prepared=(),
             failures=(),
+            canonical_labels={},
         )
     log_event(
         "INFO",
@@ -203,6 +210,7 @@ async def route_vision(
             stats=preparation.statistics,
             prepared=(),
             failures=preparation.failures,
+            canonical_labels=preparation.canonical_labels,
         )
 
     if primary_handle.capabilities.supports(ModelCapability.VISION):
@@ -219,6 +227,7 @@ async def route_vision(
             stats=preparation.statistics,
             prepared=preparation.images,
             failures=preparation.failures,
+            canonical_labels=preparation.canonical_labels,
         )
 
     assert vision_handle is not None
@@ -226,6 +235,11 @@ async def route_vision(
         preparation.images,
         model_alias=vision_model,
         model_id=vision_handle.model_id,
+        temperature=(
+            0.0
+            if vision_handle.capabilities.supports(ModelCapability.TEMPERATURE)
+            else None
+        ),
         config=config,
         llm_service=llm_service,
     )
@@ -272,6 +286,7 @@ async def route_vision(
         stats=stats,
         prepared=preparation.images,
         failures=failures,
+        canonical_labels=preparation.canonical_labels,
     )
 
 
@@ -280,6 +295,7 @@ async def _run_vision_stage(
     *,
     model_alias: str,
     model_id: str,
+    temperature: float | None,
     config: ImagesConfig,
     llm_service: LLMService,
 ) -> VisionStageResult:
@@ -309,7 +325,7 @@ async def _run_vision_stage(
                         )
                     ),
                     model=model_alias,
-                    temperature=0.0,
+                    temperature=temperature,
                     max_output_tokens=max(
                         32,
                         min(config.vision_output_chars, 2048),

@@ -160,24 +160,27 @@ class _InvalidImageError(Exception):
 
 def _deduplicate_source_references(
     images: tuple[CollectedImageInput, ...],
-) -> tuple[CollectedImageInput, ...]:
-    seen_ids: set[str] = set()
-    seen_locations: set[tuple[str, str]] = set()
+) -> tuple[tuple[CollectedImageInput, ...], dict[str, str]]:
+    labels_by_id: dict[str, str] = {}
+    labels_by_location: dict[tuple[str, str], str] = {}
+    canonical_labels: dict[str, str] = {}
     unique: list[CollectedImageInput] = []
     for image in images:
         segment = image.segment
         opaque_id = str(segment.id).strip() if segment.id is not None else ""
-        if opaque_id and opaque_id in seen_ids:
-            continue
         location = _source_location_key(segment)
-        if location is not None and location in seen_locations:
-            continue
+        canonical = labels_by_id.get(opaque_id)
+        if canonical is None and location is not None:
+            canonical = labels_by_location.get(location)
+        if canonical is None:
+            canonical = image.label
+            unique.append(image)
         if opaque_id:
-            seen_ids.add(opaque_id)
+            labels_by_id[opaque_id] = canonical
         if location is not None:
-            seen_locations.add(location)
-        unique.append(image)
-    return tuple(unique)
+            labels_by_location[location] = canonical
+        canonical_labels[image.label] = canonical
+    return tuple(unique), canonical_labels
 
 
 def _source_location_key(segment: Image) -> tuple[str, str] | None:

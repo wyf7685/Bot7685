@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 from ....http_transport import ValidatedHttpTarget
+from ....log import cause_name, log_event
 from .base import (
     BaseSourceAdapter,
     normalize_page_text,
@@ -198,14 +199,27 @@ class PixivAdapter(BaseSourceAdapter[PixivSourceValue]):
             if page <= 0 or page > len(media_pages):
                 raise SourceAdapterError("pixiv media page is out of range")
             item = media_pages[page - 1]
-            image = await io.download_media(
-                item[0],
-                referer=_PIXIV_REFERER,
-                allowed_hosts=_PIXIV_IMAGE_HOSTS,
-                max_bytes=max_bytes,
-            )
-            if image.media_type is None:
-                raise SourceAdapterError("pixiv image response has no media type")
+            try:
+                image = await io.download_media(
+                    item[0],
+                    referer=_PIXIV_REFERER,
+                    allowed_hosts=_PIXIV_IMAGE_HOSTS,
+                    max_bytes=max_bytes,
+                )
+            except Exception as error:
+                log_event(
+                    "WARNING",
+                    "ZSSM::SourceImages",
+                    f"<y>source=pixiv</> page=<c>{page}</> "
+                    f"cause=<r>{cause_name(error)}</>",
+                )
+                continue
+            if (
+                image.media_type is None
+                or not image.media_type.strip()
+                or not image.body
+            ):
+                continue
             results.append(
                 DownloadedSourceMedia(
                     page=page,

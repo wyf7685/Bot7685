@@ -105,7 +105,10 @@ def validate_http_target(url: str) -> ValidatedHttpTarget:
 
     path = parsed.path or "/"
     canonical = SplitResult(scheme, ascii_hostname, path, parsed.query, "")
-    normalized_url = urlunsplit(canonical)
+    try:
+        normalized_url = str(httpx2.URL(urlunsplit(canonical)))
+    except httpx2.InvalidURL:
+        raise InvalidHttpTargetError from None
     origin = f"{scheme}://{ascii_hostname}"
     return ValidatedHttpTarget(
         url=normalized_url,

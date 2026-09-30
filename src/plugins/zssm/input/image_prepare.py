@@ -1,4 +1,6 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 
 import httpx2
 
@@ -23,10 +25,14 @@ class ImagePreparationResult:
     images: tuple[PreparedImage, ...]
     failures: tuple[ImageFailure, ...]
     statistics: ImageStageStatistics
+    canonical_labels: Mapping[str, str]
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "images", tuple(self.images))
         object.__setattr__(self, "failures", tuple(self.failures))
+        object.__setattr__(
+            self, "canonical_labels", MappingProxyType(dict(self.canonical_labels))
+        )
         if len(self.images) != self.statistics.prepared:
             raise ValueError("prepared image count does not match statistics")
         if len(self.failures) != self.statistics.preparation_failed:
@@ -51,9 +57,11 @@ async def prepare_images(
             images=(),
             failures=(),
             statistics=ImageStageStatistics(),
+            canonical_labels={},
         )
 
-    candidates = _deduplicate_source_references(collected.images)[: config.max_count]
+    candidates, canonical_labels = _deduplicate_source_references(collected.images)
+    candidates = candidates[: config.max_count]
     needs_http = any(
         _uses_url_source(item.segment, adapter_image_fetcher) for item in candidates
     )
@@ -94,17 +102,18 @@ async def prepare_images(
     unique_acquired: list[_AcquiredImage] = []
     failures: list[ImageFailure] = []
     acquisition_failed = 0
-    seen_content: set[str] = set()
+    seen_content: dict[str, str] = {}
     unique_count = 0
-    for _candidate, outcome in zip(candidates, acquired_outcomes, strict=True):
+    for candidate, outcome in zip(candidates, acquired_outcomes, strict=True):
         if isinstance(outcome, ImageFailure):
             unique_count += 1
             failures.append(outcome)
             acquisition_failed += 1
             continue
-        if outcome.sha256 in seen_content:
+        if canonical := seen_content.get(outcome.sha256):
+            canonical_labels[candidate.label] = canonical
             continue
-        seen_content.add(outcome.sha256)
+        seen_content[outcome.sha256] = candidate.label
         unique_count += 1
         unique_acquired.append(outcome)
 
@@ -121,6 +130,13 @@ async def prepare_images(
             remaining_qr_urls -= len(qr_urls)
             prepared.append(_to_prepared_image(outcome, qr_urls=qr_urls))
 
+    processed_labels = {candidate.label for candidate in candidates}
+    canonical_labels = {
+        label: canonical_labels[canonical]
+        for label, canonical in canonical_labels.items()
+        if canonical in processed_labels
+    }
+
     statistics = ImageStageStatistics(
         requested=requested,
         unique=unique_count,
@@ -132,6 +148,7 @@ async def prepare_images(
         images=tuple(prepared),
         failures=tuple(failures),
         statistics=statistics,
+        canonical_labels=canonical_labels,
     )
 
 
