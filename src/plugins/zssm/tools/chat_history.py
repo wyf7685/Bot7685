@@ -39,6 +39,7 @@ from ..contracts._validation import _message_image_id, _nonempty, _participant_a
 from ..contracts.input import MessageImageRegistry
 from ..contracts.participants import ParticipantResolver
 from ..contracts.run import ZssmInvocationFacts
+from ..log import error_context, log_event
 
 _BIDI_CONTROL_CLASSES = frozenset(
     {"BN", "LRE", "RLE", "LRO", "RLO", "LRI", "RLI", "FSI", "PDI", "PDF"}
@@ -408,7 +409,15 @@ async def _handle_recent_messages(
 
     try:
         rows, has_more = await _query_recent_rows(context, arguments)
-    except Exception:
+    except Exception as error:
+        log_event(
+            "WARNING",
+            "ZSSM::History",
+            f"<y>stage=history operation=query "
+            f"scene={context.session.scene.type.name.casefold()} "
+            f"count={arguments.count} lookback_minutes={arguments.lookback_minutes} "
+            f"error=<r>{error_context(error)}</></>",
+        )
         result = RecentMessagesResult(status=HistoryStatus.UNAVAILABLE)
         return ToolOutput(
             value=_result_value(result),
@@ -418,13 +427,19 @@ async def _handle_recent_messages(
 
     messages_descending: list[HistoryMessage] = []
     truncated = has_more
-    for row in rows:
+    for ordinal, row in enumerate(rows, start=1):
         try:
             participant_alias = context.participant_resolver.observe(
                 row.raw_user_id
             ).participant_alias
             timestamp = _safe_timestamp(row.record.time)
-        except Exception:
+        except Exception as error:
+            log_event(
+                "WARNING",
+                "ZSSM::History",
+                f"<y>stage=history operation=record_metadata ordinal={ordinal} "
+                f"error=<r>{error_context(error)}</></>",
+            )
             truncated = True
             continue
 
@@ -436,7 +451,13 @@ async def _handle_recent_messages(
                 adapter=row.adapter,
             )
             content, image_ids = _summarize_message(context, message)
-        except Exception:
+        except Exception as error:
+            log_event(
+                "WARNING",
+                "ZSSM::History",
+                f"<y>stage=history operation=message_conversion ordinal={ordinal} "
+                f"error=<r>{error_context(error)}</></>",
+            )
             content = _normalize_text(row.record.plain_text or "")
             content = content or "[unreadable message]"
             conversion_failed = True

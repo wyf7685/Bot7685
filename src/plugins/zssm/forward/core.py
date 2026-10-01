@@ -183,8 +183,22 @@ async def expand_forward_inputs(
         return await active_resolver(reference)
 
     state = _ExpansionState(config=config, resolver=resolve_reference)
-    expanded_content = await state.expand(content.copy())
-    expanded_quoted = await state.expand(quoted.copy()) if quoted is not None else None
+    try:
+        expanded_content = await state.expand(content.copy())
+        expanded_quoted = (
+            await state.expand(quoted.copy()) if quoted is not None else None
+        )
+    except Exception as error:
+        error.add_note(
+            "ZSSM forward expansion failed; "
+            f"references={state.references},nodes={state.nodes},"
+            f"segments={state.segments},text_chars={state.text_chars},"
+            f"limits=depth:{config.max_depth},references:{config.max_references},"
+            f"nodes:{config.max_nodes},segments:{config.max_segments},"
+            f"text_chars:{config.max_text_chars},"
+            f"fetch_timeout_seconds={config.fetch_timeout_seconds}"
+        )
+        raise
     return expanded_content, expanded_quoted
 
 

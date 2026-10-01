@@ -111,11 +111,13 @@ class TavilySearchProvider(WebSearchProvider):
                 follow_redirects=False,
             )
         except httpx2.TimeoutException as error:
-            raise WebSearchError("timeout", cause_type=type(error).__name__) from None
+            error.add_note("stage=web_search operation=provider_request")
+            raise WebSearchError("timeout", cause_type=type(error).__name__) from error
         except httpx2.HTTPError as error:
+            error.add_note("stage=web_search operation=provider_request")
             raise WebSearchError(
                 "unavailable", cause_type=type(error).__name__
-            ) from None
+            ) from error
 
         if response.status_code in (429, 432, 433):
             raise WebSearchError(
@@ -152,9 +154,10 @@ class TavilySearchProvider(WebSearchProvider):
         except WebSearchError:
             raise
         except (TypeError, ValueError) as error:
+            error.add_note("stage=web_search operation=response_parse")
             raise WebSearchError(
                 "invalid_response", cause_type=type(error).__name__
-            ) from None
+            ) from error
 
 
 __all__ = ["TavilySearchProvider"]

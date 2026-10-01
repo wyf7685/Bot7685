@@ -12,6 +12,8 @@ from typing import Any, cast
 from nonebot import get_driver, logger
 from pydantic import ValidationError
 
+from src.utils import format_exception
+
 from ._backend import (
     CompletionRequest,
     StructuredOutputRequest,
@@ -76,6 +78,7 @@ class LLMService:
         self._revision = 0
         self._load_error = False
         self._shutdown = False
+        self._load_cause: BaseException | None = None
         self._retired_runtimes: set[asyncio.Task[None]] = set()
         self._state: _ServiceState | None = None
 
@@ -85,8 +88,10 @@ class LLMService:
                 self._state = self._build_state(config)
         except (OSError, ValidationError, ValueError) as error:
             self._load_error = True
+            self._load_cause = error
+            error.add_note("operation=load_llm_configuration")
             logger.error(
-                f"LLM persisted configuration is unavailable: {type(error).__name__}"
+                f"LLM persisted configuration is unavailable: {format_exception(error)}"
             )
 
     @staticmethod
@@ -133,10 +138,12 @@ class LLMService:
                 try:
                     self._repository.save(config)
                 except OSError as error:
+                    error.add_note("operation=save_llm_configuration")
                     raise LLMConfigurationError(cause=error) from error
                 previous = self._state
                 self._state = candidate
                 self._load_error = False
+                self._load_cause = None
                 self._revision += 1
                 revision = self._revision
         except BaseException:
@@ -155,10 +162,12 @@ class LLMService:
             try:
                 self._repository.delete()
             except OSError as error:
+                error.add_note("operation=delete_llm_configuration")
                 raise LLMConfigurationError(cause=error) from error
             previous = self._state
             self._state = None
             self._load_error = False
+            self._load_cause = None
             self._revision += 1
             revision = self._revision
 
@@ -174,11 +183,17 @@ class LLMService:
         state = self._state
         normalized = alias.strip()
         if state is None:
-            raise LLMConfigurationError(model_alias=normalized)
+            error = LLMConfigurationError(
+                model_alias=normalized, cause=self._load_cause
+            )
+            error.add_note("operation=get_model reason=configuration_unavailable")
+            raise error from None
         try:
             return state.models[normalized]
         except KeyError as error:
-            raise LLMConfigurationError(model_alias=normalized) from error
+            failure = LLMConfigurationError(model_alias=normalized, cause=error)
+            failure.add_note("operation=get_model reason=unknown_alias")
+            raise failure from error
 
     async def get_active_model(self) -> ModelInfo:
         async with self._state_lock:
@@ -201,6 +216,7 @@ class LLMService:
             try:
                 self._repository.save(config)
             except OSError as error:
+                error.add_note(f"operation=select_model model={normalized}")
                 raise LLMConfigurationError(cause=error) from error
             self._state = _ServiceState(
                 config=config,
@@ -233,6 +249,7 @@ class LLMService:
             self._shutdown = True
             state = self._state
             self._state = None
+            self._load_cause = None
 
         if state is not None:
             await self._close_runtime(state.runtime)
@@ -242,11 +259,18 @@ class LLMService:
 
     def _ensure_open(self) -> None:
         if self._shutdown:
-            raise LLMConfigurationError
+            error = LLMConfigurationError()
+            error.add_note("reason=service_closed")
+            raise error
 
     def _require_state(self) -> _ServiceState:
         if self._state is None:
-            raise LLMConfigurationError
+            error = LLMConfigurationError(cause=self._load_cause)
+            reason = (
+                "configuration_load_failed" if self._load_error else "not_configured"
+            )
+            error.add_note(f"reason={reason}")
+            raise error from None
         return self._state
 
     def _retire_runtime(self, runtime: LLMRuntime) -> None:
@@ -259,7 +283,8 @@ class LLMService:
         try:
             await runtime.aclose()
         except Exception as error:
-            logger.warning(f"Failed to close an LLM runtime: {type(error).__name__}")
+            error.add_note("operation=close_llm_runtime")
+            logger.warning(f"Failed to close an LLM runtime: {format_exception(error)}")
 
     async def complete_text(
         self,

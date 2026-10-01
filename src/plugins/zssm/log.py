@@ -4,7 +4,7 @@ from contextvars import ContextVar
 from nonebot import logger
 from nonebot.utils import escape_tag
 
-from src.service.llm import LLMServiceError
+from src.utils import format_exception
 
 
 def safe_log_text(value: object, limit: int = 80) -> str:
@@ -12,10 +12,10 @@ def safe_log_text(value: object, limit: int = 80) -> str:
     return escape_tag(compact[:limit] or "none")
 
 
-def cause_name(error: BaseException) -> str:
-    if isinstance(error, LLMServiceError) and error.cause is not None:
-        return type(error.cause).__name__
-    return type(error).__name__
+def error_context(error: BaseException | None) -> str:
+    """Return bounded diagnostics safe to include in a colored log message."""
+
+    return escape_tag(format_exception(error))
 
 
 current_run_id: ContextVar[str | None] = ContextVar("current_run_id", default=None)
@@ -36,4 +36,4 @@ def log_event(
     )
 
 
-__all__ = ["cause_name", "log_event", "safe_log_text"]
+__all__ = ["error_context", "log_event", "safe_log_text"]

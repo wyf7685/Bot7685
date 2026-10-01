@@ -44,6 +44,7 @@ from ...http_transport import (
     validate_http_target,
     verify_peer,
 )
+from ...log import error_context, log_event, safe_log_text
 from .citations import InvocationCitationRegistry
 from .citations import citation_json as _citation_json
 from .media import InvocationMediaRegistry
@@ -111,11 +112,24 @@ class SafePageFetchError(RuntimeError):
         super().__init__(code)
 
 
+def _mapped_fetch_error(
+    code: FetchErrorCode,
+    *,
+    operation: str,
+    status_code: int | None = None,
+) -> SafePageFetchError:
+    error = SafePageFetchError(code, status_code=status_code)
+    error.add_note(f"stage=http_fetch operation={operation}")
+    return error
+
+
 def _validate_target(url: str) -> ValidatedHttpTarget:
     try:
         return validate_http_target(url)
-    except InvalidHttpTargetError:
-        raise SafePageFetchError("unsafe_url") from None
+    except InvalidHttpTargetError as error:
+        raise _mapped_fetch_error(
+            "unsafe_url", operation="target_validation"
+        ) from error
 
 
 @dataclass(slots=True)
@@ -152,8 +166,10 @@ class _GitHubApiTransport(httpx2.AsyncBaseTransport):
     async def handle_async_request(self, request: httpx2.Request) -> httpx2.Response:
         try:
             target = _validate_target(str(request.url))
-        except SafePageFetchError:
-            raise SafePageFetchError("unsafe_url") from None
+        except SafePageFetchError as error:
+            raise _mapped_fetch_error(
+                "unsafe_url", operation="github_request_validation"
+            ) from error
         if (
             request.method != "GET"
             or target.scheme != "https"
@@ -177,10 +193,14 @@ class _GitHubApiTransport(httpx2.AsyncBaseTransport):
         )
         try:
             response = await self._transport.handle_async_request(pinned)
-        except httpx2.TimeoutException:
-            raise SafePageFetchError("timeout") from None
-        except httpx2.HTTPError:
-            raise SafePageFetchError("network") from None
+        except httpx2.TimeoutException as error:
+            raise _mapped_fetch_error(
+                "timeout", operation="github_api_request"
+            ) from error
+        except httpx2.HTTPError as error:
+            raise _mapped_fetch_error(
+                "network", operation="github_api_request"
+            ) from error
         try:
             if not self._proxy:
                 if self._require_peer:
@@ -213,8 +233,10 @@ class _GitHubApiTransport(httpx2.AsyncBaseTransport):
             if lengths:
                 try:
                     length = int(lengths[0])
-                except ValueError:
-                    raise SafePageFetchError("too_large") from None
+                except ValueError as error:
+                    raise _mapped_fetch_error(
+                        "too_large", operation="github_content_length"
+                    ) from error
                 if length < 0 or length > self._config.max_wire_bytes:
                     raise SafePageFetchError("too_large")
             if response.is_stream_consumed:
@@ -235,8 +257,16 @@ class _GitHubApiTransport(httpx2.AsyncBaseTransport):
                 request=request,
             )
         finally:
-            with anyio.move_on_after(1, shield=True):
+            with anyio.move_on_after(1, shield=True) as close_scope:
                 await response.aclose()
+            if close_scope.cancel_called:
+                log_event(
+                    "WARNING",
+                    "ZSSM::FetchPage",
+                    f"<y>stage=http_transport operation=github_response_close "
+                    f"limit_seconds=1 http_status={response.status_code} "
+                    f"outcome=timed_out</>",
+                )
 
     async def aclose(self) -> None:
         await self._transport.aclose()
@@ -365,8 +395,10 @@ class HttpxSafePageFetcher:
                     allowed_content_types=allowed_content_types,
                     source_proxy=self._source_client is not None,
                 )
-        except TimeoutError:
-            raise SafePageFetchError("timeout") from None
+        except TimeoutError as error:
+            raise _mapped_fetch_error(
+                "timeout", operation="page_download_deadline"
+            ) from error
 
     async def download_media(
         self,
@@ -400,8 +432,10 @@ class HttpxSafePageFetcher:
                     referer=normalized_referer,
                     allowed_hosts=normalized_hosts,
                 )
-        except TimeoutError:
-            raise SafePageFetchError("timeout") from None
+        except TimeoutError as error:
+            raise _mapped_fetch_error(
+                "timeout", operation="media_download_deadline"
+            ) from error
 
     async def resolve_redirects(
         self,
@@ -433,10 +467,14 @@ class HttpxSafePageFetcher:
                                 follow_redirects=False,
                                 auth=None,
                             )
-                        except httpx2.TimeoutException:
-                            raise SafePageFetchError("timeout") from None
-                        except httpx2.HTTPError:
-                            raise SafePageFetchError("network") from None
+                        except httpx2.TimeoutException as error:
+                            raise _mapped_fetch_error(
+                                "timeout", operation="redirect_probe"
+                            ) from error
+                        except httpx2.HTTPError as error:
+                            raise _mapped_fetch_error(
+                                "network", operation="redirect_probe"
+                            ) from error
                         _verify_expected_peer(response, addresses)
                         if response.status_code not in _REDIRECT_STATUSES:
                             return current.url
@@ -447,14 +485,18 @@ class HttpxSafePageFetcher:
                             raise SafePageFetchError("redirect")
                         try:
                             current = _validate_target(urljoin(current.url, location))
-                        except TypeError, ValueError, SafePageFetchError:
-                            raise SafePageFetchError("redirect") from None
+                        except (TypeError, ValueError, SafePageFetchError) as error:
+                            raise _mapped_fetch_error(
+                                "redirect", operation="redirect_resolution"
+                            ) from error
                         redirects += 1
                     finally:
                         if response is not None:
                             await close_response_bounded(response)
-        except TimeoutError:
-            raise SafePageFetchError("timeout") from None
+        except TimeoutError as error:
+            raise _mapped_fetch_error(
+                "timeout", operation="redirect_resolution_deadline"
+            ) from error
 
     async def fetch(self, url: str) -> WebPageResult:
         initial = _validate_target(url)
@@ -508,22 +550,30 @@ class HttpxSafePageFetcher:
                     final_url=downloaded.final_url,
                     extracted=extracted,
                 )
-        except PrivateGitHubRepositoryError:
-            raise SafePageFetchError("access_denied") from None
+        except PrivateGitHubRepositoryError as error:
+            raise _mapped_fetch_error(
+                "access_denied", operation="github_repository_access"
+            ) from error
         except RequestFailed as error:
-            raise SafePageFetchError(
-                "http_status", status_code=error.response.status_code
-            ) from None
-        except RequestTimeout:
-            raise SafePageFetchError("timeout") from None
+            raise _mapped_fetch_error(
+                "http_status",
+                operation="github_request",
+                status_code=error.response.status_code,
+            ) from error
+        except RequestTimeout as error:
+            raise _mapped_fetch_error("timeout", operation="github_request") from error
         except RequestError as error:
             if isinstance(error.exc, SafePageFetchError):
-                raise error.exc from None
-            raise SafePageFetchError("network") from None
-        except SourceAdapterError, ValidationError:
-            raise SafePageFetchError("extract") from None
-        except TimeoutError:
-            raise SafePageFetchError("timeout") from None
+                raise error.exc from error
+            raise _mapped_fetch_error("network", operation="github_request") from error
+        except (SourceAdapterError, ValidationError) as error:
+            raise _mapped_fetch_error(
+                "extract", operation="source_extraction"
+            ) from error
+        except TimeoutError as error:
+            raise _mapped_fetch_error(
+                "timeout", operation="page_fetch_deadline"
+            ) from error
 
     def _make_page_result(
         self,
@@ -621,10 +671,14 @@ class HttpxSafePageFetcher:
                         follow_redirects=False,
                         auth=None,
                     )
-                except httpx2.TimeoutException:
-                    raise SafePageFetchError("timeout") from None
-                except httpx2.HTTPError:
-                    raise SafePageFetchError("network") from None
+                except httpx2.TimeoutException as error:
+                    raise _mapped_fetch_error(
+                        "timeout", operation="http_request"
+                    ) from error
+                except httpx2.HTTPError as error:
+                    raise _mapped_fetch_error(
+                        "network", operation="http_request"
+                    ) from error
 
                 if not use_source_proxy:
                     _verify_expected_peer(response, addresses)
@@ -637,8 +691,10 @@ class HttpxSafePageFetcher:
                     try:
                         redirected = urljoin(current.url, location)
                         current = _validate_target(redirected)
-                    except TypeError, ValueError, SafePageFetchError:
-                        raise SafePageFetchError("redirect") from None
+                    except (TypeError, ValueError, SafePageFetchError) as error:
+                        raise _mapped_fetch_error(
+                            "redirect", operation="redirect_resolution"
+                        ) from error
                     redirects += 1
                     continue
 
@@ -686,10 +742,12 @@ class HttpxSafePageFetcher:
                 port,
                 self._resolver,
             )
-        except DNSResolutionError:
-            raise SafePageFetchError("dns") from None
-        except UnsafeAddressError:
-            raise SafePageFetchError("unsafe_url") from None
+        except DNSResolutionError as error:
+            raise _mapped_fetch_error("dns", operation="dns_resolution") from error
+        except UnsafeAddressError as error:
+            raise _mapped_fetch_error(
+                "unsafe_url", operation="address_validation"
+            ) from error
         return tuple(sorted(addresses, key=lambda item: (item.version, item.packed)))
 
     async def _read_wire_body(
@@ -699,12 +757,18 @@ class HttpxSafePageFetcher:
     ) -> bytes:
         try:
             return await read_bounded_body(response, limit)
-        except ResponseTooLargeError, InvalidResponseHeaderError:
-            raise SafePageFetchError("too_large") from None
-        except httpx2.TimeoutException:
-            raise SafePageFetchError("timeout") from None
-        except httpx2.HTTPError:
-            raise SafePageFetchError("network") from None
+        except (ResponseTooLargeError, InvalidResponseHeaderError) as error:
+            raise _mapped_fetch_error(
+                "too_large", operation="response_body_read"
+            ) from error
+        except httpx2.TimeoutException as error:
+            raise _mapped_fetch_error(
+                "timeout", operation="response_body_read"
+            ) from error
+        except httpx2.HTTPError as error:
+            raise _mapped_fetch_error(
+                "network", operation="response_body_read"
+            ) from error
 
     def _validate_content_type(
         self,
@@ -761,8 +825,8 @@ class HttpxSafePageFetcher:
                 partial(_extract_html_sync, text, downloaded.final_url, hostname),
                 abandon_on_cancel=True,
             )
-        except Exception:
-            raise SafePageFetchError("extract") from None
+        except Exception as error:
+            raise _mapped_fetch_error("extract", operation="html_extraction") from error
         if not extracted.text:
             raise SafePageFetchError("extract")
         return extracted
@@ -811,10 +875,23 @@ class HttpxSafePageFetcher:
                 accept_encoding="identity",
                 source_proxy=source_proxy,
             )
-        except SafePageFetchError:
+        except SafePageFetchError as error:
+            status = error.status_code if error.status_code is not None else error.code
+            log_event(
+                "WARNING",
+                "ZSSM::FetchPage",
+                f"<y>stage=robots operation=robots_download status={status} "
+                f"error=<r>{error_context(error)}</></>",
+            )
             return _RobotsCacheEntry(expires_at, "unavailable")
 
         if downloaded.status_code >= 500:
+            log_event(
+                "WARNING",
+                "ZSSM::FetchPage",
+                "<y>stage=robots operation=robots_download "
+                f"http_status={downloaded.status_code} outcome=unavailable</>",
+            )
             return _RobotsCacheEntry(expires_at, "unavailable")
         if downloaded.status_code in (401, 403):
             return _RobotsCacheEntry(expires_at, "deny")
@@ -825,7 +902,14 @@ class HttpxSafePageFetcher:
             parser = RobotFileParser()
             parser.set_url(robots_url)
             parser.parse(robots_text.splitlines())
-        except Exception:
+        except Exception as error:
+            log_event(
+                "WARNING",
+                "ZSSM::FetchPage",
+                "<y>stage=robots operation=robots_parse "
+                f"http_status={downloaded.status_code} "
+                f"error=<r>{error_context(error)}</></>",
+            )
             return _RobotsCacheEntry(expires_at, "unavailable")
         return _RobotsCacheEntry(expires_at, "rules", parser)
 
@@ -872,6 +956,13 @@ async def _handle_fetch_page(
         page = await context.page_fetcher.fetch(arguments.url)
     except SafePageFetchError as error:
         status = str(error.status_code) if error.status_code is not None else error.code
+        log_event(
+            "WARNING",
+            "ZSSM::FetchPage",
+            f"<y>stage=page_fetch operation=fetch "
+            f"host={safe_log_text(input_host)} status={status} "
+            f"error=<r>{error_context(error)}</></>",
+        )
         return ToolOutput(
             value={"status": "error", "error": {"code": error.code}},
             summary=f"fetch_page status={status} host={input_host} chars=0",
@@ -965,8 +1056,10 @@ def _verify_expected_peer(
 ) -> None:
     try:
         verify_peer(response, expected)
-    except PeerMismatchError:
-        raise SafePageFetchError("peer_mismatch") from None
+    except PeerMismatchError as error:
+        raise _mapped_fetch_error(
+            "peer_mismatch", operation="peer_verification"
+        ) from error
 
 
 def _decode_content(
@@ -1016,8 +1109,10 @@ def _bounded_zlib_decompress(data: bytes, wbits: int, limit: int) -> bytes:
             pending = next_pending
         room = limit + 1 - len(output)
         output.extend(decoder.flush(room))
-    except zlib.error:
-        raise SafePageFetchError("decode") from None
+    except zlib.error as error:
+        raise _mapped_fetch_error(
+            "decode", operation="content_decompression"
+        ) from error
     if len(output) > limit:
         raise SafePageFetchError("too_large")
     if not decoder.eof or decoder.unused_data:
@@ -1030,8 +1125,8 @@ def _decode_text(body: bytes, charset: str | None) -> str:
     try:
         codecs.lookup(encoding)
         return body.decode(encoding, errors="replace").lstrip("\ufeff")
-    except LookupError, UnicodeError:
-        raise SafePageFetchError("decode") from None
+    except (LookupError, UnicodeError) as error:
+        raise _mapped_fetch_error("decode", operation="text_decoding") from error
 
 
 def _extract_html_sync(html: str, url: str, hostname: str) -> _ExtractedPage:

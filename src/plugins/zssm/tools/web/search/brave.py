@@ -66,11 +66,17 @@ class BraveSearchProvider(WebSearchProvider):
                 follow_redirects=False,
             )
         except httpx2.TimeoutException as error:
-            raise WebSearchError("timeout", cause_type=type(error).__name__) from None
-        except httpx2.HTTPError as error:
+            error.add_note("stage=web_search operation=provider_request")
             raise WebSearchError(
-                "unavailable", cause_type=type(error).__name__
-            ) from None
+                "timeout",
+                cause_type=type(error).__name__,
+            ) from error
+        except httpx2.HTTPError as error:
+            error.add_note("stage=web_search operation=provider_request")
+            raise WebSearchError(
+                "unavailable",
+                cause_type=type(error).__name__,
+            ) from error
 
         if response.status_code == 429:
             raise WebSearchError("rate_limited", status_code=response.status_code)
@@ -103,9 +109,10 @@ class BraveSearchProvider(WebSearchProvider):
         except WebSearchError:
             raise
         except (TypeError, ValueError) as error:
+            error.add_note("stage=web_search operation=response_parse")
             raise WebSearchError(
                 "invalid_response", cause_type=type(error).__name__
-            ) from None
+            ) from error
 
 
 __all__ = ["BraveSearchProvider"]

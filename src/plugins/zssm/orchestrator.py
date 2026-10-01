@@ -184,16 +184,29 @@ async def run_zssm(
 ) -> RenderModel:
     """Run one isolated ZSSM agent invocation and return renderer input."""
 
-    current_copy = current.copy()
-    content_copy = content.copy()
-    quoted_copy = quoted.copy() if quoted is not None else None
+    try:
+        current_copy = current.copy()
+        content_copy = content.copy()
+        quoted_copy = quoted.copy() if quoted is not None else None
+    except Exception as error:
+        error.add_note(
+            "ZSSM stage: snapshot current, content, and quoted message containers"
+        )
+        raise
     started_at = datetime.now(UTC)
     started = perf_counter()
-    primary = (
-        service.get_model(model_alias)
-        if model_alias is not None
-        else await service.get_active_model()
-    ).require_capability(ModelCapability.TOOLS)
+    try:
+        primary = (
+            service.get_model(model_alias)
+            if model_alias is not None
+            else await service.get_active_model()
+        ).require_capability(ModelCapability.TOOLS)
+    except Exception as error:
+        error.add_note(
+            "ZSSM stage: primary model selection; "
+            f"requested_model={safe_log_text(model_alias or "$active")}"
+        )
+        raise
     primary_alias = primary.alias
 
     outer_limiter = _run_limiter(config.max_concurrent_runs)
@@ -208,13 +221,24 @@ async def run_zssm(
             f"model=<g>{safe_log_text(primary_alias)}</>",
         )
         forward_started = perf_counter()
-        expanded_content, expanded_quoted = await expand_forward_inputs(
-            content_copy,
-            quoted_copy,
-            bot=bot,
-            event=event,
-            config=config.forwards,
-        )
+        try:
+            expanded_content, expanded_quoted = await expand_forward_inputs(
+                content_copy,
+                quoted_copy,
+                bot=bot,
+                event=event,
+                config=config.forwards,
+            )
+        except Exception as error:
+            error.add_note(
+                "ZSSM stage: forwarded-message expansion; "
+                f"limits=depth:{config.forwards.max_depth},"
+                f"references:{config.forwards.max_references},"
+                f"nodes:{config.forwards.max_nodes},"
+                f"segments:{config.forwards.max_segments},"
+                f"text_chars:{config.forwards.max_text_chars}"
+            )
+            raise
         log_event(
             "DEBUG",
             "ZSSM",
@@ -222,24 +246,41 @@ async def run_zssm(
             f"elapsed=<c>{(perf_counter() - forward_started) * 1000:.1f}ms</> "
             f"quoted=<y>{str(expanded_quoted is not None).lower()}</>",
         )
-        participant_resolver = InvocationParticipantResolver(
-            bot,
-            session,
-            config.participants,
-        )
-        collected = await collect_input(
-            expanded_content,
-            expanded_quoted,
-            invoker_raw_id=session.user.id,
-            participant_resolver=participant_resolver,
-            config=config.images,
-            card_url_resolver=partial(resolve_card_urls, config=config.fetch_page),
-        )
-        history_high_water = await snapshot_history_high_water(
-            session,
-            current_copy,
-            started_at,
-        )
+        try:
+            participant_resolver = InvocationParticipantResolver(
+                bot,
+                session,
+                config.participants,
+            )
+            collected = await collect_input(
+                expanded_content,
+                expanded_quoted,
+                invoker_raw_id=session.user.id,
+                participant_resolver=participant_resolver,
+                config=config.images,
+                card_url_resolver=partial(resolve_card_urls, config=config.fetch_page),
+            )
+        except Exception as error:
+            error.add_note(
+                "ZSSM stage: input collection; "
+                f"expanded_segments={len(expanded_content)},"
+                f"quoted={expanded_quoted is not None},"
+                f"image_limit={config.images.max_count},"
+                f"payload_limit_bytes={config.images.max_payload_bytes}"
+            )
+            raise
+        try:
+            history_high_water = await snapshot_history_high_water(
+                session,
+                current_copy,
+                started_at,
+            )
+        except Exception as error:
+            error.add_note(
+                "ZSSM stage: history snapshot; select high-water mark "
+                "before the current turn"
+            )
+            raise
         log_event(
             "INFO",
             "ZSSM",
@@ -248,108 +289,155 @@ async def run_zssm(
             f"deferred_images=<c>{len(collected.deferred_images)}</> "
             f"participants=<c>{len(collected.participant_aliases)}</>",
         )
-        routed = await route_vision(
-            collected,
-            primary_model=primary_alias,
-            vision_model=config.vision_model,
-            config=config.images,
-            llm_service=service,
-            adapter_image_fetcher=adapter_image_fetcher,
-        )
+        try:
+            routed = await route_vision(
+                collected,
+                primary_model=primary_alias,
+                vision_model=config.vision_model,
+                config=config.images,
+                llm_service=service,
+                adapter_image_fetcher=adapter_image_fetcher,
+            )
+        except Exception as error:
+            error.add_note(
+                "ZSSM stage: vision routing; "
+                f"images={len(collected.images)},"
+                f"primary_model={safe_log_text(primary_alias)},"
+                f"fallback_model={safe_log_text(config.vision_model)}"
+            )
+            raise
         if routed.primary is None:
-            raise AllImagesFailedError
+            error = AllImagesFailedError()
+            error.add_note(
+                "ZSSM stage: vision routing produced no primary input; "
+                f"requested={routed.stats.requested},"
+                f"prepared={routed.stats.prepared},"
+                f"acquisition_failed={routed.stats.acquisition_failed},"
+                f"normalization_failed={routed.stats.normalization_failed},"
+                f"vision_failed={routed.stats.vision_failed},"
+                f"primary_model={safe_log_text(primary_alias)},"
+                f"fallback_model={safe_log_text(config.vision_model)}"
+            )
+            raise error
 
-        invocation = ZssmInvocationFacts(
-            started_at=started_at,
-            active_model=primary_alias,
-            invoker_alias=collected.participant_aliases[0],
-        )
-        async with open_zssm_tool_resources(
-            config=config,
-            session=session,
-            participant_resolver=participant_resolver,
-            history_high_water=history_high_water,
-            invocation=invocation,
-            llm_service=service,
-            deferred_images=collected.deferred_images,
-            adapter_image_fetcher=adapter_image_fetcher,
-        ) as resources:
-            max_tool_images = max(
-                config.images.max_tool_count,
-                config.source_images.max_pages_per_run,
+        try:
+            invocation = ZssmInvocationFacts(
+                started_at=started_at,
+                active_model=primary_alias,
+                invoker_alias=collected.participant_aliases[0],
             )
-            limits = AgentLimits(
-                max_model_calls=config.max_agent_model_calls,
-                max_tool_calls=config.max_agent_tool_calls,
-                max_parallel_tools=config.max_agent_parallel_tools,
-                max_tool_images=max_tool_images,
-                max_tool_image_bytes=(
-                    config.images.max_payload_bytes * max_tool_images
-                ),
-                total_timeout_seconds=config.agent_timeout_seconds,
-                max_output_tokens=config.max_output_tokens,
+        except Exception as error:
+            error.add_note("ZSSM stage: prepare tool-resource invocation facts")
+            raise
+        resource_stage = "tool resource setup"
+        try:
+            async with open_zssm_tool_resources(
+                config=config,
+                session=session,
+                participant_resolver=participant_resolver,
+                history_high_water=history_high_water,
+                invocation=invocation,
+                llm_service=service,
+                deferred_images=collected.deferred_images,
+                adapter_image_fetcher=adapter_image_fetcher,
+            ) as resources:
+                resource_stage = "agent preparation"
+                max_tool_images = max(
+                    config.images.max_tool_count,
+                    config.source_images.max_pages_per_run,
+                )
+                limits = AgentLimits(
+                    max_model_calls=config.max_agent_model_calls,
+                    max_tool_calls=config.max_agent_tool_calls,
+                    max_parallel_tools=config.max_agent_parallel_tools,
+                    max_tool_images=max_tool_images,
+                    max_tool_image_bytes=(
+                        config.images.max_payload_bytes * max_tool_images
+                    ),
+                    total_timeout_seconds=config.agent_timeout_seconds,
+                    max_output_tokens=config.max_output_tokens,
+                )
+                resource_stage = "agent"
+                result = await service.run_agent(
+                    routed.primary,
+                    tools=resources.tools,
+                    system_prompt=build_system_prompt(started_at),
+                    model=primary_alias,
+                    limits=limits,
+                    reasoning_effort=config.agent_reasoning_effort,
+                    correlation_id=current_run_id.get(),
+                )
+                resource_stage = "agent result processing"
+                answer = _safe_answer(result.output, resources.citations)
+                answer = _append_image_processing_notices(
+                    answer,
+                    omitted_images=collected.omitted_images,
+                    max_images=config.images.max_count,
+                    partial_success=routed.stats.partial_success,
+                )
+                trace = _tool_trace(result)
+                primary_usage = ModelStageUsage(
+                    model_alias=result.model_alias,
+                    model_id=result.model_id,
+                    calls=result.model_call_count,
+                    usage_calls=result.model_call_count,
+                    usage=result.usage,
+                    elapsed=sum(item.elapsed for item in result.trace.model_calls),
+                )
+                total_elapsed = perf_counter() - started
+                stats = RunStatistics(
+                    total_elapsed=total_elapsed,
+                    primary_usage=primary_usage,
+                    vision_usage=routed.stage_usage,
+                    images=routed.stats,
+                    tool_calls=result.tool_call_count,
+                    tool_failures=sum(
+                        not item.success for item in result.trace.tool_calls
+                    ),
+                    tool_elapsed=sum(item.elapsed for item in result.trace.tool_calls),
+                    tool_images=sum(
+                        item.image_count for item in result.trace.tool_calls
+                    ),
+                    tool_image_bytes=sum(
+                        item.image_bytes for item in result.trace.tool_calls
+                    ),
+                )
+                sources = tuple(
+                    SourceEntry.from_citation(citation)
+                    for citation in resources.citations.used_citations()
+                )
+                log_event(
+                    "SUCCESS",
+                    "ZSSM",
+                    f"<g><b>assembled</b></> | "
+                    f"elapsed=<c>{total_elapsed * 1000:.1f}ms</> "
+                    f"model_calls=<c>{result.model_call_count}</> "
+                    f"tools=<c>{result.tool_call_count}</> "
+                    f"tool_failures=<y>{stats.tool_failures}</> "
+                    f"images=<c>{routed.stats.prepared}/{routed.stats.requested}</> "
+                    f"sources=<c>{len(sources)}</> answer_chars=<c>{len(answer)}</>",
+                )
+                model = RenderModel(
+                    answer=answer,
+                    current=current_copy,
+                    quoted=quoted_copy,
+                    sources=sources,
+                    trace=trace,
+                    stats=stats,
+                )
+                resource_stage = "tool resource cleanup"
+                return model
+        except Exception as error:
+            error.add_note(
+                f"ZSSM stage: {resource_stage}; "
+                f"model={safe_log_text(primary_alias)},"
+                f"deferred_images={len(collected.deferred_images)},"
+                f"max_tool_calls={config.max_agent_tool_calls},"
+                f"max_parallel_tools={config.max_agent_parallel_tools},"
+                f"tool_image_limit={config.images.max_tool_count},"
+                f"source_page_limit={config.source_images.max_pages_per_run}"
             )
-            result = await service.run_agent(
-                routed.primary,
-                tools=resources.tools,
-                system_prompt=build_system_prompt(started_at),
-                model=primary_alias,
-                limits=limits,
-                reasoning_effort=config.agent_reasoning_effort,
-                correlation_id=current_run_id.get(),
-            )
-            answer = _safe_answer(result.output, resources.citations)
-            answer = _append_image_processing_notices(
-                answer,
-                omitted_images=collected.omitted_images,
-                max_images=config.images.max_count,
-                partial_success=routed.stats.partial_success,
-            )
-            trace = _tool_trace(result)
-            primary_usage = ModelStageUsage(
-                model_alias=result.model_alias,
-                model_id=result.model_id,
-                calls=result.model_call_count,
-                usage_calls=result.model_call_count,
-                usage=result.usage,
-                elapsed=sum(item.elapsed for item in result.trace.model_calls),
-            )
-            total_elapsed = perf_counter() - started
-            stats = RunStatistics(
-                total_elapsed=total_elapsed,
-                primary_usage=primary_usage,
-                vision_usage=routed.stage_usage,
-                images=routed.stats,
-                tool_calls=result.tool_call_count,
-                tool_failures=sum(not item.success for item in result.trace.tool_calls),
-                tool_elapsed=sum(item.elapsed for item in result.trace.tool_calls),
-                tool_images=sum(item.image_count for item in result.trace.tool_calls),
-                tool_image_bytes=sum(
-                    item.image_bytes for item in result.trace.tool_calls
-                ),
-            )
-            sources = tuple(
-                SourceEntry.from_citation(citation)
-                for citation in resources.citations.used_citations()
-            )
-            log_event(
-                "SUCCESS",
-                "ZSSM",
-                f"<g><b>assembled</b></> | elapsed=<c>{total_elapsed * 1000:.1f}ms</> "
-                f"model_calls=<c>{result.model_call_count}</> "
-                f"tools=<c>{result.tool_call_count}</> "
-                f"tool_failures=<y>{stats.tool_failures}</> "
-                f"images=<c>{routed.stats.prepared}/{routed.stats.requested}</> "
-                f"sources=<c>{len(sources)}</> answer_chars=<c>{len(answer)}</>",
-            )
-            return RenderModel(
-                answer=answer,
-                current=current_copy,
-                quoted=quoted_copy,
-                sources=sources,
-                trace=trace,
-                stats=stats,
-            )
+            raise
 
 
 __all__ = [

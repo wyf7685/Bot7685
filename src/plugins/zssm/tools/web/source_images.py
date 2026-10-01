@@ -16,6 +16,7 @@ from src.service.llm import (
 
 from ...config import ImagesConfig, SourceImagesConfig
 from ...contracts.input import CollectedImageInput, CollectedInput, InputLocation
+from ...log import error_context, log_event, safe_log_text
 from ...vision import FALLBACK_OBSERVATION_NOTICE, route_vision
 from .fetch import HttpxSafePageFetcher
 from .media import InvocationMediaRegistry, RegisteredMediaSet
@@ -288,12 +289,31 @@ async def _download_pages(
             by_page[item.page] = item
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except Exception as error:
+        log_event(
+            "WARNING",
+            "ZSSM::SourceImages",
+            f"<y>stage=source_media operation=download "
+            f"source={safe_log_text(registered.target.source_id)} "
+            f"requested_pages={len(pages)} "
+            f"limit={context.images_config.max_source_bytes} "
+            f"error=<r>{error_context(error)}</></>",
+        )
         return (), pages
 
+    missing = tuple(page for page in pages if page not in by_page)
+    if missing:
+        log_event(
+            "WARNING",
+            "ZSSM::SourceImages",
+            f"<y>stage=source_media operation=download "
+            f"source={safe_log_text(registered.target.source_id)} "
+            f"failed_pages={len(missing)} "
+            f"limit={context.images_config.max_source_bytes}</>",
+        )
     return (
         tuple(by_page[page] for page in pages if page in by_page),
-        tuple(page for page in pages if page not in by_page),
+        missing,
     )
 
 

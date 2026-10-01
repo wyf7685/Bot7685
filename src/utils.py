@@ -2,10 +2,15 @@ import contextlib
 import datetime as dt
 import functools
 import inspect
+import json
 import os
+import re
 import threading
-from collections.abc import Awaitable, Callable
+from collections import deque
+from collections.abc import Awaitable, Callable, Mapping
+from http import HTTPStatus
 from pathlib import Path
+from traceback import walk_tb
 from types import CoroutineType
 from typing import TYPE_CHECKING, Any, Concatenate, Literal, cast, overload
 from uuid import uuid4
@@ -16,7 +21,7 @@ from nonebot.adapters import Event
 from nonebot.params import Depends
 from nonebot.typing import T_State
 from nonebot.utils import escape_tag
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 if TYPE_CHECKING:
     from nonebot_plugin_alconna.uniseg import Receipt, UniMessage
@@ -99,6 +104,174 @@ class LoggerWrapper:
 
 def logger_wrapper(logger_name: str, /) -> LoggerWrapper:
     return LoggerWrapper(logger_name)
+
+
+_ERROR_URL_RE = re.compile(
+    r"(?:https?|wss?|file|base64)://[^\s\"'<>]+|data:[^\s\"'<>]+"
+)
+_ERROR_SECRET_RE = re.compile(
+    r"(?i)([\"']?(?:authorization|proxy-authorization|api[_-]?key|"
+    r"access[_-]?token|refresh[_-]?token|client[_-]?secret|password|secret|token|"
+    r"cookie|set-cookie)[\"']?\s*[:=]\s*)"
+    r"(?:\"(?:\\.|[^\"\\])*\"|'(?:\\.|[^'\\])*'|[^\s,;}\]]+)"
+)
+_ERROR_TOKEN_RE = re.compile(
+    r"(?i)\b(?:Bearer|Basic)\s+[^\s\"',;]+|\bsk-[A-Za-z0-9_-]+"
+)
+_ERROR_PAYLOAD_RE = re.compile(r"\b[A-Za-z0-9+/]{128,}={0,2}")
+
+
+def _exception_request_secrets(error: BaseException) -> set[str]:
+    secrets: set[str] = set()
+    request = getattr(error, "request", None)
+    headers = getattr(request, "headers", None)
+    if isinstance(headers, Mapping):
+        for name in (
+            "authorization",
+            "proxy-authorization",
+            "x-api-key",
+            "api-key",
+            "cookie",
+        ):
+            value = headers.get(name)
+            if isinstance(value, str) and value:
+                secrets.add(value)
+                if value.lower().startswith("bearer "):
+                    secrets.add(value[7:])
+    try:
+        content = getattr(request, "content", None)
+    except RuntimeError:
+        content = None
+    if isinstance(content, bytes):
+        try:
+            payload = json.loads(content)
+        except ValueError, UnicodeError:
+            payload = None
+        if isinstance(payload, dict):
+            pending = [payload.get(name) for name in ("messages", "input", "prompt")]
+            while pending:
+                value = pending.pop()
+                if isinstance(value, str) and value:
+                    secrets.add(value)
+                elif isinstance(value, dict):
+                    pending.extend(
+                        item
+                        for name, item in value.items()
+                        if name not in {"role", "type"}
+                    )
+                elif isinstance(value, list):
+                    pending.extend(value)
+    return secrets
+
+
+def _exception_text(value: str, secrets: set[str], limit: int = 384) -> str:
+    for secret in sorted(secrets, key=len, reverse=True):
+        value = value.replace(secret, "[redacted]")
+    value = _ERROR_TOKEN_RE.sub("[redacted]", value)
+    value = _ERROR_SECRET_RE.sub(r"\1[redacted]", value)
+    value = _ERROR_URL_RE.sub("[url]", value)
+    value = _ERROR_PAYLOAD_RE.sub("[payload]", value)
+    value = " ".join(value.split())
+    if len(value) > limit:
+        value = value[:limit] + "..."
+    return json.dumps(value, ensure_ascii=False)
+
+
+def format_exception(error: BaseException | None) -> str:
+    """Describe failures without dumping request bodies, headers, or frame locals."""
+
+    if error is None:
+        return "error=none"
+    chain: list[tuple[str, BaseException]] = []
+    pending: list[tuple[str, BaseException]] = [("", error)]
+    seen: set[int] = set()
+    while pending and len(chain) < 6:
+        relation, current = pending.pop()
+        if id(current) in seen:
+            continue
+        chain.append((relation, current))
+        seen.add(id(current))
+        if isinstance(current, BaseExceptionGroup):
+            pending.extend(
+                ("member", child) for child in reversed(current.exceptions[:3])
+            )
+        cause = getattr(current, "cause", None)
+        if not isinstance(cause, BaseException):
+            cause = current.__cause__
+        if cause is None and not current.__suppress_context__:
+            cause = current.__context__
+        if cause is not None:
+            pending.append(("caused_by", cause))
+    secrets: set[str] = set()
+    for _, item in chain:
+        secrets.update(_exception_request_secrets(item))
+    descriptions: list[str] = []
+    for relation, item in chain:
+        fields = [f"error={type(item).__name__}"]
+        response = getattr(item, "response", None)
+        status = getattr(item, "status_code", getattr(response, "status_code", None))
+        if isinstance(status, int):
+            fields.append(f"status={status}")
+        request_id = getattr(item, "request_id", None)
+        if request_id is None:
+            headers = getattr(response, "headers", None)
+            if isinstance(headers, Mapping):
+                request_id = headers.get("x-request-id") or headers.get("request-id")
+        if isinstance(request_id, str) and request_id:
+            fields.append(f"request_id={_exception_text(request_id, secrets, 128)}")
+        body = getattr(item, "body", None)
+        metadata = body if isinstance(body, Mapping) else {}
+        nested = metadata.get("error")
+        if isinstance(nested, Mapping):
+            metadata = nested
+        for name in ("code", "type", "param"):
+            value = metadata.get(name, getattr(item, name, None))
+            if isinstance(value, str | int):
+                fields.append(f"{name}={_exception_text(str(value), secrets, 128)}")
+        if isinstance(item, ValidationError):
+            problems = item.errors(include_input=False, include_url=False)
+            message = "; ".join(
+                f"{".".join(str(part) for part in problem["loc"])}: {problem["type"]}"
+                for problem in problems[:8]
+            )
+        elif isinstance(body, Mapping):
+            message = metadata.get("message", "")
+            if not isinstance(message, str):
+                message = ""
+        elif isinstance(status, int):
+            # SDK messages may stringify the entire response body, including input.
+            message = (
+                HTTPStatus(status).phrase if status in HTTPStatus else "HTTP error"
+            )
+            if isinstance(body, str) and not body.lstrip().startswith(("{", "[", "<")):
+                message = body
+        else:
+            message = getattr(item, "detail", None) or str(item)
+        if isinstance(message, str) and message:
+            fields.append(f"message={_exception_text(message, secrets)}")
+        notes = getattr(item, "__notes__", ())
+        fields.extend(
+            f"context={_exception_text(note, secrets, 256)}" for note in notes[:4]
+        )
+        if item.__traceback__ is not None:
+            sites = deque(walk_tb(item.__traceback__), maxlen=3)
+            location = " > ".join(
+                f"{Path(frame.f_code.co_filename).name}:{line}:{frame.f_code.co_name}"
+                for frame, line in sites
+            )
+            fields.append(f"at={_exception_text(location, secrets, 256)}")
+        if isinstance(item, BaseExceptionGroup):
+            fields.append(f"group_errors={len(item.exceptions)}")
+        description = " ".join(fields)
+        descriptions.append(f"{relation}=[{description}]" if relation else description)
+    if pending:
+        descriptions.append("error_chain=truncated")
+    diagnostic = " ".join(descriptions)
+    return (
+        diagnostic
+        if len(diagnostic) <= 8192
+        else diagnostic[:8192] + " diagnostics_truncated=true"
+    )
 
 
 class ConfigFile[T]:

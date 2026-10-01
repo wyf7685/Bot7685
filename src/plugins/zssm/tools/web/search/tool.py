@@ -12,6 +12,7 @@ from ....contracts.web import (
     SearchResult,
     WebSearchProvider,
 )
+from ....log import error_context, log_event, safe_log_text
 from ..citations import citation_json
 from .common import WebSearchError
 
@@ -89,11 +90,18 @@ async def _handle_web_search(
             diagnostic_parts.append(f"cause={error.cause_type}")
         if error.reason is not None:
             diagnostic_parts.append(f"reason={error.reason}")
+        diagnostic = " ".join(diagnostic_parts)
+        log_event(
+            "WARNING",
+            "ZSSM::WebSearch",
+            f"<y>stage=search operation=web_search {safe_log_text(diagnostic, 160)} "
+            f"error=<r>{error_context(error)}</></>",
+        )
         return ToolOutput(
             value={"status": "error", "error": {"code": error.code}},
             summary="web_search status=error results=0 truncated=false",
             reported_error_code=f"web_search_{error.code}",
-            diagnostic=" ".join(diagnostic_parts),
+            diagnostic=diagnostic,
         )
 
     citations: list[JSONValue] = []

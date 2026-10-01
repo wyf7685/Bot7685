@@ -1,13 +1,14 @@
 import ipaddress
 import re
 from collections.abc import Awaitable, Callable, Mapping, Sequence
-from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 import anyio
 import httpx2
+
+from .log import error_context, log_event
 
 _DEFAULT_PORTS = {"http": 80, "https": 443}
 _MAX_URL_CHARS = 4096
@@ -67,8 +68,9 @@ def validate_http_target(url: str) -> ValidatedHttpTarget:
         raise InvalidHttpTargetError
     try:
         parsed = urlsplit(url)
-    except ValueError:
-        raise InvalidHttpTargetError from None
+    except ValueError as error:
+        error.add_note("stage=http_transport operation=url_split")
+        raise InvalidHttpTargetError from error
     scheme = parsed.scheme.casefold()
     if (
         scheme not in _DEFAULT_PORTS
@@ -94,8 +96,9 @@ def validate_http_target(url: str) -> ValidatedHttpTarget:
     try:
         ascii_hostname = hostname.encode("idna").decode("ascii").casefold()
         port = parsed.port or _DEFAULT_PORTS[scheme]
-    except UnicodeError, ValueError:
-        raise InvalidHttpTargetError from None
+    except (UnicodeError, ValueError) as error:
+        error.add_note("stage=http_transport operation=hostname_validation")
+        raise InvalidHttpTargetError from error
     if len(ascii_hostname) > 253 or any(
         not _HOST_LABEL_RE.fullmatch(label) for label in ascii_hostname.split(".")
     ):
@@ -107,8 +110,9 @@ def validate_http_target(url: str) -> ValidatedHttpTarget:
     canonical = SplitResult(scheme, ascii_hostname, path, parsed.query, "")
     try:
         normalized_url = str(httpx2.URL(urlunsplit(canonical)))
-    except httpx2.InvalidURL:
-        raise InvalidHttpTargetError from None
+    except httpx2.InvalidURL as error:
+        error.add_note("stage=http_transport operation=url_normalization")
+        raise InvalidHttpTargetError from error
     origin = f"{scheme}://{ascii_hostname}"
     return ValidatedHttpTarget(
         url=normalized_url,
@@ -153,8 +157,9 @@ async def resolve_public_addresses(
         raise ValueError("maximum address count must be positive")
     try:
         raw_addresses = await resolver(hostname, port)
-    except Exception:
-        raise DNSResolutionError from None
+    except Exception as error:
+        error.add_note("stage=http_transport operation=dns_resolution")
+        raise DNSResolutionError from error
 
     addresses: list[IPAddress] = []
     seen: set[IPAddress] = set()
@@ -163,8 +168,9 @@ async def resolve_public_addresses(
             raise UnsafeAddressError
         try:
             address = ipaddress.ip_address(raw_address)
-        except ValueError:
-            raise DNSResolutionError from None
+        except ValueError as error:
+            error.add_note("stage=http_transport operation=dns_address_parsing")
+            raise DNSResolutionError from error
         if not is_unambiguous_global(address):
             raise UnsafeAddressError
         if address in seen:
@@ -216,8 +222,9 @@ def verify_peer(response: httpx2.Response, expected: Sequence[IPAddress]) -> Non
         raise PeerMismatchError
     try:
         actual = ipaddress.ip_address(raw_address.split("%", 1)[0])
-    except ValueError:
-        raise PeerMismatchError from None
+    except ValueError as error:
+        error.add_note("stage=http_transport operation=peer_address_parsing")
+        raise PeerMismatchError from error
     if actual not in expected or not is_unambiguous_global(actual):
         raise PeerMismatchError
 
@@ -231,8 +238,9 @@ async def read_bounded_body(response: httpx2.Response, limit: int) -> bytes:
     if lengths:
         try:
             content_length = int(lengths[0])
-        except ValueError:
-            raise InvalidResponseHeaderError from None
+        except ValueError as error:
+            error.add_note("stage=http_transport operation=content_length_parsing")
+            raise InvalidResponseHeaderError from error
         if content_length < 0:
             raise InvalidResponseHeaderError
         if content_length > limit:
@@ -258,9 +266,24 @@ async def close_response_bounded(
 ) -> None:
     if close_timeout <= 0:
         raise ValueError("response close timeout must be positive")
-    with anyio.move_on_after(close_timeout, shield=True):
-        with suppress(Exception):
+    with anyio.move_on_after(close_timeout, shield=True) as close_scope:
+        try:
             await response.aclose()
+        except Exception as error:
+            log_event(
+                "WARNING",
+                "ZSSM::HTTP",
+                f"<y>stage=http_transport operation=response_close "
+                f"limit_seconds={close_timeout} "
+                f"error=<r>{error_context(error)}</></>",
+            )
+    if close_scope.cancel_called:
+        log_event(
+            "WARNING",
+            "ZSSM::HTTP",
+            f"<y>stage=http_transport operation=response_close "
+            f"limit_seconds={close_timeout} outcome=timed_out</>",
+        )
 
 
 __all__ = [

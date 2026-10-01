@@ -5,6 +5,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from ....http_transport import ValidatedHttpTarget
+from ....log import error_context, log_event
 from .base import (
     BaseSourceAdapter,
     normalize_page_text,
@@ -77,7 +78,10 @@ class TwitterAdapter(BaseSourceAdapter[TwitterSourceValue]):
             ),
         )
         last_error: Exception | None = None
-        for api_url, parser in candidates:
+        for candidate_ordinal, (api_url, parser) in enumerate(
+            candidates,
+            start=1,
+        ):
             try:
                 downloaded = await io.download(
                     api_url,
@@ -91,6 +95,15 @@ class TwitterAdapter(BaseSourceAdapter[TwitterSourceValue]):
                 )
                 return SpecializedPage(target.canonical_url, extracted)
             except Exception as error:
+                error.add_note("stage=source_page operation=provider_candidate")
+                log_event(
+                    "WARNING",
+                    "ZSSM::SourceImages",
+                    f"<y>stage=source_page operation=provider_candidate "
+                    f"source=twitter ordinal={candidate_ordinal} "
+                    f"candidate_count={len(candidates)} "
+                    f"error=<r>{error_context(error)}</></>",
+                )
                 last_error = error
         if last_error is not None:
             raise last_error
@@ -105,8 +118,9 @@ def parse_twitter_json(
     encoding = charset or "utf-8"
     try:
         payload = json.loads(body.decode(encoding, errors="replace").lstrip("\ufeff"))
-    except UnicodeError, json.JSONDecodeError:
-        raise SourceAdapterError("twitter response is not valid JSON") from None
+    except (UnicodeError, json.JSONDecodeError) as error:
+        error.add_note("stage=source_page operation=response_decode source=twitter")
+        raise SourceAdapterError("twitter response is not valid JSON") from error
     if not isinstance(payload, Mapping):
         raise SourceAdapterError("twitter response must be an object")
     code = payload.get("code")

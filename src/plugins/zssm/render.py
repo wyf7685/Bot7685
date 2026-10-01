@@ -362,8 +362,9 @@ async def send_reference(nodes: Sequence[CustomNode]) -> None:
         await UniMessage.reference(*nodes).send()
     except asyncio.CancelledError:
         raise
-    except Exception:
-        raise ReferenceSendError from None
+    except Exception as error:
+        error.add_note(f"ZSSM stage: send generated Reference; nodes={len(nodes)}")
+        raise ReferenceSendError from error
 
 
 __all__ = [

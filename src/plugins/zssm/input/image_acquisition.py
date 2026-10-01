@@ -3,7 +3,6 @@ import hashlib
 import os
 import socket
 from collections.abc import Awaitable, Callable
-from contextlib import suppress
 from dataclasses import dataclass, field
 from io import BytesIO
 from pathlib import Path
@@ -33,6 +32,7 @@ from ..http_transport import (
     validate_http_target,
     verify_peer,
 )
+from ..log import error_context, log_event
 
 _CONNECT_TIMEOUT_SECONDS: Final = 5.0
 _READ_TIMEOUT_SECONDS: Final = 15.0
@@ -68,7 +68,12 @@ class _SafeImageFetcher:
         except TimeoutError as error:
             fetch_task.cancel()
             await _await_fetch_cleanup(fetch_task)
-            raise _ImageDownloadError from error
+            wrapped = _ImageDownloadError()
+            wrapped.add_note(
+                "stage=acquisition operation=http_image_fetch "
+                f"deadline_seconds={_FETCH_DEADLINE_SECONDS}"
+            )
+            raise wrapped from error
         except asyncio.CancelledError:
             fetch_task.cancel()
             await _await_fetch_cleanup(fetch_task)
@@ -90,22 +95,43 @@ class _SafeImageFetcher:
             try:
                 try:
                     verify_peer(response, target.addresses)
-                except PeerMismatchError:
-                    raise _ImageDownloadError from None
+                except PeerMismatchError as error:
+                    wrapped = _ImageDownloadError()
+                    wrapped.add_note("stage=acquisition operation=peer_verification")
+                    raise wrapped from error
                 _validate_content_encoding(response)
                 if response.status_code in _REDIRECT_STATUSES:
                     if redirect_count == _MAX_REDIRECTS or remaining_attempts <= 0:
-                        raise _ImageDownloadError
+                        error = _ImageDownloadError()
+                        error.add_note(
+                            f"stage=acquisition operation=redirect_limit "
+                            f"redirects={redirect_count} "
+                            f"max_redirects={_MAX_REDIRECTS} "
+                            f"address_attempts_remaining={remaining_attempts}"
+                        )
+                        raise error
                     location = response.headers.get("Location")
                     if not location:
-                        raise _ImageDownloadError
+                        error = _ImageDownloadError()
+                        error.add_note(
+                            f"stage=acquisition operation=redirect_response "
+                            f"http_status={response.status_code} "
+                            "reason=missing_location"
+                        )
+                        raise error
                     try:
                         current = urljoin(target.target.url, location)
                     except (TypeError, ValueError) as error:
-                        raise _SourceUnavailableError from error
+                        wrapped = _SourceUnavailableError()
+                        wrapped.add_note(
+                            "stage=acquisition operation=redirect_resolution"
+                        )
+                        raise wrapped from error
                     continue
                 if not 200 <= response.status_code < 300:
-                    raise _ImageDownloadError
+                    error = _ImageDownloadError()
+                    error.add_note(f"http_status={response.status_code}")
+                    raise error
                 return await _read_response_bounded(response, limit)
             finally:
                 await close_response_bounded(
@@ -119,20 +145,42 @@ async def _await_fetch_cleanup(fetch_task: asyncio.Task[bytes]) -> None:
     try:
         async with asyncio.timeout(_RESPONSE_CLOSE_TIMEOUT_SECONDS + 0.1):
             await asyncio.shield(fetch_task)
-    except TimeoutError:
+    except TimeoutError as error:
+        log_event(
+            "WARNING",
+            "ZSSM::Images",
+            f"<y>stage=acquisition operation=fetch_cleanup "
+            f"limit_seconds={_RESPONSE_CLOSE_TIMEOUT_SECONDS + 0.1} "
+            f"error=<r>{error_context(error)}</></>",
+        )
         fetch_task.cancel()
         fetch_task.add_done_callback(_consume_task_result)
     except asyncio.CancelledError:
         if not fetch_task.done():
             fetch_task.add_done_callback(_consume_task_result)
             raise
-    except Exception:
+    except Exception as error:
+        log_event(
+            "WARNING",
+            "ZSSM::Images",
+            f"<y>stage=acquisition operation=fetch_cleanup</> "
+            f"error=<r>{error_context(error)}</>",
+        )
         return
 
 
 def _consume_task_result(task: asyncio.Task[object]) -> None:
-    with suppress(BaseException):
+    try:
         task.result()
+    except asyncio.CancelledError:
+        return
+    except BaseException as error:
+        log_event(
+            "WARNING",
+            "ZSSM::Images",
+            f"<y>stage=acquisition operation=fetch_cleanup_task_result "
+            f"error=<r>{error_context(error)}</></>",
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,6 +288,7 @@ async def _acquire_outcome(
     fetcher: _SafeImageFetcher | None,
     adapter_image_fetcher: AdapterImageFetcher | None,
 ) -> _AcquiredImage | ImageFailure:
+    failure_error: BaseException | None = None
     try:
         data = await _read_image_source(
             image.segment,
@@ -251,14 +300,27 @@ async def _acquire_outcome(
             raise _InvalidImageError
         digest = hashlib.sha256(data).hexdigest()
         return _AcquiredImage(collected=image, data=data, sha256=digest)
-    except _SourceTooLargeError:
+    except _SourceTooLargeError as error:
         category = ImageFailureCategory.TOO_LARGE
-    except httpx2.TransportError, _ImageDownloadError:
+        failure_error = error
+    except (httpx2.TransportError, _ImageDownloadError) as error:
         category = ImageFailureCategory.DOWNLOAD
-    except _InvalidImageError:
+        failure_error = error
+    except _InvalidImageError as error:
         category = ImageFailureCategory.INVALID
-    except OSError, _SourceUnavailableError, ValueError, TypeError:
+        failure_error = error
+    except (OSError, _SourceUnavailableError, ValueError, TypeError) as error:
         category = ImageFailureCategory.UNAVAILABLE
+        failure_error = error
+    source = _image_source_kind(image.segment, adapter_image_fetcher)
+    log_event(
+        "WARNING",
+        "ZSSM::Images",
+        f"<y>stage=acquisition source={source} label=<c>{image.label}</> "
+        f"ordinal={image.source_index + 1} category={category.value} "
+        f"limit={config.max_source_bytes} "
+        f"error=<r>{error_context(failure_error)}</></>",
+    )
     return ImageFailure(
         label=image.label,
         stage=ImageFailureStage.ACQUISITION,
@@ -292,7 +354,11 @@ async def _read_image_source(
         try:
             adapter_data = await adapter_image_fetcher(segment)
         except Exception as error:
-            raise _ImageDownloadError from error
+            wrapped = _ImageDownloadError()
+            wrapped.add_note(
+                "stage=acquisition source=adapter operation=image_download"
+            )
+            raise wrapped from error
         if adapter_data is not None:
             if len(adapter_data) > limit:
                 raise _SourceTooLargeError
@@ -330,8 +396,10 @@ async def _resolve_image_target(
 ) -> _ResolvedImageTarget:
     try:
         target = validate_http_target(raw_url)
-    except InvalidHttpTargetError:
-        raise _SourceUnavailableError from None
+    except InvalidHttpTargetError as error:
+        wrapped = _SourceUnavailableError()
+        wrapped.add_note("stage=acquisition source=url operation=target_validation")
+        raise wrapped from error
     try:
         addresses = await resolve_public_addresses(
             target.hostname,
@@ -339,8 +407,10 @@ async def _resolve_image_target(
             resolver,
             maximum=address_limit,
         )
-    except DNSResolutionError, UnsafeAddressError:
-        raise _SourceUnavailableError from None
+    except (DNSResolutionError, UnsafeAddressError) as error:
+        wrapped = _SourceUnavailableError()
+        wrapped.add_note("stage=acquisition source=url operation=dns_resolution")
+        raise wrapped from error
     return _ResolvedImageTarget(target=target, addresses=addresses)
 
 
@@ -370,6 +440,10 @@ async def _send_pinned_request(
         except httpx2.TransportError as error:
             last_error = error
     if last_error is not None:
+        last_error.add_note(
+            f"stage=acquisition operation=pinned_request "
+            f"address_attempts={len(target.addresses)}"
+        )
         raise last_error
     raise _SourceUnavailableError
 
@@ -378,16 +452,37 @@ async def _read_response_bounded(response: httpx2.Response, limit: int) -> bytes
     _validate_content_encoding(response)
     try:
         return await read_bounded_body(response, limit)
-    except ResponseTooLargeError:
-        raise _SourceTooLargeError from None
-    except InvalidResponseHeaderError:
-        raise _ImageDownloadError from None
+    except ResponseTooLargeError as error:
+        wrapped = _SourceTooLargeError()
+        wrapped.add_note("stage=acquisition operation=response_body_read")
+        raise wrapped from error
+    except InvalidResponseHeaderError as error:
+        wrapped = _ImageDownloadError()
+        wrapped.add_note("stage=acquisition operation=response_header_validation")
+        raise wrapped from error
 
 
 def _validate_content_encoding(response: httpx2.Response) -> None:
     content_encoding = response.headers.get("Content-Encoding", "").strip().lower()
     if content_encoding and content_encoding != "identity":
-        raise _ImageDownloadError
+        error = _ImageDownloadError()
+        error.add_note("stage=acquisition operation=content_encoding_validation")
+        raise error
+
+
+def _image_source_kind(
+    segment: Image,
+    adapter_image_fetcher: AdapterImageFetcher | None,
+) -> str:
+    if segment.raw is not None:
+        return "raw"
+    if segment.path is not None:
+        return "path"
+    if segment.id and adapter_image_fetcher is not None:
+        return "adapter"
+    if segment.url:
+        return "url"
+    return "unknown"
 
 
 __all__ = ["AdapterImageFetcher", "ImageURLResolver"]

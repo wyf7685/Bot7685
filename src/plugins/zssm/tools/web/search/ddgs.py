@@ -75,17 +75,20 @@ class DDGSSearchProvider(WebSearchProvider):
                 abandon_on_cancel=True,
             )
         except _DDGSBackendUnavailable as error:
+            error.add_note("stage=web_search operation=ddgs_backend_setup")
             raise WebSearchError(
                 "configuration", cause_type=type(error).__name__
-            ) from None
+            ) from error
         except ImportError as error:
+            error.add_note("stage=web_search operation=ddgs_import")
             raise WebSearchError(
                 "unavailable", cause_type=type(error).__name__
-            ) from None
+            ) from error
         except Exception as error:
             cause_type = type(error).__name__
+            error.add_note("stage=web_search operation=ddgs_search")
             if cause_type == "TimeoutException":
-                raise WebSearchError("timeout", cause_type=cause_type) from None
+                raise WebSearchError("timeout", cause_type=cause_type) from error
             reason: SearchDiagnosticReason | None = None
             if cause_type == "DDGSException" and str(error) == "No results found.":
                 reason = "no_results"
@@ -93,7 +96,7 @@ class DDGSSearchProvider(WebSearchProvider):
                 "unavailable",
                 cause_type=cause_type,
                 reason=reason,
-            ) from None
+            ) from error
 
         try:
             return normalize_search_rows(
@@ -107,9 +110,10 @@ class DDGSSearchProvider(WebSearchProvider):
                 published_fields=("date", "published"),
             )
         except (TypeError, ValueError) as error:
+            error.add_note("stage=web_search operation=response_parse")
             raise WebSearchError(
                 "invalid_response", cause_type=type(error).__name__
-            ) from None
+            ) from error
 
     def _search_sync(
         self,

@@ -31,6 +31,7 @@ from ..contracts.participants import (
     ParticipantResolver,
     ParticipantRole,
 )
+from ..log import error_context, log_event
 
 _PARTICIPANT_ALIAS_RE = re.compile(r"^p_[0-9a-f]{16}$")
 _BIDI_CONTROL_CLASSES = frozenset(
@@ -227,7 +228,7 @@ class InvocationParticipantResolver:
         live_user: User | None = None
         live_member: Member | None = None
         if (interface := self._interface) is None:
-            snapshot = await _safe_lookup(snapshot_call)
+            snapshot = await _safe_lookup(snapshot_call, source="database")
         elif is_membership_scene:
             member_scene_type = (
                 scene.parent.type
@@ -247,19 +248,22 @@ class InvocationParticipantResolver:
                             member_scene_id,
                             raw_user_id,
                         )
-                    )
+                    ),
+                    source="interface",
                 ),
                 _safe_lookup(
-                    self._bounded_call(lambda: interface.get_user(raw_user_id))
+                    self._bounded_call(lambda: interface.get_user(raw_user_id)),
+                    source="interface",
                 ),
-                _safe_lookup(snapshot_call),
+                _safe_lookup(snapshot_call, source="database"),
             )
         else:
             live_user, snapshot = await asyncio.gather(
                 _safe_lookup(
-                    self._bounded_call(lambda: interface.get_user(raw_user_id))
+                    self._bounded_call(lambda: interface.get_user(raw_user_id)),
+                    source="interface",
                 ),
-                _safe_lookup(snapshot_call),
+                _safe_lookup(snapshot_call, source="database"),
             )
 
         if snapshot is None:
@@ -359,10 +363,20 @@ class InvocationParticipantResolver:
             return await call()
 
 
-async def _safe_lookup[T](awaitable: Awaitable[T]) -> T | None:
+async def _safe_lookup[T](
+    awaitable: Awaitable[T],
+    *,
+    source: str,
+) -> T | None:
     try:
         return await awaitable
-    except Exception:
+    except Exception as error:
+        log_event(
+            "WARNING",
+            "ZSSM::Participants",
+            f"<y>stage=participant_metadata source={source} operation=lookup "
+            f"error=<r>{error_context(error)}</></>",
+        )
         return None
 
 
@@ -394,12 +408,25 @@ async def _load_current_scene_snapshot(
     if isinstance(user_data, dict):
         try:
             user = User(**{**user_data, "id": raw_user_id})
-        except Exception:
+        except Exception as error:
+            log_event(
+                "WARNING",
+                "ZSSM::Participants",
+                f"<y>stage=participant_metadata source=database "
+                f"operation=user_metadata_decode error=<r>{error_context(error)}</></>",
+            )
             user = None
     if isinstance(member_data, dict):
         try:
             member = Member.load(member_data)
-        except Exception:
+        except Exception as error:
+            log_event(
+                "WARNING",
+                "ZSSM::Participants",
+                f"<y>stage=participant_metadata source=database "
+                f"operation=member_metadata_decode "
+                f"error=<r>{error_context(error)}</></>",
+            )
             member = None
     return _MetadataSnapshot(user=user, member=member)
 
@@ -466,7 +493,14 @@ async def _handle_participant_info(
         participants = await context.participant_resolver.resolve_known(
             arguments.participant_aliases
         )
-    except Exception:
+    except Exception as error:
+        log_event(
+            "WARNING",
+            "ZSSM::Participants",
+            f"<y>stage=participant_metadata operation=resolve_known "
+            f"requested_count={len(arguments.participant_aliases)} "
+            f"error=<r>{error_context(error)}</></>",
+        )
         participants = ()
         reported_error_code = "participant_resolution_failed"
     participant_values: list[JSONValue] = []

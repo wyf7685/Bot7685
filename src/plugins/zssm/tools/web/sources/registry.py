@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from ....http_transport import ValidatedHttpTarget
+from ....log import error_context, log_event, safe_log_text
 from .bilibili import BilibiliAdapter
 from .contracts import SourceAdapter, SourceIO, SourceTarget
 from .pixiv import PixivAdapter
@@ -37,12 +38,21 @@ class SourceRegistry:
         resolved: dict[str, str] = {}
 
         async def resolve_one(url: str) -> None:
-            for adapter in self._adapters:
+            for adapter_ordinal, adapter in enumerate(self._adapters, start=1):
                 try:
                     canonical = await adapter.resolve_card_url(url, io)
                 except asyncio.CancelledError:
                     raise
-                except Exception:  # noqa: S112 - unsupported adapters are skipped
+                except Exception as error:
+                    log_event(
+                        "WARNING",
+                        "ZSSM::Input",
+                        f"<y>stage=input operation=card_adapter_resolution "
+                        f"adapter_ordinal={adapter_ordinal} "
+                        f"source={safe_log_text(adapter.source_id)} "
+                        f"candidate_count={len(unique_urls)} "
+                        f"error=<r>{error_context(error)}</></>",
+                    )
                     continue
                 if canonical is not None:
                     resolved[url] = canonical

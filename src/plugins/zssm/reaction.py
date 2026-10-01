@@ -12,6 +12,8 @@ from nonebot_plugin_alconna import (
     message_reaction,
 )
 
+from .log import error_context, log_event, safe_log_text
+
 _REACTION_MILESTONES: Final[tuple[tuple[float, str], ...]] = (
     (15.0, "424"),
     (45.0, "30"),
@@ -23,7 +25,13 @@ def _should_react(bot: Bot, event: Event) -> bool:
     try:
         target = get_target(event, bot)
         get_message_id(event, bot)
-    except Exception:
+    except Exception as error:
+        error.add_note("ZSSM progress reaction: determine target eligibility")
+        log_event(
+            "WARNING",
+            "ZSSM::Reaction",
+            f"<y>target lookup failed</> diagnostic=<r>{error_context(error)}</>",
+        )
         return False
     return not target.private and target.scope == SupportScope.qq_client
 
@@ -35,8 +43,20 @@ async def _safe_reaction(
     *,
     delete: bool = False,
 ) -> None:
-    with contextlib.suppress(Exception):
+    try:
         await message_reaction(emoji=emoji, event=event, bot=bot, delete=delete)
+    except asyncio.CancelledError:
+        raise
+    except Exception as error:
+        operation = "remove" if delete else "add"
+        error.add_note(
+            f"ZSSM progress reaction: {operation} marker={safe_log_text(emoji)}"
+        )
+        log_event(
+            "WARNING",
+            "ZSSM::Reaction",
+            f"<y>marker {operation} failed</> diagnostic=<r>{error_context(error)}</>",
+        )
 
 
 async def _run_reaction_timeline(bot: Bot, event: Event) -> None:
@@ -72,8 +92,17 @@ async def zssm_reaction_timeline(bot: Bot, event: Event) -> AsyncGenerator[None]
         yield
     finally:
         task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await task
+        try:
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+        except Exception as error:
+            error.add_note("ZSSM stage: clean up progress-reaction timeline")
+            log_event(
+                "ERROR",
+                "ZSSM::Reaction",
+                f"<r>timeline failed</> diagnostic=<r>{error_context(error)}</>",
+            )
+            raise
 
 
 __all__ = ["zssm_reaction_timeline"]

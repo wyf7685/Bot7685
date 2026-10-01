@@ -20,6 +20,7 @@ from ..contracts.images import (
     ImageFailureStage,
     PreparedImage,
 )
+from ..log import error_context, log_event
 from .image_acquisition import (
     _AcquiredImage,
     _InvalidImageError,
@@ -73,19 +74,33 @@ async def _normalize_outcome(
     image: _AcquiredImage,
     config: ImagesConfig,
 ) -> NormalizedImage | ImageFailure:
+    failure_error: BaseException | None = None
     try:
         return await asyncio.to_thread(_normalize_image, image, config)
-    except _SourceTooLargeError:
+    except _SourceTooLargeError as error:
         category = ImageFailureCategory.TOO_LARGE
+        failure_error = error
     except (
         UnidentifiedImageError,
         PILImage.DecompressionBombError,
         PILImage.DecompressionBombWarning,
         _InvalidImageError,
-    ):
+    ) as error:
         category = ImageFailureCategory.INVALID
-    except OSError, ValueError:
+        failure_error = error
+    except (OSError, ValueError) as error:
         category = ImageFailureCategory.PROCESSING
+        failure_error = error
+    log_event(
+        "WARNING",
+        "ZSSM::Images",
+        f"<y>stage=normalization operation=image_decode "
+        f"label=<c>{image.collected.label}</> "
+        f"ordinal={image.collected.source_index + 1} category={category.value} "
+        f"source_bytes={len(image.data)} max_pixels={config.max_pixels} "
+        f"max_payload_bytes={config.max_payload_bytes} "
+        f"error=<r>{error_context(failure_error)}</></>",
+    )
     return ImageFailure(
         label=image.collected.label,
         stage=ImageFailureStage.NORMALIZATION,
@@ -108,7 +123,11 @@ def _normalize_image(image: _AcquiredImage, config: ImagesConfig) -> NormalizedI
             if transposed.width * transposed.height > config.max_pixels:
                 raise _SourceTooLargeError
             rgb = _composite_rgb(transposed)
-            qr_urls = _extract_qr_urls(rgb, config)
+            qr_urls = _extract_qr_urls(
+                rgb,
+                config,
+                label=image.collected.label,
+            )
 
     if max(rgb.size) > config.max_edge_px:
         rgb.thumbnail(
@@ -130,6 +149,8 @@ def _normalize_image(image: _AcquiredImage, config: ImagesConfig) -> NormalizedI
 def _extract_qr_urls(
     image: PILImage.Image,
     config: ImagesConfig,
+    *,
+    label: str,
 ) -> tuple[str, ...]:
     try:
         barcodes = zxingcpp.read_barcodes(
@@ -137,7 +158,14 @@ def _extract_qr_urls(
             formats=zxingcpp.BarcodeFormats(zxingcpp.BarcodeFormat.QRCode),
             text_mode=zxingcpp.TextMode.Plain,
         )
-    except Exception:
+    except Exception as error:
+        log_event(
+            "WARNING",
+            "ZSSM::Images",
+            f"<y>stage=normalization operation=qr_decode label=<c>{label}</> "
+            f"max_qr_urls={config.max_qr_urls_per_image} "
+            f"error=<r>{error_context(error)}</></>",
+        )
         return ()
 
     urls: list[str] = []

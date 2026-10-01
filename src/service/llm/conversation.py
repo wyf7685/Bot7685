@@ -9,6 +9,8 @@ from typing import Any
 from nonebot import logger
 from nonebot.utils import escape_tag
 
+from src.utils import format_exception
+
 from ._backend import (
     CompletionReply,
     CompletionRequest,
@@ -52,12 +54,6 @@ _DEFAULT_AGENT_LIMITS = AgentLimits()
 def _safe_log_text(value: object, limit: int = 80) -> str:
     compact = re.sub(r"\s+", " ", str(value)).strip()
     return escape_tag(compact[:limit] or "none")
-
-
-def _cause_name(error: BaseException) -> str:
-    if isinstance(error, LLMServiceError) and error.cause is not None:
-        return type(error.cause).__name__
-    return type(error).__name__
 
 
 def _log_event(
@@ -148,34 +144,46 @@ async def run_agent(
         )
         raise
     except TimeoutError as error:
+        error.add_note(
+            f"operation=agent model={model_alias} "
+            f"timeout_seconds={limits.total_timeout_seconds:g}"
+        )
         _log_event(
             correlation_id,
             "WARNING",
             "LLM::Agent",
-            f"<r>failed</> | category=<y>timeout</> cause=<r>TimeoutError</> "
+            f"<r>failed</> | category=<y>timeout</> "
+            f"{escape_tag(format_exception(error))} "
             f"elapsed=<c>{(perf_counter() - started) * 1000:.1f}ms</>",
         )
         raise LLMRunError(
             category=LLMErrorCategory.TIMEOUT,
             model_alias=model_alias,
+            cause=error,
         ) from error
     except LLMServiceError as error:
+        error.add_note(
+            f"operation=agent model={model_alias} "
+            f"model_limit={limits.max_model_calls} tool_limit={limits.max_tool_calls} "
+            f"timeout_seconds={limits.total_timeout_seconds:g}"
+        )
         _log_event(
             correlation_id,
             "WARNING",
             "LLM::Agent",
             f"<r>failed</> | category=<y>{error.category.value}</> "
-            f"cause=<r>{_safe_log_text(_cause_name(error))}</> "
+            f"{escape_tag(format_exception(error))} "
             f"elapsed=<c>{(perf_counter() - started) * 1000:.1f}ms</>",
         )
         raise
     except Exception as error:
+        error.add_note(f"operation=agent model={model_alias}")
         _log_event(
             correlation_id,
             "ERROR",
             "LLM::Agent",
             f"<r>failed</> | category=<y>unexpected</> "
-            f"cause=<r>{_safe_log_text(_cause_name(error))}</> "
+            f"{escape_tag(format_exception(error))} "
             f"elapsed=<c>{(perf_counter() - started) * 1000:.1f}ms</>",
         )
         raise
@@ -248,9 +256,22 @@ async def _run_bounded_conversation(
                     parallel_tool_calls=capabilities.parallel_tool_calls,
                 )
             )
-        except asyncio.CancelledError:
+        except asyncio.CancelledError as error:
+            error.add_note(
+                f"operation=agent_model_call model={model_alias} "
+                f"model_call={model_call}/{limits.max_model_calls} "
+                f"history_models={len(model_traces)} history_tools={len(tool_traces)} "
+                f"tool_round={tool_round}"
+            )
             raise
         except LLMServiceError as error:
+            error.add_note(
+                f"operation=agent_model_call model={model_alias} "
+                f"model_call={model_call}/{limits.max_model_calls} "
+                f"history_models={len(model_traces)} history_tools={len(tool_traces)} "
+                f"tool_round={tool_round} tool_images={tool_image_count} "
+                f"tool_image_bytes={tool_image_bytes}"
+            )
             _log_event(
                 correlation_id,
                 "WARNING",
@@ -258,18 +279,24 @@ async def _run_bounded_conversation(
                 f"model_call=<y>{model_call}/{limits.max_model_calls}</> "
                 f"<r>failed</> | "
                 f"category=<y>{error.category.value}</> "
-                f"cause=<r>{_safe_log_text(_cause_name(error))}</> "
+                f"{escape_tag(format_exception(error))} "
                 f"elapsed=<c>{(perf_counter() - call_started) * 1000:.1f}ms</>",
             )
             raise
         except Exception as error:
+            error.add_note(
+                f"operation=agent_model_call model={model_alias} "
+                f"model_call={model_call}/{limits.max_model_calls} "
+                f"history_models={len(model_traces)} history_tools={len(tool_traces)} "
+                f"tool_round={tool_round}"
+            )
             _log_event(
                 correlation_id,
                 "ERROR",
                 "LLM::Agent",
                 f"model_call=<y>{model_call}/{limits.max_model_calls}</> "
                 f"<r>failed</> | category=<y>unexpected</> "
-                f"cause=<r>{_safe_log_text(_cause_name(error))}</> "
+                f"{escape_tag(format_exception(error))} "
                 f"elapsed=<c>{(perf_counter() - call_started) * 1000:.1f}ms</>",
             )
             raise
@@ -534,6 +561,7 @@ async def _dispatch_tool_call(
         return _failed_tool_call(
             call,
             category=ToolErrorCategory.UNKNOWN_TOOL,
+            stage="lookup",
             summary="unknown tool",
             elapsed=perf_counter() - started,
             correlation_id=correlation_id,
@@ -547,12 +575,13 @@ async def _dispatch_tool_call(
         return _failed_tool_call(
             call,
             category=ToolErrorCategory.INVALID_ARGUMENTS,
+            stage="arguments",
             summary="invalid arguments",
             elapsed=perf_counter() - started,
             correlation_id=correlation_id,
             ordinal=ordinal,
             round_number=round_number,
-            cause_name=type(error).__name__,
+            error=error,
         )
 
     try:
@@ -563,12 +592,13 @@ async def _dispatch_tool_call(
         return _failed_tool_call(
             call,
             category=ToolErrorCategory.EXECUTION,
+            stage="invoke",
             summary="handler failed",
             elapsed=perf_counter() - started,
             correlation_id=correlation_id,
             ordinal=ordinal,
             round_number=round_number,
-            cause_name=type(error).__name__,
+            error=error,
         )
 
     try:
@@ -580,24 +610,26 @@ async def _dispatch_tool_call(
         return _failed_tool_call(
             call,
             category=ToolErrorCategory.RESULT_TOO_LARGE,
+            stage="serialize",
             summary="result too large",
             elapsed=perf_counter() - started,
             result_bytes=error.result_bytes,
             correlation_id=correlation_id,
             ordinal=ordinal,
             round_number=round_number,
-            cause_name=type(error).__name__,
+            error=error,
         )
     except ToolOutputSerializationError as error:
         return _failed_tool_call(
             call,
             category=ToolErrorCategory.EXECUTION,
+            stage="serialize",
             summary="invalid result",
             elapsed=perf_counter() - started,
             correlation_id=correlation_id,
             ordinal=ordinal,
             round_number=round_number,
-            cause_name=type(error).__name__,
+            error=error,
         )
 
     elapsed = perf_counter() - started
@@ -659,23 +691,28 @@ def _failed_tool_call(
     call: ToolCall,
     *,
     category: ToolErrorCategory,
+    stage: str,
     summary: str,
     elapsed: float,
     correlation_id: str | None,
     ordinal: int,
     round_number: int,
     result_bytes: int = 0,
-    cause_name: str | None = None,
+    error: BaseException | None = None,
 ) -> _DispatchedToolCall:
-    cause = _safe_log_text(cause_name or "none")
+    if error is not None:
+        error.add_note(
+            f"operation=tool_{stage} tool={call.name} "
+            f"ordinal={ordinal} round={round_number}"
+        )
     _log_event(
         correlation_id,
         "WARNING",
         "LLM::Tools",
         f"tool=<y>{ordinal}</> round=<y>{round_number}</> <r>failed</> | "
         f"name=<g>{_safe_log_text(call.name)}</> category=<y>{category.value}</> "
-        f"cause=<r>{cause}</> elapsed=<c>{elapsed * 1000:.1f}ms</> "
-        f"bytes=<c>{result_bytes}</>",
+        f"stage=<y>{stage}</> {escape_tag(format_exception(error))} "
+        f"elapsed=<c>{elapsed * 1000:.1f}ms</> bytes=<c>{result_bytes}</>",
     )
     content = json.dumps(
         {"error": category.value},

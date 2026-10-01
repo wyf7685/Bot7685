@@ -17,7 +17,7 @@ from .contracts.output import RenderFailure, RenderFailureCategory
 from .forward import ForwardFetchError, ForwardLimitError, ForwardUnsupportedError
 from .input import EmptyInputError, UnsupportedInputError
 from .input.adapters import fetch_image as fetch_adapter_resource_image
-from .log import cause_name, current_run_id, log_event, safe_log_text
+from .log import current_run_id, error_context, log_event, safe_log_text
 from .orchestrator import AllImagesFailedError, run_zssm
 from .reaction import zssm_reaction_timeline
 from .render import (
@@ -35,12 +35,14 @@ async def _finish_failure(
     request_started: float,
     cause: BaseException | None = None,
 ) -> Never:
+    if cause is not None:
+        cause.add_note(f"ZSSM matcher failure stage: {stage}")
     log_event(
         "WARNING",
         "ZSSM",
         f"<r><b>request failed</b></> | stage=<y>{safe_log_text(stage)}</> "
         f"category=<y>{category.value}</> "
-        f"cause=<r>{safe_log_text(repr(cause) if cause is not None else "none")}</> "
+        f"diagnostic=<r>{error_context(cause)}</> "
         f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
     )
     await render_error(
@@ -63,7 +65,7 @@ async def _finish_llm_failure(
         "ZSSM",
         f"<r><b>request failed</b></> | stage=<y>agent</> "
         f"category=<y>{error.category.value}</>{capability} "
-        f"cause=<r>{safe_log_text(cause_name(error))}</> "
+        f"diagnostic=<r>{error_context(error)}</> "
         f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
     )
     await render_error(error).finish()
@@ -153,8 +155,8 @@ async def _execute_zssm(
             cause=error,
         )
 
-    current_copy = current.copy()
     try:
+        current_copy = current.copy()
         quoted_copy = _quoted_message(reply_extension, message_id, bot)
         content_copy = content.result.copy() if content.available else UniMessage()
     except asyncio.CancelledError:
@@ -172,6 +174,9 @@ async def _execute_zssm(
     except asyncio.CancelledError:
         raise
     except Exception as error:
+        error.add_note(
+            "ZSSM stage: load plugin configuration and initialize LLM service"
+        )
         await finish_failure(
             RenderFailureCategory.CONFIGURATION,
             "configuration",
@@ -252,6 +257,8 @@ async def _execute_zssm(
     except asyncio.CancelledError:
         raise
     except ReferenceSendError as error:
+        await finish_failure(RenderFailureCategory.RENDER, "send", error)
+    except Exception as error:
         await finish_failure(RenderFailureCategory.RENDER, "send", error)
 
     stats = model.stats

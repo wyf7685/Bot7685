@@ -6,7 +6,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlencode, urlsplit
 
 from ....http_transport import ValidatedHttpTarget
-from ....log import cause_name, log_event
+from ....log import error_context, log_event
 from .base import (
     BaseSourceAdapter,
     normalize_page_text,
@@ -149,7 +149,10 @@ class PixivAdapter(BaseSourceAdapter[PixivSourceValue]):
             ),
         )
         last_error: Exception | None = None
-        for api_url, parser, includes_media in candidates:
+        for candidate_ordinal, (api_url, parser, includes_media) in enumerate(
+            candidates,
+            start=1,
+        ):
             try:
                 downloaded = await io.download(
                     api_url,
@@ -167,6 +170,15 @@ class PixivAdapter(BaseSourceAdapter[PixivSourceValue]):
                     media_restricted=restricted,
                 )
             except Exception as error:
+                error.add_note("stage=source_page operation=provider_candidate")
+                log_event(
+                    "WARNING",
+                    "ZSSM::SourceImages",
+                    f"<y>stage=source_page operation=provider_candidate "
+                    f"source=pixiv ordinal={candidate_ordinal} "
+                    f"candidate_count={len(candidates)} "
+                    f"error=<r>{error_context(error)}</></>",
+                )
                 last_error = error
         if last_error is not None:
             raise last_error
@@ -210,8 +222,9 @@ class PixivAdapter(BaseSourceAdapter[PixivSourceValue]):
                 log_event(
                     "WARNING",
                     "ZSSM::SourceImages",
-                    f"<y>source=pixiv</> page=<c>{page}</> "
-                    f"cause=<r>{cause_name(error)}</>",
+                    f"<y>stage=source_media operation=download source=pixiv "
+                    f"page={page} limit={max_bytes} "
+                    f"error=<r>{error_context(error)}</></>",
                 )
                 continue
             if (
@@ -271,8 +284,9 @@ def decode_pixiv_json(body: bytes, charset: str | None) -> Mapping[str, Any]:
     encoding = charset or "utf-8"
     try:
         payload = json.loads(body.decode(encoding, errors="replace").lstrip("\ufeff"))
-    except UnicodeError, json.JSONDecodeError:
-        raise SourceAdapterError("pixiv response is not valid JSON") from None
+    except (UnicodeError, json.JSONDecodeError) as error:
+        error.add_note("stage=source_page operation=response_decode source=pixiv")
+        raise SourceAdapterError("pixiv response is not valid JSON") from error
     if not isinstance(payload, Mapping):
         raise SourceAdapterError("pixiv response must be an object")
     return payload
@@ -374,8 +388,11 @@ def parse_pixiv_media_pages(
         try:
             parsed = urlsplit(raw_url)
             port = parsed.port
-        except UnicodeError, ValueError:
-            raise SourceAdapterError("pixiv image URL is invalid") from None
+        except (UnicodeError, ValueError) as error:
+            error.add_note(
+                "stage=source_media operation=image_url_validation source=pixiv"
+            )
+            raise SourceAdapterError("pixiv image URL is invalid") from error
         if (
             parsed.scheme.casefold() != "https"
             or parsed.hostname is None
@@ -430,7 +447,13 @@ def pixiv_caption_text(value: Any) -> str:
     try:
         parser.feed(value[:_MAX_CAPTION_HTML_CHARS])
         parser.close()
-    except Exception:
+    except Exception as error:
+        log_event(
+            "WARNING",
+            "ZSSM::SourceImages",
+            f"<y>stage=source_page operation=caption_parse source=pixiv "
+            f"error=<r>{error_context(error)}</></>",
+        )
         return ""
     text = normalize_page_text(parser.text())
     return normalize_page_text(text[:_MAX_CAPTION_CHARS])

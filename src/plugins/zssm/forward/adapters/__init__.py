@@ -31,6 +31,9 @@ def _load_resolver(adapter_name: str) -> AdapterReferenceResolver:
         module = importlib.import_module(f"{__package__}.{module_name}")
         resolver = module.resolve
     except (AttributeError, ImportError) as error:
+        error.add_note(
+            f"ZSSM forward operation: load resolver for adapter={adapter_name}"
+        )
         raise ForwardUnsupportedError(
             f"{adapter_name} forwarded-message resolver is unavailable"
         ) from error
@@ -59,6 +62,10 @@ def create_adapter_reference_resolver(
         except ForwardInputError:
             raise
         except Exception as error:
+            error.add_note(
+                "ZSSM forward operation: retrieve forwarded content; "
+                f"adapter={adapter_name},timeout_seconds={timeout_seconds}"
+            )
             raise ForwardFetchError(
                 f"{adapter_name} forwarded-message retrieval failed"
             ) from error

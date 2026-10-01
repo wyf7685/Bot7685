@@ -157,62 +157,84 @@ class _ModelHandle:
         )
 
     async def complete(self, request: CompletionRequest) -> ModelTurn:
-        request = self._prepare_request(request)
-        started = perf_counter()
-        async with self.semaphore:
-            try:
-                reply = await self.backend.complete(self.model_id, request)
-            except UnsupportedStructuredMode:
-                raise
-            except BackendError as error:
-                cause = error.cause or error
-                if error.category is LLMErrorCategory.CONFIGURATION:
-                    raise LLMConfigurationError(
-                        model_alias=self.alias, cause=cause
-                    ) from None
-                if error.category is LLMErrorCategory.CAPABILITY:
-                    raise LLMCapabilityError(
+        try:
+            request = self._prepare_request(request)
+            started = perf_counter()
+            async with self.semaphore:
+                try:
+                    reply = await self.backend.complete(self.model_id, request)
+                except UnsupportedStructuredMode:
+                    raise
+                except BackendError as error:
+                    if error.category is LLMErrorCategory.CONFIGURATION:
+                        raise LLMConfigurationError(
+                            model_alias=self.alias, cause=error
+                        ) from None
+                    if error.category is LLMErrorCategory.CAPABILITY:
+                        raise LLMCapabilityError(
+                            model_alias=self.alias,
+                            capability=ModelCapability.VISION,
+                            cause=error,
+                        ) from None
+                    raise LLMRunError(
+                        category=error.category,
                         model_alias=self.alias,
-                        capability=ModelCapability.VISION,
-                        cause=cause,
+                        cause=error,
                     ) from None
-                raise LLMRunError(
-                    category=error.category,
-                    model_alias=self.alias,
-                    cause=cause,
-                ) from None
 
-        if not isinstance(reply, CompletionReply):
-            raise LLMRunError(
-                category=LLMErrorCategory.INVALID_RESPONSE, model_alias=self.alias
-            )
-        if reply.stop is CompletionStop.LENGTH:
-            raise LLMRunError(category=LLMErrorCategory.LIMITS, model_alias=self.alias)
-        if reply.stop in {CompletionStop.REFUSAL, CompletionStop.FAILED}:
-            raise LLMRunError(
-                category=LLMErrorCategory.PROVIDER, model_alias=self.alias
-            )
-        if (
-            reply.stop is CompletionStop.COMPLETE
-            and (reply.content is None or not reply.content.strip())
-        ) or (reply.stop is CompletionStop.TOOL_CALLS and not request.tools):
-            raise LLMRunError(
-                category=LLMErrorCategory.INVALID_RESPONSE, model_alias=self.alias
-            )
-        return ModelTurn(
-            reply=reply,
-            trace=ModelCallTrace(
-                model_alias=self.alias,
-                model_id=self.model_id,
-                usage=reply.usage,
-                elapsed=perf_counter() - started,
-                finish_reason=reply.finish_reason,
-                reasoning_effort=request.reasoning_effort,
-                structured_mode=(
-                    request.structured.mode if request.structured is not None else None
+            if not isinstance(reply, CompletionReply):
+                error = LLMRunError(
+                    category=LLMErrorCategory.INVALID_RESPONSE, model_alias=self.alias
+                )
+                error.add_note("reason=invalid_completion_reply")
+                raise error
+            if reply.stop is CompletionStop.LENGTH:
+                error = LLMRunError(
+                    category=LLMErrorCategory.LIMITS, model_alias=self.alias
+                )
+                error.add_note("reason=output_token_limit")
+                raise error
+            if reply.stop in {CompletionStop.REFUSAL, CompletionStop.FAILED}:
+                error = LLMRunError(
+                    category=LLMErrorCategory.PROVIDER, model_alias=self.alias
+                )
+                error.add_note(f"reason=completion_{reply.stop.value}")
+                raise error
+            if (
+                reply.stop is CompletionStop.COMPLETE
+                and (reply.content is None or not reply.content.strip())
+            ) or (reply.stop is CompletionStop.TOOL_CALLS and not request.tools):
+                error = LLMRunError(
+                    category=LLMErrorCategory.INVALID_RESPONSE, model_alias=self.alias
+                )
+                error.add_note("reason=empty_content_or_unexpected_tool_calls")
+                raise error
+            return ModelTurn(
+                reply=reply,
+                trace=ModelCallTrace(
+                    model_alias=self.alias,
+                    model_id=self.model_id,
+                    usage=reply.usage,
+                    elapsed=perf_counter() - started,
+                    finish_reason=reply.finish_reason,
+                    reasoning_effort=request.reasoning_effort,
+                    structured_mode=(
+                        request.structured.mode
+                        if request.structured is not None
+                        else None
+                    ),
                 ),
-            ),
-        )
+            )
+        except (asyncio.CancelledError, Exception) as error:
+            error.add_note(
+                f"operation=complete model={self.alias} model_id={self.model_id} "
+                f"protocol={self.protocol.value} "
+                f"prompt_parts={len(request.prompt.parts)} "
+                f"history_items={len(request.history)} tools={len(request.tools)} "
+                f"max_output_tokens={request.max_output_tokens} "
+                f"reasoning_effort={request.reasoning_effort}"
+            )
+            raise
 
 
 class LLMRuntime:

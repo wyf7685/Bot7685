@@ -32,7 +32,7 @@ from .contracts.images import (
 from .contracts.input import CollectedInput, InputLocation
 from .contracts.run import ModelStageUsage
 from .input import AdapterImageFetcher, ImageURLResolver, prepare_images
-from .log import cause_name, log_event, safe_log_text
+from .log import error_context, log_event, safe_log_text
 
 _VISION_PROMPT: Final = (
     "Analyze only the attached image for another model.\n"
@@ -153,7 +153,14 @@ async def route_vision(
 ) -> VisionRoutingResult:
     """Prepare images and route them directly or through the fallback vision model."""
 
-    primary_handle = llm_service.get_model(primary_model)
+    try:
+        primary_handle = llm_service.get_model(primary_model)
+    except Exception as error:
+        error.add_note(
+            "ZSSM vision routing: primary model selection; "
+            f"model={safe_log_text(primary_model)}"
+        )
+        raise
     if not collected.images:
         return VisionRoutingResult(
             primary=_base_primary_input(collected),
@@ -172,20 +179,38 @@ async def route_vision(
         f"fallback=<g>{safe_log_text(vision_model)}</>",
     )
 
-    vision_handle = (
-        None
-        if primary_handle.capabilities.supports(ModelCapability.VISION)
-        else llm_service.get_model(vision_model).require_capability(
-            ModelCapability.VISION
+    try:
+        vision_handle = (
+            None
+            if primary_handle.capabilities.supports(ModelCapability.VISION)
+            else llm_service.get_model(vision_model).require_capability(
+                ModelCapability.VISION
+            )
         )
-    )
-    preparation = await prepare_images(
-        collected,
-        config=config,
-        adapter_image_fetcher=adapter_image_fetcher,
-        url_resolver=url_resolver,
-        url_transport=url_transport,
-    )
+    except Exception as error:
+        error.add_note(
+            "ZSSM vision routing: fallback model selection; "
+            f"primary_model={safe_log_text(primary_model)},"
+            f"fallback_model={safe_log_text(vision_model)}"
+        )
+        raise
+    try:
+        preparation = await prepare_images(
+            collected,
+            config=config,
+            adapter_image_fetcher=adapter_image_fetcher,
+            url_resolver=url_resolver,
+            url_transport=url_transport,
+        )
+    except Exception as error:
+        error.add_note(
+            "ZSSM vision routing: image preparation; "
+            f"requested={len(collected.images)},"
+            f"image_limit={config.max_count},"
+            f"parallel_limit={config.max_parallel},"
+            f"payload_limit_bytes={config.max_payload_bytes}"
+        )
+        raise
     log_event(
         "INFO" if preparation.images else "WARNING",
         "ZSSM::Vision",
@@ -231,18 +256,28 @@ async def route_vision(
         )
 
     assert vision_handle is not None
-    stage = await _run_vision_stage(
-        preparation.images,
-        model_alias=vision_model,
-        model_id=vision_handle.model_id,
-        temperature=(
-            0.0
-            if vision_handle.capabilities.supports(ModelCapability.TEMPERATURE)
-            else None
-        ),
-        config=config,
-        llm_service=llm_service,
-    )
+    try:
+        stage = await _run_vision_stage(
+            preparation.images,
+            model_alias=vision_model,
+            model_id=vision_handle.model_id,
+            temperature=(
+                0.0
+                if vision_handle.capabilities.supports(ModelCapability.TEMPERATURE)
+                else None
+            ),
+            config=config,
+            llm_service=llm_service,
+        )
+    except Exception as error:
+        error.add_note(
+            "ZSSM vision routing: fallback model analysis; "
+            f"model={safe_log_text(vision_model)},"
+            f"images={len(preparation.images)},"
+            f"parallel_limit={config.max_parallel},"
+            f"output_limit_chars={config.vision_output_chars}"
+        )
+        raise
     stats = ImageStageStatistics(
         requested=preparation.statistics.requested,
         unique=preparation.statistics.unique,
@@ -350,7 +385,17 @@ async def _run_vision_stage(
                     f"tokens_norm=<c>{usage.prompt_tokens}/{usage.completion_tokens}/"
                     f"{usage.total_tokens}</> truncated=<y>{str(truncated).lower()}</>",
                 )
-            except LLMRunError as error:
+            except asyncio.CancelledError:
+                raise
+            except Exception as error:
+                error.add_note(
+                    "ZSSM vision call failed; "
+                    f"model={safe_log_text(model_alias)}, "
+                    f"call={call_number}/{len(images)}, "
+                    f"image={safe_log_text(image.label)}"
+                )
+                if not isinstance(error, LLMRunError):
+                    raise
                 if error.category not in _EXPECTED_VISION_FAILURES:
                     raise
                 outcomes[index] = ImageFailure(
@@ -362,8 +407,10 @@ async def _run_vision_stage(
                     "WARNING",
                     "ZSSM::Vision",
                     f"call=<y>{call_number}/{len(images)}</> <r>failed</> | "
+                    f"image=<c>{safe_log_text(image.label)}</> "
+                    f"model=<g>{safe_log_text(model_alias)}</> "
                     f"category=<y>{error.category.value}</> "
-                    f"cause=<r>{safe_log_text(cause_name(error))}</> "
+                    f"diagnostic=<r>{error_context(error)}</> "
                     f"elapsed=<c>{(perf_counter() - call_started) * 1000:.1f}ms</>",
                 )
 

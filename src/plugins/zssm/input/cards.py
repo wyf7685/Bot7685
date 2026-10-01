@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from nonebot_plugin_alconna.uniseg import Hyper, UniMessage
 
 from ..contracts.input import InputLocation
+from ..log import error_context, log_event
 
 _QQ_MINIAPP_NAME: Final = "com.tencent.miniapp_01"
 _QQ_MINIAPP_PROMPT_PREFIX_RE: Final = re.compile(r"^\s*\[QQ小程序\]\s*")
@@ -89,7 +90,14 @@ async def _resolve_card_urls(
         return await resolver(tuple(urls))
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except Exception as error:
+        log_event(
+            "WARNING",
+            "ZSSM::Input",
+            f"<y>stage=input operation=card_link_resolution "
+            f"candidate_count={len(urls)} "
+            f"error=<r>{error_context(error)}</></>",
+        )
         return {}
 
 
