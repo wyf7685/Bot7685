@@ -4,6 +4,7 @@ from ....config import WebSearchConfig
 from ....contracts.web import CitationRegistry, WebSearchProvider
 from .brave import BraveSearchProvider
 from .ddgs import DDGSSearchProvider
+from .exa import ExaSearchProvider
 from .tavily import TavilySearchProvider
 
 
@@ -23,6 +24,10 @@ def create_web_search_provider(
         if client is None:
             raise ValueError("a shared HTTP client is required for Tavily search")
         return TavilySearchProvider(config, citation_registry, client)
+    if config.backend == "exa":
+        if client is None:
+            raise ValueError("a shared HTTP client is required for Exa search")
+        return ExaSearchProvider(config, citation_registry, client)
     if config.backend == "ddgs":
         return DDGSSearchProvider(config, citation_registry)
     raise ValueError("unsupported web search backend")

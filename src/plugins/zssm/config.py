@@ -60,12 +60,13 @@ class SourceImagesConfig(_FrozenConfig):
 
 
 class WebSearchConfig(_FrozenConfig):
-    backend: Literal["brave", "ddgs", "tavily"] = "brave"
+    backend: Literal["brave", "ddgs", "exa", "tavily"] = "brave"
     timeout_seconds: PositiveFloat = 8.0
     max_results: int = Field(default=8, ge=1, le=8)
     safe_search: Literal["off", "moderate", "strict"] = "moderate"
     brave_api_key: SecretStr | None = None
     tavily_api_key: SecretStr | None = None
+    exa_api_key: SecretStr | None = None
     ddgs_backend: str = Field(default="duckduckgo", min_length=1)
     ddgs_max_parallel: PositiveInt = 2
 
@@ -81,6 +82,13 @@ class WebSearchConfig(_FrozenConfig):
     def validate_tavily_api_key(cls, value: SecretStr | None) -> SecretStr | None:
         if value is not None and not value.get_secret_value().strip():
             raise ValueError("tavily_api_key must not be empty")
+        return value
+
+    @field_validator("exa_api_key")
+    @classmethod
+    def validate_exa_api_key(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and not value.get_secret_value().strip():
+            raise ValueError("exa_api_key must not be empty")
         return value
 
     @field_validator("ddgs_backend")
@@ -99,6 +107,8 @@ class WebSearchConfig(_FrozenConfig):
             raise ValueError("brave_api_key is required when backend is 'brave'")
         if self.backend == "tavily" and self.tavily_api_key is None:
             raise ValueError("tavily_api_key is required when backend is 'tavily'")
+        if self.backend == "exa" and self.exa_api_key is None:
+            raise ValueError("exa_api_key is required when backend is 'exa'")
         return self
 
 

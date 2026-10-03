@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #171a21;
+      color: #d8dee9;
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+    #card {
+      width: 1072px;
+      padding: 22px 24px 26px;
+      border: 1px solid #353b48;
+      border-radius: 12px;
+      background: #20242d;
+    }
+    h1 {
+      margin: 0 0 18px;
+      color: #88c0d0;
+      font-size: 20px;
+      font-weight: 650;
+    }
+    pre {
+      margin: 0;
+      color: #d8dee9;
+      font: 13px/1.55 Consolas, "Cascadia Mono", monospace;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      tab-size: 2;
+    }
+  </style>
+</head>
+<body>
+  <main id="card">
+    <h1>ZSSM 本次运行日志</h1>
+    <pre>{{ log_text | e }}</pre>
+  </main>
+</body>
+</html>

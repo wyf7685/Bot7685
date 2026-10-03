@@ -29,9 +29,22 @@ type SearchDiagnosticReason = Literal[
     "feature_not_available",
     "inactive_api_key",
     "invalid_api_key",
+    "invalid_request",
     "no_results",
     "request_blocked",
     "usage_limit",
+]
+
+type SearchDiagnosticParameter = Literal[
+    "include_answer",
+    "include_images",
+    "include_raw_content",
+    "max_results",
+    "query",
+    "safe_search",
+    "search_depth",
+    "time_range",
+    "topic",
 ]
 
 
@@ -45,6 +58,7 @@ class WebSearchError(RuntimeError):
         cause_type: str | None = None,
         status_code: int | None = None,
         reason: SearchDiagnosticReason | None = None,
+        request_field: SearchDiagnosticParameter | None = None,
     ) -> None:
         if cause_type is not None and not _CAUSE_TYPE_RE.fullmatch(cause_type):
             raise ValueError("web search cause type is invalid")
@@ -54,6 +68,7 @@ class WebSearchError(RuntimeError):
         self.cause_type = cause_type
         self.status_code = status_code
         self.reason = reason
+        self.request_field = request_field
         super().__init__(code)
 
 

@@ -16,8 +16,9 @@ from .config import get_zssm_config
 from .contracts.output import RenderFailure, RenderFailureCategory
 from .forward import ForwardFetchError, ForwardLimitError, ForwardUnsupportedError
 from .input import EmptyInputError, UnsupportedInputError
+from .input.adapters import _quoted_message_from_event
 from .input.adapters import fetch_image as fetch_adapter_resource_image
-from .log import current_run_id, error_context, log_event, safe_log_text
+from .log import error_context, log_event, safe_log_text
 from .orchestrator import AllImagesFailedError, run_zssm
 from .reaction import zssm_reaction_timeline
 from .render import (
@@ -25,6 +26,13 @@ from .render import (
     build_reference_nodes,
     render_error,
     send_reference,
+)
+from .run_logs import (
+    RunLogCapture,
+    mark_run_log_status,
+    run_log_cache_key,
+    run_log_context,
+    save_run_log,
 )
 
 
@@ -37,6 +45,7 @@ async def _finish_failure(
 ) -> Never:
     if cause is not None:
         cause.add_note(f"ZSSM matcher failure stage: {stage}")
+    mark_run_log_status("failed")
     log_event(
         "WARNING",
         "ZSSM",
@@ -60,6 +69,7 @@ async def _finish_llm_failure(
         if isinstance(error, LLMCapabilityError)
         else ""
     )
+    mark_run_log_status("failed")
     log_event(
         "WARNING",
         "ZSSM",
@@ -75,9 +85,14 @@ def _quoted_message(
     reply_extension: ReplyRecordExtension,
     message_id: str,
     bot: Bot,
+    event: Event,
 ) -> UniMessage | None:
     reply = reply_extension.get_reply(message_id)
-    if reply is None or reply.msg is None:
+    if reply is None:
+        return None
+    if quoted_message := _quoted_message_from_event(bot, event, reply):
+        return quoted_message
+    if reply.msg is None:
         return None
     if isinstance(reply.msg, UniMessage):
         return reply.msg.copy()
@@ -98,16 +113,26 @@ async def _handle_zssm(
     reply_extension: ReplyRecordExtension,
     model_alias: str | None = None,
 ) -> None:
-    with current_run_id.set(secrets.token_hex(8)):
-        request_started = perf_counter()
-        log_event(
-            "INFO",
-            "ZSSM",
-            f"<b>request accepted</> | segments=<c>{len(current)}</> "
-            f"content=<y>{str(content.available).lower()}</> "
-            f"model=<g>{safe_log_text(model_alias or "$active")}</>",
-        )
+    run_id = secrets.token_hex(8)
+    request_started = perf_counter()
+    capture = RunLogCapture(run_id=run_id, started=request_started)
+    cache_key = run_log_cache_key(
+        bot_id=str(bot.self_id),
+        adapter_name=bot.adapter.get_name(),
+        scene_type=session.scene.type.name.casefold(),
+        scene_id=str(session.scene.id),
+        message_id=str(message_id),
+    )
+
+    with run_log_context(capture):
         try:
+            log_event(
+                "INFO",
+                "ZSSM",
+                f"<b>request accepted</> | segments=<c>{len(current)}</> "
+                f"content=<y>{str(content.available).lower()}</> "
+                f"model=<g>{safe_log_text(model_alias or "$active")}</>",
+            )
             async with zssm_reaction_timeline(bot, event):
                 await _execute_zssm(
                     bot=bot,
@@ -121,7 +146,9 @@ async def _handle_zssm(
                     reply_extension=reply_extension,
                     request_started=request_started,
                 )
+            mark_run_log_status("completed")
         except asyncio.CancelledError:
+            mark_run_log_status("cancelled")
             log_event(
                 "INFO",
                 "ZSSM",
@@ -129,6 +156,27 @@ async def _handle_zssm(
                 f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
             )
             raise
+        except Exception as error:
+            if capture.status is None:
+                mark_run_log_status("failed")
+                log_event(
+                    "ERROR",
+                    "ZSSM",
+                    f"<r><b>request failed</b></> | stage=<y>handler</> "
+                    f"diagnostic=<r>{error_context(error)}</> "
+                    f"elapsed=<c>{(perf_counter() - request_started) * 1000:.1f}ms</>",
+                )
+            raise
+        finally:
+            if capture.status is None:
+                mark_run_log_status("failed")
+                log_event(
+                    "ERROR",
+                    "ZSSM",
+                    "<r><b>request failed</b></> | "
+                    "stage=<y>handler</> category=<y>unknown</>",
+                )
+            await asyncio.shield(save_run_log(cache_key, capture))
 
 
 async def _execute_zssm(
@@ -157,7 +205,7 @@ async def _execute_zssm(
 
     try:
         current_copy = current.copy()
-        quoted_copy = _quoted_message(reply_extension, message_id, bot)
+        quoted_copy = _quoted_message(reply_extension, message_id, bot, event)
         content_copy = content.result.copy() if content.available else UniMessage()
     except asyncio.CancelledError:
         raise
@@ -233,6 +281,11 @@ async def _execute_zssm(
         await finish_failure(RenderFailureCategory.PROVIDER, "agent", error)
 
     render_started = perf_counter()
+    log_event(
+        "INFO",
+        "ZSSM::Render",
+        f"<b>render started</> | trace_entries=<c>{len(model.trace)}</>",
+    )
     try:
         nodes = build_reference_nodes(
             model,
@@ -251,6 +304,12 @@ async def _execute_zssm(
         f"sources=<c>{len(model.sources)}</> trace_entries=<c>{len(model.trace)}</> "
         f"elapsed=<c>{(perf_counter() - render_started) * 1000:.1f}ms</>",
     )
+    send_started = perf_counter()
+    log_event(
+        "INFO",
+        "ZSSM::Send",
+        f"<b>reference send started</> | nodes=<c>{len(nodes)}</>",
+    )
 
     try:
         await send_reference(nodes)
@@ -261,6 +320,12 @@ async def _execute_zssm(
     except Exception as error:
         await finish_failure(RenderFailureCategory.RENDER, "send", error)
 
+    log_event(
+        "SUCCESS",
+        "ZSSM::Send",
+        f"<g>reference send completed</> | "
+        f"elapsed=<c>{(perf_counter() - send_started) * 1000:.1f}ms</>",
+    )
     stats = model.stats
     orchestration_elapsed = stats.total_elapsed if stats is not None else 0.0
     log_event(

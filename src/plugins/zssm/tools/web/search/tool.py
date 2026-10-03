@@ -90,6 +90,8 @@ async def _handle_web_search(
             diagnostic_parts.append(f"cause={error.cause_type}")
         if error.reason is not None:
             diagnostic_parts.append(f"reason={error.reason}")
+        if error.request_field is not None:
+            diagnostic_parts.append(f"parameter={error.request_field}")
         diagnostic = " ".join(diagnostic_parts)
         log_event(
             "WARNING",

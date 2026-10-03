@@ -17,7 +17,8 @@ __plugin_meta__ = PluginMetadata(
     extra={"author": "wyf7685"},
 )
 
+from . import adapters as adapters
 from . import command as command
 from . import handler as handler
 
-__all__ = ["command", "handler"]
+__all__ = ["adapters", "command", "handler"]

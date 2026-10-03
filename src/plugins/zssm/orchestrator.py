@@ -29,8 +29,10 @@ from .contracts.run import (
 from .contracts.web import CitationRegistry
 from .forward import expand_forward_inputs
 from .input import AdapterImageFetcher, collect_input
-from .log import current_run_id, log_event, safe_log_text
+from .input.adapters import _normalize_input_message
+from .log import log_event, safe_log_text
 from .prompt import build_system_prompt
+from .run_logs import current_run_id
 from .tools import (
     InvocationParticipantResolver,
     open_zssm_tool_resources,
@@ -246,6 +248,10 @@ async def run_zssm(
             f"elapsed=<c>{(perf_counter() - forward_started) * 1000:.1f}ms</> "
             f"quoted=<y>{str(expanded_quoted is not None).lower()}</>",
         )
+        expanded_content = _normalize_input_message(bot, expanded_content)
+        if expanded_quoted is not None:
+            expanded_quoted = _normalize_input_message(bot, expanded_quoted)
+
         try:
             participant_resolver = InvocationParticipantResolver(
                 bot,

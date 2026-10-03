@@ -9,13 +9,54 @@ from ....contracts.web import (
     WebSearchProvider,
     WebSearchResult,
 )
-from .common import SearchDiagnosticReason, WebSearchError, normalize_search_rows
+from .common import (
+    SearchDiagnosticParameter,
+    SearchDiagnosticReason,
+    WebSearchError,
+    normalize_search_rows,
+)
 
 _TAVILY_ENDPOINT = "https://api.tavily.com/search"
+_TAVILY_REQUEST_PARAMETERS: tuple[SearchDiagnosticParameter, ...] = (
+    "include_answer",
+    "include_images",
+    "include_raw_content",
+    "max_results",
+    "query",
+    "safe_search",
+    "search_depth",
+    "time_range",
+    "topic",
+)
 
 
-def _tavily_error_reason(response: httpx2.Response) -> SearchDiagnosticReason:
+def _tavily_validation_parameter(
+    message: str,
+) -> SearchDiagnosticParameter | None:
+    normalized = message.casefold().replace("_", " ")
+    normalized = normalized.replace("'", "").replace('"', "")
+    normalized = " ".join(normalized.split())
+    for parameter in _TAVILY_REQUEST_PARAMETERS:
+        name = parameter.replace("_", " ")
+        if any(
+            phrase in normalized
+            for phrase in (
+                f"invalid {name}",
+                f"invalid parameter {name}",
+                f"{name} is invalid",
+                f"{name} is not supported",
+                f"unsupported {name}",
+            )
+        ):
+            return parameter
+    return None
+
+
+def _tavily_error_details(
+    response: httpx2.Response,
+) -> tuple[SearchDiagnosticReason, SearchDiagnosticParameter | None]:
     defaults: dict[int, SearchDiagnosticReason] = {
+        400: "invalid_request",
         401: "invalid_api_key",
         403: "forbidden",
         429: "request_blocked",
@@ -26,16 +67,18 @@ def _tavily_error_reason(response: httpx2.Response) -> SearchDiagnosticReason:
     try:
         payload = response.json()
     except TypeError, ValueError:
-        return default
+        return default, None
     if not isinstance(payload, Mapping):
-        return default
+        return default, None
     detail = payload.get("detail")
     message = detail.get("error") if isinstance(detail, Mapping) else detail
     if not isinstance(message, str):
-        return default
+        return default, None
     normalized = " ".join(message.casefold().split())
+    if response.status_code == 400:
+        return "invalid_request", _tavily_validation_parameter(message)
     if any(term in normalized for term in ("expired", "deactivated", "inactive")):
-        return "inactive_api_key"
+        return "inactive_api_key", None
     if any(
         term in normalized
         for term in (
@@ -47,14 +90,14 @@ def _tavily_error_reason(response: httpx2.Response) -> SearchDiagnosticReason:
             "not authorized",
         )
     ):
-        return "invalid_api_key"
+        return "invalid_api_key", None
     if "only available on" in normalized or "not available on" in normalized:
-        return "feature_not_available"
+        return "feature_not_available", None
     if "usage limit" in normalized or "pay-as-you-go limit" in normalized:
-        return "usage_limit"
+        return "usage_limit", None
     if "excessive requests" in normalized or "request has been blocked" in normalized:
-        return "request_blocked"
-    return default
+        return "request_blocked", None
+    return default, None
 
 
 class TavilySearchProvider(WebSearchProvider):
@@ -73,8 +116,8 @@ class TavilySearchProvider(WebSearchProvider):
         self._client = client
         self._api_key = config.tavily_api_key
         self._timeout = httpx2.Timeout(config.timeout_seconds)
-        # Tavily's enhanced safe search is boolean and enterprise-only. The
-        # shared "moderate" setting must not opt into that strict feature.
+        # Tavily supports safe_search on all plans, but not with fast or
+        # ultra-fast depths. This provider uses basic, so strict enables it.
         self._safe_search = config.safe_search == "strict"
         self._citations = citation_registry
 
@@ -120,16 +163,26 @@ class TavilySearchProvider(WebSearchProvider):
             ) from error
 
         if response.status_code in (429, 432, 433):
+            reason, _ = _tavily_error_details(response)
             raise WebSearchError(
                 "rate_limited",
                 status_code=response.status_code,
-                reason=_tavily_error_reason(response),
+                reason=reason,
             )
         if response.status_code in (401, 403):
+            reason, _ = _tavily_error_details(response)
             raise WebSearchError(
                 "configuration",
                 status_code=response.status_code,
-                reason=_tavily_error_reason(response),
+                reason=reason,
+            )
+        if response.status_code == 400:
+            reason, request_field = _tavily_error_details(response)
+            raise WebSearchError(
+                "unavailable",
+                status_code=response.status_code,
+                reason=reason,
+                request_field=request_field,
             )
         if not 200 <= response.status_code < 300:
             raise WebSearchError("unavailable", status_code=response.status_code)
