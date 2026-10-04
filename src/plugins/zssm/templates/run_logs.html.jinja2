@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,37 +9,78 @@
     body {
       margin: 0;
       padding: 24px;
-      background: #171a21;
-      color: #d8dee9;
-      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: #101720;
+      color: #e2e8f0;
+      font-family: "Segoe UI", sans-serif;
     }
     #card {
       width: 1072px;
-      padding: 22px 24px 26px;
-      border: 1px solid #353b48;
-      border-radius: 12px;
-      background: #20242d;
+      overflow: hidden;
+      border: 1px solid #344457;
+      border-radius: 16px;
+      background: #17212d;
     }
-    h1 {
-      margin: 0 0 18px;
-      color: #88c0d0;
-      font-size: 20px;
-      font-weight: 650;
+    header { padding: 24px 26px 20px; border-bottom: 1px solid #344457; }
+    h1 { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: .2px; }
+    .subtitle { margin: 8px 0 0; color: #a8bbce; font-size: 14px; }
+    .logs { padding: 12px 14px 18px; }
+    .row {
+      display: grid;
+      grid-template-columns: 94px 82px 146px minmax(0, 1fr);
+      gap: 12px;
+      padding: 10px 12px;
+      border-left: 3px solid transparent;
+      border-bottom: 1px solid #293646;
+      font: 14px/1.65 "Cascadia Mono", Consolas, monospace;
     }
-    pre {
-      margin: 0;
-      color: #d8dee9;
-      font: 13px/1.55 Consolas, "Cascadia Mono", monospace;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      tab-size: 2;
-    }
+    .row:nth-child(even) { background: #1b2735; }
+    .elapsed { color: #9db0c5; text-align: right; white-space: nowrap; }
+    .level { font-size: 12px; font-weight: 700; letter-spacing: .3px; padding-top: 2px; }
+    .component { color: #b9afff; overflow-wrap: anywhere; }
+    .message { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 2; }
+    .debug .level { color: #a6b8cd; }
+    .info .level { color: #79caff; }
+    .success .level { color: #7ce4ac; }
+    .warning .level { color: #ffd181; }
+    .error .level, .critical .level { color: #ff9aab; }
+    .row.success { border-left-color: #58b98a; }
+    .row.warning { border-left-color: #edbb68; background: #332d23; }
+    .row.error, .row.critical { border-left-color: #f07d91; background: #352631; }
+    .notice { margin: 8px 12px; color: #ffd181; font: 14px/1.65 Consolas, monospace; overflow-wrap: anywhere; }
+    .status { margin: 16px 12px 0; padding: 12px 16px; border: 1px solid #41556b; border-radius: 8px; font-size: 14px; font-weight: 600; }
+    .status.completed { color: #7ce4ac; border-color: #38614f; background: #1b302a; }
+    .status.failed { color: #ff9aab; border-color: #714252; background: #352631; }
+    .status.cancelled { color: #ffd181; border-color: #6a5636; background: #332d23; }
   </style>
 </head>
 <body>
   <main id="card">
-    <h1>ZSSM 本次运行日志</h1>
-    <pre>{{ log_text | e }}</pre>
+    <header>
+      <h1>ZSSM / Run logs</h1>
+      <p class="subtitle">Elapsed time · Severity · Component · Event details</p>
+    </header>
+    <section class="logs" aria-label="Run timeline">
+      {# Keep cached text unchanged; split only the first separator so message details and continuation lines survive. #}
+      {% for line in log_text.splitlines() %}
+        {% if line.startswith('Run status: ') %}
+          {% set status = line.removeprefix('Run status: ') %}
+          <div class="status {{ status if status in ['completed', 'failed', 'cancelled'] else '' }}">{{ line | e }}</div>
+        {% elif ' | ' in line %}
+          {% set parts = line.split(' | ', 1) %}
+          {% set prefix = parts[0].split() %}
+          {% set level = prefix[1] if prefix | length > 1 else '' %}
+          {% set tone = level | lower %}
+          <div class="row {{ tone if tone in ['debug', 'info', 'success', 'warning', 'error', 'critical'] else '' }}">
+            <span class="elapsed">{{ (prefix[0] if prefix else '') | e }}</span>
+            <span class="level">{{ level | e }}</span>
+            <span class="component">{{ (' '.join(prefix[2:])) | e }}</span>
+            <span class="message">{{ parts[1] | e }}</span>
+          </div>
+        {% else %}
+          <div class="notice">{{ line | e }}</div>
+        {% endif %}
+      {% endfor %}
+    </section>
   </main>
 </body>
 </html>
