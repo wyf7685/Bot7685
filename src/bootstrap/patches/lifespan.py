@@ -107,20 +107,20 @@ def _log_layers(layers: list[list[LifespanFunc]]) -> None:
 def _colorize_call_graph(graph: asyncio.FutureCallGraph, indent: str = "") -> str:
     future = graph.future
     name = (
-        f"<ly>Task</> <lm>{escape_tag(future.get_name())}</>"
+        f"<b>Task</> <lm>{escape_tag(future.get_name())}</>"
         if isinstance(future, asyncio.Task)
-        else "<ly>Future</>"
+        else "<b>Future</>"
     )
     lines = [f"{indent}<lk>*</> {name} (<c>{id(future):#x}</>)"]
     for entry in reversed(graph.call_stack):
         frame = entry.frame
         lines.append(
-            f"{indent}  <lk>→</> <lg>{escape_tag(frame.f_code.co_qualname)}</> "
+            f"{indent}  <lk>→</> <y>{escape_tag(frame.f_code.co_qualname)}</> "
             f"<lk>({escape_tag(frame.f_code.co_filename)}:</>"
-            f"<c>{frame.f_lineno}</><lk>)</>"
+            f"<le>{frame.f_lineno}</><lk>)</>"
         )
     if graph.awaited_by:
-        lines.append(f"{indent}  <ly>Awaited by:</>")
+        lines.append(f"{indent}  <b>Awaited by:</>")
         lines.extend(
             _colorize_call_graph(waiter, indent + "    ") for waiter in graph.awaited_by
         )
