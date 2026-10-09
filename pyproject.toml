@@ -43,7 +43,7 @@ dependencies = [
   "pillow>=10.0.0",
   "zxing-cpp>=3.1.1,<4",
   "openai>=3.3,<4",
-  "playwright==1.62.0",
+  "playwright==1.63.0",
   "pydantic>=2.12.5",
   "rapidfuzz>=3.14.5",
   "redis[hiredis]>=4.2.0",
