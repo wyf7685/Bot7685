@@ -1,3 +1,4 @@
+import asyncio
 import contextlib
 import functools
 import inspect
@@ -103,25 +104,60 @@ def _log_layers(layers: list[list[LifespanFunc]]) -> None:
         log.info(" ╘" + "═" * 81)
 
 
+def _colorize_call_graph(graph: asyncio.FutureCallGraph, indent: str = "") -> str:
+    future = graph.future
+    name = (
+        f"<ly>Task</> <lm>{escape_tag(future.get_name())}</>"
+        if isinstance(future, asyncio.Task)
+        else "<ly>Future</>"
+    )
+    lines = [f"{indent}<lk>*</> {name} (<c>{id(future):#x}</>)"]
+    for entry in reversed(graph.call_stack):
+        frame = entry.frame
+        lines.append(
+            f"{indent}  <lk>→</> <lg>{escape_tag(frame.f_code.co_qualname)}</> "
+            f"<lk>({escape_tag(frame.f_code.co_filename)}:</>"
+            f"<c>{frame.f_lineno}</><lk>)</>"
+        )
+    if graph.awaited_by:
+        lines.append(f"{indent}  <ly>Awaited by:</>")
+        lines.extend(
+            _colorize_call_graph(waiter, indent + "    ") for waiter in graph.awaited_by
+        )
+    return "\n".join(lines)
+
+
 async def _run_hook(func: LifespanFunc) -> None:
     if not inspect.iscoroutinefunction(func):
         func = run_sync(func)
 
     timeout_occurred = False
+    task = asyncio.current_task()
+
+    def with_call_graph(message: str, duration: float) -> str:
+        if duration <= 60:
+            return message
+        graph = asyncio.capture_call_graph(task)
+        if graph is None:
+            return message
+        return f"{message}\n<ly>Async wait chain:</>\n{_colorize_call_graph(graph)}"
 
     async def warn_on_timeout() -> None:
         nonlocal timeout_occurred
 
-        delay = 5
+        deadline = 15
         while True:
-            await anyio.sleep(delay)
+            await anyio.sleep_until(start + deadline)
             duration = anyio.current_time() - start
             log.warning(
-                f"{_colorize_hook(func)} taking too long to complete "
-                f"(<c>{duration:.2f}</>s)"
+                with_call_graph(
+                    f"{_colorize_hook(func)} taking too long to complete "
+                    f"(<c>{duration:.2f}</>s)",
+                    duration,
+                )
             )
             timeout_occurred = True
-            delay = min(delay * 2, 60)
+            deadline += min(deadline, 30)
 
     async with anyio.create_task_group() as tg:
         tg.start_soon(warn_on_timeout)
@@ -130,15 +166,21 @@ async def _run_hook(func: LifespanFunc) -> None:
             await func()
         except Exception as exc:
             log.warning(
-                f"Uncaught exception in {_colorize_hook(func)}: "
-                f"<r>{escape_tag(repr(exc))}</>"
+                with_call_graph(
+                    f"Uncaught exception in {_colorize_hook(func)}: "
+                    f"<r>{escape_tag(repr(exc))}</>",
+                    anyio.current_time() - start,
+                )
             )
             raise
         finally:
             tg.cancel_scope.cancel()
             duration = anyio.current_time() - start
             (log.warning if timeout_occurred else log.trace)(
-                f"{_colorize_hook(func)} completed in <c>{duration:.2f}</>s"
+                with_call_graph(
+                    f"{_colorize_hook(func)} completed in <c>{duration:.2f}</>s",
+                    duration,
+                )
             )
 
 
