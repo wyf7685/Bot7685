@@ -48,7 +48,7 @@ class PrivateChatEnteredEventDetail(BaseModel):
 
 class P2PChatEnteredEvent(NoticeEvent):
     __event__: LiteralString = "im.chat.access_event.bot_p2p_chat_entered_v1"
-    event: PrivateChatEnteredEventDetail  # pyright: ignore[reportIncompatibleVariableOverride]
+    event: PrivateChatEnteredEventDetail  # ty: ignore[invalid-attribute-override]
 
     @override
     def get_user_id(self) -> str:

@@ -4,7 +4,7 @@ import asyncio
 import json
 import re
 from collections import deque
-from collections.abc import Iterator, Mapping
+from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -100,7 +100,7 @@ class RunLogCapture:
 
 
 @contextmanager
-def run_log_context(capture: RunLogCapture) -> Iterator[None]:
+def run_log_context(capture: RunLogCapture) -> Generator[None]:
     run_token = current_run_id.set(capture.run_id)
     log_token = _current_run_log.set(capture)
     try:

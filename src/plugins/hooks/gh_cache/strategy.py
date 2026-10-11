@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 from datetime import timedelta
 from typing import NoReturn, cast, override
 
@@ -53,7 +53,7 @@ class AsyncBotStorage(AsyncBaseStorage):
     ) -> None:
         metadata = metadata or Metadata(
             cache_key=key,
-            created_at=datetime.datetime.now(datetime.UTC),
+            created_at=dt.datetime.now(dt.UTC),
             number_of_uses=0,
         )
         value = self._serialize(response, request, metadata)

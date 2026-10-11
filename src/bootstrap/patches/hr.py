@@ -23,7 +23,7 @@ def _hr_version() -> tuple[int, ...]:
 
 
 async def _patched_connect(browser_type: str, **kwargs: Any) -> Browser:
-    from nonebot_plugin_htmlrender import browser, config  # ty: ignore[unresolved-import]  # noqa: I001
+    from nonebot_plugin_htmlrender import browser, config  # ty: ignore[unresolved-import]
 
     if (pw := browser._playwright) is None:  # noqa: SLF001
         raise RuntimeError("Playwright 未初始化")

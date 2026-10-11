@@ -66,7 +66,7 @@ dev = [
   { include-group = "dev-runtime" },
   "poethepoet>=0.48.0",
 ]
-lint = ["ruff>=0.16.7", "prek>=0.5.3", "ty>=0.0.81"]
+lint = ["ruff>=0.17.0", "prek>=0.5.5", "ty>=0.0.86"]
 dev-runtime = [
   "ddgs>=9.15,<10",
   "nonebot-adapter-feishu>=2.7.1",

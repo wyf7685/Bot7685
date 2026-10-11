@@ -1,6 +1,6 @@
 import contextlib
 import dataclasses
-import datetime
+import datetime as dt
 import enum
 import functools
 from collections.abc import Callable, Iterable
@@ -274,9 +274,9 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
     def _(cls, data: tuple[object]) -> str:
         return cls._seq(map(cls.apply, data), "()")
 
-    @register(datetime.datetime)
+    @register(dt.datetime)
     @classmethod
-    def _(cls, data: datetime.datetime) -> str:
+    def _(cls, data: dt.datetime) -> str:
         attrs = [cls.apply(getattr(data, name)) for name in DATETIME_FIELDS]
         if data.tzinfo is not None:
             attrs.append(style.ly(data.tzinfo))
@@ -322,7 +322,7 @@ class Highlight[TMS: MessageSegment, TM: Message = Message, TE: Event = Event]:
         return style.c_i(id, escape=True)
 
     @classmethod
-    def time(cls, datetime: datetime.datetime, /) -> str:
+    def time(cls, datetime: dt.datetime, /) -> str:
         return style.y(datetime.isoformat(sep=" ", timespec="seconds"))
 
     @classmethod
