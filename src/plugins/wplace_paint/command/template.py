@@ -1,4 +1,5 @@
 import random
+import re
 
 import httpx2
 from nonebot import logger
@@ -28,15 +29,26 @@ from .matcher import finish, matcher, prompt
 
 @matcher.assign("~preview")
 async def assign_preview(
-    coord1: str,
-    coord2: str,
+    coords: tuple[str, ...],
     background: str | None = None,
 ) -> None:
+    raw = re.findall(r"-?\d+", " ".join(coords))
+    if len(raw) % 4 != 0:
+        await finish("输入坐标数量不正确，请输入四个一组的坐标数值")
+    if len(raw) < 8:
+        await finish("输入坐标数量不足，请输入至少两组坐标")
+
     try:
-        c1 = WplacePixelCoords.parse(coord1)
-        c2 = WplacePixelCoords.parse(coord2)
+        parsed = [
+            WplacePixelCoords.parse(" ".join(raw[i : i + 4]))
+            for i in range(0, len(raw), 4)
+        ]
     except ValueError as e:
         await finish(f"坐标解析失败: {e}")
+    c1, c2 = parsed[0].fix_with(parsed[1])
+    for coord in parsed[2:]:
+        c1, _ = c1.fix_with(coord)
+        _, c2 = c2.fix_with(coord)
 
     try:
         img_bytes = await download_preview(c1, c2, background)

@@ -16,16 +16,8 @@ alc = Alconna(
     "wplace",
     Subcommand(
         "preview",
-        Args[
-            "coord1#对角坐标1",
-            str,
-            Field(completion=lambda: "第一个坐标(选点并复制BlueMarble的坐标)"),
-        ][
-            "coord2#对角坐标2",
-            str,
-            Field(completion=lambda: "第二个坐标(选点并复制BlueMarble的坐标)"),
-        ],
         Option("--background|-b", Args["background#背景色RGB", str]),
+        Args["coords", MultiVar(str)],
         help_text="获取指定区域的预览图",
     ),
     Subcommand(
