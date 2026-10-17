@@ -39,6 +39,7 @@ from ..contracts._validation import _message_image_id, _nonempty, _participant_a
 from ..contracts.input import MessageImageRegistry
 from ..contracts.participants import ParticipantResolver
 from ..contracts.run import ZssmInvocationFacts
+from ..input.adapters import _normalize_input_message
 from ..log import error_context, log_event
 
 _BIDI_CONTROL_CLASSES = frozenset(
@@ -450,6 +451,7 @@ async def _handle_recent_messages(
                 deserialize_message(row.adapter, row.record.message),
                 adapter=row.adapter,
             )
+            message = _normalize_input_message(row.adapter, message)
             content, image_ids = _summarize_message(context, message)
         except Exception as error:
             log_event(

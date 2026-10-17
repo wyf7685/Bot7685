@@ -22,10 +22,13 @@ def _quoted_message_from_event(
     return quoted_message_from_event(bot, event, reply)
 
 
-def _normalize_input_message(bot: Bot, message: UniMessage) -> UniMessage:
-    if bot.adapter.get_name() != "Discord":
+def _normalize_input_message(adapter_name: str, message: UniMessage) -> UniMessage:
+    if adapter_name == "Discord":
+        from .discord import normalize_message
+    elif adapter_name == "Milky":
+        from .milky import normalize_message
+    else:
         return message
-    from .discord import normalize_message
 
     return normalize_message(message)
 

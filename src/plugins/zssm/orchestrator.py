@@ -248,9 +248,10 @@ async def run_zssm(
             f"elapsed=<c>{(perf_counter() - forward_started) * 1000:.1f}ms</> "
             f"quoted=<y>{str(expanded_quoted is not None).lower()}</>",
         )
-        expanded_content = _normalize_input_message(bot, expanded_content)
+        adapter_name = bot.adapter.get_name()
+        expanded_content = _normalize_input_message(adapter_name, expanded_content)
         if expanded_quoted is not None:
-            expanded_quoted = _normalize_input_message(bot, expanded_quoted)
+            expanded_quoted = _normalize_input_message(adapter_name, expanded_quoted)
 
         try:
             participant_resolver = InvocationParticipantResolver(
