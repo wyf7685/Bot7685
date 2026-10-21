@@ -58,7 +58,8 @@ def _patcher_impl[TE: Event, TMS: MessageSegment, TM: Message](
     highlight_cls: type[Highlight[TMS, TM, TE]],
 ) -> PatcherHandle[TE]:
     cls: type[TE] = inspect.get_annotations(call)["self"]
-    assert issubclass(cls, Event)
+    if not issubclass(cls, Event):
+        raise TypeError(f"Expected subclass of nonebot.adapters.Event, got {cls!r}")
     original = cls.get_log_string
 
     def call_with_event_type(self: TE) -> str:
@@ -75,9 +76,9 @@ def _patcher_impl[TE: Event, TMS: MessageSegment, TM: Message](
         cls.get_log_string = original
         logger.debug(f"Restore <m>{module_name}</m>.<g>{cls.__name__}</g>")
 
-    handle = PatcherHandle(wrapper, original, patch, restore)
+    handle = PatcherHandle[TE](wrapper, original, patch, restore)
     _PATCHER_HANDLES.add(handle)
-    return cast("PatcherHandle[TE]", handle)
+    return handle
 
 
 def _make_patcher() -> Patcher:
