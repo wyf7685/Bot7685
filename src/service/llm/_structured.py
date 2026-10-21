@@ -22,7 +22,7 @@ class StructuredOutputValidationError(Exception):
     """A structured response failed local JSON, envelope, or type validation."""
 
 
-def make_output_adapter(output_type: object) -> TypeAdapter[Any]:
+def make_output_adapter[T](output_type: type[T]) -> TypeAdapter[T]:
     return TypeAdapter(output_type)
 
 

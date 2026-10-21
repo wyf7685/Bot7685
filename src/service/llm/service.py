@@ -385,7 +385,7 @@ class LLMService:
                         cause=error,
                     ) from None
                 return StructuredRunResult(
-                    output=cast("T", output),
+                    output=output,
                     model_alias=handle.alias,
                     model_id=handle.model_id,
                     usage=rejected_usage + turn.reply.usage,

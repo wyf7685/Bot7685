@@ -29,26 +29,26 @@ dependencies = [
   "nonebot-plugin-wakatime>=0.3.1",
   "nonebot-plugin-wordcloud>=0.11.1",
   # plugin deps
-  "anthropic>=1.4.0,<2.0.0",
+  "anthropic>=1.17.0,<2.0.0",
   "anyio>=4.12.1",
-  "ayafileio>=1.4.4",
+  "ayafileio>=1.15.0",
   "cloudscraper>=1.2.71",
   "expiringdictx>=1.1.0,<2.0.0",
   "githubkit[auth-app]>=0.14.7",
-  "httpx2[http2]>=2.12.0",
-  "imageio[ffmpeg]>=2.37.3",
-  "jmcomic>=2.7.5",
+  "httpx2[http2]>=2.16.0",
+  "imageio[ffmpeg]>=2.38.1",
+  "jmcomic>=2.7.9",
   "lru-dict>=1.4.1,<2.0.0",
   "msgspec[toml,yaml]>=0.20.0",
-  "pillow>=10.0.0",
-  "zxing-cpp>=3.1.1,<4",
-  "openai>=3.3,<4",
+  "openai>=3.35,<4",
+  "pillow>=12.0.0,<13.0.0",
   "playwright==1.63.0",
-  "pydantic>=2.12.5",
+  "pydantic>=2.14.1",
   "rapidfuzz>=3.14.5",
   "redis[hiredis]>=4.2.0",
   "ruamel-yaml>=0.19.1",
-  "trafilatura>=2.2,<3",
+  "trafilatura>=2.3,<3",
+  "zxing-cpp>=3.1.1,<4",
   # plugins
   "nonebot-plugin-exe-code",
   "nonebot-plugin-talk-stats",
@@ -57,7 +57,7 @@ dependencies = [
   "nonebot-plugin-chatrecorder",
   "nonebot-plugin-picmenu-next[yaml,toml,rjieba]",
   # Bot7685 Extensions
-  "bot7685-ext[nonebot]==0.5.3",
+  "bot7685-ext[nonebot]==0.6.0",
 ]
 
 [dependency-groups]
@@ -66,7 +66,7 @@ dev = [
   { include-group = "dev-runtime" },
   "poethepoet>=0.48.0",
 ]
-lint = ["ruff>=0.17.0", "prek>=0.5.5", "ty>=0.0.86"]
+lint = ["ruff>=0.17.1", "prek>=0.5.7", "ty>=0.0.90"]
 dev-runtime = [
   "ddgs>=9.15,<10",
   "nonebot-adapter-feishu>=2.7.1",

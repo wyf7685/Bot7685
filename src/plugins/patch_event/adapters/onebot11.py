@@ -432,7 +432,7 @@ async def register_custom_models() -> None:
 
 @custom_model
 class MessageSentEvent(Event):  # NapCat
-    post_type: Literal["message_sent"]  # pyright: ignore[reportIncompatibleVariableOverride]
+    post_type: Literal["message_sent"]  # ty: ignore[invalid-mutable-override]
     message_type: str
     sub_type: str
     message_sent_type: str
@@ -459,7 +459,7 @@ class MessageSentEvent(Event):  # NapCat
 
 @custom_model
 class PrivateMessageSentEvent(MessageSentEvent):  # NapCat
-    message_type: Literal["private"]  # pyright: ignore[reportIncompatibleVariableOverride]
+    message_type: Literal["private"]  # ty: ignore[invalid-mutable-override]
 
     @override
     def get_log_string(self) -> str:
@@ -472,7 +472,7 @@ class PrivateMessageSentEvent(MessageSentEvent):  # NapCat
 
 @custom_model
 class GroupMessageSentEvent(MessageSentEvent):  # NapCat
-    message_type: Literal["group"]  # pyright: ignore[reportIncompatibleVariableOverride]
+    message_type: Literal["group"]  # ty: ignore[invalid-mutable-override]
     group_id: int
 
     @override
@@ -490,7 +490,7 @@ class GroupMessageSentEvent(MessageSentEvent):  # NapCat
 
 @custom_model
 class ReactionNoticeEvent(NoticeEvent):  # Lagrange
-    notice_type: Literal["reaction"]  # pyright: ignore[reportIncompatibleVariableOverride]
+    notice_type: Literal["reaction"]  # ty: ignore[invalid-mutable-override]
     sub_type: str
     group_id: int
     message_id: int
@@ -509,7 +509,7 @@ class ReactionNoticeEvent(NoticeEvent):  # Lagrange
 
 @custom_model
 class ReactionAddNoticeEvent(ReactionNoticeEvent):  # Lagrange
-    sub_type: Literal["add"]  # pyright: ignore[reportIncompatibleVariableOverride]
+    sub_type: Literal["add"]  # ty: ignore[invalid-mutable-override]
 
     @override
     def get_log_string(self) -> str:
@@ -524,7 +524,7 @@ class ReactionAddNoticeEvent(ReactionNoticeEvent):  # Lagrange
 
 @custom_model
 class ReactionRemoveNoticeEvent(ReactionNoticeEvent):  # Lagrange
-    sub_type: Literal["remove"]  # pyright: ignore[reportIncompatibleVariableOverride]
+    sub_type: Literal["remove"]  # ty: ignore[invalid-mutable-override]
 
     @override
     def get_log_string(self) -> str:
