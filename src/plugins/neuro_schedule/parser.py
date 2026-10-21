@@ -14,7 +14,7 @@ from nonebot.adapters.discord.message import (
     TextSegment,
     TimestampSegment,
 )
-from nonebot_plugin_localstore import get_plugin_cache_dir
+from nonebot_plugin_localstore import get_plugin_data_dir
 
 from .models import Emoji, ScheduleData, ScheduleEntry, Text
 
@@ -50,7 +50,7 @@ def _extract_segs(msg: Message) -> list[tuple[SegType, Any]]:
 
 
 async def _download_image(url: str) -> Path:
-    path = get_plugin_cache_dir() / f"{uuid.uuid4().hex}.png"
+    path = get_plugin_data_dir() / f"{uuid.uuid4().hex}.png"
     async with httpx2.AsyncClient() as client:
         resp = await client.get(url, follow_redirects=True)
         resp.raise_for_status()
