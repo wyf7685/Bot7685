@@ -106,8 +106,8 @@ def load_plugins(config: BootstrapConfig) -> None:
 
 
 @timer("Initializing NoneBot")
-def init_nonebot() -> object:
-    config = load_config()
+def init_nonebot(**config_override: object) -> object:
+    config = load_config(**config_override)
     bootstrap_config = BootstrapConfig.from_config(config)
 
     setup_logger(bootstrap_config.logging_override)

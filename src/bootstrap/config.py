@@ -56,7 +56,7 @@ def _load_file(fp: Path) -> dict[str, object]:
     return data
 
 
-def load_config(config_dir: Path = CONFIG_DIR) -> dict[str, object]:
+def _load_config(config_dir: Path = CONFIG_DIR) -> dict[str, object]:
     if (root_config := _find_config_file(config_dir / "config")) is None:
         log.warning("No configuration file found in <y>config/</y> directory")
         return {}
@@ -78,6 +78,14 @@ def load_config(config_dir: Path = CONFIG_DIR) -> dict[str, object]:
             config = deep_update(config, _load_file(p))
 
     return config
+
+
+def load_config(
+    config_dir: Path = CONFIG_DIR,
+    /,
+    **config_override: object,
+) -> dict[str, object]:
+    return deep_update(_load_config(config_dir), config_override)
 
 
 class BootstrapConfig(BaseModel):
